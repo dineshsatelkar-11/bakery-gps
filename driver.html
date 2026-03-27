@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Baked — Driver</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:440px;margin:0 auto;min-height:100vh}
+.topbar{background:#2d7a4f;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:99}
+.topbar-title{color:#fff;font-size:16px;font-weight:800}
+.topbar-sub{color:#a8d5b8;font-size:11px;font-family:monospace}
+.logout{background:rgba(255,255,255,.2);border:none;color:#fff;padding:7px 12px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif}
+.tabs{display:flex;background:#fff;border-bottom:2px solid #e8dfd2;position:sticky;top:57px;z-index:98}
+.tab{flex:1;padding:13px;border:none;background:none;font-size:12px;font-weight:700;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;border-bottom:3px solid transparent;margin-bottom:-2px}
+.tab.on{color:#2d7a4f;border-bottom-color:#2d7a4f}
+.page{display:none;padding:14px 14px 80px}
+.page.on{display:block}
+.card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:16px;margin-bottom:12px}
+.lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:8px;text-transform:uppercase}
+input[type=text]{width:100%;padding:12px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;color:#1e1611;background:#f5ede0;outline:none;font-family:-apple-system,sans-serif}
+.btn{width:100%;padding:14px;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:10px}
+.btn-gps{background:#2d7a4f;color:#fff}
+.btn-save{background:#4a2f14;color:#fff}
+.btn-sm{padding:8px 12px;border-radius:10px;font-size:11px;font-weight:700;border:none;cursor:pointer;font-family:-apple-system,sans-serif}
+.msg{padding:12px 14px;border-radius:12px;font-size:12px;font-weight:600;font-family:monospace;margin-bottom:12px;line-height:1.8;white-space:pre-line}
+.ok{background:#e8f5e9;color:#2d7a4f;border:1px solid #a5d6a7}
+.er{background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0}
+.in{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9}
+.shop-list{display:flex;flex-direction:column;gap:6px;max-height:55vh;overflow-y:auto}
+.si{padding:12px 14px;border:1.5px solid #e8dfd2;border-radius:12px;background:#fff;cursor:pointer;display:flex;align-items:center;gap:10px}
+.si.on{border-color:#2d7a4f;background:#f0faf4}
+.si.saved{border-color:#a5d6a7}
+.si-n{font-size:13px;font-weight:700;flex:1}
+.si-a{font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px}
+/* ORDER CARD */
+.order-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;padding:14px;margin-bottom:10px}
+.order-shop{font-size:14px;font-weight:800;color:#4a2f14}
+.order-meta{font-size:11px;color:#8a7a6a;font-family:monospace;margin:4px 0 8px}
+.order-items{font-size:13px;font-family:monospace;background:#f5ede0;padding:8px 10px;border-radius:8px}
+/* ROUTE */
+.route-stop{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px}
+.rnum{width:30px;height:30px;border-radius:50%;background:#2d7a4f;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0}
+.rinfo{flex:1;background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:10px 12px}
+.rname{font-size:13px;font-weight:800}
+.rmeta{font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px}
+.rcoords{font-size:10px;color:#2d7a4f;font-family:monospace;margin-top:3px}
+.rline{width:2px;background:#e8dfd2;height:8px;margin-left:14px}
+.stat-row{display:flex;gap:8px;margin-bottom:14px}
+.stat{flex:1;background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:10px;text-align:center}
+.stat-n{font-size:20px;font-weight:900;color:#4a2f14}
+.stat-l{font-size:9px;color:#8a7a6a;font-family:monospace;text-transform:uppercase}
+.badge{display:inline-block;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;font-family:monospace}
+.b-ok{background:#e8f5e9;color:#2d7a4f}
+.b-warn{background:#fff8e1;color:#7a4800}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div><div class="topbar-title">🥖 Baked GPS</div><div class="topbar-sub" id="topSub">Driver</div></div>
+  <button class="logout" onclick="logout()">Logout</button>
+</div>
+
+<div class="tabs">
+  <button class="tab on" id="tb-orders" onclick="showTab('orders')">📋 Orders</button>
+  <button class="tab" id="tb-gps" onclick="showTab('gps')">📍 GPS</button>
+  <button class="tab" id="tb-route" onclick="showTab('route')">🗺 Route</button>
+</div>
+
+<!-- ── ORDERS TAB ── -->
+<div class="page on" id="pg-orders">
+  <div class="card">
+    <div class="lbl">Today's Orders</div>
+    <div id="todayDate" style="font-size:12px;font-family:monospace;color:#8a7a6a;margin-bottom:8px"></div>
+  </div>
+  <div id="ordersList"><div style="text-align:center;padding:30px;font-size:13px;color:#8a7a6a;font-family:monospace">Loading orders…</div></div>
+</div>
+
+<!-- ── GPS TAB ── -->
+<div class="page" id="pg-gps">
+  <div class="card">
+    <div class="lbl">Search Shop</div>
+    <input type="text" id="srch" placeholder="Search by name or area…" oninput="filterShops()">
+  </div>
+  <div id="gps-msg" style="display:none" class="msg ok"></div>
+  <div id="selBox" style="display:none" class="card" id="selBox">
+    <div class="lbl">Selected</div>
+    <div id="selName" style="font-size:15px;font-weight:800;color:#4a2f14"></div>
+    <div id="selArea" style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:3px"></div>
+    <div id="selStatus" style="font-size:11px;font-weight:700;font-family:monospace;margin-top:6px;color:#1565c0"></div>
+  </div>
+  <button class="btn btn-gps" id="gpsBtn" onclick="doGPS()">📍 Capture My Location</button>
+  <button class="btn btn-save" id="saveBtn" onclick="doSave()" style="display:none">✅ Confirm & Save</button>
+  <div class="card">
+    <div class="lbl">My Shops</div>
+    <div class="shop-list" id="shopList"><div style="padding:10px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div></div>
+  </div>
+</div>
+
+<!-- ── ROUTE TAB ── -->
+<div class="page" id="pg-route">
+  <div class="stat-row" id="routeStats" style="display:none">
+    <div class="stat"><div class="stat-n" id="rs-shops">0</div><div class="stat-l">Shops</div></div>
+    <div class="stat"><div class="stat-n" id="rs-km">0</div><div class="stat-l">Est. KM</div></div>
+    <div class="stat"><div class="stat-n" id="rs-time">0h</div><div class="stat-l">Est. Time</div></div>
+  </div>
+  <div id="route-msg" style="display:none" class="msg in"></div>
+  <div id="routeBody"></div>
+</div>
+
+<script>
+// ── AUTH ──
+const driver = sessionStorage.getItem('driver');
+if (!sessionStorage.getItem('role') || !driver) window.location.href='index.html';
+document.getElementById('topSub').textContent = driver + ' · ' + todayStr();
+document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-IN',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+function logout(){ sessionStorage.clear(); window.location.href='index.html'; }
+
+// ── CONFIG — update this URL after deploying Apps Script ──
+const API = window.API_URL || localStorage.getItem('API_URL') || '';
+
+function api(params) {
+  if (!API) return Promise.resolve({ error: 'API not configured. Update config.' });
+  const url = API + '?' + new URLSearchParams(params);
+  return fetch(url).then(r => r.json());
+}
+function apiPost(body) {
+  if (!API) return Promise.resolve({ error: 'API not configured.' });
+  return fetch(API, { method:'POST', body: JSON.stringify(body) }).then(r => r.json());
+}
+
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+// ── TABS ──
+function showTab(t) {
+  ['orders','gps','route'].forEach(x => {
+    document.getElementById('pg-'+x).classList.toggle('on', x===t);
+    document.getElementById('tb-'+x).classList.toggle('on', x===t);
+  });
+  if(t==='route') buildRoute();
+  if(t==='orders') loadOrders();
+}
+
+// ── SHOPS ──
+let allShops = [], selShop = null, captured = null;
+
+async function loadShops() {
+  const data = await api({ action:'getShops' });
+  if (data.error || !Array.isArray(data)) { return; }
+  allShops = data.filter(s => s.assigned_driver === driver);
+  renderShopList(allShops);
+}
+
+function filterShops() {
+  const q = document.getElementById('srch').value.toLowerCase();
+  renderShopList(q ? allShops.filter(s =>
+    s.name.toLowerCase().includes(q) || (s.area||'').toLowerCase().includes(q)
+  ) : allShops);
+}
+
+function renderShopList(list) {
+  const el = document.getElementById('shopList');
+  if (!list.length) { el.innerHTML='<div style="padding:10px;font-size:12px;color:#8a7a6a;font-family:monospace">No shops found.</div>'; return; }
+  el.innerHTML = list.map(s => `
+    <div class="si ${selShop?.shop_id==s.shop_id?'on':''} ${s.lat?'saved':''}" onclick="pickShop('${s.shop_id}')">
+      <div style="flex:1">
+        <div class="si-n">${s.name}</div>
+        <div class="si-a">${s.area||''}</div>
+      </div>
+      <div style="font-size:11px;font-weight:700;color:${s.lat?'#2d7a4f':'#c8382a'}">${s.lat?'✅':'⚠'}</div>
+    </div>`).join('');
+}
+
+function pickShop(id) {
+  selShop = allShops.find(s => s.shop_id == id);
+  captured = null;
+  document.getElementById('saveBtn').style.display='none';
+  document.getElementById('gps-msg').style.display='none';
+  document.getElementById('selName').textContent = selShop.name;
+  document.getElementById('selArea').textContent = '📍 ' + (selShop.area||'');
+  document.getElementById('selStatus').textContent = selShop.lat
+    ? 'GPS saved: '+selShop.lat+', '+selShop.lng : 'No GPS yet — capture below';
+  document.getElementById('selBox').style.display='block';
+  renderShopList(allShops);
+  document.getElementById('selBox').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function gMsg(t,type){ const el=document.getElementById('gps-msg'); el.textContent=t; el.className='msg '+type; el.style.display='block'; }
+
+function doGPS() {
+  if (!selShop) { gMsg('Select a shop first','er'); return; }
+  if (!navigator.geolocation) { gMsg('GPS not available.','er'); return; }
+  const btn=document.getElementById('gpsBtn'); btn.textContent='⏳ Getting location…'; btn.disabled=true;
+  gMsg('📡 Getting your location…','in');
+  navigator.geolocation.getCurrentPosition(pos => {
+    captured = { lat: parseFloat(pos.coords.latitude.toFixed(6)), lng: parseFloat(pos.coords.longitude.toFixed(6)), acc: Math.round(pos.coords.accuracy) };
+    gMsg('📍 Location found!\nLat: '+captured.lat+'\nLng: '+captured.lng+'\nAccuracy: ±'+captured.acc+' m\n\nTap Confirm & Save ↓','ok');
+    document.getElementById('saveBtn').style.display='block';
+    btn.textContent='📍 Capture My Location'; btn.disabled=false;
+    document.getElementById('saveBtn').scrollIntoView({behavior:'smooth',block:'nearest'});
+  }, err => {
+    btn.textContent='📍 Capture My Location'; btn.disabled=false;
+    if(err.code===1) gMsg('❌ Permission denied!\nSettings → Safari/Chrome → Location → Allow','er');
+    else if(err.code===2) gMsg('❌ GPS not found. Step outside and try.','er');
+    else gMsg('❌ GPS timed out.','er');
+  }, { enableHighAccuracy:true, timeout:20000, maximumAge:0 });
+}
+
+async function doSave() {
+  if (!captured || !selShop) return;
+  const btn=document.getElementById('saveBtn'); btn.textContent='Saving…'; btn.disabled=true;
+  const res = await apiPost({ action:'saveGPS', shop_id:selShop.shop_id, lat:captured.lat, lng:captured.lng, driver });
+  if (res.ok) {
+    selShop.lat = captured.lat; selShop.lng = captured.lng;
+    gMsg('✅ Saved!\n'+selShop.name+'\n'+captured.lat+', '+captured.lng,'ok');
+    document.getElementById('selStatus').textContent = '✅ '+captured.lat+', '+captured.lng;
+    captured = null; renderShopList(allShops);
+  } else {
+    gMsg('❌ Save failed: '+(res.error||'unknown'),'er');
+  }
+  btn.textContent='✅ Confirm & Save'; btn.disabled=false;
+  btn.style.display='none';
+}
+
+// ── ORDERS ──
+async function loadOrders() {
+  const el = document.getElementById('ordersList');
+  el.innerHTML='<div style="text-align:center;padding:20px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
+  const data = await api({ action:'getOrders', driver, date:todayStr() });
+  if (!Array.isArray(data) || !data.length) {
+    el.innerHTML='<div style="text-align:center;padding:30px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders posted for today yet.\nCheck back later or contact admin.</div>';
+    return;
+  }
+  el.innerHTML = data.map(o => `
+    <div class="order-card">
+      <div class="order-shop">${o.shop_name}</div>
+      <div class="order-meta">${o.date} · <span class="badge b-ok">${o.status||'pending'}</span></div>
+      <div class="order-items"><strong>Items:</strong> ${o.items}<br><strong>Qty:</strong> ${o.qty}${o.note?'<br><strong>Note:</strong> '+o.note:''}</div>
+    </div>`).join('');
+}
+
+// ── ROUTE ──
+const HQ = { lat:18.5820, lng:73.9197, name:'🥖 Baked HQ' };
+
+function dist(a,b){ const dl=a.lat-b.lat, dn=a.lng-b.lng; return Math.sqrt(dl*dl+dn*dn); }
+function distKm(a,b){
+  const R=6371, dLat=(b.lat-a.lat)*Math.PI/180, dLng=(b.lng-a.lng)*Math.PI/180;
+  const x=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+
+function nearestNeighbour(start, points) {
+  let rem=[...points], route=[], cur={lat:start.lat,lng:start.lng};
+  while(rem.length){ let best=null,bd=Infinity; rem.forEach(p=>{const d=dist(cur,p);if(d<bd){bd=d;best=p;}}); route.push(best); rem.splice(rem.indexOf(best),1); cur=best; }
+  return route;
+}
+
+async function buildRoute() {
+  const rmsg=document.getElementById('route-msg'), body=document.getElementById('routeBody');
+  rmsg.style.display='none'; body.innerHTML='';
+  if(!allShops.length) await loadShops();
+  const withGPS = allShops.filter(s => s.lat && s.lng);
+  const missing = allShops.filter(s => !s.lat || !s.lng);
+
+  if(!withGPS.length){
+    rmsg.textContent='No GPS saved for your shops yet. Go to GPS tab to capture locations first.';
+    rmsg.className='msg er'; rmsg.style.display='block'; return;
+  }
+
+  const route = nearestNeighbour(HQ, withGPS.map(s=>({...s, lat:parseFloat(s.lat), lng:parseFloat(s.lng)})));
+
+  // Calc total km & time
+  let totalKm=0, prev=HQ;
+  route.forEach(s=>{ totalKm+=distKm(prev,s); prev=s; });
+  totalKm=Math.round(totalKm);
+  const estTime = Math.round(totalKm/25*60 + route.length*5); // ~25kmh avg + 5min/stop
+  const estH = Math.floor(estTime/60), estM=estTime%60;
+
+  // Stats
+  document.getElementById('routeStats').style.display='flex';
+  document.getElementById('rs-shops').textContent=route.length;
+  document.getElementById('rs-km').textContent=totalKm;
+  document.getElementById('rs-time').textContent=estH+'h '+estM+'m';
+
+  // Google Maps URL
+  const wpts=route.slice(0,-1).map(s=>s.lat+','+s.lng).join('/');
+  const last=route[route.length-1];
+  const mapsUrl=`https://www.google.com/maps/dir/${HQ.lat},${HQ.lng}/${wpts}/${last.lat},${last.lng}`;
+
+  let html=`<a href="${mapsUrl}" target="_blank" style="display:block;background:#2d7a4f;color:#fff;padding:14px;border-radius:14px;text-align:center;font-weight:800;font-size:14px;text-decoration:none;margin-bottom:14px">🗺 Open Full Route in Google Maps</a>`;
+
+  html+=`<div class="route-stop"><div class="rnum" style="background:#4a2f14;font-size:10px">HQ</div><div class="rinfo"><div class="rname">🥖 Baked HQ</div><div class="rmeta">Nirgudi Road, Lohegaon · START</div></div></div>`;
+  route.forEach((s,i)=>{
+    html+=`<div class="rline"></div><div class="route-stop"><div class="rnum">${i+1}</div><div class="rinfo"><div class="rname">${s.name}</div><div class="rmeta">${s.area||''}</div><div class="rcoords">${s.lat}, ${s.lng} · <a href="https://www.google.com/maps?q=${s.lat},${s.lng}" target="_blank" style="color:#1565c0">map</a></div></div></div>`;
+  });
+
+  if(missing.length){
+    html+=`<div style="margin-top:14px;padding:12px 14px;background:#fff8e1;border:1.5px solid #ffe082;border-radius:14px"><div style="font-size:11px;font-weight:800;color:#7a4800;margin-bottom:8px">⚠ ${missing.length} shops without GPS</div>${missing.map(s=>`<div style="font-size:12px;color:#7a4800;font-family:monospace;padding:3px 0">• ${s.name}</div>`).join('')}</div>`;
+  }
+
+  body.innerHTML=html;
+
+  // Save route to sheet
+  apiPost({ action:'saveRoute', date:todayStr(), driver, shop_order:route.map(s=>s.shop_id||s.name), total_shops:route.length, total_km:totalKm, est_time:estH+'h '+estM+'m' });
+}
+
+// ── INIT ──
+loadShops();
+loadOrders();
+</script>
+</body>
+</html>
