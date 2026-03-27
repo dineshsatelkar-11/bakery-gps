@@ -1,298 +1,81 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Driver GPS — Baked Pune</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Baked GPS</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:420px;margin:0 auto;padding:16px 14px 60px}
-h1{font-size:20px;font-weight:800;color:#4a2f14}
-.sub{font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:20px;margin-top:2px}
-.card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:16px;margin-bottom:12px}
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.logo{font-size:56px;margin-bottom:8px;text-align:center}
+h1{font-size:26px;font-weight:900;color:#4a2f14;text-align:center}
+.sub{font-size:12px;color:#8a7a6a;font-family:monospace;text-align:center;margin-bottom:32px}
+.card{background:#fff;border:1.5px solid #e8dfd2;border-radius:20px;padding:24px;width:100%;max-width:360px;margin-bottom:14px}
 .lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:8px;text-transform:uppercase}
-select,input[type=text]{width:100%;padding:13px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:15px;font-weight:600;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif}
-.shop-grid{max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-top:10px}
-.si{padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:12px;background:#fff;cursor:pointer;display:flex;align-items:center;gap:10px}
-.si.on{border-color:#2d7a4f;background:#f0faf4}
-.dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-.si-n{font-size:13px;font-weight:700;flex:1}
-.si-a{font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:1px}
-.si-s{font-size:11px;font-weight:700;flex-shrink:0}
-.sel-box{background:#fffbf5;border:2px solid #c8864a;border-radius:14px;padding:14px;margin-bottom:12px}
-.btn{width:100%;padding:16px;border:none;border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:10px}
-.btn-gps{background:#2d7a4f;color:#fff}
-.btn-save{background:#4a2f14;color:#fff}
-.msg{padding:12px 14px;border-radius:12px;font-size:12px;font-weight:600;font-family:monospace;margin-bottom:12px;line-height:1.8;white-space:pre-line}
-.ok{background:#e8f5e9;color:#2d7a4f;border:1px solid #a5d6a7}
-.er{background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0}
-.in{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9}
-.warn{background:#fff8e1;color:#7a4800;border:1px solid #ffe082;font-size:13px;padding:14px;border-radius:14px;margin-bottom:14px;line-height:1.8}
-.saved-item{padding:10px 12px;background:#f0faf4;border:1px solid #a5d6a7;border-radius:10px;font-size:11px;font-family:monospace;margin-bottom:6px}
+select,input{width:100%;padding:14px;border:1.5px solid #e8dfd2;border-radius:12px;font-size:15px;font-weight:600;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:12px}
+.btn{width:100%;padding:16px;border:none;border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif}
+.btn-driver{background:#2d7a4f;color:#fff}
+.btn-admin{background:#4a2f14;color:#fff}
+.err{color:#c8382a;font-size:12px;font-family:monospace;text-align:center;margin-top:8px;display:none}
+.divider{display:flex;align-items:center;gap:10px;margin:16px 0;color:#8a7a6a;font-size:12px}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:#e8dfd2}
 </style>
 </head>
 <body>
-
-<!-- IMPORTANT: This file must be opened directly in Safari/Chrome browser -->
-
-<!-- NOT inside WhatsApp, Claude, or any other app -->
-
-<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
-  <div style="font-size:30px">🥖</div>
-  <div><h1>Driver GPS</h1><div class="sub">Baked · Nirgudi Road Lohegaon</div></div>
-</div>
-
-<!-- webview warning shown by JS -->
-
-<div id="wvWarn" style="display:none" class="warn">
-  ⚠️ <strong>GPS won't work here.</strong><br>
-  You are inside WhatsApp or another app.<br><br>
-  <strong>To fix:</strong> tap the <strong>⋮ menu</strong> or <strong>share button</strong> at the top → tap <strong>"Open in Chrome"</strong> or <strong>"Open in Safari"</strong><br><br>
-  Then GPS will work perfectly ✅
-</div>
-
-<div id="msg" style="display:none" class="msg ok"></div>
-
-<!-- STEP 1 -->
+<div class="logo">🥖</div>
+<h1>Baked GPS</h1>
+<div class="sub">Delivery Management · Lohegaon</div>
 
 <div class="card">
-  <div class="lbl">Step 1 — Your Name</div>
-  <select id="dSel" onchange="onDriver()">
-    <option value="">— Tap to choose —</option>
-    <option>Bharat</option>
-    <option>Anand</option>
-    <option>Vikas</option>
-    <option>Yuvraj</option>
-    <option>Rama</option>
+  <div class="lbl">Driver Login</div>
+  <select id="driverName">
+    <option value="">Select your name…</option>
+    <option>Bharat</option><option>Anand</option><option>Vikas</option>
+    <option>Yuvraj</option><option>Rama</option>
   </select>
+  <input type="password" id="driverPass" placeholder="Password">
+  <button class="btn btn-driver" onclick="driverLogin()">🚗 Driver Login</button>
+  <div class="err" id="d-err">Wrong password. Try again.</div>
 </div>
 
-<!-- STEP 2 -->
+<div class="divider">or</div>
 
 <div class="card">
-  <div class="lbl">Step 2 — Select Your Shop</div>
-  <input type="text" id="srch" placeholder="Search shop name…" oninput="renderShops()">
-  <div class="shop-grid" id="shopGrid"><div style="padding:10px;font-size:12px;color:#8a7a6a;font-family:monospace">Choose your name first ↑</div></div>
-</div>
-
-<!-- SELECTED SHOP -->
-
-<div id="selBox" class="sel-box" style="display:none">
-  <div class="lbl">Selected ✓</div>
-  <div id="selName" style="font-size:16px;font-weight:800;color:#4a2f14"></div>
-  <div id="selArea" style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:3px"></div>
-  <div id="selStatus" style="font-size:11px;font-weight:700;font-family:monospace;margin-top:6px;color:#1565c0"></div>
-</div>
-
-<!-- STEP 3 -->
-
-<button class="btn btn-gps" id="gpsBtn" onclick="doGPS()">📍 Step 3 — Capture My Location</button>
-<button class="btn btn-save" id="saveBtn" onclick="doSave()" style="display:none">✅ Confirm & Save Location</button>
-
-<!-- SAVED -->
-
-<div id="savedWrap" style="display:none">
-  <div class="card">
-    <div class="lbl">Saved Today ✅</div>
-    <div id="savedList"></div>
-  </div>
+  <div class="lbl">Admin Login</div>
+  <input type="password" id="adminPass" placeholder="Admin password">
+  <button class="btn btn-admin" onclick="adminLogin()">📊 Admin Login</button>
+  <div class="err" id="a-err">Wrong password. Try again.</div>
 </div>
 
 <script>
-var SHOPS={
-  Bharat:["C TEA POST - BANER 45 ICON|Baner","Brewing Bistro - Baner|Baner","Between Your Buns - Baner|Baner","FooDU Food & You - Baner|Baner","Zillionth Bistro - Baner|Baner","Cafe Lane - Shivaji Nagar|Shivaji Nagar","Wings & Co - Aundh|Aundh","B For Burger - Aundh|Aundh","Bammm - Aundh|Aundh","Roll Point - Narayan Peth|Narayan Peth","That Place The Cafe - Bavdhan|Bavdhan","PJ's Hospitality - MG Road|MG Road","C Tea Post - Bluegrass|Yerwada","MI CHAIWALA - NYATI|Yerwada","APPA FILTER COFFEE - RAILWAY|Pune Station","BANJAARAS - PASHAN|Pashan","C TEA POST - LAW COLLEGE ROAD|Law College Road","CHEESEQUAKES - SB ROAD|SB Road","MI CHAIWALA - SB ROAD|SB Road","CREMA COFFEE - PRABHAT ROAD|Prabhat Road","F TEA POST - JM ROAD|JM Road","GULF BEER GARDEN - FC ROAD|FC Road","ICE KRAFT - FC ROAD|FC Road","NEW POONA BAKERY - MODEL COLONY|Model Colony","KONO CAFE - AHMEDNAGAR|Nagar Road"],
-  Anand:["Tea Post - Commerce Zone Yerwada|Yerwada","Dhanshree Food - Yerwada|Yerwada","Momos Junction - Wakad|Wakad","Jak Grill - Pimple Saudagar|Pimple Saudagar","Bammm - Pimple Saudagar|Pimple Saudagar","Daily Bites - Pimple Saudagar|Pimple Saudagar","F Tea Post - Pimple Saudagar|Pimple Saudagar","ABBY.S CAFE - DAPODI|Pimple Saudagar","MI CHAIWALA - PIMPRI|Pimpri","HANGOUT ROOFTOP CAFE - AKRUDI|Akurdi","SHAWARMA KING - AKURDI|Akurdi","WINGS & CO. - AKRUDI|Akurdi","JUST CHILL - TALEGAON|Talegaon","SAMPRA ROLLS & CAFE - SANGVI|Sangvi","TEALOGY CAFE - RAVET|Ravet"],
-  Vikas:["3 Meals & Cafe - Koregaon Park|Koregaon Park","C Tea Post - Koregaon Park|Koregaon Park","Soussol - Koregaon Park|Koregaon Park","HUBER & HOLLY - KP|Koregaon Park","NAUGHTY ANGEL CAFE - KP|Koregaon Park","Funky Monkeys - Kalyani Nagar|Kalyani Nagar","Epic Burger - Kalyani Nagar|Kalyani Nagar","Muscle Foodz - Kondhwa|Kondhwa","100 Burgers - Katraj|Katraj","ANDEBAAZ - SINHAGHAD ROAD|Sinhaghad","BETWEEN YOUR BUNS - SALUNKHE VIHAR|Salunkhe Vihar","BURGER BARN - NIBM|NIBM","C TEA POST - NIBM|NIBM","HUBER & HOLLY - LULLANAGAR|Lullanagar","MI CHAIWALA - SGS MALL CAMP|Camp","Deep's Biryani Masala - Kothrud|Kothrud","Between Your Buns - Kothrud|Kothrud","SNUG - UNDRI|Undri","TIPSY TURTLE - BHUGAON|Bhugaon"],
-  Yuvraj:["Chai Shai - Kharadi|Kharadi","EL CAFE 1983 - Kharadi|Kharadi","C Tea Post - EON IT PARK KHARADI|Kharadi","Edinburgh - Kharadi|Kharadi","Souper Bowl - Kharadi|Kharadi","Flavour Fusion Cafe - Kharadi|Kharadi","Tealogy Cafe - Kharadi|Kharadi","Mi Chaiwala - Viman Nagar|Viman Nagar","Coffee Project - Viman Nagar|Viman Nagar","Xero Degrees - Viman Nagar|Viman Nagar","F Tea Post - Viman Nagar|Viman Nagar","SQUASHED CAFE - AERO MALL|Viman Nagar","C Tea Post - Seasons Mall Hadapsar|Hadapsar","Bitezzo - Hadapsar|Hadapsar","KEZIAH - MUNDHWA|Mundhwa","Sams Food - Wadgaon Sheri|Wadgaon Sheri","Liberty Grill - Wadgaon Sheri|Wadgaon Sheri","BURRITO - NAGAR ROAD|Nagar Road","CAFEWAY - RAMWADI|Ramwadi","EATABLE FOODS - CHANDAN NAGAR|Chandan Nagar","JUICES & MORE - SANJAY PARK|Sanjay Park"],
-  Rama:["BAMMM - Baner|Baner","Bank Of Tea - Baner|Baner","MI CHAIWALA - AMAR MADHUBAN|Baner","Franks Hot Dogs - Wakad Phoenix Mall|Wakad","C Tea Post - Wakad Phoenix Mall|Wakad","Outdo - Hinjewadi Phase 2|Hinjewadi","Andebaaz - Hinjewadi Phase 1|Hinjewadi","G Spot Burgers - Hinjewadi|Hinjewadi","C Tea Post - Phase 1 Hinjewadi|Hinjewadi","F Tea Post - High Street Mall Hinjewadi|Hinjewadi","Gabru Di Chap - Shivaji Nagar|Shivaji Nagar","C Tea Post - Balewadi|Balewadi","DURGA - MAHALUNGE|Mahalunge","F TEA POST - MAHALUNGE|Mahalunge"]
-};
-var DC={Bharat:'#c8864a',Anand:'#1a5fa8',Vikas:'#2d7a4f',Yuvraj:'#6e3da8',Rama:'#c8382a'};
-var selKey=null,selShopName=null,selShopArea=null,captured=null,savedToday=[];
+// Driver passwords (simple, change as needed)
+const DRIVER_PASS = { Bharat:'bharat123', Anand:'anand123', Vikas:'vikas123', Yuvraj:'yuvraj123', Rama:'rama123' };
+const ADMIN_PASS = 'baked@admin';
 
-// ── detect webview (WhatsApp, Facebook, Claude iframe etc)
-function isWebView(){
-  var ua=navigator.userAgent||'';
-  // Only block known in-app browsers, NOT regular Chrome/Safari
-  if(/FBAN|FBAV|Instagram|WhatsApp/i.test(ua)) return true;
-  // wv flag = Android WebView (but NOT Chrome browser)
-  if(/wv/.test(ua) && !/Chrome\/[0-9]/.test(ua)) return true;
-  return false;
-}
-if(isWebView()){
-  document.getElementById('wvWarn').style.display='block';
+function driverLogin() {
+  const name = document.getElementById('driverName').value;
+  const pass = document.getElementById('driverPass').value;
+  if (!name) { alert('Select your name'); return; }
+  if (pass !== DRIVER_PASS[name]) { document.getElementById('d-err').style.display='block'; return; }
+  sessionStorage.setItem('role','driver');
+  sessionStorage.setItem('driver', name);
+  window.location.href = 'driver.html';
 }
 
-function msg(text,type){
-  var el=document.getElementById('msg');
-  el.textContent=text; el.className='msg '+type; el.style.display='block';
+function adminLogin() {
+  const pass = document.getElementById('adminPass').value;
+  if (pass !== ADMIN_PASS) { document.getElementById('a-err').style.display='block'; return; }
+  sessionStorage.setItem('role','admin');
+  window.location.href = 'admin.html';
 }
 
-function onDriver(){
-  selKey=null; captured=null;
-  document.getElementById('selBox').style.display='none';
-  document.getElementById('saveBtn').style.display='none';
-  document.getElementById('msg').style.display='none';
-  renderShops();
-}
+// Press Enter to login
+document.getElementById('driverPass').addEventListener('keydown', e => { if(e.key==='Enter') driverLogin(); });
+document.getElementById('adminPass').addEventListener('keydown', e => { if(e.key==='Enter') adminLogin(); });
 
-function nk(s){return s.trim().toLowerCase().replace(/[^a-z0-9]/g,'');}
-
-function renderShops(){
-  var driver=document.getElementById('dSel').value;
-  var q=(document.getElementById('srch').value||'').toLowerCase();
-  var grid=document.getElementById('shopGrid');
-  if(!driver){grid.innerHTML='<div style="padding:10px;font-size:12px;color:#8a7a6a;font-family:monospace">Choose your name first ↑</div>';return;}
-
-  // Build full list, driver's shops first
-  var all=[];
-  Object.keys(SHOPS).forEach(function(d){
-    SHOPS[d].forEach(function(s){
-      var p=s.split('|');
-      all.push({name:p[0],area:p[1],driver:d,key:nk(p[0])});
-    });
-  });
-  all.sort(function(a,b){
-    if(a.driver===driver&&b.driver!==driver) return -1;
-    if(b.driver===driver&&a.driver!==driver) return 1;
-    return 0;
-  });
-  if(q) all=all.filter(function(s){
-    return s.name.toLowerCase().indexOf(q)>=0||(s.area||'').toLowerCase().indexOf(q)>=0;
-  });
-
-  grid.innerHTML='';
-  all.slice(0,80).forEach(function(s){
-    var isSaved=savedToday.some(function(x){return x.key===s.key;});
-    var div=document.createElement('div');
-    div.className='si'+(selKey===s.key?' on':'');
-    div.innerHTML='<div class="dot" style="background:'+(DC[s.driver]||'#aaa')+'"></div>'
-      +'<div style="flex:1"><div class="si-n">'+s.name+'</div>'
-      +'<div class="si-a">'+s.area+' · '+s.driver+'</div></div>'
-      +'<div class="si-s" style="color:'+(isSaved?'#2d7a4f':'#c8382a')+'">'+(isSaved?'✅':'⚠')+'</div>';
-    (function(k,n,a){div.onclick=function(){pick(k,n,a);};})(s.key,s.name,s.area);
-    grid.appendChild(div);
-  });
-}
-
-function pick(key,name,area){
-  selKey=key; selShopName=name; selShopArea=area; captured=null;
-  document.getElementById('saveBtn').style.display='none';
-  document.getElementById('msg').style.display='none';
-  document.getElementById('selName').textContent=name;
-  document.getElementById('selArea').textContent='📍 '+area;
-  var isSaved=savedToday.find(function(x){return x.key===key;});
-  document.getElementById('selStatus').textContent=isSaved
-    ?'✅ Already saved today: '+isSaved.lat+', '+isSaved.lng
-    :'Not yet saved — tap Capture below';
-  document.getElementById('selBox').style.display='block';
-  renderShops();
-  document.getElementById('selBox').scrollIntoView({behavior:'smooth',block:'nearest'});
-}
-
-function doGPS(){
-  var driver=document.getElementById('dSel').value;
-  if(!driver){msg('Choose your name first (Step 1)','er');return;}
-  if(!selKey){msg('Select a shop first (Step 2)','er');return;}
-
-  if(!navigator.geolocation){
-    msg('GPS not available on this device.','er');
-    return;
-  }
-
-  var btn=document.getElementById('gpsBtn');
-  btn.textContent='⏳ Getting location…';
-  btn.disabled=true;
-  msg('📡 Getting your location… please wait…','in');
-
-  navigator.geolocation.getCurrentPosition(
-    function(pos){
-      captured={
-        lat:parseFloat(pos.coords.latitude.toFixed(6)),
-        lng:parseFloat(pos.coords.longitude.toFixed(6)),
-        acc:Math.round(pos.coords.accuracy)
-      };
-      msg('📍 Location found!\nLat: '+captured.lat+'\nLng: '+captured.lng+'\nAccuracy: ±'+captured.acc+' metres\n\nTap "Confirm & Save" below ↓','ok');
-      document.getElementById('selStatus').textContent='Captured: '+captured.lat+', '+captured.lng;
-      document.getElementById('saveBtn').style.display='block';
-      btn.textContent='📍 Step 3 — Capture My Location';
-      btn.disabled=false;
-      document.getElementById('saveBtn').scrollIntoView({behavior:'smooth',block:'nearest'});
-    },
-    function(err){
-      btn.textContent='📍 Step 3 — Capture My Location';
-      btn.disabled=false;
-      if(err.code===1){
-        msg('❌ Permission denied!\n\niPhone fix:\nSettings → Privacy & Security → Location Services → Safari → While Using\n\nAndroid fix:\nTap 🔒 in address bar → Location → Allow\n\nThen come back and try again.','er');
-      } else if(err.code===2){
-        msg('❌ GPS signal not found.\nStep outside or near a window and try again.','er');
-      } else {
-        msg('❌ GPS timed out.\nStep outside and try again.','er');
-      }
-    },
-    {enableHighAccuracy:true,timeout:20000,maximumAge:0}
-  );
-}
-
-function doSave(){
-  if(!captured||!selKey){msg('Capture location first','er');return;}
-  var driver=document.getElementById('dSel').value;
-  var now=new Date();
-  var ts=now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
-
-  var entry={key:selKey,shop:selShopName,area:selShopArea,driver:driver,
-    lat:captured.lat,lng:captured.lng,ts:ts};
-  savedToday.push(entry);
-
-  // Try to save to shared storage if available
-  var saved=false;
-  try{
-    if(window.storage&&window.storage.get&&window.storage.set){
-      window.storage.get('shopLocations',true).then(function(r){
-        var ex={};
-        try{if(r&&r.value)ex=JSON.parse(r.value);}catch(e){}
-        ex[selKey]={shop:selShopName,area:selShopArea,driverName:driver,
-          customCoords:{lat:captured.lat,lng:captured.lng},
-          updatedBy:driver,updatedAt:ts};
-        return window.storage.set('shopLocations',JSON.stringify(ex),true);
-      }).then(function(){
-        msg('✅ SAVED!\n'+selShopName+'\n'+captured.lat+', '+captured.lng+'\nSaved by '+driver+' at '+ts+'\nAll drivers will see this ✓','ok');
-      }).catch(function(e){
-        showCoordFallback(driver,ts);
-      });
-    } else {
-      showCoordFallback(driver,ts);
-    }
-  }catch(e){
-    showCoordFallback(driver,ts);
-  }
-
-  document.getElementById('selStatus').textContent='✅ Saved: '+captured.lat+', '+captured.lng;
-  document.getElementById('saveBtn').style.display='none';
-  captured=null;
-  renderShops();
-  renderSaved();
-}
-
-function showCoordFallback(driver,ts){
-  // When storage not available, show coords to screenshot/share
-  msg('✅ Location captured!\n'
-    +selShopName+'\nLat: '+savedToday[savedToday.length-1].lat
-    +'\nLng: '+savedToday[savedToday.length-1].lng
-    +'\nBy: '+driver+' at '+ts
-    +'\n\n📸 Screenshot this & send to manager on WhatsApp.','ok');
-}
-
-function renderSaved(){
-  if(!savedToday.length) return;
-  document.getElementById('savedWrap').style.display='block';
-  var html='';
-  savedToday.forEach(function(s){
-    html+='<div class="saved-item"><strong>'+s.shop+'</strong><br>'+s.lat+', '+s.lng+' · by '+s.driver+' at '+s.ts+'</div>';
-  });
-  document.getElementById('savedList').innerHTML=html;
-}
+// Redirect if already logged in
+if (sessionStorage.getItem('role')==='driver') window.location.href='driver.html';
+if (sessionStorage.getItem('role')==='admin') window.location.href='admin.html';
 </script>
-
 </body>
 </html>
