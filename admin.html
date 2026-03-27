@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>Baked — Admin</title>
+<script src="config.js"></script>
+<script>window.API_URL = CONFIG.API_URL;</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:520px;margin:0 auto;min-height:100vh}
@@ -19,18 +21,29 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;
 .card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:16px;margin-bottom:12px}
 .lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:8px;text-transform:uppercase}
 select,input[type=text],input[type=date],textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:8px}
-textarea{resize:vertical;min-height:70px;font-size:13px}
-.btn{width:100%;padding:13px;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:10px}
+textarea{resize:vertical;min-height:120px;font-size:13px;line-height:1.7}
+.btn{width:100%;padding:13px;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:8px}
+.btn-parse{background:#6e3da8;color:#fff}
 .btn-add{background:#4a2f14;color:#fff}
+.btn-clear{background:#fde8e8;color:#c8382a}
 .btn-refresh{background:#e8dfd2;color:#4a2f14}
 .btn-sm{padding:7px 12px;border-radius:10px;font-size:11px;font-weight:700;border:none;cursor:pointer;font-family:-apple-system,sans-serif}
 .btn-del{background:#fde8e8;color:#c8382a}
 .btn-map{background:#e3f2fd;color:#1565c0}
 .btn-csv{background:#e8f5e9;color:#2d7a4f;width:100%;padding:12px;border-radius:12px;font-size:14px;font-weight:800;border:none;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:10px}
-.msg{padding:12px 14px;border-radius:12px;font-size:12px;font-weight:600;font-family:monospace;margin-bottom:12px;line-height:1.8}
+.msg{padding:12px 14px;border-radius:12px;font-size:12px;font-weight:600;font-family:monospace;margin-bottom:12px;line-height:1.8;white-space:pre-line}
 .ok{background:#e8f5e9;color:#2d7a4f;border:1px solid #a5d6a7}
 .er{background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0}
 .in{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9}
+.warn{background:#fff8e1;color:#7a4800;border:1px solid #ffe082}
+/* PARSED PREVIEW */
+.parsed-item{background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:12px 14px;margin-bottom:8px}
+.parsed-shop{font-size:13px;font-weight:800;color:#4a2f14}
+.parsed-meta{font-size:11px;color:#8a7a6a;font-family:monospace;margin:3px 0}
+.parsed-detail{font-size:12px;font-family:monospace;background:#f5ede0;padding:7px 10px;border-radius:8px;margin-top:6px}
+.driver-badge{display:inline-block;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;font-family:monospace;margin-top:4px}
+.unmatched{border-color:#f0b0b0;background:#fff8f8}
+/* ORDER CARDS */
 .order-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;padding:12px 14px;margin-bottom:9px}
 .order-shop{font-size:14px;font-weight:800;color:#4a2f14}
 .order-meta{font-size:10px;color:#8a7a6a;font-family:monospace;margin:3px 0 7px}
@@ -40,18 +53,20 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
 .stat-n{font-size:20px;font-weight:900;color:#4a2f14}
 .stat-l{font-size:9px;color:#8a7a6a;font-family:monospace}
 .driver-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;padding:14px;margin-bottom:10px}
-.driver-name{font-size:15px;font-weight:800;margin-bottom:6px}
 .route-mini{font-size:11px;font-family:monospace;color:#1e1611;padding:3px 0;border-bottom:1px solid #f0e8dc}
 .badge{display:inline-block;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;font-family:monospace}
 .b-ok{background:#e8f5e9;color:#2d7a4f}
 .b-warn{background:#fff8e1;color:#7a4800}
 .b-miss{background:#fde8e8;color:#c8382a}
 .filter-row{display:flex;gap:8px;margin-bottom:10px}
-.filter-row select{margin-bottom:0}
-.shop-opt{font-size:13px}
+.filter-row select,.filter-row input{margin-bottom:0}
+.dc-Bharat{background:#fff3e0;color:#c8864a}
+.dc-Anand{background:#e3f2fd;color:#1a5fa8}
+.dc-Vikas{background:#e8f5e9;color:#2d7a4f}
+.dc-Yuvraj{background:#f3e8ff;color:#6e3da8}
+.dc-Rama{background:#fde8e8;color:#c8382a}
+.dc-Dinesh{background:#fce4ec;color:#880e4f}
 </style>
-  <script src="config.js"></script>
-<script>window.API_URL = CONFIG.API_URL;</script>
 </head>
 <body>
 
@@ -66,62 +81,84 @@ textarea{resize:vertical;min-height:70px;font-size:13px}
   <button class="tab" id="tb-gps" onclick="showTab('gps')">📍 GPS</button>
 </div>
 
-<!-- ── ORDERS TAB ── -->
+<!-- ══════════ ORDERS TAB ══════════ -->
 <div class="page on" id="pg-orders">
 
-  <!-- Add order form -->
   <div class="card">
-    <div class="lbl">Post New Order</div>
-    <select id="ord-driver"><option value="">Select Driver…</option><option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option><option value="ALL">ALL Drivers</option></select>
-    <select id="ord-shop"><option value="">Select Shop…</option></select>
-    <input type="text" id="ord-items" placeholder="Items (e.g. Bread, Buns, Croissant)">
-    <input type="text" id="ord-qty" placeholder="Quantity (e.g. 10 loaves, 20 buns)">
-    <textarea id="ord-note" placeholder="Special note (optional)"></textarea>
-    <input type="date" id="ord-date">
-    <div id="ord-msg" style="display:none" class="msg ok"></div>
-    <button class="btn btn-add" onclick="addOrder()">➕ Add Order</button>
+    <div class="lbl">📋 Paste Order List</div>
+    <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:8px;line-height:1.7">
+      Paste your WhatsApp/chat order directly below.<br>
+      Format per line: <strong>Shop Name – Items – Qty</strong><br>
+      Example:<br>
+      C Tea Post Baner – Bread, Buns – 10 loaves, 20 pcs<br>
+      Bammm Aundh – Croissant – 15 pcs
+    </div>
+    <textarea id="orderPaste" placeholder="Paste full order list here…&#10;&#10;C Tea Post Baner – Bread, Buns – 10, 20&#10;Bammm Aundh – Croissant – 15&#10;Edinburgh Kharadi – Sourdough – 5 loaves"></textarea>
+    <input type="date" id="ord-date" style="margin-bottom:8px">
+
+    <!-- Excel upload -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <label style="flex:1;padding:10px;background:#f0f4ff;border:1.5px dashed #90caf9;border-radius:10px;text-align:center;font-size:12px;font-weight:700;color:#1565c0;cursor:pointer">
+        📎 Upload Excel / CSV
+        <input type="file" id="fileUpload" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFile(event)">
+      </label>
+      <button class="btn-sm" style="background:#e8f5e9;color:#2d7a4f;padding:10px 14px" onclick="document.getElementById('orderPaste').value=''">Clear</button>
+    </div>
+
+    <div id="parse-msg" style="display:none" class="msg in"></div>
+    <button class="btn btn-parse" onclick="parseOrders()">🔍 Match Shops & Preview</button>
   </div>
 
-  <!-- Filter -->
+  <!-- PARSED PREVIEW -->
+  <div id="previewBox" style="display:none">
+    <div style="font-size:13px;font-weight:800;color:#4a2f14;margin-bottom:10px" id="previewTitle"></div>
+    <div id="previewList"></div>
+    <div id="preview-msg" style="display:none" class="msg warn"></div>
+    <button class="btn btn-add" id="confirmBtn" onclick="confirmAllOrders()">✅ Confirm & Save All Orders</button>
+    <button class="btn btn-clear" onclick="clearPreview()">✖ Cancel</button>
+  </div>
+
+  <!-- EXISTING ORDERS -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+    <div style="font-size:13px;font-weight:800;color:#4a2f14">Today's Orders</div>
+    <button class="btn-sm btn-refresh" onclick="loadOrders()" style="background:#e8dfd2;color:#4a2f14">🔄 Refresh</button>
+  </div>
   <div class="filter-row">
-    <select id="f-ord-driver" onchange="loadOrders()"><option value="">All Drivers</option><option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option></select>
-    <input type="date" id="f-ord-date" onchange="loadOrders()" style="margin-bottom:0">
+    <select id="f-ord-driver" onchange="loadOrders()"><option value="">All Drivers</option><option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option><option>Dinesh</option></select>
+    <input type="date" id="f-ord-date" onchange="loadOrders()">
   </div>
-
-  <button class="btn btn-refresh" onclick="loadOrders()">🔄 Refresh Orders</button>
   <div id="ordersList"><div style="text-align:center;padding:20px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div></div>
 </div>
 
-<!-- ── ROUTES TAB ── -->
+<!-- ══════════ ROUTES TAB ══════════ -->
 <div class="page" id="pg-routes">
   <div class="stats-grid" id="routeStats"></div>
   <div class="filter-row">
     <select id="f-rt-driver" onchange="loadRoutes()"><option value="">All Drivers</option><option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option></select>
-    <input type="date" id="f-rt-date" onchange="loadRoutes()" style="margin-bottom:0">
+    <input type="date" id="f-rt-date" onchange="loadRoutes()">
   </div>
   <button class="btn btn-refresh" onclick="loadRoutes()">🔄 Refresh</button>
   <button class="btn-csv" onclick="exportRouteCSV()">⬇️ Export to CSV</button>
   <div id="routesList"><div style="text-align:center;padding:20px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div></div>
 </div>
 
-<!-- ── GPS TAB ── -->
+<!-- ══════════ GPS TAB ══════════ -->
 <div class="page" id="pg-gps">
   <div class="stats-grid" id="gpsStats"></div>
   <div class="filter-row">
-    <select id="f-gps-driver" onchange="renderGPS()"><option value="">All Drivers</option><option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option></select>
+    <select id="f-gps-driver" onchange="renderGPS()"><option value="">All Drivers</option><option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option><option>Dinesh</option></select>
     <select id="f-gps-status" onchange="renderGPS()"><option value="">All</option><option value="saved">Saved ✅</option><option value="missing">Missing ⚠</option></select>
   </div>
   <button class="btn-csv" onclick="exportGPSCSV()">⬇️ Export GPS to CSV</button>
-  <div id="gpsList"><div style="text-align:center;padding:20px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div></div>
+  <div id="gpsList"></div>
 </div>
 
 <script>
-if (sessionStorage.getItem('role')!=='admin') window.location.href='index.html';
+if(sessionStorage.getItem('role')!=='admin') window.location.href='index.html';
 
 const API = window.API_URL || localStorage.getItem('API_URL') || '';
 function api(p){ if(!API) return Promise.resolve({error:'API not set'}); return fetch(API+'?'+new URLSearchParams(p)).then(r=>r.json()); }
 function apiPost(b){ if(!API) return Promise.resolve({error:'API not set'}); return fetch(API,{method:'POST',body:JSON.stringify(b)}).then(r=>r.json()); }
-
 function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function logout(){ sessionStorage.clear(); window.location.href='index.html'; }
 
@@ -136,22 +173,155 @@ function showTab(t){
   if(t==='gps') loadGPS();
 }
 
-// ── SHOPS (for order form) ──
-let allShops=[];
+// ── SHOPS ──
+let allShops=[], parsedOrders=[];
 async function loadShops(){
   const data=await api({action:'getShops'});
-  if(!Array.isArray(data)) return;
-  allShops=data;
-  const sel=document.getElementById('ord-shop');
-  const drvFilter=document.getElementById('ord-driver').value;
-  sel.innerHTML='<option value="">Select Shop…</option>';
-  const list=drvFilter&&drvFilter!=='ALL'?data.filter(s=>s.assigned_driver===drvFilter):data;
-  list.forEach(s=>{ const o=document.createElement('option'); o.value=s.shop_id; o.textContent=s.name+(s.area?' ('+s.area+')':''); sel.appendChild(o); });
+  if(Array.isArray(data)) allShops=data;
 }
-document.getElementById('ord-driver').addEventListener('change',loadShops);
 loadShops();
 
-// ── ORDERS ──
+// ── FUZZY MATCH shop name ──
+function normalize(s){ return (s||'').toLowerCase().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ').trim(); }
+function fuzzyMatch(query, shops){
+  const q=normalize(query);
+  // exact match
+  let m=shops.find(s=>normalize(s.name)===q);
+  if(m) return {shop:m,score:100};
+  // contains match
+  const words=q.split(' ').filter(w=>w.length>2);
+  let best=null, bestScore=0;
+  shops.forEach(s=>{
+    const n=normalize(s.name);
+    let score=0;
+    words.forEach(w=>{ if(n.includes(w)) score+=w.length; });
+    // also check area
+    const a=normalize(s.area||'');
+    words.forEach(w=>{ if(a.includes(w)) score+=w.length*0.5; });
+    if(score>bestScore){ bestScore=score; best=s; }
+  });
+  if(bestScore>=4) return {shop:best,score:bestScore};
+  return null;
+}
+
+// ── PARSE PASTED ORDER TEXT ──
+function parseOrders(){
+  const text=document.getElementById('orderPaste').value.trim();
+  const msgEl=document.getElementById('parse-msg');
+  if(!text){ msgEl.textContent='Please paste order text first.'; msgEl.className='msg er'; msgEl.style.display='block'; return; }
+  if(!allShops.length){ msgEl.textContent='Loading shop list… please try again in 2 seconds.'; msgEl.className='msg in'; msgEl.style.display='block'; loadShops(); return; }
+
+  // Split by lines, skip blank
+  const lines=text.split('\n').map(l=>l.trim()).filter(l=>l.length>2);
+  parsedOrders=[];
+  let unmatched=0;
+
+  lines.forEach(line=>{
+    // Try to split by common separators: –, -, |, :
+    const parts=line.split(/\s*[–\-|:]\s*/);
+    const shopRaw=parts[0]||'';
+    const items=parts[1]||'';
+    const qty=parts[2]||'';
+
+    const match=fuzzyMatch(shopRaw, allShops);
+    if(match){
+      parsedOrders.push({
+        raw:line, shopRaw,
+        shop_id:match.shop.shop_id,
+        shop_name:match.shop.name,
+        area:match.shop.area||'',
+        driver:match.shop.assigned_driver||'Dinesh',
+        items:items||shopRaw,
+        qty:qty||'—',
+        matched:true,
+        score:match.score
+      });
+    } else {
+      parsedOrders.push({
+        raw:line, shopRaw,
+        shop_id:'',
+        shop_name:shopRaw,
+        area:'Unknown',
+        driver:'Dinesh', // unmatched → assign to Dinesh
+        items:items||line,
+        qty:qty||'—',
+        matched:false,
+        score:0
+      });
+      unmatched++;
+    }
+  });
+
+  if(!parsedOrders.length){ msgEl.textContent='No valid order lines found.'; msgEl.className='msg er'; msgEl.style.display='block'; return; }
+
+  msgEl.textContent=`✅ Parsed ${parsedOrders.length} orders · ${parsedOrders.length-unmatched} matched · ${unmatched} unmatched (assigned to Dinesh)`;
+  msgEl.className='msg ok'; msgEl.style.display='block';
+  renderPreview();
+}
+
+function renderPreview(){
+  document.getElementById('previewBox').style.display='block';
+  document.getElementById('previewTitle').textContent=`Preview — ${parsedOrders.length} Orders`;
+  const unmatched=parsedOrders.filter(o=>!o.matched);
+  if(unmatched.length){
+    const pmsg=document.getElementById('preview-msg');
+    pmsg.textContent=`⚠ ${unmatched.length} shops not found in your list → assigned to Dinesh for manual assignment.\nShops: ${unmatched.map(o=>o.shopRaw).join(', ')}`;
+    pmsg.style.display='block';
+  }
+  document.getElementById('previewList').innerHTML=parsedOrders.map((o,i)=>`
+    <div class="parsed-item ${o.matched?'':'unmatched'}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div class="parsed-shop">${o.shop_name}</div>
+        <span class="badge dc-${o.driver}">${o.driver}</span>
+      </div>
+      <div class="parsed-meta">${o.area} · ${o.matched?'✅ Matched':'⚠ New shop → Dinesh'}</div>
+      <div class="parsed-detail"><b>Items:</b> ${o.items}<br><b>Qty:</b> ${o.qty}</div>
+      ${!o.matched?`<div style="margin-top:8px;font-size:11px;color:#8a7a6a;font-family:monospace">Reassign: <select onchange="parsedOrders[${i}].driver=this.value" style="padding:4px 8px;font-size:12px;background:#f5ede0;border:1px solid #e8dfd2;border-radius:6px;margin-left:4px"><option ${o.driver==='Dinesh'?'selected':''}>Dinesh</option><option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option></select></div>`:''}
+    </div>`).join('');
+  document.getElementById('previewBox').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+async function confirmAllOrders(){
+  const btn=document.getElementById('confirmBtn');
+  btn.textContent='Saving…'; btn.disabled=true;
+  const date=document.getElementById('ord-date').value||todayStr();
+  let ok=0,fail=0;
+  for(const o of parsedOrders){
+    const res=await apiPost({action:'addOrder',driver:o.driver,shop_id:o.shop_id,shop_name:o.shop_name,items:o.items,qty:o.qty,note:o.matched?'':'NEW SHOP - needs assignment',date});
+    if(res.ok) ok++; else fail++;
+  }
+  btn.textContent='✅ Confirm & Save All Orders'; btn.disabled=false;
+  const pmsg=document.getElementById('parse-msg');
+  pmsg.textContent=`✅ ${ok} orders saved!${fail?` ❌ ${fail} failed.`:''}`;
+  pmsg.className='msg ok'; pmsg.style.display='block';
+  clearPreview();
+  loadOrders();
+}
+
+function clearPreview(){
+  document.getElementById('previewBox').style.display='none';
+  parsedOrders=[];
+}
+
+// ── FILE UPLOAD (CSV) ──
+function handleFile(e){
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=function(ev){
+    const text=ev.target.result;
+    // Convert CSV lines to shop – items – qty format
+    const lines=text.split('\n').slice(1); // skip header
+    const converted=lines.filter(l=>l.trim()).map(l=>{
+      const cols=l.split(',').map(c=>c.replace(/^"|"$/g,'').trim());
+      // assume col0=shop, col1=items, col2=qty
+      return [cols[0],cols[1]||'',cols[2]||''].join(' – ');
+    }).join('\n');
+    document.getElementById('orderPaste').value=converted;
+  };
+  reader.readAsText(file);
+}
+
+// ── ORDERS LIST ──
 async function loadOrders(){
   const el=document.getElementById('ordersList');
   el.innerHTML='<div style="text-align:center;padding:20px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
@@ -163,35 +333,12 @@ async function loadOrders(){
     <div class="order-card">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div class="order-shop">${o.shop_name}</div>
-        <span class="badge b-ok">${o.driver}</span>
+        <span class="badge dc-${o.driver}">${o.driver}</span>
       </div>
       <div class="order-meta">${o.date} · ${o.order_id}</div>
-      <div class="order-items"><b>Items:</b> ${o.items}<br><b>Qty:</b> ${o.qty}${o.note?'<br><b>Note:</b> '+o.note:''}</div>
+      <div class="order-items"><b>Items:</b> ${o.items}<br><b>Qty:</b> ${o.qty}${o.note&&o.note!=='—'?'<br><b>Note:</b> '+o.note:''}</div>
       <button class="btn-sm btn-del" onclick="deleteOrder('${o.order_id}')">🗑 Delete</button>
     </div>`).join('');
-}
-
-async function addOrder(){
-  const driver=document.getElementById('ord-driver').value;
-  const shopId=document.getElementById('ord-shop').value;
-  const items=document.getElementById('ord-items').value.trim();
-  const qty=document.getElementById('ord-qty').value.trim();
-  const note=document.getElementById('ord-note').value.trim();
-  const date=document.getElementById('ord-date').value||todayStr();
-  const msgEl=document.getElementById('ord-msg');
-  if(!driver||!shopId||!items||!qty){ msgEl.textContent='Fill all required fields.'; msgEl.className='msg er'; msgEl.style.display='block'; return; }
-  const shop=allShops.find(s=>s.shop_id==shopId);
-  msgEl.textContent='Saving…'; msgEl.className='msg in'; msgEl.style.display='block';
-  const res=await apiPost({action:'addOrder',driver,shop_id:shopId,shop_name:shop?.name||shopId,items,qty,note,date});
-  if(res.ok){
-    msgEl.textContent='✅ Order added!'; msgEl.className='msg ok';
-    document.getElementById('ord-items').value='';
-    document.getElementById('ord-qty').value='';
-    document.getElementById('ord-note').value='';
-    loadOrders();
-  } else {
-    msgEl.textContent='❌ Failed: '+(res.error||'unknown'); msgEl.className='msg er';
-  }
 }
 
 async function deleteOrder(id){
@@ -209,30 +356,21 @@ async function loadRoutes(){
   const driver=document.getElementById('f-rt-driver').value;
   const data=await api({action:'getRoutes',date,driver});
   routesData=Array.isArray(data)?data:[];
-
-  // Stats
   const totalShops=routesData.reduce((s,r)=>s+(parseInt(r.total_shops)||0),0);
   const totalKm=routesData.reduce((s,r)=>s+(parseInt(r.total_km)||0),0);
   document.getElementById('routeStats').innerHTML=`
     <div class="stat"><div class="stat-n">${routesData.length}</div><div class="stat-l">Drivers</div></div>
     <div class="stat"><div class="stat-n">${totalShops}</div><div class="stat-l">Total Shops</div></div>
     <div class="stat"><div class="stat-n">${totalKm}</div><div class="stat-l">Total KM</div></div>`;
-
   if(!routesData.length){ el.innerHTML='<div style="text-align:center;padding:30px;font-size:13px;color:#8a7a6a;font-family:monospace">No route data for this date.</div>'; return; }
-
   el.innerHTML=routesData.map(r=>{
-    let shops=[];
-    try{ shops=JSON.parse(r.shop_order||'[]'); }catch(e){}
+    let shops=[]; try{ shops=JSON.parse(r.shop_order||'[]'); }catch(e){}
     return `<div class="driver-card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div class="driver-name">${r.driver}</div>
-        <div style="display:flex;gap:6px">
-          <span class="badge b-ok">${r.total_shops} shops</span>
-          <span class="badge b-warn">${r.total_km} km</span>
-          <span class="badge" style="background:#f3e8ff;color:#6e3da8">${r.est_time}</span>
-        </div>
+        <div style="font-size:15px;font-weight:800">${r.driver}</div>
+        <div style="display:flex;gap:5px"><span class="badge b-ok">${r.total_shops} shops</span><span class="badge b-warn">${r.total_km} km</span><span class="badge" style="background:#f3e8ff;color:#6e3da8">${r.est_time}</span></div>
       </div>
-      <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-bottom:8px">Updated: ${r.updated_at||''}</div>
+      <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-bottom:8px">${r.updated_at||''}</div>
       ${shops.map((s,i)=>`<div class="route-mini">${i+1}. ${s}</div>`).join('')}
     </div>`;
   }).join('');
@@ -240,12 +378,7 @@ async function loadRoutes(){
 
 // ── GPS OVERVIEW ──
 let gpsShops=[];
-async function loadGPS(){
-  gpsShops=await api({action:'getShops'});
-  if(!Array.isArray(gpsShops)) gpsShops=[];
-  renderGPS();
-}
-
+async function loadGPS(){ gpsShops=await api({action:'getShops'}); if(!Array.isArray(gpsShops)) gpsShops=[]; renderGPS(); }
 function renderGPS(){
   const driver=document.getElementById('f-gps-driver').value;
   const status=document.getElementById('f-gps-status').value;
@@ -253,31 +386,29 @@ function renderGPS(){
   if(driver) list=list.filter(s=>s.assigned_driver===driver);
   if(status==='saved') list=list.filter(s=>s.lat);
   if(status==='missing') list=list.filter(s=>!s.lat);
-
   const saved=gpsShops.filter(s=>s.lat).length;
   document.getElementById('gpsStats').innerHTML=`
     <div class="stat"><div class="stat-n">${gpsShops.length}</div><div class="stat-l">Total</div></div>
     <div class="stat"><div class="stat-n" style="color:#2d7a4f">${saved}</div><div class="stat-l">Saved</div></div>
     <div class="stat"><div class="stat-n" style="color:#c8382a">${gpsShops.length-saved}</div><div class="stat-l">Missing</div></div>`;
-
   document.getElementById('gpsList').innerHTML=list.map(s=>`
     <div class="order-card">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div style="display:flex;justify-content:space-between">
         <div class="order-shop">${s.name}</div>
         <span class="badge ${s.lat?'b-ok':'b-miss'}">${s.lat?'✅ GPS':'⚠ Missing'}</span>
       </div>
-      <div class="order-meta">${s.area||''} · ${s.assigned_driver||'Unassigned'}</div>
-      ${s.lat?`<div style="font-size:11px;font-family:monospace;color:#2d7a4f;margin-bottom:6px">${s.lat}, ${s.lng}</div><div style="display:flex;gap:8px"><button class="btn-sm btn-map" onclick="window.open('https://www.google.com/maps?q=${s.lat},${s.lng}','_blank')">🗺 Map</button><div style="font-size:10px;color:#8a7a6a;font-family:monospace;padding:8px 0">By: ${s.last_updated_by||'—'} · ${s.last_updated_at||''}</div></div>`:''}
+      <div class="order-meta">${s.area||''} · <span class="badge dc-${s.assigned_driver||'Dinesh'}">${s.assigned_driver||'Unassigned'}</span></div>
+      ${s.lat?`<div style="font-size:11px;font-family:monospace;color:#2d7a4f;margin-bottom:6px">${s.lat}, ${s.lng}</div><button class="btn-sm btn-map" onclick="window.open('https://www.google.com/maps?q=${s.lat},${s.lng}','_blank')">🗺 Map</button>`:''}
     </div>`).join('');
 }
 
-// ── EXPORT ──
+// ── EXPORTS ──
 function exportRouteCSV(){
-  const rows=[['Date','Driver','Total Shops','Total KM','Est Time','Updated At'],...routesData.map(r=>[r.date,r.driver,r.total_shops,r.total_km,r.est_time,r.updated_at||''])];
+  const rows=[['Date','Driver','Total Shops','Total KM','Est Time'],...routesData.map(r=>[r.date,r.driver,r.total_shops,r.total_km,r.est_time])];
   downloadCSV(rows,'baked-routes-'+todayStr()+'.csv');
 }
 function exportGPSCSV(){
-  const rows=[['Shop','Area','Driver','Lat','Lng','Last Updated By','Last Updated At'],...gpsShops.map(s=>[s.name,s.area,s.assigned_driver,s.lat||'',s.lng||'',s.last_updated_by||'',s.last_updated_at||''])];
+  const rows=[['Shop','Area','Driver','Lat','Lng','Last Updated By','At'],...gpsShops.map(s=>[s.name,s.area,s.assigned_driver,s.lat||'',s.lng||'',s.last_updated_by||'',s.last_updated_at||''])];
   downloadCSV(rows,'baked-gps-'+todayStr()+'.csv');
 }
 function downloadCSV(rows,fname){
@@ -285,7 +416,6 @@ function downloadCSV(rows,fname){
   const a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv); a.download=fname; document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
-// ── INIT ──
 loadOrders();
 </script>
 </body>
