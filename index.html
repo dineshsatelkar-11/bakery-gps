@@ -26,12 +26,12 @@ select,input{width:100%;padding:13px;border:1.5px solid #e8dfd2;border-radius:12
 </head>
 <body>
 <div class="logo">🥖</div>
-<h1 id="appTitle">Baked GPS</h1>
+<h1>Baked GPS</h1>
 <div class="sub">Delivery Management · Lohegaon</div>
 
 <div class="lang-row">
-  <button class="lang-btn on" onclick="setLang('en',this)">English</button>
-  <button class="lang-btn" onclick="setLang('mr',this)">मराठी</button>
+  <button class="lang-btn on" id="btn-en" onclick="setLang('en')">English</button>
+  <button class="lang-btn" id="btn-mr" onclick="setLang('mr')">मराठी</button>
 </div>
 
 <div class="card">
@@ -56,59 +56,59 @@ select,input{width:100%;padding:13px;border:1.5px solid #e8dfd2;border-radius:12
 </div>
 
 <script>
-const DRIVER_PASS = {
+var DRIVER_PASS = {
   Bharat:'bharat123', Anand:'anand123', Vikas:'vikas123',
   Yuvraj:'yuvraj123', Rama:'rama123'
 };
-const ADMIN_PASS = 'baked@admin';
-const L = {
-  en:{ startRoute:'🚀 Start Route' },
-  mr:{ startRoute:'🚀 मार्ग सुरू करा' }
-};
-let lang = localStorage.getItem('lang') || 'en';
+var ADMIN_PASS = 'baked@admin';
+var lang = localStorage.getItem('lang') || 'en';
 
-function setLang(l, btn) {
+function setLang(l) {
   lang = l;
   localStorage.setItem('lang', l);
-  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('on'));
-  btn.classList.add('on');
-  applyLang();
-}
-function applyLang() {
-  const t = L[lang];
-  document.getElementById('lbl-driver').textContent = lang==='mr' ? 'ड्रायव्हर लॉगिन' : 'Driver Login';
-  document.getElementById('btn-dlogin').textContent = lang==='mr' ? '🚗 लॉगिन करा' : '🚗 Driver Login';
-  document.getElementById('driverPass').placeholder = lang==='mr' ? 'पासवर्ड' : 'Password';
+  document.getElementById('btn-en').className = 'lang-btn' + (l==='en'?' on':'');
+  document.getElementById('btn-mr').className = 'lang-btn' + (l==='mr'?' on':'');
+  if (l==='mr') {
+    document.getElementById('lbl-driver').textContent    = 'ड्रायव्हर लॉगिन';
+    document.getElementById('btn-dlogin').textContent    = '🚗 लॉगिन करा';
+    document.getElementById('driverPass').placeholder    = 'पासवर्ड';
+  } else {
+    document.getElementById('lbl-driver').textContent    = 'Driver Login';
+    document.getElementById('btn-dlogin').textContent    = '🚗 Driver Login';
+    document.getElementById('driverPass').placeholder    = 'Password';
+  }
 }
 
+// apply saved lang on load
+setLang(lang);
+
 function driverLogin() {
-  const name = document.getElementById('driverName').value;
-  const pass = document.getElementById('driverPass').value;
-  if (!name) { alert(lang==='mr'?'नाव निवडा':'Select your name'); return; }
-  if (pass !== DRIVER_PASS[name]) { document.getElementById('d-err').style.display='block'; return; }
-  sessionStorage.setItem('role','driver');
+  var name = document.getElementById('driverName').value;
+  var pass = document.getElementById('driverPass').value;
+  if (!name) { alert(lang==='mr' ? 'नाव निवडा' : 'Select your name'); return; }
+  if (pass !== DRIVER_PASS[name]) {
+    document.getElementById('d-err').style.display = 'block'; return;
+  }
+  sessionStorage.setItem('role', 'driver');
   sessionStorage.setItem('driver', name);
   sessionStorage.setItem('lang', lang);
   window.location.href = 'driver.html';
 }
+
 function adminLogin() {
   if (document.getElementById('adminPass').value !== ADMIN_PASS) {
-    document.getElementById('a-err').style.display='block'; return;
+    document.getElementById('a-err').style.display = 'block'; return;
   }
-  sessionStorage.setItem('role','admin');
+  sessionStorage.setItem('role', 'admin');
   window.location.href = 'admin.html';
 }
 
-document.getElementById('driverPass').addEventListener('keydown', e => { if(e.key==='Enter') driverLogin(); });
-document.getElementById('adminPass').addEventListener('keydown',  e => { if(e.key==='Enter') adminLogin(); });
+document.getElementById('driverPass').addEventListener('keydown', function(e){ if(e.key==='Enter') driverLogin(); });
+document.getElementById('adminPass').addEventListener('keydown',  function(e){ if(e.key==='Enter') adminLogin(); });
 
+// redirect if already logged in
 if (sessionStorage.getItem('role')==='driver') window.location.href='driver.html';
 if (sessionStorage.getItem('role')==='admin')  window.location.href='admin.html';
-
-// Init lang buttons
-document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('on'));
-document.querySelectorAll('.lang-btn')[lang==='mr'?1:0].classList.add('on');
-applyLang();
 </script>
 </body>
 </html>
