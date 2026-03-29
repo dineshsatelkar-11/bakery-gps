@@ -21,6 +21,7 @@ select,input[type=text],input[type=tel]{width:100%;padding:11px 14px;border:1.5p
 .btn-sm{padding:7px 12px;border-radius:10px;font-size:11px;font-weight:700;border:none;cursor:pointer;font-family:-apple-system,sans-serif}
 .btn-edit{background:#e3f2fd;color:#1565c0}
 .btn-del{background:#fde8e8;color:#c8382a}
+.btn-shuffle{background:#f3e8ff;color:#6e3da8}
 .btn-cancel{background:#f5ede0;color:#4a2f14;border:1.5px solid #e8dfd2;width:100%}
 .msg{padding:11px 14px;border-radius:12px;font-size:12px;font-weight:600;font-family:monospace;margin-bottom:10px;line-height:1.8}
 .ok{background:#e8f5e9;color:#2d7a4f;border:1px solid #a5d6a7}
@@ -44,9 +45,17 @@ select,input[type=text],input[type=tel]{width:100%;padding:11px 14px;border:1.5p
 .DC-Yuvraj{background:#f3e8ff;color:#6e3da8}
 .DC-Rama{background:#fde8e8;color:#c8382a}
 .DC-Dinesh{background:#fce4ec;color:#880e4f}
+/* SHUFFLE INLINE ROW */
+.shuffle-row{display:flex;align-items:center;gap:8px;margin-top:8px;padding:8px 10px;background:#f9f0ff;border:1.5px solid #d8b4fe;border-radius:10px}
+.shuffle-row select{flex:1;padding:7px 10px;font-size:13px;margin-bottom:0;background:#fff}
+.shuffle-confirm{padding:7px 14px;background:#6e3da8;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;white-space:nowrap}
+.shuffle-cancel{padding:7px 10px;background:#f5ede0;color:#4a2f14;border:1.5px solid #e8dfd2;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif}
+/* MODAL */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:flex-end;justify-content:center}
 .modal{background:#f5ede0;border-radius:20px 20px 0 0;padding:20px 16px 40px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto}
 .modal-title{font-size:17px;font-weight:900;color:#4a2f14;margin-bottom:16px}
+/* BULK SHUFFLE */
+.bulk-box{background:#fff;border:1.5px solid #d8b4fe;border-radius:14px;padding:14px;margin-bottom:12px}
 </style>
 </head>
 <body>
@@ -57,6 +66,33 @@ select,input[type=text],input[type=tel]{width:100%;padding:11px 14px;border:1.5p
 
 <div class="page">
   <div class="stat-row" id="stats"></div>
+
+  <!-- BULK SHUFFLE BOX -->
+  <div class="bulk-box">
+    <div class="lbl">🔀 Bulk Shuffle — Move All Shops</div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:180px">
+        <span style="font-size:12px;color:#8a7a6a;white-space:nowrap">From</span>
+        <select id="bulk-from" style="margin-bottom:0;flex:1;padding:9px 10px;font-size:13px">
+          <option value="">Any Driver</option>
+          <option>Bharat</option><option>Anand</option><option>Vikas</option>
+          <option>Yuvraj</option><option>Rama</option><option>Dinesh</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:180px">
+        <span style="font-size:12px;color:#8a7a6a;white-space:nowrap">To</span>
+        <select id="bulk-to" style="margin-bottom:0;flex:1;padding:9px 10px;font-size:13px">
+          <option value="">— Select —</option>
+          <option>Bharat</option><option>Anand</option><option>Vikas</option>
+          <option>Yuvraj</option><option>Rama</option><option>Dinesh</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-top:8px;display:flex;gap:8px">
+      <button class="btn" style="background:#6e3da8;color:#fff;margin-bottom:0;flex:1;padding:11px" onclick="bulkShuffle()">🔀 Move Selected Shops</button>
+    </div>
+    <div id="bulk-msg" style="display:none;margin-top:8px" class="msg ok"></div>
+  </div>
 
   <button class="btn btn-add" onclick="openAdd()">➕ Add New Shop</button>
 
@@ -74,6 +110,9 @@ select,input[type=text],input[type=tel]{width:100%;padding:11px 14px;border:1.5p
       <option value="saved">GPS Saved ✅</option>
       <option value="missing">GPS Missing ⚠</option>
     </select>
+    <select id="fArea" onchange="renderList()" style="margin-bottom:0" id="fArea">
+      <option value="">All Areas</option>
+    </select>
   </div>
 
   <div id="msg" style="display:none" class="msg ok"></div>
@@ -85,29 +124,22 @@ select,input[type=text],input[type=tel]{width:100%;padding:11px 14px;border:1.5p
   <div class="modal">
     <div class="modal-title" id="modalTitle">Add New Shop</div>
     <input type="hidden" id="edit-id">
-
     <div class="lbl">Shop Name *</div>
     <input type="text" id="f-name" placeholder="e.g. C Tea Post - Baner">
-
     <div class="lbl">Address</div>
     <input type="text" id="f-address" placeholder="Full address">
-
     <div class="lbl">Area</div>
     <input type="text" id="f-area" placeholder="e.g. Baner, Kharadi">
-
     <div class="lbl">Assigned Driver</div>
     <select id="f-driver">
       <option value="">Unassigned (Dinesh)</option>
       <option>Bharat</option><option>Anand</option><option>Vikas</option>
       <option>Yuvraj</option><option>Rama</option>
     </select>
-
     <div class="lbl">Mobile No</div>
     <input type="tel" id="f-mobile" placeholder="Shop contact number">
-
     <div class="lbl">Flag / Note</div>
     <input type="text" id="f-flag" placeholder="e.g. New shop, Weekend only">
-
     <div class="lbl">GPS Location</div>
     <div style="display:flex;gap:8px;margin-bottom:8px">
       <input type="text" id="f-lat" placeholder="Latitude" style="margin-bottom:0;flex:1">
@@ -115,7 +147,6 @@ select,input[type=text],input[type=tel]{width:100%;padding:11px 14px;border:1.5p
     </div>
     <button class="btn btn-gps" id="gpsPickBtn" onclick="pickGPS()">📍 Use Current Location</button>
     <div id="gps-msg" style="display:none" class="msg in"></div>
-
     <div id="form-msg" style="display:none" class="msg ok"></div>
     <button class="btn btn-save" onclick="saveShop()">💾 Save Shop</button>
     <button class="btn btn-cancel" onclick="closeModal()">Cancel</button>
@@ -127,62 +158,154 @@ const CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbyi-IJ6NLR28hRTeesy52THTbdcYCSnz3lp7NtEaJsxBOiNOm-9emMu0xOHT6hvWSE-/exec',
   UNASSIGNED_OWNER: 'Dinesh'
 };
-</script>
-<script>
+
 if(sessionStorage.getItem('role')!=='admin') window.location.href='index.html';
 
 const API = CONFIG.API_URL;
 function api(p){ return fetch(API+'?'+new URLSearchParams(p)).then(r=>r.json()).catch(()=>[]); }
 function apiPost(b){ return fetch(API,{method:'POST',body:JSON.stringify(b)}).then(r=>r.json()).catch(()=>({})); }
 
-let shops=[];
+let shops=[], shuffleOpen=null;
 
 async function load(){
   shops=await api({action:'getShops'});
   if(!Array.isArray(shops)) shops=[];
-  renderStats(); renderList();
+  renderStats();
+  populateAreaFilter();
+  renderList();
 }
 
 function renderStats(){
   const saved=shops.filter(s=>s.lat).length;
+  // count per driver
+  const dc={};
+  shops.forEach(s=>{ const d=s.assigned_driver||'Dinesh'; dc[d]=(dc[d]||0)+1; });
   document.getElementById('stats').innerHTML=`
     <div class="stat"><div class="stat-n">${shops.length}</div><div class="stat-l">Total</div></div>
-    <div class="stat"><div class="stat-n" style="color:#2d7a4f">${saved}</div><div class="stat-l">GPS Saved</div></div>
-    <div class="stat"><div class="stat-n" style="color:#c8382a">${shops.length-saved}</div><div class="stat-l">GPS Missing</div></div>`;
+    <div class="stat"><div class="stat-n" style="color:#2d7a4f">${saved}</div><div class="stat-l">GPS ✅</div></div>
+    <div class="stat"><div class="stat-n" style="color:#c8382a">${shops.length-saved}</div><div class="stat-l">No GPS</div></div>`;
+}
+
+function populateAreaFilter(){
+  const areas=[...new Set(shops.map(s=>s.area||'').filter(Boolean))].sort();
+  const sel=document.getElementById('fArea');
+  sel.innerHTML='<option value="">All Areas</option>'+areas.map(a=>`<option>${a}</option>`).join('');
 }
 
 function renderList(){
   const q=(document.getElementById('srch').value||'').toLowerCase();
   const fd=document.getElementById('fDrv').value;
   const fg=document.getElementById('fGps').value;
+  const fa=document.getElementById('fArea').value;
   let list=shops;
-  if(q) list=list.filter(s=>(s.name+' '+(s.area||'')).toLowerCase().includes(q));
-  if(fd) list=list.filter(s=>s.assigned_driver===fd);
+  if(q) list=list.filter(s=>(s.name+' '+(s.area||'')+' '+(s.assigned_driver||'')).toLowerCase().includes(q));
+  if(fd) list=list.filter(s=>(s.assigned_driver||'Dinesh')===fd);
   if(fg==='saved') list=list.filter(s=>s.lat);
   if(fg==='missing') list=list.filter(s=>!s.lat);
-  document.getElementById('shopList').innerHTML=list.map(s=>`
-    <div class="shop-row">
+  if(fa) list=list.filter(s=>s.area===fa);
+
+  document.getElementById('shopList').innerHTML = list.length ? list.map(s=>`
+    <div class="shop-row" id="row-${s.shop_id}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div class="shop-name">${s.name}</div>
         <span class="badge ${s.lat?'b-ok':'b-miss'}">${s.lat?'✅ GPS':'⚠ No GPS'}</span>
       </div>
       <div class="shop-meta">
-        ${s.area||'—'} · <span class="badge DC-${s.assigned_driver||'Dinesh'}">${s.assigned_driver||'Dinesh'}</span>
+        ${s.area||'—'} ·
+        <span class="badge DC-${s.assigned_driver||'Dinesh'}" id="badge-${s.shop_id}">${s.assigned_driver||'Dinesh'}</span>
         ${s.mobile?'· 📞 '+s.mobile:''}
       </div>
-      ${s.lat?`<div style="font-size:11px;font-family:monospace;color:#2d7a4f;margin-bottom:6px">${s.lat}, ${s.lng}
-        <a href="https://www.google.com/maps?q=${s.lat},${s.lng}" target="_blank" style="color:#1565c0;margin-left:6px">map</a>
-      </div>`:''}
+      ${s.lat?`<div style="font-size:11px;font-family:monospace;color:#2d7a4f;margin-bottom:6px">${s.lat}, ${s.lng} <a href="https://www.google.com/maps?q=${s.lat},${s.lng}" target="_blank" style="color:#1565c0;margin-left:4px">map</a></div>`:''}
       ${s.address?`<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:6px">${s.address}</div>`:''}
       ${s.flag?`<div style="font-size:11px;color:#7a4800;font-family:monospace;margin-bottom:6px">🏷 ${s.flag}</div>`:''}
-      <div style="display:flex;gap:8px">
-        <button class="btn-sm btn-edit" onclick='openEdit(${JSON.stringify(s)})'>✏️ Edit</button>
-        <button class="btn-sm btn-del" onclick="deleteShop('${s.shop_id}','${s.name}')">🗑 Delete</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-sm btn-shuffle" onclick="toggleShuffle('${s.shop_id}')">🔀 Reassign</button>
+        <button class="btn-sm btn-edit" onclick='openEdit(${JSON.stringify(s).replace(/'/g,"&#39;")})'>✏️ Edit</button>
+        <button class="btn-sm btn-del" onclick="deleteShop('${s.shop_id}','${s.name.replace(/'/g,"\\'")}')">🗑 Delete</button>
         ${s.lat?`<a href="https://www.google.com/maps?q=${s.lat},${s.lng}" target="_blank" class="btn-sm" style="background:#e3f2fd;color:#1565c0;text-decoration:none;padding:7px 12px;border-radius:10px;font-size:11px;font-weight:700">🗺</a>`:''}
       </div>
-    </div>`).join('');
+      <!-- INLINE SHUFFLE ROW -->
+      <div class="shuffle-row" id="shuffle-${s.shop_id}" style="display:none">
+        <span style="font-size:12px;font-weight:700;color:#6e3da8;white-space:nowrap">Move to →</span>
+        <select id="sel-${s.shop_id}" style="flex:1;padding:7px 10px;font-size:13px;margin-bottom:0;background:#fff;border:1.5px solid #d8b4fe;border-radius:8px;outline:none">
+          <option value="">Select driver…</option>
+          <option ${(s.assigned_driver||'Dinesh')==='Bharat'?'disabled':''}>Bharat</option>
+          <option ${(s.assigned_driver||'Dinesh')==='Anand'?'disabled':''}>Anand</option>
+          <option ${(s.assigned_driver||'Dinesh')==='Vikas'?'disabled':''}>Vikas</option>
+          <option ${(s.assigned_driver||'Dinesh')==='Yuvraj'?'disabled':''}>Yuvraj</option>
+          <option ${(s.assigned_driver||'Dinesh')==='Rama'?'disabled':''}>Rama</option>
+          <option ${(s.assigned_driver||'Dinesh')==='Dinesh'?'disabled':''}>Dinesh</option>
+        </select>
+        <button class="shuffle-confirm" onclick="confirmShuffle('${s.shop_id}')">✓ Move</button>
+        <button class="shuffle-cancel" onclick="toggleShuffle('${s.shop_id}')">✕</button>
+      </div>
+    </div>`).join('')
+  : '<div style="text-align:center;padding:30px;font-size:13px;color:#8a7a6a;font-family:monospace">No shops found.</div>';
 }
 
+// ── SINGLE SHOP REASSIGN ──
+function toggleShuffle(id){
+  const row=document.getElementById('shuffle-'+id);
+  const isOpen=row.style.display!=='none';
+  // close any open
+  if(shuffleOpen && shuffleOpen!==id){
+    document.getElementById('shuffle-'+shuffleOpen).style.display='none';
+  }
+  row.style.display=isOpen?'none':'flex';
+  shuffleOpen=isOpen?null:id;
+}
+
+async function confirmShuffle(shopId){
+  const newDriver=document.getElementById('sel-'+shopId).value;
+  if(!newDriver){alert('Select a driver first');return;}
+  const shop=shops.find(s=>s.shop_id==shopId);
+  const btn=document.querySelector(`#shuffle-${shopId} .shuffle-confirm`);
+  btn.textContent='Saving…'; btn.disabled=true;
+  const res=await apiPost({action:'updateShop',shop_id:shopId,
+    name:shop.name,address:shop.address||'',area:shop.area||'',
+    lat:shop.lat||'',lng:shop.lng||'',mobile:shop.mobile||'',
+    flag:shop.flag||'',assigned_driver:newDriver,
+    updated_by:'Admin (Shuffle)',updated_at:new Date().toLocaleString('en-IN')
+  });
+  if(res.ok){
+    shop.assigned_driver=newDriver;
+    document.getElementById('shuffle-'+shopId).style.display='none';
+    shuffleOpen=null;
+    // update badge inline without full reload
+    const badge=document.getElementById('badge-'+shopId);
+    if(badge){ badge.className='badge DC-'+newDriver; badge.textContent=newDriver; }
+    showMsg('✅ '+shop.name+' → '+newDriver,'ok');
+  } else {
+    btn.textContent='✓ Move'; btn.disabled=false;
+    showMsg('❌ Failed: '+(res.error||'unknown'),'er');
+  }
+}
+
+// ── BULK SHUFFLE ──
+async function bulkShuffle(){
+  const from=document.getElementById('bulk-from').value;
+  const to=document.getElementById('bulk-to').value;
+  const bmsg=document.getElementById('bulk-msg');
+  if(!to){bmsg.textContent='Select a "To" driver.';bmsg.className='msg er';bmsg.style.display='block';return;}
+  if(from===to){bmsg.textContent='From and To cannot be same.';bmsg.className='msg er';bmsg.style.display='block';return;}
+  const targets=shops.filter(s=>(from?s.assigned_driver===from:true)&&(s.assigned_driver||'Dinesh')!==to);
+  if(!targets.length){bmsg.textContent='No shops to move.';bmsg.className='msg er';bmsg.style.display='block';return;}
+  if(!confirm(`Move ${targets.length} shops ${from?'from '+from:''} → ${to}?`)) return;
+  bmsg.textContent=`Moving ${targets.length} shops…`;bmsg.className='msg in';bmsg.style.display='block';
+  let ok=0;
+  for(const s of targets){
+    const res=await apiPost({action:'updateShop',shop_id:s.shop_id,
+      name:s.name,address:s.address||'',area:s.area||'',lat:s.lat||'',lng:s.lng||'',
+      mobile:s.mobile||'',flag:s.flag||'',assigned_driver:to,
+      updated_by:'Admin (Bulk Shuffle)',updated_at:new Date().toLocaleString('en-IN')
+    });
+    if(res.ok){s.assigned_driver=to;ok++;}
+  }
+  bmsg.textContent=`✅ Moved ${ok}/${targets.length} shops → ${to}`;bmsg.className='msg ok';
+  renderList();
+}
+
+// ── ADD / EDIT MODAL ──
 function openAdd(){
   document.getElementById('modalTitle').textContent='Add New Shop';
   ['f-name','f-address','f-area','f-mobile','f-flag','f-lat','f-lng','edit-id'].forEach(id=>document.getElementById(id).value='');
@@ -191,7 +314,6 @@ function openAdd(){
   document.getElementById('gps-msg').style.display='none';
   document.getElementById('modal').style.display='flex';
 }
-
 function openEdit(s){
   document.getElementById('modalTitle').textContent='Edit Shop';
   document.getElementById('edit-id').value=s.shop_id;
@@ -207,60 +329,54 @@ function openEdit(s){
   document.getElementById('gps-msg').style.display='none';
   document.getElementById('modal').style.display='flex';
 }
-
 function closeModal(){ document.getElementById('modal').style.display='none'; }
 function closeModalOutside(e){ if(e.target===document.getElementById('modal')) closeModal(); }
 
 function pickGPS(){
-  if(!navigator.geolocation){ alert('GPS not available'); return; }
+  if(!navigator.geolocation){alert('GPS not available');return;}
   const btn=document.getElementById('gpsPickBtn');
-  btn.textContent='⏳ Getting…'; btn.disabled=true;
+  btn.textContent='⏳ Getting…';btn.disabled=true;
   const gmsg=document.getElementById('gps-msg');
-  gmsg.textContent='📡 Getting location…'; gmsg.className='msg in'; gmsg.style.display='block';
+  gmsg.textContent='📡 Getting location…';gmsg.className='msg in';gmsg.style.display='block';
   navigator.geolocation.getCurrentPosition(pos=>{
     document.getElementById('f-lat').value=parseFloat(pos.coords.latitude.toFixed(6));
     document.getElementById('f-lng').value=parseFloat(pos.coords.longitude.toFixed(6));
-    gmsg.textContent='📍 Location captured: '+document.getElementById('f-lat').value+', '+document.getElementById('f-lng').value;
-    gmsg.className='msg ok';
-    btn.textContent='📍 Use Current Location'; btn.disabled=false;
-  },()=>{ btn.textContent='📍 Use Current Location'; btn.disabled=false; gmsg.textContent='❌ GPS failed.'; gmsg.className='msg er'; },{enableHighAccuracy:true,timeout:15000,maximumAge:0});
+    gmsg.textContent='📍 '+document.getElementById('f-lat').value+', '+document.getElementById('f-lng').value;
+    gmsg.className='msg ok';btn.textContent='📍 Use Current Location';btn.disabled=false;
+  },()=>{btn.textContent='📍 Use Current Location';btn.disabled=false;gmsg.textContent='❌ GPS failed.';gmsg.className='msg er';},{enableHighAccuracy:true,timeout:15000,maximumAge:0});
 }
 
 async function saveShop(){
   const name=document.getElementById('f-name').value.trim();
-  if(!name){ alert('Shop name is required'); return; }
+  if(!name){alert('Shop name is required');return;}
   const id=document.getElementById('edit-id').value;
-  const body={
-    action: id?'updateShop':'addShop',
-    shop_id:id,
-    name, address:document.getElementById('f-address').value.trim(),
+  const body={action:id?'updateShop':'addShop',shop_id:id,name,
+    address:document.getElementById('f-address').value.trim(),
     area:document.getElementById('f-area').value.trim(),
     assigned_driver:document.getElementById('f-driver').value||CONFIG.UNASSIGNED_OWNER,
     mobile:document.getElementById('f-mobile').value.trim(),
     flag:document.getElementById('f-flag').value.trim(),
     lat:document.getElementById('f-lat').value,
     lng:document.getElementById('f-lng').value,
-    updated_by:'Admin', updated_at:new Date().toLocaleString('en-IN')
-  };
+    updated_by:'Admin',updated_at:new Date().toLocaleString('en-IN')};
   const fmsg=document.getElementById('form-msg');
-  fmsg.textContent='Saving…'; fmsg.className='msg in'; fmsg.style.display='block';
+  fmsg.textContent='Saving…';fmsg.className='msg in';fmsg.style.display='block';
   const res=await apiPost(body);
-  if(res.ok){
-    fmsg.textContent='✅ Saved!'; fmsg.className='msg ok';
-    setTimeout(()=>{ closeModal(); load(); },800);
-  } else {
-    fmsg.textContent='❌ Failed: '+(res.error||'unknown'); fmsg.className='msg er';
-  }
+  if(res.ok){fmsg.textContent='✅ Saved!';fmsg.className='msg ok';setTimeout(()=>{closeModal();load();},800);}
+  else{fmsg.textContent='❌ Failed: '+(res.error||'unknown');fmsg.className='msg er';}
 }
 
-async function deleteShop(id, name){
+async function deleteShop(id,name){
   if(!confirm(`Delete "${name}"? This cannot be undone.`)) return;
   const res=await apiPost({action:'deleteShop',shop_id:id});
-  if(res.ok){ showMsg('✅ Deleted: '+name,'ok'); load(); }
+  if(res.ok){showMsg('✅ Deleted: '+name,'ok');load();}
   else showMsg('❌ Delete failed','er');
 }
 
-function showMsg(txt,type){ const el=document.getElementById('msg'); el.textContent=txt; el.className='msg '+type; el.style.display='block'; setTimeout(()=>el.style.display='none',3000); }
+function showMsg(txt,type){
+  const el=document.getElementById('msg');el.textContent=txt;el.className='msg '+type;el.style.display='block';
+  setTimeout(()=>el.style.display='none',3000);
+}
 
 load();
 </script>
