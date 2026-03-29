@@ -7,35 +7,43 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
-.logo{font-size:56px;margin-bottom:8px;text-align:center}
-h1{font-size:26px;font-weight:900;color:#4a2f14;text-align:center}
-.sub{font-size:12px;color:#8a7a6a;font-family:monospace;text-align:center;margin-bottom:32px}
-.card{background:#fff;border:1.5px solid #e8dfd2;border-radius:20px;padding:24px;width:100%;max-width:360px;margin-bottom:14px}
+.logo{font-size:52px;margin-bottom:6px;text-align:center}
+h1{font-size:24px;font-weight:900;color:#4a2f14;text-align:center}
+.sub{font-size:12px;color:#8a7a6a;font-family:monospace;text-align:center;margin-bottom:28px;margin-top:2px}
+.card{background:#fff;border:1.5px solid #e8dfd2;border-radius:20px;padding:22px;width:100%;max-width:360px;margin-bottom:12px}
 .lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:8px;text-transform:uppercase}
-select,input{width:100%;padding:14px;border:1.5px solid #e8dfd2;border-radius:12px;font-size:15px;font-weight:600;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:12px}
-.btn{width:100%;padding:16px;border:none;border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif}
-.btn-driver{background:#2d7a4f;color:#fff}
-.btn-admin{background:#4a2f14;color:#fff}
+select,input{width:100%;padding:13px;border:1.5px solid #e8dfd2;border-radius:12px;font-size:15px;font-weight:600;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:10px}
+.btn{width:100%;padding:15px;border:none;border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif}
+.btn-driver{background:#2d7a4f;color:#fff;margin-bottom:0}
+.btn-admin{background:#4a2f14;color:#fff;margin-bottom:0}
 .err{color:#c8382a;font-size:12px;font-family:monospace;text-align:center;margin-top:8px;display:none}
-.divider{display:flex;align-items:center;gap:10px;margin:16px 0;color:#8a7a6a;font-size:12px}
+.divider{display:flex;align-items:center;gap:10px;margin:14px 0;color:#8a7a6a;font-size:12px;width:100%;max-width:360px}
 .divider::before,.divider::after{content:'';flex:1;height:1px;background:#e8dfd2}
+.lang-row{display:flex;gap:8px;justify-content:center;margin-bottom:20px}
+.lang-btn{padding:7px 18px;border-radius:20px;border:1.5px solid #e8dfd2;background:#fff;font-size:13px;font-weight:700;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif}
+.lang-btn.on{background:#4a2f14;color:#fff;border-color:#4a2f14}
 </style>
 </head>
 <body>
 <div class="logo">🥖</div>
-<h1>Baked GPS</h1>
+<h1 id="appTitle">Baked GPS</h1>
 <div class="sub">Delivery Management · Lohegaon</div>
 
+<div class="lang-row">
+  <button class="lang-btn on" onclick="setLang('en',this)">English</button>
+  <button class="lang-btn" onclick="setLang('mr',this)">मराठी</button>
+</div>
+
 <div class="card">
-  <div class="lbl">Driver Login</div>
+  <div class="lbl" id="lbl-driver">Driver Login</div>
   <select id="driverName">
     <option value="">Select your name…</option>
     <option>Bharat</option><option>Anand</option><option>Vikas</option>
     <option>Yuvraj</option><option>Rama</option>
   </select>
   <input type="password" id="driverPass" placeholder="Password">
-  <button class="btn btn-driver" onclick="driverLogin()">🚗 Driver Login</button>
-  <div class="err" id="d-err">Wrong password. Try again.</div>
+  <button class="btn btn-driver" id="btn-dlogin" onclick="driverLogin()">🚗 Driver Login</button>
+  <div class="err" id="d-err">Wrong password.</div>
 </div>
 
 <div class="divider">or</div>
@@ -44,38 +52,60 @@ select,input{width:100%;padding:14px;border:1.5px solid #e8dfd2;border-radius:12
   <div class="lbl">Admin Login</div>
   <input type="password" id="adminPass" placeholder="Admin password">
   <button class="btn btn-admin" onclick="adminLogin()">📊 Admin Login</button>
-  <div class="err" id="a-err">Wrong password. Try again.</div>
+  <div class="err" id="a-err">Wrong password.</div>
 </div>
 
+<script src="config.js"></script>
 <script>
-// Driver passwords (simple, change as needed)
-const DRIVER_PASS = { Bharat:'bharat123', Anand:'anand123', Vikas:'vikas123', Yuvraj:'yuvraj123', Rama:'rama123' };
-const ADMIN_PASS = 'baked@admin';
+const DRIVER_PASS = CONFIG.DRIVER_PASS;
+const ADMIN_PASS  = CONFIG.ADMIN_PASS;
+const L = CONFIG.LANG;
+let lang = localStorage.getItem('lang') || 'en';
+
+function setLang(l, btn) {
+  lang = l;
+  localStorage.setItem('lang', l);
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  applyLang();
+}
+function applyLang() {
+  const t = L[lang];
+  document.getElementById('lbl-driver').textContent = lang==='mr' ? 'ड्रायव्हर लॉगिन' : 'Driver Login';
+  document.getElementById('btn-dlogin').textContent = lang==='mr' ? '🚗 लॉगिन करा' : '🚗 Driver Login';
+  document.getElementById('driverPass').placeholder = lang==='mr' ? 'पासवर्ड' : 'Password';
+}
 
 function driverLogin() {
   const name = document.getElementById('driverName').value;
   const pass = document.getElementById('driverPass').value;
-  if (!name) { alert('Select your name'); return; }
+  if (!name) { alert(lang==='mr'?'नाव निवडा':'Select your name'); return; }
   if (pass !== DRIVER_PASS[name]) { document.getElementById('d-err').style.display='block'; return; }
   sessionStorage.setItem('role','driver');
   sessionStorage.setItem('driver', name);
+  sessionStorage.setItem('lang', lang);
   window.location.href = 'driver.html';
 }
-
 function adminLogin() {
-  const pass = document.getElementById('adminPass').value;
-  if (pass !== ADMIN_PASS) { document.getElementById('a-err').style.display='block'; return; }
+  if (document.getElementById('adminPass').value !== ADMIN_PASS) {
+    document.getElementById('a-err').style.display='block'; return;
+  }
   sessionStorage.setItem('role','admin');
   window.location.href = 'admin.html';
 }
 
-// Press Enter to login
 document.getElementById('driverPass').addEventListener('keydown', e => { if(e.key==='Enter') driverLogin(); });
-document.getElementById('adminPass').addEventListener('keydown', e => { if(e.key==='Enter') adminLogin(); });
+document.getElementById('adminPass').addEventListener('keydown',  e => { if(e.key==='Enter') adminLogin(); });
 
-// Redirect if already logged in
 if (sessionStorage.getItem('role')==='driver') window.location.href='driver.html';
-if (sessionStorage.getItem('role')==='admin') window.location.href='admin.html';
+if (sessionStorage.getItem('role')==='admin')  window.location.href='admin.html';
+
+// Init lang buttons
+document.querySelectorAll('.lang-btn').forEach(b => {
+  if (b.onclick.toString().includes("'"+lang+"'")) b.classList.add('on');
+  else b.classList.remove('on');
+});
+applyLang();
 </script>
 </body>
 </html>
