@@ -55,11 +55,16 @@ select,input{width:100%;padding:13px;border:1.5px solid #e8dfd2;border-radius:12
   <div class="err" id="a-err">Wrong password.</div>
 </div>
 
-<script src="config.js"></script>
 <script>
-const DRIVER_PASS = CONFIG.DRIVER_PASS;
-const ADMIN_PASS  = CONFIG.ADMIN_PASS;
-const L = CONFIG.LANG;
+const DRIVER_PASS = {
+  Bharat:'bharat123', Anand:'anand123', Vikas:'vikas123',
+  Yuvraj:'yuvraj123', Rama:'rama123'
+};
+const ADMIN_PASS = 'baked@admin';
+const L = {
+  en:{ startRoute:'🚀 Start Route' },
+  mr:{ startRoute:'🚀 मार्ग सुरू करा' }
+};
 let lang = localStorage.getItem('lang') || 'en';
 
 function setLang(l, btn) {
@@ -101,10 +106,8 @@ if (sessionStorage.getItem('role')==='driver') window.location.href='driver.html
 if (sessionStorage.getItem('role')==='admin')  window.location.href='admin.html';
 
 // Init lang buttons
-document.querySelectorAll('.lang-btn').forEach(b => {
-  if (b.onclick.toString().includes("'"+lang+"'")) b.classList.add('on');
-  else b.classList.remove('on');
-});
+document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('on'));
+document.querySelectorAll('.lang-btn')[lang==='mr'?1:0].classList.add('on');
 applyLang();
 </script>
 </body>
