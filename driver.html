@@ -7,313 +7,411 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:440px;margin:0 auto;min-height:100vh}
-.topbar{background:#2d7a4f;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:99}
-.topbar-title{color:#fff;font-size:16px;font-weight:800}
+.topbar{background:#2d7a4f;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:99}
+.topbar-title{color:#fff;font-size:15px;font-weight:800}
 .topbar-sub{color:#a8d5b8;font-size:11px;font-family:monospace}
-.logout{background:rgba(255,255,255,.2);border:none;color:#fff;padding:7px 12px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif}
-.tabs{display:flex;background:#fff;border-bottom:2px solid #e8dfd2;position:sticky;top:57px;z-index:98}
-.tab{flex:1;padding:13px;border:none;background:none;font-size:12px;font-weight:700;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;border-bottom:3px solid transparent;margin-bottom:-2px}
+.topbar-right{display:flex;gap:8px;align-items:center}
+.lang-tog{background:rgba(255,255,255,.2);border:none;color:#fff;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif}
+.logout{background:rgba(255,255,255,.15);border:none;color:#fff;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif}
+.tabs{display:flex;background:#fff;border-bottom:2px solid #e8dfd2;position:sticky;top:53px;z-index:98}
+.tab{flex:1;padding:12px 4px;border:none;background:none;font-size:11px;font-weight:700;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;border-bottom:3px solid transparent;margin-bottom:-2px}
 .tab.on{color:#2d7a4f;border-bottom-color:#2d7a4f}
-.page{display:none;padding:14px 14px 80px}
+.page{display:none;padding:12px 14px 80px}
 .page.on{display:block}
-.card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:16px;margin-bottom:12px}
+.card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:14px;margin-bottom:10px}
 .lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:8px;text-transform:uppercase}
-input[type=text]{width:100%;padding:12px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;color:#1e1611;background:#f5ede0;outline:none;font-family:-apple-system,sans-serif}
-.btn{width:100%;padding:14px;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:10px}
+input[type=text]{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;color:#1e1611;background:#f5ede0;outline:none;font-family:-apple-system,sans-serif}
+.btn{width:100%;padding:13px;border:none;border-radius:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:8px}
 .btn-gps{background:#2d7a4f;color:#fff}
 .btn-save{background:#4a2f14;color:#fff}
-.btn-sm{padding:8px 12px;border-radius:10px;font-size:11px;font-weight:700;border:none;cursor:pointer;font-family:-apple-system,sans-serif}
-.msg{padding:12px 14px;border-radius:12px;font-size:12px;font-weight:600;font-family:monospace;margin-bottom:12px;line-height:1.8;white-space:pre-line}
+.btn-start{background:#1a5fa8;color:#fff;font-size:16px;padding:16px}
+.btn-sm{padding:8px 12px;border-radius:10px;font-size:12px;font-weight:700;border:none;cursor:pointer;font-family:-apple-system,sans-serif}
+.btn-deliver{background:#2d7a4f;color:#fff}
+.btn-map{background:#e3f2fd;color:#1565c0}
+.msg{padding:11px 14px;border-radius:12px;font-size:12px;font-weight:600;font-family:monospace;margin-bottom:10px;line-height:1.8;white-space:pre-line}
 .ok{background:#e8f5e9;color:#2d7a4f;border:1px solid #a5d6a7}
 .er{background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0}
 .in{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9}
-.shop-list{display:flex;flex-direction:column;gap:6px;max-height:55vh;overflow-y:auto}
-.si{padding:12px 14px;border:1.5px solid #e8dfd2;border-radius:12px;background:#fff;cursor:pointer;display:flex;align-items:center;gap:10px}
+.shop-list{display:flex;flex-direction:column;gap:6px;max-height:52vh;overflow-y:auto}
+.si{padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:12px;background:#fff;cursor:pointer;display:flex;align-items:center;gap:10px}
 .si.on{border-color:#2d7a4f;background:#f0faf4}
-.si.saved{border-color:#a5d6a7}
+.si.gps-saved{border-color:#a5d6a7}
 .si-n{font-size:13px;font-weight:700;flex:1}
 .si-a{font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px}
-/* ORDER CARD */
-.order-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;padding:14px;margin-bottom:10px}
-.order-shop{font-size:14px;font-weight:800;color:#4a2f14}
-.order-meta{font-size:11px;color:#8a7a6a;font-family:monospace;margin:4px 0 8px}
-.order-items{font-size:13px;font-family:monospace;background:#f5ede0;padding:8px 10px;border-radius:8px}
 /* ROUTE */
+.stat-row{display:flex;gap:8px;margin-bottom:12px}
+.stat{flex:1;background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:10px;text-align:center}
+.stat-n{font-size:20px;font-weight:900;color:#4a2f14}
+.stat-l{font-size:9px;color:#8a7a6a;font-family:monospace;text-transform:uppercase}
 .route-stop{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px}
 .rnum{width:30px;height:30px;border-radius:50%;background:#2d7a4f;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0}
+.rnum.done{background:#8a7a6a}
 .rinfo{flex:1;background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:10px 12px}
+.rinfo.done{background:#f5f5f5;opacity:.6}
 .rname{font-size:13px;font-weight:800}
 .rmeta{font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px}
 .rcoords{font-size:10px;color:#2d7a4f;font-family:monospace;margin-top:3px}
 .rline{width:2px;background:#e8dfd2;height:8px;margin-left:14px}
-.stat-row{display:flex;gap:8px;margin-bottom:14px}
-.stat{flex:1;background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:10px;text-align:center}
-.stat-n{font-size:20px;font-weight:900;color:#4a2f14}
-.stat-l{font-size:9px;color:#8a7a6a;font-family:monospace;text-transform:uppercase}
 .badge{display:inline-block;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;font-family:monospace}
 .b-ok{background:#e8f5e9;color:#2d7a4f}
 .b-warn{background:#fff8e1;color:#7a4800}
+.b-miss{background:#fde8e8;color:#c8382a}
+.b-done{background:#e8f5e9;color:#2d7a4f}
+/* ORDERS */
+.order-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;padding:12px 14px;margin-bottom:9px}
+.order-shop{font-size:14px;font-weight:800;color:#4a2f14}
+.order-meta{font-size:10px;color:#8a7a6a;font-family:monospace;margin:3px 0 6px}
+.order-items{font-size:12px;font-family:monospace;background:#f5ede0;padding:8px 10px;border-radius:8px}
+/* START BANNER */
+.start-banner{background:#1a5fa8;color:#fff;border-radius:16px;padding:16px;margin-bottom:14px;text-align:center}
+.start-banner-title{font-size:18px;font-weight:900;margin-bottom:4px}
+.start-banner-sub{font-size:11px;opacity:.8;font-family:monospace;margin-bottom:12px}
 </style>
-  <script src="config.js"></script>
-<script>window.API_URL = CONFIG.API_URL;</script>
 </head>
 <body>
 
 <div class="topbar">
-  <div><div class="topbar-title">🥖 Baked GPS</div><div class="topbar-sub" id="topSub">Driver</div></div>
-  <button class="logout" onclick="logout()">Logout</button>
+  <div><div class="topbar-title">🥖 <span id="topDriver"></span></div><div class="topbar-sub" id="topDate"></div></div>
+  <div class="topbar-right">
+    <button class="lang-tog" id="langTog" onclick="toggleLang()">मर</button>
+    <button class="logout" onclick="logout()">Logout</button>
+  </div>
 </div>
 
 <div class="tabs">
-  <button class="tab on" id="tb-orders" onclick="showTab('orders')">📋 Orders</button>
-  <button class="tab" id="tb-gps" onclick="showTab('gps')">📍 GPS</button>
-  <button class="tab" id="tb-route" onclick="showTab('route')">🗺 Route</button>
+  <button class="tab on" id="tb-orders" onclick="showTab('orders')"><span id="t-orders">📋 Orders</span></button>
+  <button class="tab" id="tb-route" onclick="showTab('route')"><span id="t-route">🗺 Route</span></button>
+  <button class="tab" id="tb-gps" onclick="showTab('gps')"><span id="t-gps">📍 GPS</span></button>
 </div>
 
-<!-- ── ORDERS TAB ── -->
+<!-- ── ORDERS ── -->
 <div class="page on" id="pg-orders">
-  <div class="card">
-    <div class="lbl">Today's Orders</div>
-    <div id="todayDate" style="font-size:12px;font-family:monospace;color:#8a7a6a;margin-bottom:8px"></div>
-  </div>
-  <div id="ordersList"><div style="text-align:center;padding:30px;font-size:13px;color:#8a7a6a;font-family:monospace">Loading orders…</div></div>
+  <div id="ordersList" style="margin-top:4px"></div>
 </div>
 
-<!-- ── GPS TAB ── -->
+<!-- ── ROUTE ── -->
+<div class="page" id="pg-route">
+  <!-- Start Route Banner -->
+  <div id="startBanner" class="start-banner">
+    <div class="start-banner-title" id="t-startTitle">Ready to deliver?</div>
+    <div class="start-banner-sub" id="t-startSub">Tap below to begin your route for today</div>
+    <button class="btn btn-start" id="startBtn" onclick="startRoute()">🚀 Start Route</button>
+  </div>
+
+  <div class="stat-row" id="routeStats" style="display:none">
+    <div class="stat"><div class="stat-n" id="rs-done">0</div><div class="stat-l" id="t-done">Done</div></div>
+    <div class="stat"><div class="stat-n" id="rs-pending">0</div><div class="stat-l" id="t-pending">Pending</div></div>
+    <div class="stat"><div class="stat-n" id="rs-km">0</div><div class="stat-l">KM</div></div>
+    <div class="stat"><div class="stat-n" id="rs-time">—</div><div class="stat-l">Est. Time</div></div>
+  </div>
+
+  <div id="route-msg" style="display:none" class="msg in"></div>
+  <div id="mapBtnWrap" style="display:none;margin-bottom:10px"></div>
+  <div id="routeBody"></div>
+</div>
+
+<!-- ── GPS ── -->
 <div class="page" id="pg-gps">
   <div class="card">
-    <div class="lbl">Search Shop</div>
-    <input type="text" id="srch" placeholder="Search by name or area…" oninput="filterShops()">
+    <div class="lbl" id="t-searchLbl">Search Shop</div>
+    <input type="text" id="srch" oninput="filterShops()">
   </div>
   <div id="gps-msg" style="display:none" class="msg ok"></div>
-  <div id="selBox" style="display:none" class="card" id="selBox">
+  <div id="selBox" style="display:none" class="card">
     <div class="lbl">Selected</div>
     <div id="selName" style="font-size:15px;font-weight:800;color:#4a2f14"></div>
     <div id="selArea" style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:3px"></div>
     <div id="selStatus" style="font-size:11px;font-weight:700;font-family:monospace;margin-top:6px;color:#1565c0"></div>
   </div>
-  <button class="btn btn-gps" id="gpsBtn" onclick="doGPS()">📍 Capture My Location</button>
-  <button class="btn btn-save" id="saveBtn" onclick="doSave()" style="display:none">✅ Confirm & Save</button>
+  <button class="btn btn-gps" id="gpsBtn" onclick="doGPS()">📍 <span id="t-captureBtn">Capture My Location</span></button>
+  <button class="btn btn-save" id="saveBtn" onclick="doSave()" style="display:none">✅ <span id="t-saveBtn">Confirm & Save</span></button>
   <div class="card">
-    <div class="lbl">My Shops</div>
-    <div class="shop-list" id="shopList"><div style="padding:10px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div></div>
+    <div class="lbl" id="t-myShops">My Shops</div>
+    <div class="shop-list" id="shopList"><div style="padding:10px;font-size:12px;color:#8a7a6a;font-family:monospace" id="t-loadingShops">Loading…</div></div>
   </div>
 </div>
 
-<!-- ── ROUTE TAB ── -->
-<div class="page" id="pg-route">
-  <div class="stat-row" id="routeStats" style="display:none">
-    <div class="stat"><div class="stat-n" id="rs-shops">0</div><div class="stat-l">Shops</div></div>
-    <div class="stat"><div class="stat-n" id="rs-km">0</div><div class="stat-l">Est. KM</div></div>
-    <div class="stat"><div class="stat-n" id="rs-time">0h</div><div class="stat-l">Est. Time</div></div>
-  </div>
-  <div id="route-msg" style="display:none" class="msg in"></div>
-  <div id="routeBody"></div>
-</div>
-
+<script src="config.js"></script>
 <script>
-// ── AUTH ──
 const driver = sessionStorage.getItem('driver');
 if (!sessionStorage.getItem('role') || !driver) window.location.href='index.html';
-document.getElementById('topSub').textContent = driver + ' · ' + todayStr();
-document.getElementById('todayDate').textContent = new Date().toLocaleDateString('en-IN',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
 
-function logout(){ sessionStorage.clear(); window.location.href='index.html'; }
+const API = CONFIG.API_URL;
+const HQ  = CONFIG.HQ;
+const L   = CONFIG.LANG;
+let lang  = sessionStorage.getItem('lang') || localStorage.getItem('lang') || 'en';
 
-// ── CONFIG — update this URL after deploying Apps Script ──
-const API = window.API_URL || localStorage.getItem('API_URL') || '';
+function t(key) { return (L[lang]||L.en)[key] || key; }
 
-function api(params) {
-  if (!API) return Promise.resolve({ error: 'API not configured. Update config.' });
-  const url = API + '?' + new URLSearchParams(params);
-  return fetch(url).then(r => r.json());
+function applyLang() {
+  document.getElementById('langTog').textContent = lang==='mr' ? 'EN' : 'मर';
+  document.getElementById('t-orders').textContent = lang==='mr' ? '📋 ऑर्डर' : '📋 Orders';
+  document.getElementById('t-route').textContent  = lang==='mr' ? '🗺 मार्ग'  : '🗺 Route';
+  document.getElementById('t-gps').textContent    = lang==='mr' ? '📍 GPS'   : '📍 GPS';
+  document.getElementById('t-startTitle').textContent = lang==='mr' ? 'डिलिव्हरी सुरू करायची?' : 'Ready to deliver?';
+  document.getElementById('t-startSub').textContent   = lang==='mr' ? 'आजच्या मार्गासाठी खाली टॅप करा' : 'Tap below to begin your route for today';
+  document.getElementById('startBtn').textContent     = t('startRoute');
+  document.getElementById('t-done').textContent    = lang==='mr' ? 'झाले' : 'Done';
+  document.getElementById('t-pending').textContent = lang==='mr' ? 'बाकी' : 'Pending';
+  document.getElementById('t-searchLbl').textContent  = lang==='mr' ? 'दुकान शोधा' : 'Search Shop';
+  document.getElementById('srch').placeholder         = lang==='mr' ? 'नाव किंवा क्षेत्र…' : 'Search by name or area…';
+  document.getElementById('t-captureBtn').textContent = lang==='mr' ? 'माझे स्थान घ्या' : 'Capture My Location';
+  document.getElementById('t-saveBtn').textContent    = lang==='mr' ? 'जतन करा' : 'Confirm & Save';
+  document.getElementById('t-myShops').textContent    = lang==='mr' ? 'माझी दुकाने' : 'My Shops';
 }
-function apiPost(body) {
-  if (!API) return Promise.resolve({ error: 'API not configured.' });
-  return fetch(API, { method:'POST', body: JSON.stringify(body) }).then(r => r.json());
+
+function toggleLang() {
+  lang = lang==='en' ? 'mr' : 'en';
+  sessionStorage.setItem('lang', lang);
+  localStorage.setItem('lang', lang);
+  applyLang();
+  renderOrdersList();
+  if (routeStarted) buildRouteUI();
 }
 
-function todayStr() {
-  const d = new Date();
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-}
+function logout() { sessionStorage.clear(); window.location.href='index.html'; }
+
+document.getElementById('topDriver').textContent = driver;
+document.getElementById('topDate').textContent = todayStr();
+
+function api(p){ return fetch(API+'?'+new URLSearchParams(p)).then(r=>r.json()).catch(()=>({})); }
+function apiPost(b){ return fetch(API,{method:'POST',body:JSON.stringify(b)}).then(r=>r.json()).catch(()=>({})); }
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 
 // ── TABS ──
-function showTab(t) {
-  ['orders','gps','route'].forEach(x => {
-    document.getElementById('pg-'+x).classList.toggle('on', x===t);
-    document.getElementById('tb-'+x).classList.toggle('on', x===t);
+function showTab(tab) {
+  ['orders','route','gps'].forEach(x=>{
+    document.getElementById('pg-'+x).classList.toggle('on',x===tab);
+    document.getElementById('tb-'+x).classList.toggle('on',x===tab);
   });
-  if(t==='route') buildRoute();
-  if(t==='orders') loadOrders();
+  if(tab==='route') buildRouteUI();
 }
 
-// ── SHOPS ──
-let allShops = [], selShop = null, captured = null;
+// ── STATE ──
+let allShops=[], selShop=null, captured=null;
+let orders=[], deliveries={}, routeStarted=false, routeStartTime=null;
 
-async function loadShops() {
-  const data = await api({ action:'getShops' });
-  if (data.error || !Array.isArray(data)) { return; }
-  allShops = data.filter(s => s.assigned_driver === driver);
+// ── LOAD ──
+async function init() {
+  applyLang();
+  const [shopsData, ordersData, delivData] = await Promise.all([
+    api({action:'getShops'}),
+    api({action:'getOrders', driver, date:todayStr()}),
+    api({action:'getDeliveries', driver, date:todayStr()})
+  ]);
+  allShops = Array.isArray(shopsData) ? shopsData.filter(s=>s.assigned_driver===driver) : [];
+  orders   = Array.isArray(ordersData) ? ordersData : [];
+  // deliveries: keyed by shop_id
+  if(Array.isArray(delivData)) delivData.forEach(d=>{ deliveries[d.shop_id]=d; });
+  // check if route already started today
+  const savedStart = localStorage.getItem('routeStart_'+driver+'_'+todayStr());
+  if(savedStart){ routeStarted=true; routeStartTime=savedStart; }
+  renderOrdersList();
   renderShopList(allShops);
 }
 
-function filterShops() {
-  const q = document.getElementById('srch').value.toLowerCase();
-  renderShopList(q ? allShops.filter(s =>
-    s.name.toLowerCase().includes(q) || (s.area||'').toLowerCase().includes(q)
-  ) : allShops);
+// ── ORDERS ──
+function renderOrdersList() {
+  const el = document.getElementById('ordersList');
+  if(!orders.length){
+    el.innerHTML=`<div style="text-align:center;padding:40px;font-size:13px;color:#8a7a6a;font-family:monospace">${t('noOrders')}</div>`;
+    return;
+  }
+  // Group by shop
+  const byShop={};
+  orders.forEach(o=>{ if(!byShop[o.shop_id]) byShop[o.shop_id]=[]; byShop[o.shop_id].push(o); });
+  el.innerHTML = Object.entries(byShop).map(([sid,ords])=>{
+    const isDone = !!deliveries[sid];
+    const shopName = ords[0].shop_name;
+    return `<div class="order-card" style="${isDone?'opacity:.5':''}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div class="order-shop">${shopName}</div>
+        <span class="badge ${isDone?'b-done':'b-warn'}">${isDone?t('delivered'):t('pending')}</span>
+      </div>
+      <div class="order-meta">${lang==='mr'?'डिलिव्हरी तारीख':'Delivery'}: ${ords[0].date}</div>
+      ${ords.map(o=>`<div class="order-items" style="margin-bottom:4px"><b>${lang==='mr'?'वस्तू':'Items'}:</b> ${o.items}<br><b>${lang==='mr'?'संख्या':'Qty'}:</b> ${o.qty}${o.note&&o.note!=='—'?`<br><b>${lang==='mr'?'नोंद':'Note'}:</b> ${o.note}`:''}</div>`).join('')}
+    </div>`;
+  }).join('');
 }
 
-function renderShopList(list) {
-  const el = document.getElementById('shopList');
-  if (!list.length) { el.innerHTML='<div style="padding:10px;font-size:12px;color:#8a7a6a;font-family:monospace">No shops found.</div>'; return; }
-  el.innerHTML = list.map(s => `
-    <div class="si ${selShop?.shop_id==s.shop_id?'on':''} ${s.lat?'saved':''}" onclick="pickShop('${s.shop_id}')">
-      <div style="flex:1">
-        <div class="si-n">${s.name}</div>
-        <div class="si-a">${s.area||''}</div>
+// ── ROUTE ──
+function dist(a,b){ const dl=a.lat-b.lat,dn=a.lng-b.lng; return Math.sqrt(dl*dl+dn*dn); }
+function distKm(a,b){
+  const R=6371,dLat=(b.lat-a.lat)*Math.PI/180,dLng=(b.lng-a.lng)*Math.PI/180;
+  const x=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
+}
+function nearestNeighbour(start,pts){
+  let rem=[...pts],route=[],cur={lat:start.lat,lng:start.lng};
+  while(rem.length){ let best=null,bd=Infinity; rem.forEach(p=>{const d=dist(cur,p);if(d<bd){bd=d;best=p;}}); route.push(best); rem.splice(rem.indexOf(best),1); cur=best; }
+  return route;
+}
+
+async function startRoute() {
+  routeStarted=true;
+  routeStartTime=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+  localStorage.setItem('routeStart_'+driver+'_'+todayStr(), routeStartTime);
+  // Save to sheet
+  await apiPost({action:'saveRouteStart', driver, date:todayStr(), startTime:routeStartTime});
+  buildRouteUI();
+}
+
+async function buildRouteUI() {
+  const rmsg=document.getElementById('route-msg');
+  const body=document.getElementById('routeBody');
+  const mapWrap=document.getElementById('mapBtnWrap');
+  rmsg.style.display='none'; body.innerHTML='';
+
+  // Show start banner or hide it
+  document.getElementById('startBanner').style.display = routeStarted ? 'none' : 'block';
+  document.getElementById('routeStats').style.display  = routeStarted ? 'flex' : 'none';
+  if(!routeStarted) return;
+
+  // Only shops with valid GPS
+  const withGPS = allShops.filter(s=>s.lat&&s.lng).map(s=>({...s,lat:parseFloat(s.lat),lng:parseFloat(s.lng)}));
+  const noGPS   = allShops.filter(s=>!s.lat||!s.lng);
+
+  if(!withGPS.length){
+    rmsg.textContent=lang==='mr'?'GPS डेटा नाही. GPS टॅबमध्ये जा.':'No GPS saved yet. Go to GPS tab to capture locations.';
+    rmsg.className='msg er'; rmsg.style.display='block'; return;
+  }
+
+  // Separate done vs pending
+  const pending = withGPS.filter(s=>!deliveries[s.shop_id]);
+  const done    = withGPS.filter(s=>!!deliveries[s.shop_id]);
+
+  // Build optimised route from pending only
+  const route = nearestNeighbour(HQ, pending);
+  const fullRoute = [...route, ...done]; // pending first then done
+
+  // Calc km & time from pending only
+  let totalKm=0,prev=HQ;
+  route.forEach(s=>{totalKm+=distKm(prev,s);prev=s;});
+  totalKm=Math.round(totalKm);
+  const mins=Math.round(totalKm/25*60+route.length*5);
+  const estH=Math.floor(mins/60),estM=mins%60;
+
+  document.getElementById('rs-done').textContent=done.length;
+  document.getElementById('rs-pending').textContent=pending.length;
+  document.getElementById('rs-km').textContent=totalKm;
+  document.getElementById('rs-time').textContent=estH+'h '+estM+'m';
+
+  // Map button — start from CURRENT location, skip done shops
+  const pendingCoords=route.map(s=>s.lat+','+s.lng);
+  const mapsUrl=pendingCoords.length
+    ? 'https://www.google.com/maps/dir/My+Location/'+pendingCoords.join('/')
+    : '';
+  mapWrap.style.display=mapsUrl?'block':'none';
+  if(mapsUrl) mapWrap.innerHTML=`<a href="${mapsUrl}" target="_blank" style="display:block;background:#2d7a4f;color:#fff;padding:13px;border-radius:14px;text-align:center;font-weight:800;font-size:14px;text-decoration:none">${t('routeStart')} (${pending.length} ${lang==='mr'?'दुकाने':'stops'})</a>`;
+
+  // Route list
+  let html='';
+  // HQ start
+  html+=`<div class="route-stop"><div class="rnum" style="background:#4a2f14;font-size:10px">HQ</div><div class="rinfo"><div class="rname">🥖 ${HQ.name}</div><div class="rmeta">${lang==='mr'?'सुरुवात':'START'} · ${routeStartTime}</div></div></div>`;
+
+  fullRoute.forEach((s,i)=>{
+    const isDone=!!deliveries[s.shop_id];
+    const shopOrders=orders.filter(o=>o.shop_id===s.shop_id);
+    html+=`<div class="rline"></div>
+    <div class="route-stop">
+      <div class="rnum ${isDone?'done':''}">${isDone?'✓':(i+1-done.length<1?'✓':i-done.length+1)}</div>
+      <div class="rinfo ${isDone?'done':''}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div class="rname">${s.name}</div>
+          <span class="badge ${isDone?'b-done':'b-warn'}">${isDone?t('delivered'):t('pending')}</span>
+        </div>
+        <div class="rmeta">${s.area||''}</div>
+        ${shopOrders.length?`<div style="font-size:11px;font-family:monospace;color:#4a2f14;margin-top:4px">${shopOrders.map(o=>o.items+' · '+o.qty).join('<br>')}</div>`:''}
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+          <a href="https://www.google.com/maps?q=${s.lat},${s.lng}" target="_blank" class="btn-sm btn-map" style="text-decoration:none;padding:7px 12px;background:#e3f2fd;color:#1565c0;border-radius:10px;font-size:11px;font-weight:700">🗺 Map</a>
+          ${!isDone?`<button class="btn-sm btn-deliver" onclick="markDelivered('${s.shop_id}','${s.name}')">${t('markDelivered')}</button>`:`<span style="font-size:11px;color:#2d7a4f;font-family:monospace;padding:7px 4px">✅ ${deliveries[s.shop_id]?.time||''}</span>`}
+        </div>
       </div>
+    </div>`;
+  });
+
+  if(noGPS.length){
+    html+=`<div style="margin-top:12px;padding:12px 14px;background:#fff8e1;border:1.5px solid #ffe082;border-radius:14px">
+      <div style="font-size:11px;font-weight:800;color:#7a4800;margin-bottom:6px">⚠ ${noGPS.length} ${lang==='mr'?'दुकानांचे GPS नाही':'shops without GPS — not in route'}</div>
+      ${noGPS.map(s=>`<div style="font-size:12px;font-family:monospace;color:#7a4800;padding:2px 0">• ${s.name}</div>`).join('')}
+    </div>`;
+  }
+
+  body.innerHTML=html;
+  // Save route to sheet
+  apiPost({action:'saveRoute',date:todayStr(),driver,shop_order:JSON.stringify(route.map(s=>s.name)),total_shops:withGPS.length,total_km:totalKm,est_time:estH+'h '+estM+'m'});
+}
+
+async function markDelivered(shopId, shopName) {
+  const time=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+  deliveries[shopId]={shop_id:shopId,time};
+  await apiPost({action:'markDelivered',driver,shop_id:shopId,shop_name:shopName,date:todayStr(),time});
+  buildRouteUI();
+  renderOrdersList();
+}
+
+// ── GPS CAPTURE ──
+function filterShops(){ renderShopList(allShops.filter(s=>(s.name+' '+(s.area||'')).toLowerCase().includes(document.getElementById('srch').value.toLowerCase()))); }
+
+function renderShopList(list) {
+  const el=document.getElementById('shopList');
+  if(!list.length){ el.innerHTML=`<div style="padding:10px;font-size:12px;color:#8a7a6a;font-family:monospace">${lang==='mr'?'दुकान सापडले नाही':'No shops found.'}</div>`; return; }
+  el.innerHTML=list.map(s=>`
+    <div class="si ${selShop?.shop_id==s.shop_id?'on':''} ${s.lat?'gps-saved':''}" onclick="pickShop('${s.shop_id}')">
+      <div style="flex:1"><div class="si-n">${s.name}</div><div class="si-a">${s.area||''}</div></div>
       <div style="font-size:11px;font-weight:700;color:${s.lat?'#2d7a4f':'#c8382a'}">${s.lat?'✅':'⚠'}</div>
     </div>`).join('');
 }
 
-function pickShop(id) {
-  selShop = allShops.find(s => s.shop_id == id);
-  captured = null;
+function pickShop(id){
+  selShop=allShops.find(s=>s.shop_id==id); captured=null;
   document.getElementById('saveBtn').style.display='none';
   document.getElementById('gps-msg').style.display='none';
-  document.getElementById('selName').textContent = selShop.name;
-  document.getElementById('selArea').textContent = '📍 ' + (selShop.area||'');
-  document.getElementById('selStatus').textContent = selShop.lat
-    ? 'GPS saved: '+selShop.lat+', '+selShop.lng : 'No GPS yet — capture below';
+  document.getElementById('selName').textContent=selShop.name;
+  document.getElementById('selArea').textContent='📍 '+(selShop.area||'');
+  document.getElementById('selStatus').textContent=selShop.lat?`GPS: ${selShop.lat}, ${selShop.lng}`:(lang==='mr'?'GPS नाही — खाली घ्या':'No GPS — capture below');
   document.getElementById('selBox').style.display='block';
   renderShopList(allShops);
   document.getElementById('selBox').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
-function gMsg(t,type){ const el=document.getElementById('gps-msg'); el.textContent=t; el.className='msg '+type; el.style.display='block'; }
+function gMsg(txt,type){ const el=document.getElementById('gps-msg'); el.textContent=txt; el.className='msg '+type; el.style.display='block'; }
 
-function doGPS() {
-  if (!selShop) { gMsg('Select a shop first','er'); return; }
-  if (!navigator.geolocation) { gMsg('GPS not available.','er'); return; }
-  const btn=document.getElementById('gpsBtn'); btn.textContent='⏳ Getting location…'; btn.disabled=true;
-  gMsg('📡 Getting your location…','in');
-  navigator.geolocation.getCurrentPosition(pos => {
-    captured = { lat: parseFloat(pos.coords.latitude.toFixed(6)), lng: parseFloat(pos.coords.longitude.toFixed(6)), acc: Math.round(pos.coords.accuracy) };
-    gMsg('📍 Location found!\nLat: '+captured.lat+'\nLng: '+captured.lng+'\nAccuracy: ±'+captured.acc+' m\n\nTap Confirm & Save ↓','ok');
+function doGPS(){
+  if(!selShop){ gMsg(lang==='mr'?'प्रथम दुकान निवडा':'Select a shop first','er'); return; }
+  if(!navigator.geolocation){ gMsg('GPS not available.','er'); return; }
+  const btn=document.getElementById('gpsBtn'); btn.disabled=true;
+  btn.innerHTML=`⏳ ${lang==='mr'?'स्थान मिळत आहे…':'Getting location…'}`;
+  gMsg(lang==='mr'?'📡 GPS सुरू आहे…':'📡 Getting your location…','in');
+  navigator.geolocation.getCurrentPosition(pos=>{
+    captured={lat:parseFloat(pos.coords.latitude.toFixed(6)),lng:parseFloat(pos.coords.longitude.toFixed(6)),acc:Math.round(pos.coords.accuracy)};
+    gMsg(`📍 ${lang==='mr'?'स्थान मिळाले':'Location found'}!\nLat: ${captured.lat}\nLng: ${captured.lng}\n±${captured.acc}m`,'ok');
     document.getElementById('saveBtn').style.display='block';
-    btn.textContent='📍 Capture My Location'; btn.disabled=false;
+    btn.innerHTML=`📍 ${t('captureLocation')}`; btn.disabled=false;
     document.getElementById('saveBtn').scrollIntoView({behavior:'smooth',block:'nearest'});
-  }, err => {
-    btn.textContent='📍 Capture My Location'; btn.disabled=false;
-    if(err.code===1) gMsg('❌ Permission denied!\nSettings → Safari/Chrome → Location → Allow','er');
-    else if(err.code===2) gMsg('❌ GPS not found. Step outside and try.','er');
-    else gMsg('❌ GPS timed out.','er');
-  }, { enableHighAccuracy:true, timeout:20000, maximumAge:0 });
+  },err=>{
+    btn.innerHTML=`📍 ${t('captureLocation')}`; btn.disabled=false;
+    if(err.code===1) gMsg(lang==='mr'?'❌ परवानगी नाकारली!\nSettings → Location → Allow':'❌ Permission denied!\nSettings → Location → Allow','er');
+    else gMsg(lang==='mr'?'❌ GPS मिळाले नाही. बाहेर जा आणि पुन्हा प्रयत्न करा.':'❌ GPS failed. Step outside and try again.','er');
+  },{enableHighAccuracy:true,timeout:20000,maximumAge:0});
 }
 
-async function doSave() {
-  if (!captured || !selShop) return;
-  const btn=document.getElementById('saveBtn'); btn.textContent='Saving…'; btn.disabled=true;
-  const res = await apiPost({ action:'saveGPS', shop_id:selShop.shop_id, lat:captured.lat, lng:captured.lng, driver });
-  if (res.ok) {
-    selShop.lat = captured.lat; selShop.lng = captured.lng;
-    gMsg('✅ Saved!\n'+selShop.name+'\n'+captured.lat+', '+captured.lng,'ok');
-    document.getElementById('selStatus').textContent = '✅ '+captured.lat+', '+captured.lng;
-    captured = null; renderShopList(allShops);
+async function doSave(){
+  if(!captured||!selShop) return;
+  const btn=document.getElementById('saveBtn'); btn.textContent=lang==='mr'?'जतन होत आहे…':'Saving…'; btn.disabled=true;
+  const res=await apiPost({action:'saveGPS',shop_id:selShop.shop_id,lat:captured.lat,lng:captured.lng,driver});
+  if(res.ok){
+    selShop.lat=captured.lat; selShop.lng=captured.lng;
+    gMsg(`✅ ${lang==='mr'?'जतन झाले':'Saved'}!\n${selShop.name}\n${captured.lat}, ${captured.lng}`,'ok');
+    document.getElementById('selStatus').textContent=`✅ ${captured.lat}, ${captured.lng}`;
+    captured=null; renderShopList(allShops);
   } else {
     gMsg('❌ Save failed: '+(res.error||'unknown'),'er');
   }
-  btn.textContent='✅ Confirm & Save'; btn.disabled=false;
-  btn.style.display='none';
+  btn.innerHTML=`✅ ${t('confirmSave')}`; btn.disabled=false; btn.style.display='none';
 }
 
-// ── ORDERS ──
-async function loadOrders() {
-  const el = document.getElementById('ordersList');
-  el.innerHTML='<div style="text-align:center;padding:20px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
-  const data = await api({ action:'getOrders', driver, date:todayStr() });
-  if (!Array.isArray(data) || !data.length) {
-    el.innerHTML='<div style="text-align:center;padding:30px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders posted for today yet.\nCheck back later or contact admin.</div>';
-    return;
-  }
-  el.innerHTML = data.map(o => `
-    <div class="order-card">
-      <div class="order-shop">${o.shop_name}</div>
-      <div class="order-meta">${o.date} · <span class="badge b-ok">${o.status||'pending'}</span></div>
-      <div class="order-items"><strong>Items:</strong> ${o.items}<br><strong>Qty:</strong> ${o.qty}${o.note?'<br><strong>Note:</strong> '+o.note:''}</div>
-    </div>`).join('');
-}
-
-// ── ROUTE ──
-const HQ = { lat:18.5820, lng:73.9197, name:'🥖 Baked HQ' };
-
-function dist(a,b){ const dl=a.lat-b.lat, dn=a.lng-b.lng; return Math.sqrt(dl*dl+dn*dn); }
-function distKm(a,b){
-  const R=6371, dLat=(b.lat-a.lat)*Math.PI/180, dLng=(b.lng-a.lng)*Math.PI/180;
-  const x=Math.sin(dLat/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLng/2)**2;
-  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));
-}
-
-function nearestNeighbour(start, points) {
-  let rem=[...points], route=[], cur={lat:start.lat,lng:start.lng};
-  while(rem.length){ let best=null,bd=Infinity; rem.forEach(p=>{const d=dist(cur,p);if(d<bd){bd=d;best=p;}}); route.push(best); rem.splice(rem.indexOf(best),1); cur=best; }
-  return route;
-}
-
-async function buildRoute() {
-  const rmsg=document.getElementById('route-msg'), body=document.getElementById('routeBody');
-  rmsg.style.display='none'; body.innerHTML='';
-  if(!allShops.length) await loadShops();
-  const withGPS = allShops.filter(s => s.lat && s.lng);
-  const missing = allShops.filter(s => !s.lat || !s.lng);
-
-  if(!withGPS.length){
-    rmsg.textContent='No GPS saved for your shops yet. Go to GPS tab to capture locations first.';
-    rmsg.className='msg er'; rmsg.style.display='block'; return;
-  }
-
-  const route = nearestNeighbour(HQ, withGPS.map(s=>({...s, lat:parseFloat(s.lat), lng:parseFloat(s.lng)})));
-
-  // Calc total km & time
-  let totalKm=0, prev=HQ;
-  route.forEach(s=>{ totalKm+=distKm(prev,s); prev=s; });
-  totalKm=Math.round(totalKm);
-  const estTime = Math.round(totalKm/25*60 + route.length*5); // ~25kmh avg + 5min/stop
-  const estH = Math.floor(estTime/60), estM=estTime%60;
-
-  // Stats
-  document.getElementById('routeStats').style.display='flex';
-  document.getElementById('rs-shops').textContent=route.length;
-  document.getElementById('rs-km').textContent=totalKm;
-  document.getElementById('rs-time').textContent=estH+'h '+estM+'m';
-
-  // Google Maps URL
-  const wpts=route.slice(0,-1).map(s=>s.lat+','+s.lng).join('/');
-  const last=route[route.length-1];
-  const mapsUrl=`https://www.google.com/maps/dir/${HQ.lat},${HQ.lng}/${wpts}/${last.lat},${last.lng}`;
-
-  let html=`<a href="${mapsUrl}" target="_blank" style="display:block;background:#2d7a4f;color:#fff;padding:14px;border-radius:14px;text-align:center;font-weight:800;font-size:14px;text-decoration:none;margin-bottom:14px">🗺 Open Full Route in Google Maps</a>`;
-
-  html+=`<div class="route-stop"><div class="rnum" style="background:#4a2f14;font-size:10px">HQ</div><div class="rinfo"><div class="rname">🥖 Baked HQ</div><div class="rmeta">Nirgudi Road, Lohegaon · START</div></div></div>`;
-  route.forEach((s,i)=>{
-    html+=`<div class="rline"></div><div class="route-stop"><div class="rnum">${i+1}</div><div class="rinfo"><div class="rname">${s.name}</div><div class="rmeta">${s.area||''}</div><div class="rcoords">${s.lat}, ${s.lng} · <a href="https://www.google.com/maps?q=${s.lat},${s.lng}" target="_blank" style="color:#1565c0">map</a></div></div></div>`;
-  });
-
-  if(missing.length){
-    html+=`<div style="margin-top:14px;padding:12px 14px;background:#fff8e1;border:1.5px solid #ffe082;border-radius:14px"><div style="font-size:11px;font-weight:800;color:#7a4800;margin-bottom:8px">⚠ ${missing.length} shops without GPS</div>${missing.map(s=>`<div style="font-size:12px;color:#7a4800;font-family:monospace;padding:3px 0">• ${s.name}</div>`).join('')}</div>`;
-  }
-
-  body.innerHTML=html;
-
-  // Save route to sheet
-  apiPost({ action:'saveRoute', date:todayStr(), driver, shop_order:route.map(s=>s.shop_id||s.name), total_shops:route.length, total_km:totalKm, est_time:estH+'h '+estM+'m' });
-}
-
-// ── INIT ──
-loadShops();
-loadOrders();
+init();
 </script>
 </body>
 </html>
