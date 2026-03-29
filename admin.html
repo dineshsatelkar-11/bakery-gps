@@ -4,161 +4,204 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>Baked — Admin</title>
-<script src="config.js"></script>
-<script>window.API_URL = CONFIG.API_URL;</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:520px;margin:0 auto;min-height:100vh}
-.topbar{background:#4a2f14;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:99}
-.topbar-title{color:#fff;font-size:16px;font-weight:800}
+.topbar{background:#4a2f14;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:99}
+.topbar-title{color:#fff;font-size:15px;font-weight:800}
 .topbar-sub{color:#c8a87a;font-size:11px;font-family:monospace}
-.logout{background:rgba(255,255,255,.2);border:none;color:#fff;padding:7px 12px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif}
-.tabs{display:flex;background:#fff;border-bottom:2px solid #e8dfd2;position:sticky;top:57px;z-index:98}
-.tab{flex:1;padding:12px 4px;border:none;background:none;font-size:11px;font-weight:700;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;border-bottom:3px solid transparent;margin-bottom:-2px}
+.topbar-right{display:flex;gap:8px}
+.tbtn{background:rgba(255,255,255,.2);border:none;color:#fff;padding:6px 11px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif;text-decoration:none;display:inline-block}
+.tabs{display:flex;background:#fff;border-bottom:2px solid #e8dfd2;position:sticky;top:53px;z-index:98;overflow-x:auto}
+.tab{flex:1;min-width:70px;padding:11px 4px;border:none;background:none;font-size:11px;font-weight:700;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap}
 .tab.on{color:#4a2f14;border-bottom-color:#4a2f14}
-.page{display:none;padding:14px 14px 80px}
+.page{display:none;padding:12px 14px 80px}
 .page.on{display:block}
-.card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:16px;margin-bottom:12px}
+.card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:14px;margin-bottom:10px}
 .lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:8px;text-transform:uppercase}
 select,input[type=text],input[type=date],textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:8px}
-textarea{resize:vertical;min-height:120px;font-size:13px;line-height:1.7}
-.btn{width:100%;padding:13px;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:8px}
+textarea{resize:vertical;min-height:110px;font-size:13px;line-height:1.7}
+.btn{width:100%;padding:13px;border:none;border-radius:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:8px}
 .btn-parse{background:#6e3da8;color:#fff}
-.btn-add{background:#4a2f14;color:#fff}
-.btn-clear{background:#fde8e8;color:#c8382a}
+.btn-confirm{background:#2d7a4f;color:#fff}
 .btn-refresh{background:#e8dfd2;color:#4a2f14}
-.btn-sm{padding:7px 12px;border-radius:10px;font-size:11px;font-weight:700;border:none;cursor:pointer;font-family:-apple-system,sans-serif}
+.btn-sm{padding:7px 11px;border-radius:10px;font-size:11px;font-weight:700;border:none;cursor:pointer;font-family:-apple-system,sans-serif}
 .btn-del{background:#fde8e8;color:#c8382a}
 .btn-map{background:#e3f2fd;color:#1565c0}
 .btn-csv{background:#e8f5e9;color:#2d7a4f;width:100%;padding:12px;border-radius:12px;font-size:14px;font-weight:800;border:none;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:10px}
-.msg{padding:12px 14px;border-radius:12px;font-size:12px;font-weight:600;font-family:monospace;margin-bottom:12px;line-height:1.8;white-space:pre-line}
+.msg{padding:11px 14px;border-radius:12px;font-size:12px;font-weight:600;font-family:monospace;margin-bottom:10px;line-height:1.8;white-space:pre-line}
 .ok{background:#e8f5e9;color:#2d7a4f;border:1px solid #a5d6a7}
 .er{background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0}
 .in{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9}
 .warn{background:#fff8e1;color:#7a4800;border:1px solid #ffe082}
-/* PARSED PREVIEW */
+/* SUMMARY */
+.summary-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;padding:12px 14px;margin-bottom:8px}
+.summary-driver{font-size:15px;font-weight:800;margin-bottom:6px}
+.summary-row{font-size:12px;font-family:monospace;padding:3px 0;border-bottom:1px solid #f0e8dc;color:#1e1611}
+.summary-total{font-size:13px;font-weight:800;color:#4a2f14;padding-top:6px}
+/* PARSED */
 .parsed-item{background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:12px 14px;margin-bottom:8px}
-.parsed-shop{font-size:13px;font-weight:800;color:#4a2f14}
-.parsed-meta{font-size:11px;color:#8a7a6a;font-family:monospace;margin:3px 0}
-.parsed-detail{font-size:12px;font-family:monospace;background:#f5ede0;padding:7px 10px;border-radius:8px;margin-top:6px}
-.driver-badge{display:inline-block;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;font-family:monospace;margin-top:4px}
-.unmatched{border-color:#f0b0b0;background:#fff8f8}
+.parsed-item.unmatched{border-color:#f0b0b0;background:#fff8f8}
 /* ORDER CARDS */
-.order-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;padding:12px 14px;margin-bottom:9px}
-.order-shop{font-size:14px;font-weight:800;color:#4a2f14}
-.order-meta{font-size:10px;color:#8a7a6a;font-family:monospace;margin:3px 0 7px}
-.order-items{font-size:12px;font-family:monospace;background:#f5ede0;padding:8px 10px;border-radius:8px;margin-bottom:8px}
-.stats-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px}
+.order-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;padding:11px 14px;margin-bottom:8px}
+/* DELIVERY STATUS */
+.deliv-row{background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:10px 14px;margin-bottom:7px;display:flex;align-items:center;gap:10px}
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 .stat{background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:10px;text-align:center}
 .stat-n{font-size:20px;font-weight:900;color:#4a2f14}
 .stat-l{font-size:9px;color:#8a7a6a;font-family:monospace}
-.driver-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;padding:14px;margin-bottom:10px}
+.driver-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;padding:13px;margin-bottom:10px}
 .route-mini{font-size:11px;font-family:monospace;color:#1e1611;padding:3px 0;border-bottom:1px solid #f0e8dc}
 .badge{display:inline-block;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;font-family:monospace}
 .b-ok{background:#e8f5e9;color:#2d7a4f}
 .b-warn{background:#fff8e1;color:#7a4800}
 .b-miss{background:#fde8e8;color:#c8382a}
-.filter-row{display:flex;gap:8px;margin-bottom:10px}
+.b-done{background:#e8f5e9;color:#2d7a4f}
+.filter-row{display:flex;gap:8px;margin-bottom:8px}
 .filter-row select,.filter-row input{margin-bottom:0}
-.dc-Bharat{background:#fff3e0;color:#c8864a}
-.dc-Anand{background:#e3f2fd;color:#1a5fa8}
-.dc-Vikas{background:#e8f5e9;color:#2d7a4f}
-.dc-Yuvraj{background:#f3e8ff;color:#6e3da8}
-.dc-Rama{background:#fde8e8;color:#c8382a}
-.dc-Dinesh{background:#fce4ec;color:#880e4f}
+.DC-Bharat{background:#fff3e0;color:#c8864a}
+.DC-Anand{background:#e3f2fd;color:#1a5fa8}
+.DC-Vikas{background:#e8f5e9;color:#2d7a4f}
+.DC-Yuvraj{background:#f3e8ff;color:#6e3da8}
+.DC-Rama{background:#fde8e8;color:#c8382a}
+.DC-Dinesh{background:#fce4ec;color:#880e4f}
 </style>
 </head>
 <body>
 
 <div class="topbar">
   <div><div class="topbar-title">📊 Baked Admin</div><div class="topbar-sub" id="topDate"></div></div>
-  <button class="logout" onclick="logout()">Logout</button>
+  <div class="topbar-right">
+    <a href="shops.html" class="tbtn">🏪 Shops</a>
+    <button class="tbtn" onclick="logout()">Logout</button>
+  </div>
 </div>
 
 <div class="tabs">
-  <button class="tab on" id="tb-orders" onclick="showTab('orders')">📋 Orders</button>
-  <button class="tab" id="tb-routes" onclick="showTab('routes')">🗺 Routes</button>
-  <button class="tab" id="tb-gps" onclick="showTab('gps')">📍 GPS</button>
+  <button class="tab on" id="tb-orders"   onclick="showTab('orders')">📋 Orders</button>
+  <button class="tab"    id="tb-summary"  onclick="showTab('summary')">📊 Summary</button>
+  <button class="tab"    id="tb-delivery" onclick="showTab('delivery')">🚚 Delivery</button>
+  <button class="tab"    id="tb-routes"   onclick="showTab('routes')">🗺 Routes</button>
+  <button class="tab"    id="tb-gps"      onclick="showTab('gps')">📍 GPS</button>
 </div>
 
-<!-- ══════════ ORDERS TAB ══════════ -->
+<!-- ══════════ ORDERS ══════════ -->
 <div class="page on" id="pg-orders">
-
   <div class="card">
-    <div class="lbl">📋 Paste Order List</div>
-    <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:8px;line-height:1.7">
-      Paste your WhatsApp/chat order directly below.<br>
-      Format per line: <strong>Shop Name – Items – Qty</strong><br>
-      Example:<br>
-      C Tea Post Baner – Bread, Buns – 10 loaves, 20 pcs<br>
-      Bammm Aundh – Croissant – 15 pcs
+    <div class="lbl">📋 Paste / Upload Order List</div>
+    <div style="font-size:11px;color:#8a7a6a;font-family:monospace;line-height:1.7;margin-bottom:8px">
+      Paste WhatsApp/chat order below, one line per shop.<br>
+      Format: <b>Shop Name – Items – Qty</b>
     </div>
-    <textarea id="orderPaste" placeholder="Paste full order list here…&#10;&#10;C Tea Post Baner – Bread, Buns – 10, 20&#10;Bammm Aundh – Croissant – 15&#10;Edinburgh Kharadi – Sourdough – 5 loaves"></textarea>
-    <input type="date" id="ord-date" style="margin-bottom:8px">
+    <textarea id="orderPaste" placeholder="C Tea Post Baner – Bread, Buns – 10, 20&#10;Bammm Aundh – Croissant – 15&#10;Edinburgh Kharadi – Sourdough – 5"></textarea>
 
-    <!-- Excel upload -->
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+    <div style="display:flex;gap:8px;margin-bottom:8px">
       <label style="flex:1;padding:10px;background:#f0f4ff;border:1.5px dashed #90caf9;border-radius:10px;text-align:center;font-size:12px;font-weight:700;color:#1565c0;cursor:pointer">
-        📎 Upload Excel / CSV
-        <input type="file" id="fileUpload" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFile(event)">
+        📎 Upload CSV/Excel
+        <input type="file" id="fileUpload" accept=".csv" style="display:none" onchange="handleFile(event)">
       </label>
-      <button class="btn-sm" style="background:#e8f5e9;color:#2d7a4f;padding:10px 14px" onclick="document.getElementById('orderPaste').value=''">Clear</button>
+      <button class="btn-sm" style="background:#fde8e8;color:#c8382a;padding:10px 14px" onclick="document.getElementById('orderPaste').value=''">Clear</button>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <div style="flex:1">
+        <div class="lbl" style="margin-bottom:4px">Delivery Date</div>
+        <input type="date" id="ord-date" style="margin-bottom:0">
+      </div>
     </div>
 
     <div id="parse-msg" style="display:none" class="msg in"></div>
     <button class="btn btn-parse" onclick="parseOrders()">🔍 Match Shops & Preview</button>
   </div>
 
-  <!-- PARSED PREVIEW -->
+  <!-- PREVIEW -->
   <div id="previewBox" style="display:none">
     <div style="font-size:13px;font-weight:800;color:#4a2f14;margin-bottom:10px" id="previewTitle"></div>
     <div id="previewList"></div>
-    <div id="preview-msg" style="display:none" class="msg warn"></div>
-    <button class="btn btn-add" id="confirmBtn" onclick="confirmAllOrders()">✅ Confirm & Save All Orders</button>
-    <button class="btn btn-clear" onclick="clearPreview()">✖ Cancel</button>
+    <div id="preview-warn" style="display:none" class="msg warn"></div>
+    <button class="btn btn-confirm" id="confirmBtn" onclick="confirmAllOrders()">✅ Confirm & Save All Orders</button>
+    <button class="btn btn-refresh" onclick="clearPreview()">✖ Cancel</button>
   </div>
 
   <!-- EXISTING ORDERS -->
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-    <div style="font-size:13px;font-weight:800;color:#4a2f14">Today's Orders</div>
-    <button class="btn-sm btn-refresh" onclick="loadOrders()" style="background:#e8dfd2;color:#4a2f14">🔄 Refresh</button>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin:4px 0 8px">
+    <div style="font-size:13px;font-weight:800;color:#4a2f14">Saved Orders</div>
+    <button class="btn-sm btn-refresh" onclick="loadOrders()">🔄</button>
   </div>
   <div class="filter-row">
-    <select id="f-ord-driver" onchange="loadOrders()"><option value="">All Drivers</option><option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option><option>Dinesh</option></select>
-    <input type="date" id="f-ord-date" onchange="loadOrders()">
+    <select id="f-ord-driver" onchange="loadOrders()">
+      <option value="">All Drivers</option>
+      <option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option><option>Dinesh</option>
+    </select>
+    <input type="date" id="f-ord-date" onchange="loadOrders()" style="margin-bottom:0">
   </div>
-  <div id="ordersList"><div style="text-align:center;padding:20px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div></div>
+  <div id="ordersList"></div>
 </div>
 
-<!-- ══════════ ROUTES TAB ══════════ -->
+<!-- ══════════ SUMMARY ══════════ -->
+<div class="page" id="pg-summary">
+  <div class="filter-row">
+    <input type="date" id="f-sum-date" onchange="loadSummary()" style="margin-bottom:0">
+  </div>
+  <button class="btn btn-refresh" onclick="loadSummary()">🔄 Refresh Summary</button>
+  <div id="summaryBody"></div>
+</div>
+
+<!-- ══════════ DELIVERY STATUS ══════════ -->
+<div class="page" id="pg-delivery">
+  <div class="stats-grid" id="delivStats"></div>
+  <div class="filter-row">
+    <select id="f-del-driver" onchange="loadDeliveries()">
+      <option value="">All Drivers</option>
+      <option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option>
+    </select>
+    <input type="date" id="f-del-date" onchange="loadDeliveries()" style="margin-bottom:0">
+  </div>
+  <button class="btn btn-refresh" onclick="loadDeliveries()">🔄 Refresh</button>
+  <div id="deliveryList"></div>
+</div>
+
+<!-- ══════════ ROUTES ══════════ -->
 <div class="page" id="pg-routes">
   <div class="stats-grid" id="routeStats"></div>
   <div class="filter-row">
-    <select id="f-rt-driver" onchange="loadRoutes()"><option value="">All Drivers</option><option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option></select>
-    <input type="date" id="f-rt-date" onchange="loadRoutes()">
+    <select id="f-rt-driver" onchange="loadRoutes()">
+      <option value="">All Drivers</option>
+      <option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option>
+    </select>
+    <input type="date" id="f-rt-date" onchange="loadRoutes()" style="margin-bottom:0">
   </div>
   <button class="btn btn-refresh" onclick="loadRoutes()">🔄 Refresh</button>
-  <button class="btn-csv" onclick="exportRouteCSV()">⬇️ Export to CSV</button>
-  <div id="routesList"><div style="text-align:center;padding:20px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div></div>
+  <button class="btn-csv" onclick="exportRouteCSV()">⬇️ Export Routes CSV</button>
+  <div id="routesList"></div>
 </div>
 
-<!-- ══════════ GPS TAB ══════════ -->
+<!-- ══════════ GPS ══════════ -->
 <div class="page" id="pg-gps">
   <div class="stats-grid" id="gpsStats"></div>
   <div class="filter-row">
-    <select id="f-gps-driver" onchange="renderGPS()"><option value="">All Drivers</option><option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option><option>Dinesh</option></select>
-    <select id="f-gps-status" onchange="renderGPS()"><option value="">All</option><option value="saved">Saved ✅</option><option value="missing">Missing ⚠</option></select>
+    <select id="f-gps-driver" onchange="renderGPS()">
+      <option value="">All Drivers</option>
+      <option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option><option>Dinesh</option>
+    </select>
+    <select id="f-gps-status" onchange="renderGPS()">
+      <option value="">All</option>
+      <option value="saved">GPS Saved ✅</option>
+      <option value="missing">GPS Missing ⚠</option>
+    </select>
   </div>
-  <button class="btn-csv" onclick="exportGPSCSV()">⬇️ Export GPS to CSV</button>
+  <button class="btn-csv" onclick="exportGPSCSV()">⬇️ Export GPS CSV</button>
   <div id="gpsList"></div>
 </div>
 
+<script src="config.js"></script>
 <script>
 if(sessionStorage.getItem('role')!=='admin') window.location.href='index.html';
 
-const API = window.API_URL || localStorage.getItem('API_URL') || '';
-function api(p){ if(!API) return Promise.resolve({error:'API not set'}); return fetch(API+'?'+new URLSearchParams(p)).then(r=>r.json()); }
-function apiPost(b){ if(!API) return Promise.resolve({error:'API not set'}); return fetch(API,{method:'POST',body:JSON.stringify(b)}).then(r=>r.json()); }
+const API = CONFIG.API_URL;
+function api(p){ return fetch(API+'?'+new URLSearchParams(p)).then(r=>r.json()).catch(()=>[]); }
+function apiPost(b){ return fetch(API,{method:'POST',body:JSON.stringify(b)}).then(r=>r.json()).catch(()=>({})); }
 function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function logout(){ sessionStorage.clear(); window.location.href='index.html'; }
 
@@ -166,157 +209,111 @@ document.getElementById('topDate').textContent = new Date().toLocaleDateString('
 document.getElementById('ord-date').value = todayStr();
 document.getElementById('f-ord-date').value = todayStr();
 document.getElementById('f-rt-date').value = todayStr();
+document.getElementById('f-sum-date').value = todayStr();
+document.getElementById('f-del-date').value = todayStr();
 
 function showTab(t){
-  ['orders','routes','gps'].forEach(x=>{ document.getElementById('pg-'+x).classList.toggle('on',x===t); document.getElementById('tb-'+x).classList.toggle('on',x===t); });
-  if(t==='routes') loadRoutes();
-  if(t==='gps') loadGPS();
+  ['orders','summary','delivery','routes','gps'].forEach(x=>{
+    document.getElementById('pg-'+x).classList.toggle('on',x===t);
+    document.getElementById('tb-'+x).classList.toggle('on',x===t);
+  });
+  if(t==='summary')  loadSummary();
+  if(t==='delivery') loadDeliveries();
+  if(t==='routes')   loadRoutes();
+  if(t==='gps')      loadGPS();
 }
 
 // ── SHOPS ──
 let allShops=[], parsedOrders=[];
-async function loadShops(){
-  const data=await api({action:'getShops'});
-  if(Array.isArray(data)) allShops=data;
-}
+async function loadShops(){ const d=await api({action:'getShops'}); if(Array.isArray(d)) allShops=d; }
 loadShops();
 
-// ── FUZZY MATCH shop name ──
 function normalize(s){ return (s||'').toLowerCase().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ').trim(); }
-function fuzzyMatch(query, shops){
-  const q=normalize(query);
-  // exact match
-  let m=shops.find(s=>normalize(s.name)===q);
+function fuzzyMatch(q,shops){
+  const nq=normalize(q);
+  let m=shops.find(s=>normalize(s.name)===nq);
   if(m) return {shop:m,score:100};
-  // contains match
-  const words=q.split(' ').filter(w=>w.length>2);
-  let best=null, bestScore=0;
+  const words=nq.split(' ').filter(w=>w.length>2);
+  let best=null,bs=0;
   shops.forEach(s=>{
-    const n=normalize(s.name);
-    let score=0;
-    words.forEach(w=>{ if(n.includes(w)) score+=w.length; });
-    // also check area
-    const a=normalize(s.area||'');
-    words.forEach(w=>{ if(a.includes(w)) score+=w.length*0.5; });
-    if(score>bestScore){ bestScore=score; best=s; }
+    const n=normalize(s.name),a=normalize(s.area||'');
+    let sc=0;
+    words.forEach(w=>{ if(n.includes(w)) sc+=w.length; if(a.includes(w)) sc+=w.length*.5; });
+    if(sc>bs){bs=sc;best=s;}
   });
-  if(bestScore>=4) return {shop:best,score:bestScore};
-  return null;
+  return bs>=4?{shop:best,score:bs}:null;
 }
 
-// ── PARSE PASTED ORDER TEXT ──
+// ── PARSE ──
 function parseOrders(){
   const text=document.getElementById('orderPaste').value.trim();
-  const msgEl=document.getElementById('parse-msg');
-  if(!text){ msgEl.textContent='Please paste order text first.'; msgEl.className='msg er'; msgEl.style.display='block'; return; }
-  if(!allShops.length){ msgEl.textContent='Loading shop list… please try again in 2 seconds.'; msgEl.className='msg in'; msgEl.style.display='block'; loadShops(); return; }
-
-  // Split by lines, skip blank
+  const pmsg=document.getElementById('parse-msg');
+  if(!text){pmsg.textContent='Paste order text first.';pmsg.className='msg er';pmsg.style.display='block';return;}
+  if(!allShops.length){pmsg.textContent='Loading shops… try again.';pmsg.className='msg in';pmsg.style.display='block';loadShops();return;}
   const lines=text.split('\n').map(l=>l.trim()).filter(l=>l.length>2);
   parsedOrders=[];
   let unmatched=0;
-
-  lines.forEach(line=>{
-    // Try to split by common separators: –, -, |, :
+  lines.forEach((line,i)=>{
     const parts=line.split(/\s*[–\-|:]\s*/);
-    const shopRaw=parts[0]||'';
-    const items=parts[1]||'';
-    const qty=parts[2]||'';
-
-    const match=fuzzyMatch(shopRaw, allShops);
+    const shopRaw=parts[0]||'', items=parts[1]||'', qty=parts[2]||'';
+    const match=fuzzyMatch(shopRaw,allShops);
     if(match){
-      parsedOrders.push({
-        raw:line, shopRaw,
-        shop_id:match.shop.shop_id,
-        shop_name:match.shop.name,
-        area:match.shop.area||'',
-        driver:match.shop.assigned_driver||'Dinesh',
-        items:items||shopRaw,
-        qty:qty||'—',
-        matched:true,
-        score:match.score
-      });
+      parsedOrders.push({raw:line,shopRaw,shop_id:match.shop.shop_id,shop_name:match.shop.name,area:match.shop.area||'',driver:match.shop.assigned_driver||CONFIG.UNASSIGNED_OWNER,items:items||shopRaw,qty:qty||'—',matched:true});
     } else {
-      parsedOrders.push({
-        raw:line, shopRaw,
-        shop_id:'',
-        shop_name:shopRaw,
-        area:'Unknown',
-        driver:'Dinesh', // unmatched → assign to Dinesh
-        items:items||line,
-        qty:qty||'—',
-        matched:false,
-        score:0
-      });
+      parsedOrders.push({raw:line,shopRaw,shop_id:'',shop_name:shopRaw,area:'?',driver:CONFIG.UNASSIGNED_OWNER,items:items||line,qty:qty||'—',matched:false});
       unmatched++;
     }
   });
-
-  if(!parsedOrders.length){ msgEl.textContent='No valid order lines found.'; msgEl.className='msg er'; msgEl.style.display='block'; return; }
-
-  msgEl.textContent=`✅ Parsed ${parsedOrders.length} orders · ${parsedOrders.length-unmatched} matched · ${unmatched} unmatched (assigned to Dinesh)`;
-  msgEl.className='msg ok'; msgEl.style.display='block';
+  if(!parsedOrders.length){pmsg.textContent='No valid lines found.';pmsg.className='msg er';pmsg.style.display='block';return;}
+  pmsg.textContent=`✅ ${parsedOrders.length} orders · ${parsedOrders.length-unmatched} matched · ${unmatched} → Dinesh`;
+  pmsg.className='msg ok'; pmsg.style.display='block';
   renderPreview();
 }
 
 function renderPreview(){
   document.getElementById('previewBox').style.display='block';
   document.getElementById('previewTitle').textContent=`Preview — ${parsedOrders.length} Orders`;
-  const unmatched=parsedOrders.filter(o=>!o.matched);
-  if(unmatched.length){
-    const pmsg=document.getElementById('preview-msg');
-    pmsg.textContent=`⚠ ${unmatched.length} shops not found in your list → assigned to Dinesh for manual assignment.\nShops: ${unmatched.map(o=>o.shopRaw).join(', ')}`;
-    pmsg.style.display='block';
-  }
+  const uw=document.getElementById('preview-warn');
+  const unm=parsedOrders.filter(o=>!o.matched);
+  if(unm.length){ uw.textContent=`⚠ ${unm.length} new shops assigned to Dinesh:\n${unm.map(o=>o.shopRaw).join(', ')}`; uw.style.display='block'; }
   document.getElementById('previewList').innerHTML=parsedOrders.map((o,i)=>`
     <div class="parsed-item ${o.matched?'':'unmatched'}">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div class="parsed-shop">${o.shop_name}</div>
-        <span class="badge dc-${o.driver}">${o.driver}</span>
+      <div style="display:flex;justify-content:space-between">
+        <div style="font-size:13px;font-weight:800;color:#4a2f14">${o.shop_name}</div>
+        <span class="badge DC-${o.driver}">${o.driver}</span>
       </div>
-      <div class="parsed-meta">${o.area} · ${o.matched?'✅ Matched':'⚠ New shop → Dinesh'}</div>
-      <div class="parsed-detail"><b>Items:</b> ${o.items}<br><b>Qty:</b> ${o.qty}</div>
-      ${!o.matched?`<div style="margin-top:8px;font-size:11px;color:#8a7a6a;font-family:monospace">Reassign: <select onchange="parsedOrders[${i}].driver=this.value" style="padding:4px 8px;font-size:12px;background:#f5ede0;border:1px solid #e8dfd2;border-radius:6px;margin-left:4px"><option ${o.driver==='Dinesh'?'selected':''}>Dinesh</option><option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option></select></div>`:''}
+      <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin:3px 0">${o.area} · ${o.matched?'✅ Matched':'⚠ New'}</div>
+      <div style="font-size:12px;font-family:monospace;background:#f5ede0;padding:7px 10px;border-radius:8px;margin-top:4px"><b>Items:</b> ${o.items}<br><b>Qty:</b> ${o.qty}</div>
+      ${!o.matched?`<div style="margin-top:6px;font-size:11px;color:#8a7a6a">Reassign: <select onchange="parsedOrders[${i}].driver=this.value" style="padding:4px 8px;font-size:12px;background:#f5ede0;border:1px solid #e8dfd2;border-radius:6px;margin-left:4px"><option>Dinesh</option><option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option></select></div>`:''}
     </div>`).join('');
   document.getElementById('previewBox').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
 async function confirmAllOrders(){
-  const btn=document.getElementById('confirmBtn');
-  btn.textContent='Saving…'; btn.disabled=true;
+  const btn=document.getElementById('confirmBtn'); btn.textContent='Saving…'; btn.disabled=true;
   const date=document.getElementById('ord-date').value||todayStr();
   let ok=0,fail=0;
   for(const o of parsedOrders){
-    const res=await apiPost({action:'addOrder',driver:o.driver,shop_id:o.shop_id,shop_name:o.shop_name,items:o.items,qty:o.qty,note:o.matched?'':'NEW SHOP - needs assignment',date});
-    if(res.ok) ok++; else fail++;
+    const res=await apiPost({action:'addOrder',driver:o.driver,shop_id:o.shop_id,shop_name:o.shop_name,items:o.items,qty:o.qty,note:o.matched?'':'NEW SHOP',date});
+    res.ok?ok++:fail++;
   }
   btn.textContent='✅ Confirm & Save All Orders'; btn.disabled=false;
-  const pmsg=document.getElementById('parse-msg');
-  pmsg.textContent=`✅ ${ok} orders saved!${fail?` ❌ ${fail} failed.`:''}`;
-  pmsg.className='msg ok'; pmsg.style.display='block';
-  clearPreview();
-  loadOrders();
+  const pm=document.getElementById('parse-msg');
+  pm.textContent=`✅ ${ok} saved!${fail?` ❌ ${fail} failed.`:''}`; pm.className='msg ok'; pm.style.display='block';
+  clearPreview(); loadOrders();
 }
 
-function clearPreview(){
-  document.getElementById('previewBox').style.display='none';
-  parsedOrders=[];
-}
+function clearPreview(){ document.getElementById('previewBox').style.display='none'; parsedOrders=[]; }
 
-// ── FILE UPLOAD (CSV) ──
 function handleFile(e){
   const file=e.target.files[0]; if(!file) return;
   const reader=new FileReader();
-  reader.onload=function(ev){
-    const text=ev.target.result;
-    // Convert CSV lines to shop – items – qty format
-    const lines=text.split('\n').slice(1); // skip header
-    const converted=lines.filter(l=>l.trim()).map(l=>{
-      const cols=l.split(',').map(c=>c.replace(/^"|"$/g,'').trim());
-      // assume col0=shop, col1=items, col2=qty
-      return [cols[0],cols[1]||'',cols[2]||''].join(' – ');
+  reader.onload=ev=>{
+    const lines=ev.target.result.split('\n').slice(1);
+    document.getElementById('orderPaste').value=lines.filter(l=>l.trim()).map(l=>{
+      const c=l.split(',').map(x=>x.replace(/^"|"$/g,'').trim());
+      return [c[0],c[1]||'',c[2]||''].join(' – ');
     }).join('\n');
-    document.getElementById('orderPaste').value=converted;
   };
   reader.readAsText(file);
 }
@@ -324,59 +321,139 @@ function handleFile(e){
 // ── ORDERS LIST ──
 async function loadOrders(){
   const el=document.getElementById('ordersList');
-  el.innerHTML='<div style="text-align:center;padding:20px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
+  el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
   const driver=document.getElementById('f-ord-driver').value;
   const date=document.getElementById('f-ord-date').value||todayStr();
   const data=await api({action:'getOrders',driver,date});
-  if(!Array.isArray(data)||!data.length){ el.innerHTML='<div style="text-align:center;padding:30px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders for this filter.</div>'; return; }
+  if(!Array.isArray(data)||!data.length){ el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders for this filter.</div>'; return; }
   el.innerHTML=data.map(o=>`
     <div class="order-card">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div class="order-shop">${o.shop_name}</div>
-        <span class="badge dc-${o.driver}">${o.driver}</span>
+        <div style="font-size:14px;font-weight:800;color:#4a2f14">${o.shop_name}</div>
+        <span class="badge DC-${o.driver}">${o.driver}</span>
       </div>
-      <div class="order-meta">${o.date} · ${o.order_id}</div>
-      <div class="order-items"><b>Items:</b> ${o.items}<br><b>Qty:</b> ${o.qty}${o.note&&o.note!=='—'?'<br><b>Note:</b> '+o.note:''}</div>
+      <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin:3px 0 6px">Delivery: ${o.date} · ${o.order_id}</div>
+      <div style="font-size:12px;font-family:monospace;background:#f5ede0;padding:7px 10px;border-radius:8px;margin-bottom:7px"><b>Items:</b> ${o.items}<br><b>Qty:</b> ${o.qty}${o.note&&o.note!=='—'?'<br><b>Note:</b> '+o.note:''}</div>
       <button class="btn-sm btn-del" onclick="deleteOrder('${o.order_id}')">🗑 Delete</button>
     </div>`).join('');
 }
+async function deleteOrder(id){ if(!confirm('Delete this order?')) return; const r=await apiPost({action:'deleteOrder',order_id:id}); if(r.ok) loadOrders(); }
 
-async function deleteOrder(id){
-  if(!confirm('Delete this order?')) return;
-  const res=await apiPost({action:'deleteOrder',order_id:id});
-  if(res.ok) loadOrders(); else alert('Delete failed');
+// ── SUMMARY ──
+async function loadSummary(){
+  const el=document.getElementById('summaryBody');
+  el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
+  const date=document.getElementById('f-sum-date').value||todayStr();
+  const data=await api({action:'getOrders',date});
+  if(!Array.isArray(data)||!data.length){ el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders for this date.</div>'; return; }
+
+  // Group by driver
+  const byDriver={};
+  data.forEach(o=>{ if(!byDriver[o.driver]) byDriver[o.driver]=[]; byDriver[o.driver].push(o); });
+
+  // Grand total
+  const allItems={};
+  data.forEach(o=>{ (o.items||'').split(',').map(s=>s.trim()).filter(Boolean).forEach(item=>{ allItems[item]=(allItems[item]||0)+1; }); });
+
+  let html=`<div class="card" style="margin-bottom:10px">
+    <div class="lbl">Grand Total — All Drivers</div>
+    <div style="font-size:13px;font-weight:800;color:#4a2f14;margin-bottom:6px">${data.length} orders · ${CONFIG.DRIVERS.filter(d=>byDriver[d]).length} drivers active</div>
+    ${Object.entries(allItems).map(([item,cnt])=>`<div class="summary-row">${item}: <b>${cnt}</b></div>`).join('')}
+  </div>`;
+
+  Object.entries(byDriver).forEach(([drv,ords])=>{
+    // Count items per driver
+    const dItems={};
+    ords.forEach(o=>{ (o.items||'').split(',').map(s=>s.trim()).filter(Boolean).forEach(item=>{ dItems[item]=(dItems[item]||0)+1; }); });
+    html+=`<div class="summary-card">
+      <div class="summary-driver"><span class="badge DC-${drv}">${drv}</span> · ${ords.length} shops</div>
+      ${ords.map(o=>`<div class="summary-row">• ${o.shop_name} — ${o.items} (${o.qty})</div>`).join('')}
+      <div class="summary-total" style="margin-top:6px;padding-top:6px;border-top:1px solid #f0e8dc">Items: ${Object.entries(dItems).map(([i,c])=>i+' ×'+c).join(', ')}</div>
+    </div>`;
+  });
+  el.innerHTML=html;
+}
+
+// ── DELIVERY STATUS ──
+async function loadDeliveries(){
+  const el=document.getElementById('deliveryList');
+  el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
+  const driver=document.getElementById('f-del-driver').value;
+  const date=document.getElementById('f-del-date').value||todayStr();
+  const [orders,delivs,routes]=await Promise.all([
+    api({action:'getOrders',driver,date}),
+    api({action:'getDeliveries',driver,date}),
+    api({action:'getRoutes',driver,date})
+  ]);
+  const ordArr=Array.isArray(orders)?orders:[];
+  const delArr=Array.isArray(delivs)?delivs:[];
+  const routeArr=Array.isArray(routes)?routes:[];
+
+  const delivMap={};
+  delArr.forEach(d=>delivMap[d.shop_id]=d);
+  const done=delArr.length;
+  const total=ordArr.length;
+
+  document.getElementById('delivStats').innerHTML=`
+    <div class="stat"><div class="stat-n">${total}</div><div class="stat-l">Total</div></div>
+    <div class="stat"><div class="stat-n" style="color:#2d7a4f">${done}</div><div class="stat-l">Delivered</div></div>
+    <div class="stat"><div class="stat-n" style="color:#c8382a">${total-done}</div><div class="stat-l">Pending</div></div>`;
+
+  if(!ordArr.length){ el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders for this filter.</div>'; return; }
+
+  // Show route start times
+  let routeInfo='';
+  if(routeArr.length){
+    routeInfo=`<div class="card" style="margin-bottom:10px"><div class="lbl">Route Status</div>${routeArr.map(r=>`<div style="font-size:12px;font-family:monospace;padding:3px 0"><span class="badge DC-${r.driver}">${r.driver}</span> started ${r.start_time||'—'} · ${r.total_shops||'?'} shops · ${r.total_km||'?'} km</div>`).join('')}</div>`;
+  }
+
+  el.innerHTML=routeInfo+ordArr.map(o=>{
+    const isDone=!!delivMap[o.shop_id];
+    return `<div class="deliv-row">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:800">${o.shop_name}</div>
+        <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px"><span class="badge DC-${o.driver}">${o.driver}</span> · ${o.items}</div>
+        ${isDone?`<div style="font-size:10px;font-family:monospace;color:#2d7a4f;margin-top:2px">✅ Delivered at ${delivMap[o.shop_id]?.time||''}</div>`:''}
+      </div>
+      <span class="badge ${isDone?'b-done':'b-miss'}">${isDone?'Done':'Pending'}</span>
+    </div>`;
+  }).join('');
 }
 
 // ── ROUTES ──
 let routesData=[];
 async function loadRoutes(){
   const el=document.getElementById('routesList');
-  el.innerHTML='<div style="text-align:center;padding:20px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
+  el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
   const date=document.getElementById('f-rt-date').value||todayStr();
   const driver=document.getElementById('f-rt-driver').value;
-  const data=await api({action:'getRoutes',date,driver});
-  routesData=Array.isArray(data)?data:[];
-  const totalShops=routesData.reduce((s,r)=>s+(parseInt(r.total_shops)||0),0);
-  const totalKm=routesData.reduce((s,r)=>s+(parseInt(r.total_km)||0),0);
+  routesData=await api({action:'getRoutes',date,driver});
+  if(!Array.isArray(routesData)) routesData=[];
+  const ts=routesData.reduce((s,r)=>s+(parseInt(r.total_shops)||0),0);
+  const tk=routesData.reduce((s,r)=>s+(parseInt(r.total_km)||0),0);
   document.getElementById('routeStats').innerHTML=`
     <div class="stat"><div class="stat-n">${routesData.length}</div><div class="stat-l">Drivers</div></div>
-    <div class="stat"><div class="stat-n">${totalShops}</div><div class="stat-l">Total Shops</div></div>
-    <div class="stat"><div class="stat-n">${totalKm}</div><div class="stat-l">Total KM</div></div>`;
-  if(!routesData.length){ el.innerHTML='<div style="text-align:center;padding:30px;font-size:13px;color:#8a7a6a;font-family:monospace">No route data for this date.</div>'; return; }
+    <div class="stat"><div class="stat-n">${ts}</div><div class="stat-l">Shops</div></div>
+    <div class="stat"><div class="stat-n">${tk}</div><div class="stat-l">KM</div></div>`;
+  if(!routesData.length){ el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No route data.</div>'; return; }
   el.innerHTML=routesData.map(r=>{
-    let shops=[]; try{ shops=JSON.parse(r.shop_order||'[]'); }catch(e){}
+    let shops=[]; try{shops=JSON.parse(r.shop_order||'[]');}catch(e){}
     return `<div class="driver-card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
         <div style="font-size:15px;font-weight:800">${r.driver}</div>
-        <div style="display:flex;gap:5px"><span class="badge b-ok">${r.total_shops} shops</span><span class="badge b-warn">${r.total_km} km</span><span class="badge" style="background:#f3e8ff;color:#6e3da8">${r.est_time}</span></div>
+        <div style="display:flex;gap:4px">
+          <span class="badge b-ok">${r.total_shops} shops</span>
+          <span class="badge b-warn">${r.total_km} km</span>
+          <span class="badge" style="background:#f3e8ff;color:#6e3da8">${r.est_time}</span>
+        </div>
       </div>
-      <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-bottom:8px">${r.updated_at||''}</div>
+      <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-bottom:6px">Started: ${r.start_time||'—'} · Updated: ${r.updated_at||''}</div>
       ${shops.map((s,i)=>`<div class="route-mini">${i+1}. ${s}</div>`).join('')}
     </div>`;
   }).join('');
 }
 
-// ── GPS OVERVIEW ──
+// ── GPS ──
 let gpsShops=[];
 async function loadGPS(){ gpsShops=await api({action:'getShops'}); if(!Array.isArray(gpsShops)) gpsShops=[]; renderGPS(); }
 function renderGPS(){
@@ -394,24 +471,25 @@ function renderGPS(){
   document.getElementById('gpsList').innerHTML=list.map(s=>`
     <div class="order-card">
       <div style="display:flex;justify-content:space-between">
-        <div class="order-shop">${s.name}</div>
-        <span class="badge ${s.lat?'b-ok':'b-miss'}">${s.lat?'✅ GPS':'⚠ Missing'}</span>
+        <div style="font-size:14px;font-weight:800;color:#4a2f14">${s.name}</div>
+        <span class="badge ${s.lat?'b-ok':'b-miss'}">${s.lat?'✅ GPS':'⚠ No GPS'}</span>
       </div>
-      <div class="order-meta">${s.area||''} · <span class="badge dc-${s.assigned_driver||'Dinesh'}">${s.assigned_driver||'Unassigned'}</span></div>
-      ${s.lat?`<div style="font-size:11px;font-family:monospace;color:#2d7a4f;margin-bottom:6px">${s.lat}, ${s.lng}</div><button class="btn-sm btn-map" onclick="window.open('https://www.google.com/maps?q=${s.lat},${s.lng}','_blank')">🗺 Map</button>`:''}
+      <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin:3px 0 6px">${s.area||''} · <span class="badge DC-${s.assigned_driver||'Dinesh'}">${s.assigned_driver||'Unassigned'}</span></div>
+      ${s.lat?`<div style="font-size:11px;font-family:monospace;color:#2d7a4f;margin-bottom:6px">${s.lat}, ${s.lng}</div>
+        <button class="btn-sm btn-map" onclick="window.open('https://www.google.com/maps?q=${s.lat},${s.lng}','_blank')">🗺 Open Map</button>`:''}
     </div>`).join('');
 }
 
 // ── EXPORTS ──
 function exportRouteCSV(){
-  const rows=[['Date','Driver','Total Shops','Total KM','Est Time'],...routesData.map(r=>[r.date,r.driver,r.total_shops,r.total_km,r.est_time])];
-  downloadCSV(rows,'baked-routes-'+todayStr()+'.csv');
+  const rows=[['Date','Driver','Start Time','Total Shops','KM','Est Time'],...routesData.map(r=>[r.date,r.driver,r.start_time||'',r.total_shops,r.total_km,r.est_time])];
+  dlCSV(rows,'baked-routes-'+todayStr()+'.csv');
 }
 function exportGPSCSV(){
-  const rows=[['Shop','Area','Driver','Lat','Lng','Last Updated By','At'],...gpsShops.map(s=>[s.name,s.area,s.assigned_driver,s.lat||'',s.lng||'',s.last_updated_by||'',s.last_updated_at||''])];
-  downloadCSV(rows,'baked-gps-'+todayStr()+'.csv');
+  const rows=[['Shop','Area','Driver','Lat','Lng','Updated By','At'],...gpsShops.map(s=>[s.name,s.area,s.assigned_driver,s.lat||'',s.lng||'',s.last_updated_by||'',s.last_updated_at||''])];
+  dlCSV(rows,'baked-gps-'+todayStr()+'.csv');
 }
-function downloadCSV(rows,fname){
+function dlCSV(rows,fname){
   const csv=rows.map(r=>r.map(c=>'"'+String(c||'').replace(/"/g,'""')+'"').join(',')).join('\n');
   const a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv); a.download=fname; document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
