@@ -18,10 +18,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;
 .page{display:none;padding:12px 14px 80px}.page.on{display:block}
 .card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:14px;margin-bottom:10px}
 .lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:8px;text-transform:uppercase}
-select,input[type=text],input[type=date],textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:8px}
+select,input[type=text],input[type=date],input[type=password],textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:8px}
 textarea{resize:vertical;min-height:140px;font-size:13px;line-height:1.7}
-.btn{width:100%;padding:13px;border:none;border-radius:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:8px}
-.btn-parse{background:#6e3da8;color:#fff}.btn-confirm{background:#2d7a4f;color:#fff}.btn-refresh{background:#e8dfd2;color:#4a2f14}
+.btn{width:100%;padding:13px;border:none;border-radius:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:8px;transition:all .15s}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.btn-parse{background:#1a73e8;color:#fff}.btn-confirm{background:#2d7a4f;color:#fff}.btn-refresh{background:#e8dfd2;color:#4a2f14}
 .btn-sm{padding:7px 11px;border-radius:10px;font-size:11px;font-weight:700;border:none;cursor:pointer;font-family:-apple-system,sans-serif}
 .btn-del{background:#fde8e8;color:#c8382a}.btn-map{background:#e3f2fd;color:#1565c0}
 .btn-csv{background:#e8f5e9;color:#2d7a4f;width:100%;padding:12px;border-radius:12px;font-size:14px;font-weight:800;border:none;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:10px}
@@ -51,7 +52,15 @@ textarea{resize:vertical;min-height:140px;font-size:13px;line-height:1.7}
 .parse-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
 .ps{background:#fff;border:1.5px solid #e8dfd2;border-radius:10px;padding:8px;text-align:center}
 .ps-n{font-size:18px;font-weight:900;color:#4a2f14}.ps-l{font-size:8px;color:#8a7a6a;font-family:monospace;text-transform:uppercase;letter-spacing:1px}
-.hint-box{background:#f0f4ff;border:1.5px dashed #90caf9;border-radius:12px;padding:10px 14px;margin-bottom:10px;font-size:11px;font-family:monospace;color:#1565c0;line-height:1.8}.hint-box b{color:#1a237e}
+.hint-box{background:#e8f0fe;border:1.5px dashed #4285f4;border-radius:12px;padding:10px 14px;margin-bottom:10px;font-size:11px;font-family:monospace;color:#1a73e8;line-height:1.8}.hint-box b{color:#174ea6}
+.ai-loader{display:flex;align-items:center;gap:10px;padding:14px;background:#e8f0fe;border:1.5px solid #a8c7fa;border-radius:14px;margin-bottom:10px}
+.ai-dot{width:8px;height:8px;background:#1a73e8;border-radius:50%;animation:pulse .8s infinite alternate}
+.ai-dot:nth-child(2){animation-delay:.2s}.ai-dot:nth-child(3){animation-delay:.4s}
+@keyframes pulse{0%{opacity:.3;transform:scale(.8)}100%{opacity:1;transform:scale(1.2)}}
+.ai-label{font-size:12px;font-weight:700;color:#1a73e8;font-family:monospace}
+.key-box{background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;padding:14px;margin-bottom:10px}
+.key-status{display:flex;align-items:center;gap:8px;font-size:12px;font-family:monospace;padding:8px 12px;border-radius:8px;margin-bottom:8px}
+.key-ok{background:#e8f5e9;color:#2d7a4f}.key-miss{background:#fff8e1;color:#7a4800}
 </style>
 </head>
 <body>
@@ -66,17 +75,40 @@ textarea{resize:vertical;min-height:140px;font-size:13px;line-height:1.7}
 
 <!-- ORDERS -->
 <div class="page on" id="pg-orders">
+
+  <!-- GEMINI API KEY SETUP -->
+  <div class="key-box" id="keySetupBox">
+    <div class="lbl">🔑 Gemini API Key (One-time setup)</div>
+    <div id="keyStatus"></div>
+    <div id="keyInputArea">
+      <input type="password" id="geminiKeyInput" placeholder="Paste your Gemini API key here…" style="font-size:13px">
+      <div style="display:flex;gap:8px">
+        <button class="btn-sm" style="background:#1a73e8;color:#fff;padding:8px 16px;flex:1" onclick="saveGeminiKey()">💾 Save Key</button>
+        <button class="btn-sm" style="background:#fde8e8;color:#c8382a;padding:8px 16px" onclick="clearGeminiKey()">🗑</button>
+      </div>
+      <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:6px;line-height:1.6">
+        Get free key: <b>aistudio.google.com</b> → Get API Key → Create<br>
+        No credit card needed · Key saved in your browser only
+      </div>
+    </div>
+  </div>
+
   <div class="card">
     <div class="lbl">📋 Paste WhatsApp Orders</div>
-    <div class="hint-box"><b>Paste forwarded bold-format messages directly.</b><br>Single-line or multi-line both work.<br>✅ Known shops → auto-assign driver · ⚠ New → <b>Dinesh</b></div>
-    <textarea id="orderPaste" placeholder="Paste your WhatsApp forwarded orders here..."></textarea>
+    <div class="hint-box">
+      <b>🤖 Gemini AI Parsing (FREE)</b><br>
+      Paste forwarded bold-format messages directly.<br>
+      Gemini reads & structures all orders automatically.<br>
+      ✅ Known shops → auto-assign driver · ⚠ New → <b>Dinesh</b>
+    </div>
+    <textarea id="orderPaste" placeholder="Paste your WhatsApp forwarded orders here…"></textarea>
     <div style="display:flex;gap:8px;margin-bottom:8px">
-      <label style="flex:1;padding:10px;background:#f0f4ff;border:1.5px dashed #90caf9;border-radius:10px;text-align:center;font-size:12px;font-weight:700;color:#1565c0;cursor:pointer">📎 Upload CSV<input type="file" accept=".csv" style="display:none" onchange="handleFile(event)"></label>
-      <button class="btn-sm" style="background:#fde8e8;color:#c8382a;padding:10px 14px" onclick="document.getElementById('orderPaste').value=''">Clear</button>
+      <button class="btn-sm" style="background:#fde8e8;color:#c8382a;padding:10px 14px;flex:1" onclick="document.getElementById('orderPaste').value=''">Clear</button>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:8px"><div style="flex:1"><div class="lbl" style="margin-bottom:4px">Delivery Date</div><input type="date" id="ord-date" style="margin-bottom:0"></div></div>
     <div id="parse-msg" style="display:none" class="msg in"></div>
-    <button class="btn btn-parse" onclick="parseWhatsAppOrders()">🔍 Parse & Match Shops</button>
+    <div id="ai-loading" style="display:none" class="ai-loader"><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-label">Gemini is reading orders…</div></div>
+    <button class="btn btn-parse" id="parseBtn" onclick="parseWithGemini()">🤖 Parse with Gemini AI (Free)</button>
   </div>
   <div id="parseStatsBox" style="display:none"><div class="parse-stats" id="parseStats"></div></div>
   <div id="previewBox" style="display:none">
@@ -90,6 +122,7 @@ textarea{resize:vertical;min-height:140px;font-size:13px;line-height:1.7}
   <div class="filter-row"><select id="f-ord-driver" onchange="loadOrders()"><option value="">All Drivers</option><option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option><option>Dinesh</option></select><input type="date" id="f-ord-date" onchange="loadOrders()" style="margin-bottom:0"></div>
   <div id="ordersList"></div>
 </div>
+
 <!-- SUMMARY -->
 <div class="page" id="pg-summary"><div class="filter-row"><input type="date" id="f-sum-date" onchange="loadSummary()" style="margin-bottom:0"></div><button class="btn btn-refresh" onclick="loadSummary()">🔄 Refresh</button><div id="summaryBody"></div></div>
 <!-- DELIVERY -->
@@ -103,150 +136,189 @@ textarea{resize:vertical;min-height:140px;font-size:13px;line-height:1.7}
 const CONFIG={API_URL:'https://script.google.com/macros/s/AKfycbyi-IJ6NLR28hRTeesy52THTbdcYCSnz3lp7NtEaJsxBOiNOm-9emMu0xOHT6hvWSE-/exec',DRIVERS:['Bharat','Anand','Vikas','Yuvraj','Rama'],ADMIN_PASS:'baked@admin',UNASSIGNED_OWNER:'Dinesh'};
 
 /* ═══════════════════════════════════════════════════
-   WHATSAPP PARSER v4 — TOKENIZER + CATEGORY HEADERS
-   ═══════════════════════════════════════════════════
-   
-   Bold token types:
-   - SHOP_NAME: cafe/restaurant name (starts new order block)
-   - AREA: known Pune location
-   - DATE: dd.mm.yy or dd/mm/yyyy
-   - CAT: Category header like "BREAD 5x5" — prefixes NEXT items' names
-   - SPEC: Attribute like "4 inch", "EGG" — attaches to PREVIOUS item
-   
-   Category headers (CAT) vs Attribute specs (SPEC):
-   - *BREAD 5x5* → CAT: next items "White - 1" become "White BREAD 5x5"
-   - *4 inch* → SPEC: previous item gets "(4 inch)" appended
-   - *BUN 4.5"* → CAT: next "White - 8" becomes "White BUN 4.5""
-   - *EGG* → SPEC: previous brioche gets "(EGG)"
+   GEMINI API KEY MANAGEMENT
    ═══════════════════════════════════════════════════ */
 
-const KNOWN_AREAS=['BANER','AUNDH','KHARADI','WAKAD','PIMPRI','DHANORI','KOREGAON PARK','VIMAN NAGAR','HINJEWADI','FC ROAD','NIBM','MG ROAD','LOHGAON','LOHGOAN','AKURDI','KALYANI NAGAR','SINHAGAD RD','SINHAGAD ROAD','NARAYAN PETH','PIMPLE SAUDAGAR','PIMPLE','SAUDAGAR','SB ROAD','SANGVI','MUNDHWA','PRABHAT ROAD','MAHALUNGE','DAPODI','SANJAY PARK','CHANDAN NAGAR','BHUMKAR CHOWK','AEROMALL','BHARTIYA VP','RAILWAY STATION','METRO STATION','PHASE 1','PHASE 2','PHASE 3','ICC TECH PARK','SGS MALL','SGS Mall','AMAR MADHUBAN','M AGILE','PRIDE CITY LOH','CHANDAN','NAGAR','BALEWADI','PASHAN','KOTHRUD','HADAPSAR','UNDRI','KONDHWA','MAGARPATTA','YERAWADA','CAMP','SHIVAJI NAGAR','DECCAN','BHARTIYA'];
+let GEMINI_KEY = '';
 
-// Category headers: product-type + size, prefix NEXT items
-const CAT_RE=[/^BREAD\s*\d+[x×]\d+/i,/^BUN\s+\d/i,/^SUB\s+\d+[x×]\d+/i,/^PIZZA\s+\d/i,/^BRIOCHE\s+BUN$/i,/^WHITE\s+PIZZA$/i,/^BROTA$/i];
-
-// Attribute specs: size/modifier, attach to PREVIOUS item
-const ATTR_RE=[/^\d+(\.\d+)?\s*(INCH|")/i,/^\d+[x×]\d+$/i,/^\d+\s*(GM|GRAMS?|KG)/i,/^(EGG|PLAIN|THICK|THIN|RING|SMALL|WHEAT|BROWN|WHITE)$/i,/^(DECK\s*OVEN|WITHOUT\s*(RING|MOULD)|SMALL\s*RING|HEART\s*SHAPE)/i,/^(MIX\s*SEEDS?|WHITE\s*SEEDS?|THIN\s*CRUST|THINK\s*CRUST)$/i,/^(PJS\s*HOSPITALITY|MILA'?s?\s*KITCHEN)$/i,/^(PICK\s*UP|MORNING|PLEASE\s*SEND)/i,/^Without\s+Mould$/i,/^\d+(\.\d+)?"\s*PLAIN/i,/^\d+\s*GRAMS$/i,/^Thick\s+Pizza/i];
-
-function se(s){return s.replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}◻️⬜🟫🍔🍩🥖🥚🍼🥬🥔🫛]/gu,'').trim();}
-
-function classifyBold(val){
-  const c=se(val).replace(/^\./,'').trim(),up=c.toUpperCase();
-  if(!c||c.length<2)return'OTHER';
-  if(/^\d{1,2}[\.\/-]\d{1,2}[\.\/-]\d{2,4}$/.test(c))return'DATE';
-  for(const p of CAT_RE)if(p.test(c))return'CAT';
-  for(const p of ATTR_RE)if(p.test(c))return'SPEC';
-  if(/^\d+(\.\d+)?\s*(inch|")/i.test(se(val)))return'SPEC';
-  if(KNOWN_AREAS.some(a=>up===a))return'AREA';
-  const al=c.replace(/[^A-Za-z]/g,''),uc=c.replace(/[^A-Z]/g,'').length;
-  if(al.length>=2&&uc/Math.max(al.length,1)>0.4&&c.length>=3)return'SHOP_NAME';
-  return'OTHER';
+function loadGeminiKey() {
+  try { GEMINI_KEY = localStorage.getItem('baked_gemini_key') || ''; } catch(e) { GEMINI_KEY = ''; }
+  updateKeyUI();
 }
 
-function exDate(s){const m=se(s).match(/(\d{1,2})[\.\/-](\d{1,2})[\.\/-](\d{2,4})/);if(!m)return'';let y=m[3];if(y.length===2)y='20'+y;return y+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');}
+function saveGeminiKey() {
+  const key = document.getElementById('geminiKeyInput').value.trim();
+  if (!key) return;
+  try { localStorage.setItem('baked_gemini_key', key); } catch(e) {}
+  GEMINI_KEY = key;
+  document.getElementById('geminiKeyInput').value = '';
+  updateKeyUI();
+}
 
-function parseWhatsAppText(raw){
-  const text=raw.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
-  // Tokenize: split into bold and plain segments
-  const tokens=[];let pos=0;const br=/\*([^*]+)\*/g;let match;
-  while((match=br.exec(text))!==null){
-    if(match.index>pos)tokens.push({type:'plain',value:text.substring(pos,match.index)});
-    tokens.push({type:'bold',value:match[1],cls:classifyBold(match[1])});
-    pos=match.index+match[0].length;
+function clearGeminiKey() {
+  try { localStorage.removeItem('baked_gemini_key'); } catch(e) {}
+  GEMINI_KEY = '';
+  updateKeyUI();
+}
+
+function updateKeyUI() {
+  const status = document.getElementById('keyStatus');
+  const inputArea = document.getElementById('keyInputArea');
+  if (GEMINI_KEY) {
+    const masked = GEMINI_KEY.substring(0, 8) + '••••••••' + GEMINI_KEY.slice(-4);
+    status.innerHTML = `<div class="key-status key-ok">✅ Key saved: <b>${masked}</b></div>`;
+    inputArea.style.display = 'none';
+  } else {
+    status.innerHTML = `<div class="key-status key-miss">⚠ No API key — set up below (free, one-time)</div>`;
+    inputArea.style.display = 'block';
   }
-  if(pos<text.length)tokens.push({type:'plain',value:text.substring(pos)});
+}
 
-  const orders=[];
-  let cur=null; // {name, areas[], date, catHeader, pSpecs[], items[]}
+loadGeminiKey();
 
-  function finish(){
-    if(!cur||!cur.name)return;
-    orders.push({shop_name:cur.name.replace(/^\.+/,'').trim(),area:cur.areas.join(' '),date:cur.date,items:cur.items});
-    cur=null;
-  }
+/* ═══════════════════════════════════════════════════
+   GEMINI AI PARSER
+   ═══════════════════════════════════════════════════ */
 
-  for(let i=0;i<tokens.length;i++){
-    const t=tokens[i];
-    if(t.type==='bold'){
-      if(t.cls==='SHOP_NAME'){
-        // New shop if: no current order, or current already has items
-        if(!cur||cur.items.length>0){finish();cur={name:t.value.trim(),areas:[],date:'',catHeader:'',pSpecs:[],items:[]};}
-        else{cur.name+=' '+t.value.trim();} // multi-word shop name
+async function callGemini(rawText) {
+  if (!GEMINI_KEY) throw new Error('No Gemini API key. Add your key above (free from aistudio.google.com)');
+
+  const systemPrompt = `You are a bakery order parser for "It's Baked" bakery in Pune, India.
+
+You receive WhatsApp forwarded messages containing orders from multiple cafes/shops.
+
+PARSE RULES:
+1. Each order block starts with a shop/cafe name (usually in bold *SHOP NAME* or ALL CAPS)
+2. After shop name comes area/location (like BANER, KHARADI, WAKAD etc.)
+3. Then date (format: dd.mm.yy or dd/mm/yyyy)
+4. Then items with quantities: "Item Name - Qty" (e.g., "White Bun - 8")
+5. Category headers like *BREAD 5x5* mean the NEXT short-name items belong to that category:
+   - *BREAD 5x5* followed by "White - 1" means "White Bread 5x5 - 1"
+   - *BREAD 5x5* followed by "Brown - 3" means "Brown Bread 5x5 - 3"
+   - But "Sweet Bun - 4" is a full name, NOT part of BREAD category
+6. Specs/sizes like *4 inch*, *EGG*, *PLAIN*, *MIX SEEDS*, *WITHOUT MOULD*, *DECK OVEN* describe the item they relate to
+7. Sub-brands like *PJS Hospitality*, *MILA's KITCHEN* are notes, not shop names
+8. Some items have emoji that should be ignored for naming: 🍔🍩🥖🥚🍼🥬🥔🫛⬜🟫◻️
+9. The text may come as a SINGLE LINE with no line breaks between shops. Identify where each new shop order begins.
+10. Same shop name at different locations = separate orders (e.g., BURGER BARN KOREGAON PARK vs BURGER BARN MG ROAD)
+
+Respond ONLY with a valid JSON array. No markdown, no backticks, no explanation. Each element:
+{"shop_name":"EXACT shop name","area":"location","date":"YYYY-MM-DD","items":[{"name":"Full item name","qty":number,"spec":"size or attribute or empty string"}]}`;
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      system_instruction: { parts: [{ text: systemPrompt }] },
+      contents: [{ parts: [{ text: rawText }] }],
+      generationConfig: {
+        temperature: 0.1,
+        responseMimeType: 'application/json'
       }
-      else if(t.cls==='AREA'&&cur){cur.areas.push(se(t.value));}
-      else if(t.cls==='DATE'&&cur){if(!cur.date)cur.date=exDate(t.value);}
-      else if(t.cls==='CAT'&&cur){
-        // Category header: "BREAD 5x5", "BUN 4.5"", "BRIOCHE BUN", etc.
-        // Prefixes the NEXT plain-text items' names
-        cur.catHeader=se(t.value);
-      }
-      else if(t.cls==='SPEC'&&cur){
-        const sv=se(t.value);
-        if(cur.items.length>0){
-          // Attach spec to last item
-          const l=cur.items[cur.items.length-1];
-          l.spec=l.spec?l.spec+', '+sv:sv;
-        }else{
-          // No items yet — queue as pending spec for next item
-          cur.pSpecs.push(sv);
-        }
-      }
-    }else{
-      // Plain text — extract items
-      if(!cur)continue;
-      const pt=t.value;
-      // Check for inline date
-      const dm=pt.match(/(\d{1,2})[\.\/-](\d{1,2})[\.\/-](\d{2,4})/);
-      if(dm&&!cur.date)cur.date=exDate(dm[0]);
+    })
+  });
 
-      // Item regex: word(s) + optional emoji + " - " + number
-      const ir=/([\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}◻️⬜🟫🍔🍩🥖🥚🍼🥬🥔🫛]*\s*)?((?:[A-Za-z][A-Za-z.']*\s*)+|(?:\d+(?:\.\d+)?)\s*(?:inch|"))[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}◻️⬜🟫🍔🍩🥖🥚🍼🥬🥔🫛\s]*-\s*(\d+)/gu;
-      let im;
-      while((im=ir.exec(pt))!==null){
-        let name=(im[2]||'').trim();
-        const qty=parseInt(im[3]);
-
-        // Size-qty pattern: "9 inch - 20"
-        if(/^\d+(\.\d+)?\s*(inch|")/i.test(name)){
-          if(cur.catHeader){
-            const specs=[...cur.pSpecs,name];
-            cur.items.push({name:cur.catHeader,qty,spec:specs.join(', ')});
-            cur.catHeader='';cur.pSpecs=[];
-          }else if(cur.pSpecs.length>0){
-            const pn=cur.pSpecs.find(s=>!/^\d/.test(s)&&!/^(THIN|THICK|HEART|PLAIN|EGG|MIX|WHITE|RING|DECK|WITHOUT|SMALL)/i.test(s));
-            const itemName=pn||cur.pSpecs[0]||'Item';
-            const oSpecs=cur.pSpecs.filter(s=>s!==itemName);oSpecs.push(name);
-            cur.items.push({name:itemName,qty,spec:oSpecs.join(', ')});cur.pSpecs=[];
-          }else if(cur.items.length>0){
-            const l=cur.items[cur.items.length-1];
-            l.spec=l.spec?l.spec+', '+name:name;l.qty=qty;
-          }
-          continue;
-        }
-
-        // Normal item
-        const item={name,qty,spec:''};
-
-        // If category header active: short variant names get prefixed
-        if(cur.catHeader){
-          const isShort=name.split(' ').length<=1||/^(White|Brown|Multigrain|Whole|Plain)$/i.test(name);
-          if(isShort){
-            item.name=name+' '+cur.catHeader;
-            // catHeader stays active for more items in same category
-          }else{
-            // Full item name like "Sweet Bun" = category ended
-            cur.catHeader='';
-          }
-        }
-
-        // Attach any pending specs
-        if(cur.pSpecs.length>0){item.spec=cur.pSpecs.join(', ');cur.pSpecs=[];}
-        cur.items.push(item);
-      }
+  if (!response.ok) {
+    const err = await response.text();
+    if (response.status === 400 && err.includes('API_KEY_INVALID')) {
+      throw new Error('Invalid API key. Get a new one from aistudio.google.com');
     }
+    if (response.status === 429) {
+      throw new Error('Rate limit hit. Wait a minute and try again.');
+    }
+    throw new Error(`Gemini API error ${response.status}`);
   }
-  finish();
-  return orders;
+
+  const data = await response.json();
+
+  // Extract text from Gemini response
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  if (!text) throw new Error('Empty response from Gemini');
+
+  // Parse JSON (Gemini with responseMimeType should return clean JSON)
+  const cleaned = text.replace(/```json|```/g, '').trim();
+  return JSON.parse(cleaned);
+}
+
+/* ═══ PARSE WITH GEMINI ═══ */
+
+async function parseWithGemini() {
+  const rawText = document.getElementById('orderPaste').value.trim();
+  const pmsg = document.getElementById('parse-msg');
+  const loader = document.getElementById('ai-loading');
+  const btn = document.getElementById('parseBtn');
+
+  if (!GEMINI_KEY) {
+    pmsg.textContent = '⚠ Add your Gemini API key first (free from aistudio.google.com)';
+    pmsg.className = 'msg warn'; pmsg.style.display = 'block';
+    document.getElementById('keySetupBox').scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+  if (!rawText) {
+    pmsg.textContent = '❌ Paste WhatsApp order text first.';
+    pmsg.className = 'msg er'; pmsg.style.display = 'block'; return;
+  }
+  if (!allShops.length) {
+    pmsg.textContent = '⏳ Loading shops…';
+    pmsg.className = 'msg in'; pmsg.style.display = 'block'; loadShops(); return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '🤖 Gemini is parsing…';
+  loader.style.display = 'flex';
+  pmsg.style.display = 'none';
+
+  try {
+    const aiOrders = await callGemini(rawText);
+
+    if (!Array.isArray(aiOrders) || !aiOrders.length) {
+      throw new Error('No orders returned from Gemini');
+    }
+
+    parsedOrders = [];
+    let matched = 0, unmatched = 0, totalItems = 0;
+
+    aiOrders.forEach(wo => {
+      const match = fuzzyMatch(wo.shop_name, wo.area, allShops);
+      const items = (wo.items || []).map(it => ({
+        name: it.name || 'Unknown',
+        qty: parseInt(it.qty) || 0,
+        spec: it.spec || ''
+      }));
+      totalItems += items.length;
+
+      parsedOrders.push({
+        shop_id: match ? match.shop.shop_id : '',
+        shop_name: match ? match.shop.name : wo.shop_name,
+        area: match ? (match.shop.area || wo.area) : (wo.area || '?'),
+        driver: match ? (match.shop.assigned_driver || CONFIG.UNASSIGNED_OWNER) : CONFIG.UNASSIGNED_OWNER,
+        items, date: wo.date || '', matched: !!match, raw_name: wo.shop_name
+      });
+      match ? matched++ : unmatched++;
+    });
+
+    document.getElementById('parseStatsBox').style.display = 'block';
+    document.getElementById('parseStats').innerHTML = `
+      <div class="ps"><div class="ps-n">${parsedOrders.length}</div><div class="ps-l">Shops</div></div>
+      <div class="ps"><div class="ps-n" style="color:#2d7a4f">${matched}</div><div class="ps-l">Matched</div></div>
+      <div class="ps"><div class="ps-n" style="color:#c8382a">${unmatched}</div><div class="ps-l">→ Dinesh</div></div>
+      <div class="ps"><div class="ps-n" style="color:#1a73e8">${totalItems}</div><div class="ps-l">Items</div></div>`;
+
+    pmsg.textContent = `✅ Gemini parsed ${parsedOrders.length} orders · ${matched} matched · ${unmatched} new → Dinesh`;
+    pmsg.className = 'msg ok'; pmsg.style.display = 'block';
+    renderPreview();
+
+  } catch (err) {
+    console.error('Parse error:', err);
+    pmsg.textContent = `❌ ${err.message}`;
+    pmsg.className = 'msg er'; pmsg.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🤖 Parse with Gemini AI (Free)';
+    loader.style.display = 'none';
+  }
 }
 
 /* ═══ API & INIT ═══ */
@@ -272,25 +344,6 @@ function fuzzyMatch(shopName,area,shops){
   const nw=nq.split(' ').filter(w=>w.length>1);let best=null,bs=0;
   shops.forEach(s=>{const sn=normalize(s.name),sa=normalize(s.area||'');let sc=0;nw.forEach(w=>{if(sn.includes(w))sc+=w.length*2;});if(na)na.split(' ').filter(w=>w.length>2).forEach(w=>{if(sa.includes(w))sc+=w.length;});if(na&&sa===na)sc+=5;if(sc>bs){bs=sc;best=s;}});
   return bs>=5?{shop:best,score:bs}:null;
-}
-
-/* ═══ PARSE BUTTON ═══ */
-function parseWhatsAppOrders(){
-  const text=document.getElementById('orderPaste').value.trim();const pmsg=document.getElementById('parse-msg');
-  if(!text){pmsg.textContent='❌ Paste WhatsApp order text first.';pmsg.className='msg er';pmsg.style.display='block';return;}
-  if(!allShops.length){pmsg.textContent='⏳ Loading shops…';pmsg.className='msg in';pmsg.style.display='block';loadShops();return;}
-  const waOrders=parseWhatsAppText(text);
-  if(!waOrders.length){pmsg.textContent='❌ No orders detected.';pmsg.className='msg er';pmsg.style.display='block';return;}
-  parsedOrders=[];let matched=0,unmatched=0,totalItems=0;
-  waOrders.forEach(wo=>{
-    const match=fuzzyMatch(wo.shop_name,wo.area,allShops);totalItems+=wo.items.length;
-    parsedOrders.push({shop_id:match?match.shop.shop_id:'',shop_name:match?match.shop.name:wo.shop_name,area:match?(match.shop.area||wo.area):(wo.area||'?'),driver:match?(match.shop.assigned_driver||CONFIG.UNASSIGNED_OWNER):CONFIG.UNASSIGNED_OWNER,items:wo.items,date:wo.date,matched:!!match,raw_name:wo.shop_name});
-    match?matched++:unmatched++;
-  });
-  document.getElementById('parseStatsBox').style.display='block';
-  document.getElementById('parseStats').innerHTML=`<div class="ps"><div class="ps-n">${parsedOrders.length}</div><div class="ps-l">Shops</div></div><div class="ps"><div class="ps-n" style="color:#2d7a4f">${matched}</div><div class="ps-l">Matched</div></div><div class="ps"><div class="ps-n" style="color:#c8382a">${unmatched}</div><div class="ps-l">→ Dinesh</div></div><div class="ps"><div class="ps-n" style="color:#6e3da8">${totalItems}</div><div class="ps-l">Items</div></div>`;
-  pmsg.textContent=`✅ ${parsedOrders.length} orders · ${matched} matched · ${unmatched} new → Dinesh`;pmsg.className='msg ok';pmsg.style.display='block';
-  renderPreview();
 }
 
 /* ═══ PREVIEW ═══ */
@@ -324,7 +377,6 @@ async function confirmAllOrders(){
   clearPreview();loadOrders();
 }
 function clearPreview(){document.getElementById('previewBox').style.display='none';document.getElementById('parseStatsBox').style.display='none';parsedOrders=[];}
-function handleFile(e){const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{const lines=ev.target.result.split('\n').slice(1);document.getElementById('orderPaste').value=lines.filter(l=>l.trim()).map(l=>{const c=l.split(',').map(x=>x.replace(/^"|"$/g,'').trim());return[c[0],c[1]||'',c[2]||''].join(' – ');}).join('\n');};r.readAsText(file);}
 
 /* ═══ ORDERS LIST ═══ */
 async function loadOrders(){
