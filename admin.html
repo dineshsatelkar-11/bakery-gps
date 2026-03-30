@@ -52,27 +52,16 @@ textarea{resize:vertical;min-height:140px;font-size:13px;line-height:1.7}
 .driver-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;padding:13px;margin-bottom:10px}
 .route-mini{font-size:11px;font-family:monospace;color:#1e1611;padding:3px 0;border-bottom:1px solid #f0e8dc}
 .badge{display:inline-block;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;font-family:monospace}
-.b-ok{background:#e8f5e9;color:#2d7a4f}
-.b-warn{background:#fff8e1;color:#7a4800}
-.b-miss{background:#fde8e8;color:#c8382a}
-.b-done{background:#e8f5e9;color:#2d7a4f}
+.b-ok{background:#e8f5e9;color:#2d7a4f}.b-warn{background:#fff8e1;color:#7a4800}.b-miss{background:#fde8e8;color:#c8382a}.b-done{background:#e8f5e9;color:#2d7a4f}
 .filter-row{display:flex;gap:8px;margin-bottom:8px}
 .filter-row select,.filter-row input{margin-bottom:0}
-.DC-Bharat{background:#fff3e0;color:#c8864a}
-.DC-Anand{background:#e3f2fd;color:#1a5fa8}
-.DC-Vikas{background:#e8f5e9;color:#2d7a4f}
-.DC-Yuvraj{background:#f3e8ff;color:#6e3da8}
-.DC-Rama{background:#fde8e8;color:#c8382a}
-.DC-Dinesh{background:#fce4ec;color:#880e4f}
-/* item tag */
+.DC-Bharat{background:#fff3e0;color:#c8864a}.DC-Anand{background:#e3f2fd;color:#1a5fa8}.DC-Vikas{background:#e8f5e9;color:#2d7a4f}.DC-Yuvraj{background:#f3e8ff;color:#6e3da8}.DC-Rama{background:#fde8e8;color:#c8382a}.DC-Dinesh{background:#fce4ec;color:#880e4f}
 .itag{display:inline-block;background:#f5ede0;border:1px solid #e8dfd2;padding:3px 8px;border-radius:6px;font-size:11px;font-family:monospace;margin:2px 2px 2px 0;line-height:1.5}
 .itag b{color:#4a2f14}
-/* parse stats bar */
 .parse-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
 .ps{background:#fff;border:1.5px solid #e8dfd2;border-radius:10px;padding:8px;text-align:center}
 .ps-n{font-size:18px;font-weight:900;color:#4a2f14}
 .ps-l{font-size:8px;color:#8a7a6a;font-family:monospace;text-transform:uppercase;letter-spacing:1px}
-/* format hint */
 .hint-box{background:#f0f4ff;border:1.5px dashed #90caf9;border-radius:12px;padding:10px 14px;margin-bottom:10px;font-size:11px;font-family:monospace;color:#1565c0;line-height:1.8}
 .hint-box b{color:#1a237e}
 </style>
@@ -81,893 +70,361 @@ textarea{resize:vertical;min-height:140px;font-size:13px;line-height:1.7}
 
 <div class="topbar">
   <div><div class="topbar-title">🍞 Baked Admin</div><div class="topbar-sub" id="topDate"></div></div>
-  <div class="topbar-right">
-    <a href="shops.html" class="tbtn">🏪 Shops</a>
-    <button class="tbtn" onclick="logout()">Logout</button>
-  </div>
+  <div class="topbar-right"><a href="shops.html" class="tbtn">🏪 Shops</a><button class="tbtn" onclick="logout()">Logout</button></div>
 </div>
 
 <div class="tabs">
-  <button class="tab on" id="tb-orders"   onclick="showTab('orders')">📋 Orders</button>
-  <button class="tab"    id="tb-summary"  onclick="showTab('summary')">📊 Summary</button>
-  <button class="tab"    id="tb-delivery" onclick="showTab('delivery')">🚚 Delivery</button>
-  <button class="tab"    id="tb-routes"   onclick="showTab('routes')">🗺 Routes</button>
-  <button class="tab"    id="tb-gps"      onclick="showTab('gps')">📍 GPS</button>
+  <button class="tab on" id="tb-orders" onclick="showTab('orders')">📋 Orders</button>
+  <button class="tab" id="tb-summary" onclick="showTab('summary')">📊 Summary</button>
+  <button class="tab" id="tb-delivery" onclick="showTab('delivery')">🚚 Delivery</button>
+  <button class="tab" id="tb-routes" onclick="showTab('routes')">🗺 Routes</button>
+  <button class="tab" id="tb-gps" onclick="showTab('gps')">📍 GPS</button>
 </div>
 
-<!-- ══════════ ORDERS ══════════ -->
+<!-- ORDERS -->
 <div class="page on" id="pg-orders">
   <div class="card">
     <div class="lbl">📋 Paste WhatsApp Orders</div>
-
-    <div class="hint-box">
-      <b>Paste the forwarded bold-format messages directly.</b><br>
-      Auto-detects: Shop name, area, items, qty, size, specs.<br>
-      ✅ Matched shops → auto-assign driver<br>
-      ⚠ New shops → assigned to <b>Dinesh</b>
-    </div>
-
-    <textarea id="orderPaste" placeholder="*BANK OF TEA*
-*M AGILE*
-*BANER*
-30.03.26
-Veg Puff - 30 🥬🥔🫛
-*BREAD 5x5*
-⬜White - 1
-🟫Brown - 3
-Sweet Bun - 4 🍩
-White Bun - 4
-*4 inch* 🍔"></textarea>
-
+    <div class="hint-box"><b>Paste forwarded bold-format messages directly.</b><br>Works with single-line paste or multi-line.<br>✅ Known shops → auto-assign driver<br>⚠ New shops → <b>Dinesh</b></div>
+    <textarea id="orderPaste" placeholder="Paste your WhatsApp forwarded orders here..."></textarea>
     <div style="display:flex;gap:8px;margin-bottom:8px">
-      <label style="flex:1;padding:10px;background:#f0f4ff;border:1.5px dashed #90caf9;border-radius:10px;text-align:center;font-size:12px;font-weight:700;color:#1565c0;cursor:pointer">
-        📎 Upload CSV
-        <input type="file" id="fileUpload" accept=".csv" style="display:none" onchange="handleFile(event)">
-      </label>
+      <label style="flex:1;padding:10px;background:#f0f4ff;border:1.5px dashed #90caf9;border-radius:10px;text-align:center;font-size:12px;font-weight:700;color:#1565c0;cursor:pointer">📎 Upload CSV<input type="file" id="fileUpload" accept=".csv" style="display:none" onchange="handleFile(event)"></label>
       <button class="btn-sm" style="background:#fde8e8;color:#c8382a;padding:10px 14px" onclick="document.getElementById('orderPaste').value=''">Clear</button>
     </div>
-
-    <div style="display:flex;gap:8px;margin-bottom:8px">
-      <div style="flex:1">
-        <div class="lbl" style="margin-bottom:4px">Delivery Date</div>
-        <input type="date" id="ord-date" style="margin-bottom:0">
-      </div>
-    </div>
-
+    <div style="display:flex;gap:8px;margin-bottom:8px"><div style="flex:1"><div class="lbl" style="margin-bottom:4px">Delivery Date</div><input type="date" id="ord-date" style="margin-bottom:0"></div></div>
     <div id="parse-msg" style="display:none" class="msg in"></div>
     <button class="btn btn-parse" onclick="parseWhatsAppOrders()">🔍 Parse & Match Shops</button>
   </div>
-
-  <!-- PARSE STATS -->
-  <div id="parseStatsBox" style="display:none">
-    <div class="parse-stats" id="parseStats"></div>
-  </div>
-
-  <!-- PREVIEW -->
+  <div id="parseStatsBox" style="display:none"><div class="parse-stats" id="parseStats"></div></div>
   <div id="previewBox" style="display:none">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <div style="font-size:13px;font-weight:800;color:#4a2f14" id="previewTitle"></div>
-      <div style="display:flex;gap:6px">
-        <button class="btn-sm" style="background:#f5ede0;color:#4a2f14" onclick="toggleAllPreviews()">▼ Collapse</button>
-      </div>
+      <button class="btn-sm" style="background:#f5ede0;color:#4a2f14" onclick="toggleAllPreviews()">▼ Toggle</button>
     </div>
     <div id="previewList"></div>
     <div id="preview-warn" style="display:none" class="msg warn"></div>
     <button class="btn btn-confirm" id="confirmBtn" onclick="confirmAllOrders()">✅ Confirm & Save All Orders</button>
     <button class="btn btn-refresh" onclick="clearPreview()">✖ Cancel</button>
   </div>
-
-  <!-- EXISTING ORDERS -->
-  <div style="display:flex;align-items:center;justify-content:space-between;margin:4px 0 8px">
-    <div style="font-size:13px;font-weight:800;color:#4a2f14">Saved Orders</div>
-    <button class="btn-sm btn-refresh" onclick="loadOrders()">🔄</button>
-  </div>
-  <div class="filter-row">
-    <select id="f-ord-driver" onchange="loadOrders()">
-      <option value="">All Drivers</option>
-      <option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option><option>Dinesh</option>
-    </select>
-    <input type="date" id="f-ord-date" onchange="loadOrders()" style="margin-bottom:0">
-  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin:4px 0 8px"><div style="font-size:13px;font-weight:800;color:#4a2f14">Saved Orders</div><button class="btn-sm btn-refresh" onclick="loadOrders()">🔄</button></div>
+  <div class="filter-row"><select id="f-ord-driver" onchange="loadOrders()"><option value="">All Drivers</option><option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option><option>Dinesh</option></select><input type="date" id="f-ord-date" onchange="loadOrders()" style="margin-bottom:0"></div>
   <div id="ordersList"></div>
 </div>
 
-<!-- ══════════ SUMMARY ══════════ -->
+<!-- SUMMARY -->
 <div class="page" id="pg-summary">
-  <div class="filter-row">
-    <input type="date" id="f-sum-date" onchange="loadSummary()" style="margin-bottom:0">
-  </div>
-  <button class="btn btn-refresh" onclick="loadSummary()">🔄 Refresh Summary</button>
+  <div class="filter-row"><input type="date" id="f-sum-date" onchange="loadSummary()" style="margin-bottom:0"></div>
+  <button class="btn btn-refresh" onclick="loadSummary()">🔄 Refresh</button>
   <div id="summaryBody"></div>
 </div>
 
-<!-- ══════════ DELIVERY STATUS ══════════ -->
+<!-- DELIVERY -->
 <div class="page" id="pg-delivery">
   <div class="stats-grid" id="delivStats"></div>
-  <div class="filter-row">
-    <select id="f-del-driver" onchange="loadDeliveries()">
-      <option value="">All Drivers</option>
-      <option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option>
-    </select>
-    <input type="date" id="f-del-date" onchange="loadDeliveries()" style="margin-bottom:0">
-  </div>
+  <div class="filter-row"><select id="f-del-driver" onchange="loadDeliveries()"><option value="">All</option><option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option></select><input type="date" id="f-del-date" onchange="loadDeliveries()" style="margin-bottom:0"></div>
   <button class="btn btn-refresh" onclick="loadDeliveries()">🔄 Refresh</button>
   <div id="deliveryList"></div>
 </div>
 
-<!-- ══════════ ROUTES ══════════ -->
+<!-- ROUTES -->
 <div class="page" id="pg-routes">
   <div class="stats-grid" id="routeStats"></div>
-  <div class="filter-row">
-    <select id="f-rt-driver" onchange="loadRoutes()">
-      <option value="">All Drivers</option>
-      <option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option>
-    </select>
-    <input type="date" id="f-rt-date" onchange="loadRoutes()" style="margin-bottom:0">
-  </div>
+  <div class="filter-row"><select id="f-rt-driver" onchange="loadRoutes()"><option value="">All</option><option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option></select><input type="date" id="f-rt-date" onchange="loadRoutes()" style="margin-bottom:0"></div>
   <button class="btn btn-refresh" onclick="loadRoutes()">🔄 Refresh</button>
-  <button class="btn-csv" onclick="exportRouteCSV()">⬇️ Export Routes CSV</button>
+  <button class="btn-csv" onclick="exportRouteCSV()">⬇️ Export CSV</button>
   <div id="routesList"></div>
 </div>
 
-<!-- ══════════ GPS ══════════ -->
+<!-- GPS -->
 <div class="page" id="pg-gps">
   <div class="stats-grid" id="gpsStats"></div>
-  <div class="filter-row">
-    <select id="f-gps-driver" onchange="renderGPS()">
-      <option value="">All Drivers</option>
-      <option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option><option>Dinesh</option>
-    </select>
-    <select id="f-gps-status" onchange="renderGPS()">
-      <option value="">All</option>
-      <option value="saved">GPS Saved ✅</option>
-      <option value="missing">GPS Missing ⚠</option>
-    </select>
-  </div>
-  <button class="btn-csv" onclick="exportGPSCSV()">⬇️ Export GPS CSV</button>
+  <div class="filter-row"><select id="f-gps-driver" onchange="renderGPS()"><option value="">All</option><option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option><option>Dinesh</option></select><select id="f-gps-status" onchange="renderGPS()"><option value="">All</option><option value="saved">✅ Saved</option><option value="missing">⚠ Missing</option></select></div>
+  <button class="btn-csv" onclick="exportGPSCSV()">⬇️ Export CSV</button>
   <div id="gpsList"></div>
 </div>
 
 <script>
-const CONFIG = {
-  API_URL: 'https://script.google.com/macros/s/AKfycbyi-IJ6NLR28hRTeesy52THTbdcYCSnz3lp7NtEaJsxBOiNOm-9emMu0xOHT6hvWSE-/exec',
-  DRIVERS: ['Bharat','Anand','Vikas','Yuvraj','Rama'],
-  ADMIN_PASS: 'baked@admin',
-  UNASSIGNED_OWNER: 'Dinesh'
-};
+const CONFIG={API_URL:'https://script.google.com/macros/s/AKfycbyi-IJ6NLR28hRTeesy52THTbdcYCSnz3lp7NtEaJsxBOiNOm-9emMu0xOHT6hvWSE-/exec',DRIVERS:['Bharat','Anand','Vikas','Yuvraj','Rama'],ADMIN_PASS:'baked@admin',UNASSIGNED_OWNER:'Dinesh'};
 
-/* ═══════════════════════════════════════════
-   WHATSAPP ORDER PARSER — CORE ENGINE
-   Handles the bold-format forwarded messages
-   ═══════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════
+   WHATSAPP PARSER v3 — TOKENIZER
+   Handles: single-line paste, multi-line, bold format
+   ═══════════════════════════════════════════════════════════ */
 
-function parseWhatsAppText(raw) {
-  // Clean: remove bold markers, normalize whitespace
-  const text = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  const lines = text.split('\n');
+const KNOWN_AREAS=['BANER','AUNDH','KHARADI','WAKAD','PIMPRI','DHANORI','KOREGAON PARK','VIMAN NAGAR','HINJEWADI','FC ROAD','NIBM','MG ROAD','LOHGAON','LOHGOAN','AKURDI','KALYANI NAGAR','SINHAGAD RD','SINHAGAD ROAD','NARAYAN PETH','PIMPLE SAUDAGAR','PIMPLE','SAUDAGAR','SB ROAD','SANGVI','MUNDHWA','PRABHAT ROAD','MAHALUNGE','DAPODI','SANJAY PARK','CHANDAN NAGAR','BHUMKAR CHOWK','AEROMALL','BHARTIYA VP','RAILWAY STATION','METRO STATION','PHASE 1','PHASE 2','PHASE 3','ICC TECH PARK','SGS MALL','AMAR MADHUBAN','M AGILE','PRIDE CITY LOH','CHANDAN','NAGAR','BALEWADI','PASHAN','KOTHRUD','HADAPSAR','UNDRI','KONDHWA','MAGARPATTA','YERAWADA','CAMP','SHIVAJI NAGAR','DECCAN','BHARTIYA'];
 
-  const orders = [];
-  let current = null;
+const SPEC_RE=[/^BREAD\s*\d/i,/^SUB\s+\d/i,/^BUN\s+\d/i,/^PIZZA\s+\d/i,/^BRIOCHE\s+BUN$/i,/^WHITE\s+PIZZA$/i,/^\d+(\.\d+)?\s*(INCH|")/i,/^\d+x\d+/i,/^\d+\s*(GM|GRAMS?|KG)/i,/^(EGG|PLAIN|THICK|THIN|RING|SMALL|WHEAT|BROWN|WHITE)$/i,/^(DECK\s*OVEN|WITHOUT\s*(RING|MOULD)|SMALL\s*RING|HEART\s*SHAPE)/i,/^(MIX\s*SEEDS?|WHITE\s*SEEDS?|THIN\s*CRUST|THINK\s*CRUST)$/i,/^(PJS\s*HOSPITALITY|MILA'?s?\s*KITCHEN)$/i,/^(PICK\s*UP|MORNING|PLEASE\s*SEND)/i,/^Sub\s+\d+x\d+\s+\d+\s*GM/i,/^Thick\s+Pizza/i,/^Without\s+Mould$/i,/^\d+(\.\d+)?"\s*PLAIN/i,/^BROTA$/i,/^\d+\s*GRAMS$/i];
 
-  // Known item keywords — anything with "- NUMBER" after it is an item
-  // Known spec/size keywords that are NOT shop names
-  const SPEC_PATTERNS = [
-    /^\d+\s*(inch|")/i,
-    /^\d+x\d+/i,
-    /^(DECK\s*OVEN|WITHOUT\s*(RING|MOULD)|THIN\s*CRUST|THICK|PLAIN|SMALL\s*RING|HEART\s*SHAPE|MIX\s*SEEDS?|RING|EGG|WHITE\s*SEEDS?|WHEAT|SMALL|REGULAR)/i,
-    /^\d+\s*(GM|GRAMS?|KG)/i,
-    /^(Pick\s*Up|Morning|Please\s*send)/i,
-    /^(PJS\s*Hospitality|MILA'?s?\s*KITCHEN)/i,  // sub-brand lines
-  ];
+function se(s){return s.replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}◻️⬜🟫🍔🍩🥖🥚🍼🥬🥔🫛]/gu,'').trim();}
 
-  // Known area names — helps distinguish area from shop name
-  const KNOWN_AREAS = [
-    'BANER','AUNDH','KHARADI','WAKAD','PIMPRI','DHANORI','KOREGAON PARK',
-    'VIMAN NAGAR','HINJEWADI','FC ROAD','NIBM','MG ROAD','LOHGAON','LOHGOAN',
-    'AKURDI','KALYANI NAGAR','SINHAGAD RD','SINHAGAD ROAD','NARAYAN PETH',
-    'PIMPLE SAUDAGAR','PIMPLE','SAUDAGAR','SB ROAD','SANGVI','MUNDHWA',
-    'PRABHAT ROAD','MAHALUNGE','DAPODI','SANJAY PARK','CHANDAN NAGAR',
-    'BHUMKAR CHOWK','AEROMALL','BHARTIYA VP','RAILWAY STATION','METRO STATION',
-    'PHASE 2','ICC TECH PARK','SGS MALL','AMAR MADHUBAN','M AGILE',
-    'PRIDE CITY LOH','CHANDAN'
-  ];
+function classifyBold(val){
+  const c=se(val).replace(/^\./,'').trim(),up=c.toUpperCase();
+  if(!c||c.length<2)return'OTHER';
+  if(/^\d{1,2}[\.\/-]\d{1,2}[\.\/-]\d{2,4}$/.test(c))return'DATE';
+  for(const p of SPEC_RE)if(p.test(c))return'SPEC';
+  if(/^\d+(\.\d+)?\s*(inch|")/i.test(se(val)))return'SPEC';
+  if(KNOWN_AREAS.some(a=>up===a))return'AREA';
+  const al=c.replace(/[^A-Za-z]/g,''),uc=c.replace(/[^A-Z]/g,'').length;
+  if(al.length>=2&&uc/Math.max(al.length,1)>0.4&&c.length>=3)return'SHOP_NAME';
+  return'OTHER';
+}
 
-  const DATE_RE = /^\d{1,2}[\.\/-]\d{1,2}[\.\/-]\d{2,4}$/;
-  const ITEM_LINE_RE = /^(.+?)\s*-\s*(\d+)\s*$/;  // "White Bun - 8"
+function exDate(s){const m=se(s).match(/(\d{1,2})[\.\/-](\d{1,2})[\.\/-](\d{2,4})/);if(!m)return'';let y=m[3];if(y.length===2)y='20'+y;return y+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');}
 
-  function stripBold(s) { return s.replace(/\*/g, ''); }
-  function stripEmoji(s) { return s.replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}◻️⬜🟫]/gu, '').trim(); }
-  function cleanLine(s) { return stripBold(s).trim(); }
-  function isDateLine(s) { return DATE_RE.test(stripEmoji(cleanLine(s)).trim()); }
-  function isSpecLine(s) {
-    const c = stripEmoji(cleanLine(s));
-    if (!c) return true; // emoji-only line
-    return SPEC_PATTERNS.some(p => p.test(c));
+function parseWhatsAppText(raw){
+  const text=raw.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  const tokens=[];let pos=0;const br=/\*([^*]+)\*/g;let match;
+  while((match=br.exec(text))!==null){
+    if(match.index>pos)tokens.push({type:'plain',value:text.substring(pos,match.index)});
+    tokens.push({type:'bold',value:match[1],cls:classifyBold(match[1])});
+    pos=match.index+match[0].length;
   }
-  function isItemLine(s) {
-    const c = stripEmoji(cleanLine(s));
-    return ITEM_LINE_RE.test(c);
-  }
-  function isAreaLine(s) {
-    const c = stripEmoji(cleanLine(s)).toUpperCase();
-    return KNOWN_AREAS.some(a => c === a || c.startsWith(a));
-  }
-  function isBreadHeader(s) {
-    const c = stripEmoji(cleanLine(s)).toUpperCase();
-    return /^BREAD\s*\d+x\d+$/i.test(c) || /^(SUB|BUN|BROTA|PIZZA|BRIOCHE)/i.test(c);
-  }
-  function isShopNameLine(s) {
-    const c = stripEmoji(cleanLine(s));
-    if (!c || c.length < 2) return false;
-    if (isDateLine(s)) return false;
-    if (isItemLine(s)) return false;
-    if (isSpecLine(s)) return false;
-    if (isAreaLine(s)) return false;
-    if (isBreadHeader(s)) return false;
-    // Shop names are typically ALL CAPS or mostly caps, at least 3 chars
-    const alpha = c.replace(/[^A-Za-z]/g, '');
-    const upper = c.replace(/[^A-Z]/g, '');
-    if (alpha.length >= 2 && upper.length / Math.max(alpha.length, 1) > 0.6) return true;
-    return false;
+  if(pos<text.length)tokens.push({type:'plain',value:text.substring(pos)});
+
+  const orders=[];let cur=null;
+
+  function finish(){
+    if(!cur||!cur.name)return;
+    orders.push({shop_name:cur.name.replace(/^\.+/,'').trim(),area:cur.areas.join(' '),date:cur.date,items:cur.items});
+    cur=null;
   }
 
-  function extractDate(s) {
-    const c = stripEmoji(cleanLine(s));
-    const m = c.match(/(\d{1,2})[\.\/-](\d{1,2})[\.\/-](\d{2,4})/);
-    if (!m) return '';
-    let y = m[3]; if (y.length === 2) y = '20' + y;
-    return y + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
-  }
-
-  function parseItemLine(s) {
-    const c = stripEmoji(cleanLine(s));
-    const m = c.match(/^(.+?)\s*-\s*(\d+)\s*$/);
-    if (!m) return null;
-    return { name: m[1].trim(), qty: parseInt(m[2]) };
-  }
-
-  function finishCurrent() {
-    if (current && current.shop_name) {
-      // Build items string
-      const itemStr = current.items.map(it => it.name + (it.spec ? ' (' + it.spec + ')' : '')).join(', ');
-      const qtyStr = current.items.map(it => it.qty).join(', ');
-      const fullItems = current.items.map(it => {
-        let s = it.name + ' - ' + it.qty;
-        if (it.spec) s += ' [' + it.spec + ']';
-        return s;
-      });
-      orders.push({
-        shop_name: current.shop_name,
-        area: current.areas.join(' '),
-        date: current.date,
-        items: current.items,
-        items_str: itemStr,
-        qty_str: qtyStr,
-        full_text: fullItems.join('\n'),
-        raw_block: current.raw_lines.join('\n')
-      });
-    }
-    current = null;
-  }
-
-  // State machine parse
-  let lastItemRef = null;
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const trimmed = line.trim();
-    if (!trimmed) continue;
-
-    // Check if this is a new shop name
-    if (isShopNameLine(trimmed)) {
-      // Look ahead: if next non-empty lines are area/date/items, this is a shop
-      // But first, save previous order
-      finishCurrent();
-      current = {
-        shop_name: cleanLine(trimmed).replace(/^\./, '').trim(),
-        areas: [],
-        date: '',
-        items: [],
-        raw_lines: [trimmed]
-      };
-      lastItemRef = null;
-      continue;
-    }
-
-    if (!current) continue;
-    current.raw_lines.push(trimmed);
-
-    // Area line
-    if (isAreaLine(trimmed)) {
-      current.areas.push(stripEmoji(cleanLine(trimmed)));
-      continue;
-    }
-
-    // Date line
-    if (isDateLine(trimmed)) {
-      current.date = extractDate(trimmed);
-      continue;
-    }
-
-    // Item line: "Something - 30"
-    if (isItemLine(trimmed)) {
-      const item = parseItemLine(trimmed);
-      if (item) {
-        current.items.push({ name: item.name, qty: item.qty, spec: '' });
-        lastItemRef = current.items[current.items.length - 1];
+  for(let i=0;i<tokens.length;i++){
+    const t=tokens[i];
+    if(t.type==='bold'){
+      if(t.cls==='SHOP_NAME'){
+        if(!cur||cur.items.length>0){finish();cur={name:t.value.trim(),areas:[],date:'',pSpecs:[],items:[]};}
+        else{cur.name+=' '+t.value.trim();}
+      }else if(t.cls==='AREA'&&cur){cur.areas.push(se(t.value));}
+      else if(t.cls==='DATE'&&cur){if(!cur.date)cur.date=exDate(t.value);}
+      else if(t.cls==='SPEC'&&cur){
+        const sv=se(t.value);
+        if(cur.items.length>0){const l=cur.items[cur.items.length-1];l.spec=l.spec?l.spec+', '+sv:sv;}
+        else{cur.pSpecs.push(sv);}
       }
-      continue;
-    }
+    }else{
+      if(!cur)continue;
+      const pt=t.value;
+      const dm=pt.match(/(\d{1,2})[\.\/-](\d{1,2})[\.\/-](\d{2,4})/);
+      if(dm&&!cur.date)cur.date=exDate(dm[0]);
 
-    // Bread header like "BREAD 5x5" — treat as a category label, attach as spec to next items
-    if (isBreadHeader(trimmed)) {
-      // This is a size/category header — attach to previously added items or as context
-      const specText = stripEmoji(cleanLine(trimmed));
-      // If previous item has no spec, add it
-      if (lastItemRef && !lastItemRef.spec) {
-        lastItemRef.spec = specText;
+      // Extract items: word(s) + " - " + number
+      const ir=/([\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}◻️⬜🟫🍔🍩🥖🥚🍼🥬🥔🫛]*\s*)?((?:[A-Za-z][A-Za-z.']*\s*)+|(?:\d+(?:\.\d+)?)\s*(?:inch|"))\s*-\s*(\d+)/gu;
+      let im;
+      while((im=ir.exec(pt))!==null){
+        let name=(im[2]||'').trim();
+        const qty=parseInt(im[3]);
+        if(/^\d+(\.\d+)?\s*(inch|")/i.test(name)){
+          // Size-qty pattern: "9 inch - 20"
+          if(cur.pSpecs.length>0){
+            const pn=cur.pSpecs.find(s=>!/^\d/.test(s)&&!/^(THIN|THICK|HEART|PLAIN|EGG|MIX|WHITE|RING|DECK|WITHOUT|SMALL|BREAD|SUB|BUN|BROTA)/i.test(s));
+            const itemName=pn||cur.pSpecs[0]||'Item';
+            const oSpecs=cur.pSpecs.filter(s=>s!==itemName);
+            oSpecs.push(name);
+            cur.items.push({name:itemName,qty,spec:oSpecs.join(', ')});
+            cur.pSpecs=[];
+          }else if(cur.items.length>0){
+            const l=cur.items[cur.items.length-1];
+            l.spec=l.spec?l.spec+', '+name:name;l.qty=qty;
+          }
+          continue;
+        }
+        const item={name,qty,spec:''};
+        if(cur.pSpecs.length>0){item.spec=cur.pSpecs.join(', ');cur.pSpecs=[];}
+        cur.items.push(item);
       }
-      continue;
-    }
-
-    // Spec/size line — attach to last item
-    if (isSpecLine(trimmed) && lastItemRef) {
-      const specText = stripEmoji(cleanLine(trimmed));
-      if (specText) {
-        lastItemRef.spec = lastItemRef.spec ? lastItemRef.spec + ' ' + specText : specText;
-      }
-      continue;
-    }
-
-    // Color/variant lines like "⬜White - 1" or "🟫Brown - 3"
-    // These look like items but with emoji prefix
-    const emojiItem = stripEmoji(trimmed);
-    const eim = emojiItem.match(/^(.+?)\s*-\s*(\d+)\s*$/);
-    if (eim) {
-      current.items.push({ name: eim[1].trim(), qty: parseInt(eim[2]), spec: '' });
-      lastItemRef = current.items[current.items.length - 1];
-      continue;
-    }
-
-    // 9 inch - 20 (size before dash)
-    const sizeItem = cleanLine(trimmed);
-    const sim = sizeItem.match(/^(\d+\s*inch)\s*-\s*(\d+)$/i);
-    if (sim && lastItemRef) {
-      // This is actually qty with size, attach to a contextual item
-      // e.g., "9 inch - 20" under "White Pizza"
-      lastItemRef.qty = parseInt(sim[2]);
-      lastItemRef.spec = sim[1];
-      continue;
     }
   }
-
-  finishCurrent();
+  finish();
   return orders;
 }
 
+/* ═══ API & INIT ═══ */
+if(sessionStorage.getItem('role')!=='admin')window.location.href='index.html';
+const API=CONFIG.API_URL;
+function api(p){return fetch(API+'?'+new URLSearchParams(p)).then(r=>r.json()).catch(()=>[]);}
+function apiPost(b){return fetch(API,{method:'POST',body:JSON.stringify(b)}).then(r=>r.json()).catch(()=>({}));}
+function todayStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function logout(){sessionStorage.clear();window.location.href='index.html';}
 
-/* ═══════════════════════════════════════════
-   API & CORE LOGIC (same as before)
-   ═══════════════════════════════════════════ */
+document.getElementById('topDate').textContent=new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'});
+['ord-date','f-ord-date','f-rt-date','f-sum-date','f-del-date'].forEach(id=>{document.getElementById(id).value=todayStr();});
 
-if(sessionStorage.getItem('role')!=='admin') window.location.href='index.html';
+function showTab(t){['orders','summary','delivery','routes','gps'].forEach(x=>{document.getElementById('pg-'+x).classList.toggle('on',x===t);document.getElementById('tb-'+x).classList.toggle('on',x===t);});if(t==='summary')loadSummary();if(t==='delivery')loadDeliveries();if(t==='routes')loadRoutes();if(t==='gps')loadGPS();}
 
-const API = CONFIG.API_URL;
-function api(p){ return fetch(API+'?'+new URLSearchParams(p)).then(r=>r.json()).catch(()=>[]); }
-function apiPost(b){ return fetch(API,{method:'POST',body:JSON.stringify(b)}).then(r=>r.json()).catch(()=>({})); }
-function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
-function logout(){ sessionStorage.clear(); window.location.href='index.html'; }
-
-document.getElementById('topDate').textContent = new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'});
-document.getElementById('ord-date').value = todayStr();
-document.getElementById('f-ord-date').value = todayStr();
-document.getElementById('f-rt-date').value = todayStr();
-document.getElementById('f-sum-date').value = todayStr();
-document.getElementById('f-del-date').value = todayStr();
-
-function showTab(t){
-  ['orders','summary','delivery','routes','gps'].forEach(x=>{
-    document.getElementById('pg-'+x).classList.toggle('on',x===t);
-    document.getElementById('tb-'+x).classList.toggle('on',x===t);
-  });
-  if(t==='summary')  loadSummary();
-  if(t==='delivery') loadDeliveries();
-  if(t==='routes')   loadRoutes();
-  if(t==='gps')      loadGPS();
-}
-
-// ── SHOPS ──
-let allShops=[], parsedOrders=[];
-async function loadShops(){ const d=await api({action:'getShops'}); if(Array.isArray(d)) allShops=d; return allShops; }
+let allShops=[],parsedOrders=[];
+async function loadShops(){const d=await api({action:'getShops'});if(Array.isArray(d))allShops=d;return allShops;}
 loadShops();
 
-function normalize(s){ return (s||'').toLowerCase().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ').trim(); }
+function normalize(s){return(s||'').toLowerCase().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ').trim();}
 
-function fuzzyMatch(shopName, area, shops) {
-  const nq = normalize(shopName);
-  const na = normalize(area);
-
-  // 1. Exact name match
-  let m = shops.find(s => normalize(s.name) === nq);
-  if (m) return { shop: m, score: 100 };
-
-  // 2. Name + area match
-  m = shops.find(s => normalize(s.name) === nq && normalize(s.area || '') === na);
-  if (m) return { shop: m, score: 100 };
-
-  // 3. Fuzzy: score by word overlap
-  const nameWords = nq.split(' ').filter(w => w.length > 1);
-  const areaWords = na.split(' ').filter(w => w.length > 1);
-
-  let best = null, bs = 0;
-  shops.forEach(s => {
-    const sn = normalize(s.name);
-    const sa = normalize(s.area || '');
-    let sc = 0;
-
-    // Name word matches (high weight)
-    nameWords.forEach(w => {
-      if (sn.includes(w)) sc += w.length * 2;
-    });
-
-    // Area word matches (medium weight)
-    areaWords.forEach(w => {
-      if (sa.includes(w)) sc += w.length;
-      if (sn.includes(w)) sc += w.length * 0.3; // area word in shop name
-    });
-
-    // Bonus for exact area match
-    if (na && sa === na) sc += 5;
-
-    if (sc > bs) { bs = sc; best = s; }
+function fuzzyMatch(shopName,area,shops){
+  const nq=normalize(shopName),na=normalize(area);
+  let m=shops.find(s=>normalize(s.name)===nq);
+  if(m)return{shop:m,score:100};
+  m=shops.find(s=>normalize(s.name)===nq&&na&&normalize(s.area||'').includes(na));
+  if(m)return{shop:m,score:100};
+  const nw=nq.split(' ').filter(w=>w.length>1);
+  let best=null,bs=0;
+  shops.forEach(s=>{
+    const sn=normalize(s.name),sa=normalize(s.area||'');let sc=0;
+    nw.forEach(w=>{if(sn.includes(w))sc+=w.length*2;});
+    if(na)na.split(' ').filter(w=>w.length>2).forEach(w=>{if(sa.includes(w))sc+=w.length;});
+    if(na&&sa===na)sc+=5;
+    if(sc>bs){bs=sc;best=s;}
   });
-
-  return bs >= 5 ? { shop: best, score: bs } : null;
+  return bs>=5?{shop:best,score:bs}:null;
 }
 
+/* ═══ PARSE BUTTON ═══ */
+function parseWhatsAppOrders(){
+  const text=document.getElementById('orderPaste').value.trim();
+  const pmsg=document.getElementById('parse-msg');
+  if(!text){pmsg.textContent='❌ Paste WhatsApp order text first.';pmsg.className='msg er';pmsg.style.display='block';return;}
+  if(!allShops.length){pmsg.textContent='⏳ Loading shops…';pmsg.className='msg in';pmsg.style.display='block';loadShops();return;}
 
-/* ═══════════════════════════════════════════
-   PARSE BUTTON — Main flow
-   ═══════════════════════════════════════════ */
+  const waOrders=parseWhatsAppText(text);
+  if(!waOrders.length){pmsg.textContent='❌ No orders detected.';pmsg.className='msg er';pmsg.style.display='block';return;}
 
-function parseWhatsAppOrders() {
-  const text = document.getElementById('orderPaste').value.trim();
-  const pmsg = document.getElementById('parse-msg');
-
-  if (!text) {
-    pmsg.textContent = '❌ Paste WhatsApp order text first.';
-    pmsg.className = 'msg er'; pmsg.style.display = 'block';
-    return;
-  }
-
-  if (!allShops.length) {
-    pmsg.textContent = '⏳ Loading shops… try again in a moment.';
-    pmsg.className = 'msg in'; pmsg.style.display = 'block';
-    loadShops();
-    return;
-  }
-
-  // Parse the WhatsApp text into structured orders
-  const waOrders = parseWhatsAppText(text);
-
-  if (!waOrders.length) {
-    pmsg.textContent = '❌ No orders detected. Check the format.';
-    pmsg.className = 'msg er'; pmsg.style.display = 'block';
-    return;
-  }
-
-  // Match each order to a shop
-  parsedOrders = [];
-  let matched = 0, unmatched = 0, totalItems = 0;
-
-  waOrders.forEach(wo => {
-    const match = fuzzyMatch(wo.shop_name, wo.area, allShops);
-    totalItems += wo.items.length;
-
-    if (match) {
-      matched++;
-      parsedOrders.push({
-        shop_id: match.shop.shop_id,
-        shop_name: match.shop.name,
-        area: match.shop.area || wo.area,
-        driver: match.shop.assigned_driver || CONFIG.UNASSIGNED_OWNER,
-        items: wo.items,
-        items_str: wo.items_str,
-        qty_str: wo.qty_str,
-        full_text: wo.full_text,
-        date: wo.date,
-        matched: true,
-        raw_name: wo.shop_name,
-        raw_block: wo.raw_block
-      });
-    } else {
-      unmatched++;
-      parsedOrders.push({
-        shop_id: '',
-        shop_name: wo.shop_name,
-        area: wo.area || '?',
-        driver: CONFIG.UNASSIGNED_OWNER,
-        items: wo.items,
-        items_str: wo.items_str,
-        qty_str: wo.qty_str,
-        full_text: wo.full_text,
-        date: wo.date,
-        matched: false,
-        raw_name: wo.shop_name,
-        raw_block: wo.raw_block
-      });
-    }
+  parsedOrders=[];let matched=0,unmatched=0,totalItems=0;
+  waOrders.forEach(wo=>{
+    const match=fuzzyMatch(wo.shop_name,wo.area,allShops);
+    totalItems+=wo.items.length;
+    parsedOrders.push({
+      shop_id:match?match.shop.shop_id:'',
+      shop_name:match?match.shop.name:wo.shop_name,
+      area:match?(match.shop.area||wo.area):(wo.area||'?'),
+      driver:match?(match.shop.assigned_driver||CONFIG.UNASSIGNED_OWNER):CONFIG.UNASSIGNED_OWNER,
+      items:wo.items,date:wo.date,matched:!!match,raw_name:wo.shop_name
+    });
+    match?matched++:unmatched++;
   });
 
-  // Show stats
-  const statsBox = document.getElementById('parseStatsBox');
-  statsBox.style.display = 'block';
-  document.getElementById('parseStats').innerHTML = `
+  document.getElementById('parseStatsBox').style.display='block';
+  document.getElementById('parseStats').innerHTML=`
     <div class="ps"><div class="ps-n">${parsedOrders.length}</div><div class="ps-l">Shops</div></div>
     <div class="ps"><div class="ps-n" style="color:#2d7a4f">${matched}</div><div class="ps-l">Matched</div></div>
     <div class="ps"><div class="ps-n" style="color:#c8382a">${unmatched}</div><div class="ps-l">→ Dinesh</div></div>
-    <div class="ps"><div class="ps-n" style="color:#6e3da8">${totalItems}</div><div class="ps-l">Items</div></div>
-  `;
-
-  pmsg.textContent = `✅ Parsed ${parsedOrders.length} orders · ${matched} matched · ${unmatched} new → Dinesh`;
-  pmsg.className = 'msg ok'; pmsg.style.display = 'block';
-
+    <div class="ps"><div class="ps-n" style="color:#6e3da8">${totalItems}</div><div class="ps-l">Items</div></div>`;
+  pmsg.textContent=`✅ ${parsedOrders.length} orders · ${matched} matched · ${unmatched} new → Dinesh`;
+  pmsg.className='msg ok';pmsg.style.display='block';
   renderPreview();
 }
 
+/* ═══ PREVIEW ═══ */
+let previewCollapsed=false;
+function toggleAllPreviews(){previewCollapsed=!previewCollapsed;document.querySelectorAll('.parsed-item').forEach(el=>el.classList.toggle('collapsed',previewCollapsed));}
 
-/* ═══════════════════════════════════════════
-   PREVIEW RENDERING
-   ═══════════════════════════════════════════ */
+function renderPreview(){
+  document.getElementById('previewBox').style.display='block';
+  document.getElementById('previewTitle').textContent=`Preview — ${parsedOrders.length} Orders`;
+  const uw=document.getElementById('preview-warn');
+  const unm=parsedOrders.filter(o=>!o.matched);
+  if(unm.length){uw.textContent=`⚠ ${unm.length} new shop(s) → Dinesh:\n${unm.map(o=>o.raw_name).join(', ')}`;uw.style.display='block';}else{uw.style.display='none';}
 
-let previewCollapsed = false;
-
-function toggleAllPreviews() {
-  previewCollapsed = !previewCollapsed;
-  document.querySelectorAll('.parsed-item').forEach(el => {
-    el.classList.toggle('collapsed', previewCollapsed);
-  });
-}
-
-function renderPreview() {
-  document.getElementById('previewBox').style.display = 'block';
-  document.getElementById('previewTitle').textContent = `Preview — ${parsedOrders.length} Orders`;
-
-  const uw = document.getElementById('preview-warn');
-  const unm = parsedOrders.filter(o => !o.matched);
-  if (unm.length) {
-    uw.textContent = `⚠ ${unm.length} new shop(s) assigned to Dinesh:\n${unm.map(o => o.shop_name).join(', ')}\n\nDinesh will add these to the shop list & assign to a driver.`;
-    uw.style.display = 'block';
-  } else {
-    uw.style.display = 'none';
-  }
-
-  document.getElementById('previewList').innerHTML = parsedOrders.map((o, i) => {
-    const itemTags = o.items.map(it =>
-      `<span class="itag"><b>${it.qty}</b> ${it.name}${it.spec ? ' <span style="color:#8a7a6a;font-size:10px">' + it.spec + '</span>' : ''}</span>`
-    ).join(' ');
-
-    return `
-    <div class="parsed-item ${o.matched ? '' : 'unmatched'}" id="pi-${i}">
+  document.getElementById('previewList').innerHTML=parsedOrders.map((o,i)=>{
+    const tags=o.items.map(it=>`<span class="itag"><b>${it.qty}×</b> ${it.name}${it.spec?` <span style="color:#8a7a6a;font-size:10px">(${it.spec})</span>`:''}</span>`).join(' ');
+    return `<div class="parsed-item ${o.matched?'':'unmatched'}" id="pi-${i}">
       <div class="pi-head" onclick="document.getElementById('pi-${i}').classList.toggle('collapsed')">
-        <div>
-          <div style="font-size:14px;font-weight:800;color:#4a2f14">${o.shop_name}</div>
-          <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px">
-            ${o.area} · ${o.matched ? '✅ Matched' : '⚠ NEW → Dinesh'} · ${o.items.length} items
-          </div>
-        </div>
-        <div style="display:flex;align-items:center;gap:6px">
-          <span class="badge DC-${o.driver}">${o.driver}</span>
-          <span class="pi-toggle">▾</span>
-        </div>
+        <div><div style="font-size:14px;font-weight:800;color:#4a2f14">${o.shop_name}</div>
+        <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px">${o.area} · ${o.matched?'✅':'⚠ NEW'} · ${o.items.length} items</div></div>
+        <div style="display:flex;align-items:center;gap:6px"><span class="badge DC-${o.driver}">${o.driver}</span><span class="pi-toggle">▾</span></div>
       </div>
       <div class="pi-body" style="margin-top:8px">
-        <div style="margin-bottom:8px">${itemTags}</div>
-        ${!o.matched ? `
-        <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
-          <span style="font-size:11px;color:#8a7a6a">Reassign:</span>
-          <select onchange="parsedOrders[${i}].driver=this.value" style="padding:5px 10px;font-size:12px;background:#f5ede0;border:1px solid #e8dfd2;border-radius:6px;flex:1">
-            <option selected>Dinesh</option>
-            <option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option>
-          </select>
-        </div>` : ''}
-        <details style="margin-top:6px">
-          <summary style="font-size:10px;color:#8a7a6a;cursor:pointer">Raw text</summary>
-          <pre style="font-size:10px;font-family:monospace;background:#f5ede0;padding:8px;border-radius:8px;margin-top:4px;white-space:pre-wrap;line-height:1.6">${o.raw_block}</pre>
-        </details>
-      </div>
-    </div>`;
+        <div style="margin-bottom:6px">${tags||'<span style="color:#c8382a;font-size:11px">No items</span>'}</div>
+        ${!o.matched?`<div style="display:flex;gap:8px;align-items:center;margin-top:6px"><span style="font-size:11px;color:#8a7a6a">Reassign:</span><select onchange="parsedOrders[${i}].driver=this.value" style="padding:5px 10px;font-size:12px;background:#f5ede0;border:1px solid #e8dfd2;border-radius:6px;flex:1"><option selected>Dinesh</option><option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option></select></div>`:''}
+      </div></div>`;
   }).join('');
-
-  document.getElementById('previewBox').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  document.getElementById('previewBox').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
-
-/* ═══════════════════════════════════════════
-   CONFIRM & SAVE
-   ═══════════════════════════════════════════ */
-
-async function confirmAllOrders() {
-  const btn = document.getElementById('confirmBtn');
-  btn.textContent = '⏳ Saving…';
-  btn.disabled = true;
-
-  const dateInput = document.getElementById('ord-date').value || todayStr();
-  let ok = 0, fail = 0;
-
-  for (const o of parsedOrders) {
-    const date = o.date || dateInput;
-    const itemsStr = o.items.map(it => {
-      let s = it.name;
-      if (it.spec) s += ' (' + it.spec + ')';
-      return s;
-    }).join(', ');
-    const qtyStr = o.items.map(it => it.qty).join(', ');
-
-    const res = await apiPost({
-      action: 'addOrder',
-      driver: o.driver,
-      shop_id: o.shop_id,
-      shop_name: o.shop_name,
-      items: itemsStr,
-      qty: qtyStr,
-      note: o.matched ? '' : 'NEW SHOP - ' + o.area,
-      date: date
-    });
-    res.ok ? ok++ : fail++;
+/* ═══ CONFIRM ═══ */
+async function confirmAllOrders(){
+  const btn=document.getElementById('confirmBtn');btn.textContent='⏳ Saving…';btn.disabled=true;
+  const dateInput=document.getElementById('ord-date').value||todayStr();
+  let ok=0,fail=0;
+  for(const o of parsedOrders){
+    const date=o.date||dateInput;
+    const itemsStr=o.items.map(it=>{let s=it.name;if(it.spec)s+=' ('+it.spec+')';return s;}).join(', ');
+    const qtyStr=o.items.map(it=>it.qty).join(', ');
+    const res=await apiPost({action:'addOrder',driver:o.driver,shop_id:o.shop_id,shop_name:o.shop_name,items:itemsStr,qty:qtyStr,note:o.matched?'':'NEW SHOP - '+o.area,date});
+    res.ok?ok++:fail++;
   }
-
-  btn.textContent = '✅ Confirm & Save All Orders';
-  btn.disabled = false;
-
-  const pm = document.getElementById('parse-msg');
-  pm.textContent = `✅ ${ok} orders saved!${fail ? ` ❌ ${fail} failed.` : ''}`;
-  pm.className = 'msg ok';
-  pm.style.display = 'block';
-
-  clearPreview();
-  loadOrders();
+  btn.textContent='✅ Confirm & Save All Orders';btn.disabled=false;
+  const pm=document.getElementById('parse-msg');
+  pm.textContent=`✅ ${ok} saved!${fail?` ❌ ${fail} failed.`:''}`;pm.className='msg ok';pm.style.display='block';
+  clearPreview();loadOrders();
 }
 
-function clearPreview() {
-  document.getElementById('previewBox').style.display = 'none';
-  document.getElementById('parseStatsBox').style.display = 'none';
-  parsedOrders = [];
+function clearPreview(){document.getElementById('previewBox').style.display='none';document.getElementById('parseStatsBox').style.display='none';parsedOrders=[];}
+
+function handleFile(e){const file=e.target.files[0];if(!file)return;const r=new FileReader();r.onload=ev=>{const lines=ev.target.result.split('\n').slice(1);document.getElementById('orderPaste').value=lines.filter(l=>l.trim()).map(l=>{const c=l.split(',').map(x=>x.replace(/^"|"$/g,'').trim());return[c[0],c[1]||'',c[2]||''].join(' – ');}).join('\n');};r.readAsText(file);}
+
+/* ═══ ORDERS LIST ═══ */
+async function loadOrders(){
+  const el=document.getElementById('ordersList');el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
+  const driver=document.getElementById('f-ord-driver').value,date=document.getElementById('f-ord-date').value||todayStr();
+  const data=await api({action:'getOrders',driver,date});
+  if(!Array.isArray(data)||!data.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders.</div>';return;}
+  el.innerHTML=data.map(o=>`<div class="order-card"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="font-size:14px;font-weight:800;color:#4a2f14">${o.shop_name}</div><span class="badge DC-${o.driver}">${o.driver}</span></div><div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin:3px 0 6px">${o.date} · ${o.order_id}</div><div style="font-size:12px;font-family:monospace;background:#f5ede0;padding:7px 10px;border-radius:8px;margin-bottom:7px"><b>Items:</b> ${o.items}<br><b>Qty:</b> ${o.qty}${o.note&&o.note!=='—'?'<br><b>Note:</b> '+o.note:''}</div><button class="btn-sm btn-del" onclick="deleteOrder('${o.order_id}')">🗑 Delete</button></div>`).join('');
+}
+async function deleteOrder(id){if(!confirm('Delete?'))return;const r=await apiPost({action:'deleteOrder',order_id:id});if(r.ok)loadOrders();}
+
+/* ═══ SUMMARY ═══ */
+async function loadSummary(){
+  const el=document.getElementById('summaryBody');el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
+  const date=document.getElementById('f-sum-date').value||todayStr();
+  const data=await api({action:'getOrders',date});
+  if(!Array.isArray(data)||!data.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders.</div>';return;}
+  const byD={};data.forEach(o=>{if(!byD[o.driver])byD[o.driver]=[];byD[o.driver].push(o);});
+  const aI={};data.forEach(o=>{(o.items||'').split(',').map(s=>s.trim()).filter(Boolean).forEach(item=>{aI[item]=(aI[item]||0)+1;});});
+  let html=`<div class="card" style="margin-bottom:10px"><div class="lbl">Grand Total</div><div style="font-size:13px;font-weight:800;color:#4a2f14;margin-bottom:6px">${data.length} orders · ${Object.keys(byD).length} drivers</div>${Object.entries(aI).map(([i,c])=>`<div class="summary-row">${i}: <b>${c}</b></div>`).join('')}</div>`;
+  Object.entries(byD).forEach(([drv,ords])=>{
+    const dI={};ords.forEach(o=>{(o.items||'').split(',').map(s=>s.trim()).filter(Boolean).forEach(item=>{dI[item]=(dI[item]||0)+1;});});
+    html+=`<div class="summary-card"><div class="summary-driver"><span class="badge DC-${drv}">${drv}</span> · ${ords.length} shops</div>${ords.map(o=>`<div class="summary-row">• ${o.shop_name} — ${o.items} (${o.qty})</div>`).join('')}<div class="summary-total" style="margin-top:6px;padding-top:6px;border-top:1px solid #f0e8dc">Items: ${Object.entries(dI).map(([i,c])=>i+' ×'+c).join(', ')}</div></div>`;
+  });el.innerHTML=html;
 }
 
-function handleFile(e) {
-  const file = e.target.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    const lines = ev.target.result.split('\n').slice(1);
-    document.getElementById('orderPaste').value = lines.filter(l => l.trim()).map(l => {
-      const c = l.split(',').map(x => x.replace(/^"|"$/g, '').trim());
-      return [c[0], c[1] || '', c[2] || ''].join(' – ');
-    }).join('\n');
-  };
-  reader.readAsText(file);
+/* ═══ DELIVERY ═══ */
+async function loadDeliveries(){
+  const el=document.getElementById('deliveryList');el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
+  const driver=document.getElementById('f-del-driver').value,date=document.getElementById('f-del-date').value||todayStr();
+  const[orders,delivs,routes]=await Promise.all([api({action:'getOrders',driver,date}),api({action:'getDeliveries',driver,date}),api({action:'getRoutes',driver,date})]);
+  const oA=Array.isArray(orders)?orders:[],dA=Array.isArray(delivs)?delivs:[],rA=Array.isArray(routes)?routes:[];
+  const dM={};dA.forEach(d=>dM[d.shop_id]=d);
+  document.getElementById('delivStats').innerHTML=`<div class="stat"><div class="stat-n">${oA.length}</div><div class="stat-l">Total</div></div><div class="stat"><div class="stat-n" style="color:#2d7a4f">${dA.length}</div><div class="stat-l">Done</div></div><div class="stat"><div class="stat-n" style="color:#c8382a">${oA.length-dA.length}</div><div class="stat-l">Pending</div></div>`;
+  if(!oA.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders.</div>';return;}
+  let ri='';if(rA.length)ri=`<div class="card" style="margin-bottom:10px"><div class="lbl">Routes</div>${rA.map(r=>`<div style="font-size:12px;font-family:monospace;padding:3px 0"><span class="badge DC-${r.driver}">${r.driver}</span> ${r.start_time||'—'} · ${r.total_shops||'?'} shops</div>`).join('')}</div>`;
+  el.innerHTML=ri+oA.map(o=>{const done=!!dM[o.shop_id];return`<div class="deliv-row"><div style="flex:1"><div style="font-size:13px;font-weight:800">${o.shop_name}</div><div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px"><span class="badge DC-${o.driver}">${o.driver}</span> · ${o.items}</div>${done?`<div style="font-size:10px;font-family:monospace;color:#2d7a4f;margin-top:2px">✅ ${dM[o.shop_id]?.time||''}</div>`:''}</div><span class="badge ${done?'b-done':'b-miss'}">${done?'Done':'Pending'}</span></div>`;}).join('');
 }
 
-
-/* ═══════════════════════════════════════════
-   ORDERS LIST
-   ═══════════════════════════════════════════ */
-
-async function loadOrders() {
-  const el = document.getElementById('ordersList');
-  el.innerHTML = '<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
-  const driver = document.getElementById('f-ord-driver').value;
-  const date = document.getElementById('f-ord-date').value || todayStr();
-  const data = await api({ action: 'getOrders', driver, date });
-  if (!Array.isArray(data) || !data.length) {
-    el.innerHTML = '<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders for this filter.</div>';
-    return;
-  }
-  el.innerHTML = data.map(o => `
-    <div class="order-card">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div style="font-size:14px;font-weight:800;color:#4a2f14">${o.shop_name}</div>
-        <span class="badge DC-${o.driver}">${o.driver}</span>
-      </div>
-      <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin:3px 0 6px">Delivery: ${o.date} · ${o.order_id}</div>
-      <div style="font-size:12px;font-family:monospace;background:#f5ede0;padding:7px 10px;border-radius:8px;margin-bottom:7px"><b>Items:</b> ${o.items}<br><b>Qty:</b> ${o.qty}${o.note && o.note !== '—' ? '<br><b>Note:</b> ' + o.note : ''}</div>
-      <button class="btn-sm btn-del" onclick="deleteOrder('${o.order_id}')">🗑 Delete</button>
-    </div>`).join('');
+/* ═══ ROUTES ═══ */
+let routesData=[];
+async function loadRoutes(){
+  const el=document.getElementById('routesList');el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
+  const date=document.getElementById('f-rt-date').value||todayStr(),driver=document.getElementById('f-rt-driver').value;
+  routesData=await api({action:'getRoutes',date,driver});if(!Array.isArray(routesData))routesData=[];
+  const ts=routesData.reduce((s,r)=>s+(parseInt(r.total_shops)||0),0),tk=routesData.reduce((s,r)=>s+(parseInt(r.total_km)||0),0);
+  document.getElementById('routeStats').innerHTML=`<div class="stat"><div class="stat-n">${routesData.length}</div><div class="stat-l">Drivers</div></div><div class="stat"><div class="stat-n">${ts}</div><div class="stat-l">Shops</div></div><div class="stat"><div class="stat-n">${tk}</div><div class="stat-l">KM</div></div>`;
+  if(!routesData.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No routes.</div>';return;}
+  el.innerHTML=routesData.map(r=>{let shops=[];try{shops=JSON.parse(r.shop_order||'[]');}catch(e){}return`<div class="driver-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><div style="font-size:15px;font-weight:800">${r.driver}</div><div style="display:flex;gap:4px"><span class="badge b-ok">${r.total_shops} shops</span><span class="badge b-warn">${r.total_km} km</span><span class="badge" style="background:#f3e8ff;color:#6e3da8">${r.est_time}</span></div></div><div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-bottom:6px">Started: ${r.start_time||'—'}</div>${shops.map((s,i)=>`<div class="route-mini">${i+1}. ${s}</div>`).join('')}</div>`;}).join('');
 }
 
-async function deleteOrder(id) {
-  if (!confirm('Delete this order?')) return;
-  const r = await apiPost({ action: 'deleteOrder', order_id: id });
-  if (r.ok) loadOrders();
+/* ═══ GPS ═══ */
+let gpsShops=[];
+async function loadGPS(){gpsShops=await api({action:'getShops'});if(!Array.isArray(gpsShops))gpsShops=[];renderGPS();}
+function renderGPS(){
+  const driver=document.getElementById('f-gps-driver').value,status=document.getElementById('f-gps-status').value;
+  let list=gpsShops;if(driver)list=list.filter(s=>s.assigned_driver===driver);if(status==='saved')list=list.filter(s=>s.lat);if(status==='missing')list=list.filter(s=>!s.lat);
+  const saved=gpsShops.filter(s=>s.lat).length;
+  document.getElementById('gpsStats').innerHTML=`<div class="stat"><div class="stat-n">${gpsShops.length}</div><div class="stat-l">Total</div></div><div class="stat"><div class="stat-n" style="color:#2d7a4f">${saved}</div><div class="stat-l">Saved</div></div><div class="stat"><div class="stat-n" style="color:#c8382a">${gpsShops.length-saved}</div><div class="stat-l">Missing</div></div>`;
+  document.getElementById('gpsList').innerHTML=list.map(s=>`<div class="order-card"><div style="display:flex;justify-content:space-between"><div style="font-size:14px;font-weight:800;color:#4a2f14">${s.name}</div><span class="badge ${s.lat?'b-ok':'b-miss'}">${s.lat?'✅':'⚠'}</span></div><div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin:3px 0 6px">${s.area||''} · <span class="badge DC-${s.assigned_driver||'Dinesh'}">${s.assigned_driver||'-'}</span></div>${s.lat?`<div style="font-size:11px;font-family:monospace;color:#2d7a4f;margin-bottom:6px">${s.lat}, ${s.lng}</div><button class="btn-sm btn-map" onclick="window.open('https://www.google.com/maps?q=${s.lat},${s.lng}','_blank')">🗺 Map</button>`:''}</div>`).join('');
 }
 
-
-/* ═══════════════════════════════════════════
-   SUMMARY
-   ═══════════════════════════════════════════ */
-
-async function loadSummary() {
-  const el = document.getElementById('summaryBody');
-  el.innerHTML = '<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
-  const date = document.getElementById('f-sum-date').value || todayStr();
-  const data = await api({ action: 'getOrders', date });
-  if (!Array.isArray(data) || !data.length) {
-    el.innerHTML = '<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders for this date.</div>';
-    return;
-  }
-
-  const byDriver = {};
-  data.forEach(o => { if (!byDriver[o.driver]) byDriver[o.driver] = []; byDriver[o.driver].push(o); });
-
-  const allItems = {};
-  data.forEach(o => {
-    (o.items || '').split(',').map(s => s.trim()).filter(Boolean).forEach(item => {
-      allItems[item] = (allItems[item] || 0) + 1;
-    });
-  });
-
-  let html = `<div class="card" style="margin-bottom:10px">
-    <div class="lbl">Grand Total — All Drivers</div>
-    <div style="font-size:13px;font-weight:800;color:#4a2f14;margin-bottom:6px">${data.length} orders · ${Object.keys(byDriver).length} drivers active</div>
-    ${Object.entries(allItems).map(([item, cnt]) => `<div class="summary-row">${item}: <b>${cnt}</b></div>`).join('')}
-  </div>`;
-
-  Object.entries(byDriver).forEach(([drv, ords]) => {
-    const dItems = {};
-    ords.forEach(o => {
-      (o.items || '').split(',').map(s => s.trim()).filter(Boolean).forEach(item => {
-        dItems[item] = (dItems[item] || 0) + 1;
-      });
-    });
-    html += `<div class="summary-card">
-      <div class="summary-driver"><span class="badge DC-${drv}">${drv}</span> · ${ords.length} shops</div>
-      ${ords.map(o => `<div class="summary-row">• ${o.shop_name} — ${o.items} (${o.qty})</div>`).join('')}
-      <div class="summary-total" style="margin-top:6px;padding-top:6px;border-top:1px solid #f0e8dc">Items: ${Object.entries(dItems).map(([i, c]) => i + ' ×' + c).join(', ')}</div>
-    </div>`;
-  });
-  el.innerHTML = html;
-}
-
-
-/* ═══════════════════════════════════════════
-   DELIVERY STATUS
-   ═══════════════════════════════════════════ */
-
-async function loadDeliveries() {
-  const el = document.getElementById('deliveryList');
-  el.innerHTML = '<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
-  const driver = document.getElementById('f-del-driver').value;
-  const date = document.getElementById('f-del-date').value || todayStr();
-  const [orders, delivs, routes] = await Promise.all([
-    api({ action: 'getOrders', driver, date }),
-    api({ action: 'getDeliveries', driver, date }),
-    api({ action: 'getRoutes', driver, date })
-  ]);
-  const ordArr = Array.isArray(orders) ? orders : [];
-  const delArr = Array.isArray(delivs) ? delivs : [];
-  const routeArr = Array.isArray(routes) ? routes : [];
-
-  const delivMap = {};
-  delArr.forEach(d => delivMap[d.shop_id] = d);
-  const done = delArr.length, total = ordArr.length;
-
-  document.getElementById('delivStats').innerHTML = `
-    <div class="stat"><div class="stat-n">${total}</div><div class="stat-l">Total</div></div>
-    <div class="stat"><div class="stat-n" style="color:#2d7a4f">${done}</div><div class="stat-l">Delivered</div></div>
-    <div class="stat"><div class="stat-n" style="color:#c8382a">${total - done}</div><div class="stat-l">Pending</div></div>`;
-
-  if (!ordArr.length) {
-    el.innerHTML = '<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders for this filter.</div>';
-    return;
-  }
-
-  let routeInfo = '';
-  if (routeArr.length) {
-    routeInfo = `<div class="card" style="margin-bottom:10px"><div class="lbl">Route Status</div>${routeArr.map(r => `<div style="font-size:12px;font-family:monospace;padding:3px 0"><span class="badge DC-${r.driver}">${r.driver}</span> started ${r.start_time || '—'} · ${r.total_shops || '?'} shops · ${r.total_km || '?'} km</div>`).join('')}</div>`;
-  }
-
-  el.innerHTML = routeInfo + ordArr.map(o => {
-    const isDone = !!delivMap[o.shop_id];
-    return `<div class="deliv-row">
-      <div style="flex:1">
-        <div style="font-size:13px;font-weight:800">${o.shop_name}</div>
-        <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px"><span class="badge DC-${o.driver}">${o.driver}</span> · ${o.items}</div>
-        ${isDone ? `<div style="font-size:10px;font-family:monospace;color:#2d7a4f;margin-top:2px">✅ Delivered at ${delivMap[o.shop_id]?.time || ''}</div>` : ''}
-      </div>
-      <span class="badge ${isDone ? 'b-done' : 'b-miss'}">${isDone ? 'Done' : 'Pending'}</span>
-    </div>`;
-  }).join('');
-}
-
-
-/* ═══════════════════════════════════════════
-   ROUTES
-   ═══════════════════════════════════════════ */
-
-let routesData = [];
-async function loadRoutes() {
-  const el = document.getElementById('routesList');
-  el.innerHTML = '<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
-  const date = document.getElementById('f-rt-date').value || todayStr();
-  const driver = document.getElementById('f-rt-driver').value;
-  routesData = await api({ action: 'getRoutes', date, driver });
-  if (!Array.isArray(routesData)) routesData = [];
-  const ts = routesData.reduce((s, r) => s + (parseInt(r.total_shops) || 0), 0);
-  const tk = routesData.reduce((s, r) => s + (parseInt(r.total_km) || 0), 0);
-  document.getElementById('routeStats').innerHTML = `
-    <div class="stat"><div class="stat-n">${routesData.length}</div><div class="stat-l">Drivers</div></div>
-    <div class="stat"><div class="stat-n">${ts}</div><div class="stat-l">Shops</div></div>
-    <div class="stat"><div class="stat-n">${tk}</div><div class="stat-l">KM</div></div>`;
-  if (!routesData.length) {
-    el.innerHTML = '<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No route data.</div>';
-    return;
-  }
-  el.innerHTML = routesData.map(r => {
-    let shops = []; try { shops = JSON.parse(r.shop_order || '[]'); } catch (e) {}
-    return `<div class="driver-card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <div style="font-size:15px;font-weight:800">${r.driver}</div>
-        <div style="display:flex;gap:4px">
-          <span class="badge b-ok">${r.total_shops} shops</span>
-          <span class="badge b-warn">${r.total_km} km</span>
-          <span class="badge" style="background:#f3e8ff;color:#6e3da8">${r.est_time}</span>
-        </div>
-      </div>
-      <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-bottom:6px">Started: ${r.start_time || '—'} · Updated: ${r.updated_at || ''}</div>
-      ${shops.map((s, i) => `<div class="route-mini">${i + 1}. ${s}</div>`).join('')}
-    </div>`;
-  }).join('');
-}
-
-
-/* ═══════════════════════════════════════════
-   GPS
-   ═══════════════════════════════════════════ */
-
-let gpsShops = [];
-async function loadGPS() { gpsShops = await api({ action: 'getShops' }); if (!Array.isArray(gpsShops)) gpsShops = []; renderGPS(); }
-
-function renderGPS() {
-  const driver = document.getElementById('f-gps-driver').value;
-  const status = document.getElementById('f-gps-status').value;
-  let list = gpsShops;
-  if (driver) list = list.filter(s => s.assigned_driver === driver);
-  if (status === 'saved') list = list.filter(s => s.lat);
-  if (status === 'missing') list = list.filter(s => !s.lat);
-  const saved = gpsShops.filter(s => s.lat).length;
-  document.getElementById('gpsStats').innerHTML = `
-    <div class="stat"><div class="stat-n">${gpsShops.length}</div><div class="stat-l">Total</div></div>
-    <div class="stat"><div class="stat-n" style="color:#2d7a4f">${saved}</div><div class="stat-l">Saved</div></div>
-    <div class="stat"><div class="stat-n" style="color:#c8382a">${gpsShops.length - saved}</div><div class="stat-l">Missing</div></div>`;
-  document.getElementById('gpsList').innerHTML = list.map(s => `
-    <div class="order-card">
-      <div style="display:flex;justify-content:space-between">
-        <div style="font-size:14px;font-weight:800;color:#4a2f14">${s.name}</div>
-        <span class="badge ${s.lat ? 'b-ok' : 'b-miss'}">${s.lat ? '✅ GPS' : '⚠ No GPS'}</span>
-      </div>
-      <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin:3px 0 6px">${s.area || ''} · <span class="badge DC-${s.assigned_driver || 'Dinesh'}">${s.assigned_driver || 'Unassigned'}</span></div>
-      ${s.lat ? `<div style="font-size:11px;font-family:monospace;color:#2d7a4f;margin-bottom:6px">${s.lat}, ${s.lng}</div>
-        <button class="btn-sm btn-map" onclick="window.open('https://www.google.com/maps?q=${s.lat},${s.lng}','_blank')">🗺 Open Map</button>` : ''}
-    </div>`).join('');
-}
-
-
-/* ═══════════════════════════════════════════
-   EXPORTS
-   ═══════════════════════════════════════════ */
-
-function exportRouteCSV() {
-  const rows = [['Date', 'Driver', 'Start Time', 'Total Shops', 'KM', 'Est Time'], ...routesData.map(r => [r.date, r.driver, r.start_time || '', r.total_shops, r.total_km, r.est_time])];
-  dlCSV(rows, 'baked-routes-' + todayStr() + '.csv');
-}
-function exportGPSCSV() {
-  const rows = [['Shop', 'Area', 'Driver', 'Lat', 'Lng', 'Updated By', 'At'], ...gpsShops.map(s => [s.name, s.area, s.assigned_driver, s.lat || '', s.lng || '', s.last_updated_by || '', s.last_updated_at || ''])];
-  dlCSV(rows, 'baked-gps-' + todayStr() + '.csv');
-}
-function dlCSV(rows, fname) {
-  const csv = rows.map(r => r.map(c => '"' + String(c || '').replace(/"/g, '""') + '"').join(',')).join('\n');
-  const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv); a.download = fname; document.body.appendChild(a); a.click(); document.body.removeChild(a);
-}
+/* ═══ EXPORTS ═══ */
+function exportRouteCSV(){dlCSV([['Date','Driver','Start','Shops','KM','Est'],...routesData.map(r=>[r.date,r.driver,r.start_time||'',r.total_shops,r.total_km,r.est_time])],'routes-'+todayStr()+'.csv');}
+function exportGPSCSV(){dlCSV([['Shop','Area','Driver','Lat','Lng'],...gpsShops.map(s=>[s.name,s.area,s.assigned_driver,s.lat||'',s.lng||''])],'gps-'+todayStr()+'.csv');}
+function dlCSV(rows,fname){const csv=rows.map(r=>r.map(c=>'"'+String(c||'').replace(/"/g,'""')+'"').join(',')).join('\n');const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download=fname;document.body.appendChild(a);a.click();document.body.removeChild(a);}
 
 loadOrders();
 </script>
