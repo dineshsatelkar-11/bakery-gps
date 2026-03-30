@@ -280,23 +280,41 @@ ${text}`;
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         contents:[{parts:[{text:prompt}]}],
-        generationConfig:{temperature:0.1, responseMimeType:'application/json'}
+        generationConfig:{
+          temperature:0.1,
+          responseMimeType:'application/json',
+          maxOutputTokens:8192
+        }
       })
     }
   );
 
   if(!res.ok){
     const e=await res.text();
-    if(res.status===400&&e.includes('API_KEY_INVALID')) throw new Error('Invalid API key. Get new one from aistudio.google.com');
+    if(res.status===400&&e.includes('API_KEY_INVALID')) throw new Error('Invalid API key');
     if(res.status===429) throw new Error('Rate limit — wait 1 min and try again');
-    throw new Error('Gemini error '+res.status+': '+e.slice(0,100));
+    throw new Error('Gemini error '+res.status);
   }
 
   const data=await res.json();
   const txt=data.candidates?.[0]?.content?.parts?.[0]?.text||'';
   if(!txt) throw new Error('Empty response from Gemini');
-  const clean=txt.replace(/```json|```/g,'').trim();
-  return JSON.parse(clean);
+
+  // Handle truncated JSON gracefully
+  let clean=txt.replace(/```json|```/g,'').trim();
+  // If JSON is cut off, try to close it
+  if(!clean.endsWith(']')){
+    const lastBrace=clean.lastIndexOf('}');
+    if(lastBrace>0) clean=clean.slice(0,lastBrace+1)+']';
+  }
+  try {
+    return JSON.parse(clean);
+  } catch(e) {
+    // Try to extract whatever valid objects we have
+    const matches=clean.match(/\{[^{}]*"shop_name"[^{}]*\}/g);
+    if(matches&&matches.length) return matches.map(m=>{try{return JSON.parse(m);}catch(e){return null;}}).filter(Boolean);
+    throw new Error('Could not parse Gemini response. Try with fewer shops at once.');
+  }
 }
 
 async function parseWithGemini(){
@@ -313,8 +331,12 @@ async function parseWithGemini(){
   if(!raw){ pmsg.textContent='❌ Paste order text first'; pmsg.className='msg er'; pmsg.style.display='block'; return; }
   if(!allShops.length){ await loadShops(); }
 
-  btn.disabled=true; btn.textContent='🤖 Parsing…';
+  btn.disabled=true; btn.textContent='🤖 Parsing… keep screen on';
   loader.style.display='flex'; pmsg.style.display='none';
+
+  // Keep screen awake if Wake Lock API available
+  let wakeLock=null;
+  try{ if(navigator.wakeLock) wakeLock=await navigator.wakeLock.request('screen'); }catch(e){}
 
   try {
     const aiOrders = await callGemini(raw);
@@ -360,6 +382,7 @@ async function parseWithGemini(){
   } finally {
     btn.disabled=false; btn.textContent='🤖 Parse with Gemini AI';
     loader.style.display='none';
+    if(wakeLock) try{ await wakeLock.release(); }catch(e){}
   }
 }
 
