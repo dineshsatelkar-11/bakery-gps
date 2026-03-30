@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>Baked — Admin</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4a2f14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Baked GPS">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:520px;margin:0 auto;min-height:100vh}
@@ -88,6 +94,7 @@ textarea{resize:vertical;min-height:140px;font-size:13px;line-height:1.7}
     </div>
     <textarea id="orderPaste" placeholder="Paste WhatsApp order here..."></textarea>
     <div style="display:flex;gap:8px;margin-bottom:8px">
+      <button class="btn-sm" style="background:#2d7a4f;color:#fff;flex:1;padding:10px;font-size:13px" id="pasteBtn">📋 Paste from Clipboard</button>
       <button class="btn-sm btn-del" style="flex:1;padding:10px" id="clearBtn">Clear</button>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:8px">
@@ -101,7 +108,7 @@ textarea{resize:vertical;min-height:140px;font-size:13px;line-height:1.7}
       <div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div>
       <div class="ai-label" id="ai-label-text">Gemini is reading orders...</div>
     </div>
-    <button class="btn btn-parse" id="parseBtn">Parse with Gemini AI</button>
+    <button class="btn btn-parse" id="parseBtn">Parse Orders</button>
   </div>
   <div id="parseStatsBox" style="display:none"><div class="parse-stats" id="parseStats"></div></div>
   <div id="previewBox" style="display:none">
@@ -181,13 +188,51 @@ function apiPost(b){ return fetch(SHEET_API,{method:'POST',body:JSON.stringify(b
 function todayStr(){ var d=new Date(); return d.getFullYear()+'-'+zp(d.getMonth()+1)+'-'+zp(d.getDate()); }
 function zp(n){ return String(n).padStart(2,'0'); }
 
-// init dates
+// Auto-read shared text from WhatsApp share
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  var shared = params.get('shared_text') || params.get('text') || '';
+  if(shared && shared.length > 10) {
+    window.addEventListener('DOMContentLoaded', function() {
+      var ta = document.getElementById('orderPaste');
+      if(ta) {
+        ta.value = decodeURIComponent(shared);
+        // Auto switch to orders tab and show notification
+        showTab('orders');
+        var pmsg = document.getElementById('parse-msg');
+        pmsg.textContent = '✅ Order received from WhatsApp! Tap Parse to process.';
+        pmsg.className = 'msg ok';
+        pmsg.style.display = 'block';
+      }
+    });
+  }
+})();
+
+// Register Service Worker dates
 document.getElementById('topDate').textContent = new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'});
 ['ord-date','f-ord-date','f-rt-date','f-sum-date','f-del-date'].forEach(function(id){ document.getElementById(id).value = todayStr(); });
 
 // button events
 document.getElementById('logoutBtn').onclick     = function(){ sessionStorage.clear(); window.location.href='index.html'; };
-document.getElementById('clearBtn').onclick      = function(){ document.getElementById('orderPaste').value=''; };
+document.getElementById('pasteBtn').onclick = function() {
+  if(navigator.clipboard && navigator.clipboard.readText) {
+    navigator.clipboard.readText().then(function(text) {
+      if(text && text.length > 5) {
+        document.getElementById('orderPaste').value = text;
+        var pmsg = document.getElementById('parse-msg');
+        pmsg.textContent = '✅ Pasted! Tap Parse Orders.';
+        pmsg.className = 'msg ok'; pmsg.style.display = 'block';
+      } else {
+        alert('Nothing in clipboard. Copy WhatsApp order first.');
+      }
+    }).catch(function() {
+      // iOS sometimes needs user to confirm clipboard access
+      alert('Allow clipboard access when asked, then try again.');
+    });
+  } else {
+    alert('Clipboard not supported. Please paste manually.');
+  }
+};
 document.getElementById('parseBtn').onclick      = parseWithGemini;
 document.getElementById('confirmBtn').onclick    = confirmAll;
 document.getElementById('cancelBtn').onclick     = clearPreview;
