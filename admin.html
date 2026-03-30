@@ -59,12 +59,6 @@ textarea{resize:vertical;min-height:140px;font-size:13px;line-height:1.7}
 .pi-head{display:flex;justify-content:space-between;align-items:center;cursor:pointer}
 .pi-toggle{font-size:10px;color:#8a7a6a;padding:2px 6px;background:#f5ede0;border-radius:4px}
 .hint-box{background:#e8f0fe;border:1.5px dashed #4285f4;border-radius:12px;padding:10px 14px;margin-bottom:10px;font-size:11px;font-family:monospace;color:#1a73e8;line-height:1.8}
-.hint-box b{color:#174ea6}
-.ai-loader{display:flex;align-items:center;gap:10px;padding:14px;background:#e8f0fe;border:1.5px solid #a8c7fa;border-radius:14px;margin-bottom:10px}
-.ai-dot{width:8px;height:8px;background:#1a73e8;border-radius:50%;animation:pulse .8s infinite alternate}
-.ai-dot:nth-child(2){animation-delay:.2s}.ai-dot:nth-child(3){animation-delay:.4s}
-@keyframes pulse{0%{opacity:.3;transform:scale(.8)}100%{opacity:1;transform:scale(1.2)}}
-.ai-label{font-size:12px;font-weight:700;color:#1a73e8;font-family:monospace}
 </style>
 </head>
 <body>
@@ -87,9 +81,7 @@ textarea{resize:vertical;min-height:140px;font-size:13px;line-height:1.7}
   <div class="card">
     <div class="lbl">Paste WhatsApp Orders</div>
     <div class="hint-box">
-      <b>Gemini AI Parser</b><br>
-      Paste forwarded WhatsApp order directly.<br>
-      AI reads and assigns driver automatically.<br>
+      Paste WhatsApp order directly — multiline chat or forwarded email both work.<br>
       Known shops get correct driver. New shops go to Dinesh.
     </div>
     <textarea id="orderPaste" placeholder="Paste WhatsApp order here..."></textarea>
@@ -104,10 +96,6 @@ textarea{resize:vertical;min-height:140px;font-size:13px;line-height:1.7}
       </div>
     </div>
     <div id="parse-msg" style="display:none" class="msg in"></div>
-    <div id="ai-loading" style="display:none" class="ai-loader">
-      <div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div>
-      <div class="ai-label" id="ai-label-text">Gemini is reading orders...</div>
-    </div>
     <button class="btn btn-parse" id="parseBtn">Parse Orders</button>
   </div>
   <div id="parseStatsBox" style="display:none"><div class="parse-stats" id="parseStats"></div></div>
@@ -177,7 +165,6 @@ textarea{resize:vertical;min-height:140px;font-size:13px;line-height:1.7}
 // ── ALL JS IN ONE BLOCK — no split scripts ──
 
 var SHEET_API = 'https://script.google.com/macros/s/AKfycbyi-IJ6NLR28hRTeesy52THTbdcYCSnz3lp7NtEaJsxBOiNOm-9emMu0xOHT6hvWSE-/exec';
-var GEMINI_KEY = 'AIzaSyBibBFw-030gXBDuk9jL0jQFbUYVBMNSjY';
 var UNASSIGNED = 'Dinesh';
 
 // guard
