@@ -20,7 +20,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;
 .card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:14px;margin-bottom:10px}
 .lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:8px;text-transform:uppercase}
 select,input[type=text],input[type=date],textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:8px}
-textarea{resize:vertical;min-height:110px;font-size:13px;line-height:1.7}
+textarea{resize:vertical;min-height:140px;font-size:13px;line-height:1.7}
 .btn{width:100%;padding:13px;border:none;border-radius:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:8px}
 .btn-parse{background:#6e3da8;color:#fff}
 .btn-confirm{background:#2d7a4f;color:#fff}
@@ -34,19 +34,17 @@ textarea{resize:vertical;min-height:110px;font-size:13px;line-height:1.7}
 .er{background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0}
 .in{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9}
 .warn{background:#fff8e1;color:#7a4800;border:1px solid #ffe082}
-/* SUMMARY */
 .summary-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;padding:12px 14px;margin-bottom:8px}
 .summary-driver{font-size:15px;font-weight:800;margin-bottom:6px}
 .summary-row{font-size:12px;font-family:monospace;padding:3px 0;border-bottom:1px solid #f0e8dc;color:#1e1611}
 .summary-total{font-size:13px;font-weight:800;color:#4a2f14;padding-top:6px}
-/* PARSED */
-.parsed-item{background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:12px 14px;margin-bottom:8px}
+.parsed-item{background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:12px 14px;margin-bottom:8px;transition:all .2s}
 .parsed-item.unmatched{border-color:#f0b0b0;background:#fff8f8}
-/* ORDER CARDS */
+.parsed-item.collapsed .pi-body{display:none}
+.pi-head{display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+.pi-toggle{font-size:10px;color:#8a7a6a;padding:2px 6px;background:#f5ede0;border-radius:4px}
 .order-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;padding:11px 14px;margin-bottom:8px}
-/* DELIVERY STATUS */
 .deliv-row{background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:10px 14px;margin-bottom:7px;display:flex;align-items:center;gap:10px}
-/* STATS */
 .stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
 .stat{background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:10px;text-align:center}
 .stat-n{font-size:20px;font-weight:900;color:#4a2f14}
@@ -66,12 +64,23 @@ textarea{resize:vertical;min-height:110px;font-size:13px;line-height:1.7}
 .DC-Yuvraj{background:#f3e8ff;color:#6e3da8}
 .DC-Rama{background:#fde8e8;color:#c8382a}
 .DC-Dinesh{background:#fce4ec;color:#880e4f}
+/* item tag */
+.itag{display:inline-block;background:#f5ede0;border:1px solid #e8dfd2;padding:3px 8px;border-radius:6px;font-size:11px;font-family:monospace;margin:2px 2px 2px 0;line-height:1.5}
+.itag b{color:#4a2f14}
+/* parse stats bar */
+.parse-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px}
+.ps{background:#fff;border:1.5px solid #e8dfd2;border-radius:10px;padding:8px;text-align:center}
+.ps-n{font-size:18px;font-weight:900;color:#4a2f14}
+.ps-l{font-size:8px;color:#8a7a6a;font-family:monospace;text-transform:uppercase;letter-spacing:1px}
+/* format hint */
+.hint-box{background:#f0f4ff;border:1.5px dashed #90caf9;border-radius:12px;padding:10px 14px;margin-bottom:10px;font-size:11px;font-family:monospace;color:#1565c0;line-height:1.8}
+.hint-box b{color:#1a237e}
 </style>
 </head>
 <body>
 
 <div class="topbar">
-  <div><div class="topbar-title">📊 Baked Admin</div><div class="topbar-sub" id="topDate"></div></div>
+  <div><div class="topbar-title">🍞 Baked Admin</div><div class="topbar-sub" id="topDate"></div></div>
   <div class="topbar-right">
     <a href="shops.html" class="tbtn">🏪 Shops</a>
     <button class="tbtn" onclick="logout()">Logout</button>
@@ -89,16 +98,30 @@ textarea{resize:vertical;min-height:110px;font-size:13px;line-height:1.7}
 <!-- ══════════ ORDERS ══════════ -->
 <div class="page on" id="pg-orders">
   <div class="card">
-    <div class="lbl">📋 Paste / Upload Order List</div>
-    <div style="font-size:11px;color:#8a7a6a;font-family:monospace;line-height:1.7;margin-bottom:8px">
-      Paste WhatsApp/chat order below, one line per shop.<br>
-      Format: <b>Shop Name – Items – Qty</b>
+    <div class="lbl">📋 Paste WhatsApp Orders</div>
+
+    <div class="hint-box">
+      <b>Paste the forwarded bold-format messages directly.</b><br>
+      Auto-detects: Shop name, area, items, qty, size, specs.<br>
+      ✅ Matched shops → auto-assign driver<br>
+      ⚠ New shops → assigned to <b>Dinesh</b>
     </div>
-    <textarea id="orderPaste" placeholder="C Tea Post Baner – Bread, Buns – 10, 20&#10;Bammm Aundh – Croissant – 15&#10;Edinburgh Kharadi – Sourdough – 5"></textarea>
+
+    <textarea id="orderPaste" placeholder="*BANK OF TEA*
+*M AGILE*
+*BANER*
+30.03.26
+Veg Puff - 30 🥬🥔🫛
+*BREAD 5x5*
+⬜White - 1
+🟫Brown - 3
+Sweet Bun - 4 🍩
+White Bun - 4
+*4 inch* 🍔"></textarea>
 
     <div style="display:flex;gap:8px;margin-bottom:8px">
       <label style="flex:1;padding:10px;background:#f0f4ff;border:1.5px dashed #90caf9;border-radius:10px;text-align:center;font-size:12px;font-weight:700;color:#1565c0;cursor:pointer">
-        📎 Upload CSV/Excel
+        📎 Upload CSV
         <input type="file" id="fileUpload" accept=".csv" style="display:none" onchange="handleFile(event)">
       </label>
       <button class="btn-sm" style="background:#fde8e8;color:#c8382a;padding:10px 14px" onclick="document.getElementById('orderPaste').value=''">Clear</button>
@@ -112,12 +135,22 @@ textarea{resize:vertical;min-height:110px;font-size:13px;line-height:1.7}
     </div>
 
     <div id="parse-msg" style="display:none" class="msg in"></div>
-    <button class="btn btn-parse" onclick="parseOrders()">🔍 Match Shops & Preview</button>
+    <button class="btn btn-parse" onclick="parseWhatsAppOrders()">🔍 Parse & Match Shops</button>
+  </div>
+
+  <!-- PARSE STATS -->
+  <div id="parseStatsBox" style="display:none">
+    <div class="parse-stats" id="parseStats"></div>
   </div>
 
   <!-- PREVIEW -->
   <div id="previewBox" style="display:none">
-    <div style="font-size:13px;font-weight:800;color:#4a2f14;margin-bottom:10px" id="previewTitle"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-size:13px;font-weight:800;color:#4a2f14" id="previewTitle"></div>
+      <div style="display:flex;gap:6px">
+        <button class="btn-sm" style="background:#f5ede0;color:#4a2f14" onclick="toggleAllPreviews()">▼ Collapse</button>
+      </div>
+    </div>
     <div id="previewList"></div>
     <div id="preview-warn" style="display:none" class="msg warn"></div>
     <button class="btn btn-confirm" id="confirmBtn" onclick="confirmAllOrders()">✅ Confirm & Save All Orders</button>
@@ -202,8 +235,221 @@ const CONFIG = {
   ADMIN_PASS: 'baked@admin',
   UNASSIGNED_OWNER: 'Dinesh'
 };
-</script>
-<script>
+
+/* ═══════════════════════════════════════════
+   WHATSAPP ORDER PARSER — CORE ENGINE
+   Handles the bold-format forwarded messages
+   ═══════════════════════════════════════════ */
+
+function parseWhatsAppText(raw) {
+  // Clean: remove bold markers, normalize whitespace
+  const text = raw.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const lines = text.split('\n');
+
+  const orders = [];
+  let current = null;
+
+  // Known item keywords — anything with "- NUMBER" after it is an item
+  // Known spec/size keywords that are NOT shop names
+  const SPEC_PATTERNS = [
+    /^\d+\s*(inch|")/i,
+    /^\d+x\d+/i,
+    /^(DECK\s*OVEN|WITHOUT\s*(RING|MOULD)|THIN\s*CRUST|THICK|PLAIN|SMALL\s*RING|HEART\s*SHAPE|MIX\s*SEEDS?|RING|EGG|WHITE\s*SEEDS?|WHEAT|SMALL|REGULAR)/i,
+    /^\d+\s*(GM|GRAMS?|KG)/i,
+    /^(Pick\s*Up|Morning|Please\s*send)/i,
+    /^(PJS\s*Hospitality|MILA'?s?\s*KITCHEN)/i,  // sub-brand lines
+  ];
+
+  // Known area names — helps distinguish area from shop name
+  const KNOWN_AREAS = [
+    'BANER','AUNDH','KHARADI','WAKAD','PIMPRI','DHANORI','KOREGAON PARK',
+    'VIMAN NAGAR','HINJEWADI','FC ROAD','NIBM','MG ROAD','LOHGAON','LOHGOAN',
+    'AKURDI','KALYANI NAGAR','SINHAGAD RD','SINHAGAD ROAD','NARAYAN PETH',
+    'PIMPLE SAUDAGAR','PIMPLE','SAUDAGAR','SB ROAD','SANGVI','MUNDHWA',
+    'PRABHAT ROAD','MAHALUNGE','DAPODI','SANJAY PARK','CHANDAN NAGAR',
+    'BHUMKAR CHOWK','AEROMALL','BHARTIYA VP','RAILWAY STATION','METRO STATION',
+    'PHASE 2','ICC TECH PARK','SGS MALL','AMAR MADHUBAN','M AGILE',
+    'PRIDE CITY LOH','CHANDAN'
+  ];
+
+  const DATE_RE = /^\d{1,2}[\.\/-]\d{1,2}[\.\/-]\d{2,4}$/;
+  const ITEM_LINE_RE = /^(.+?)\s*-\s*(\d+)\s*$/;  // "White Bun - 8"
+
+  function stripBold(s) { return s.replace(/\*/g, ''); }
+  function stripEmoji(s) { return s.replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}\u{E0020}-\u{E007F}◻️⬜🟫]/gu, '').trim(); }
+  function cleanLine(s) { return stripBold(s).trim(); }
+  function isDateLine(s) { return DATE_RE.test(stripEmoji(cleanLine(s)).trim()); }
+  function isSpecLine(s) {
+    const c = stripEmoji(cleanLine(s));
+    if (!c) return true; // emoji-only line
+    return SPEC_PATTERNS.some(p => p.test(c));
+  }
+  function isItemLine(s) {
+    const c = stripEmoji(cleanLine(s));
+    return ITEM_LINE_RE.test(c);
+  }
+  function isAreaLine(s) {
+    const c = stripEmoji(cleanLine(s)).toUpperCase();
+    return KNOWN_AREAS.some(a => c === a || c.startsWith(a));
+  }
+  function isBreadHeader(s) {
+    const c = stripEmoji(cleanLine(s)).toUpperCase();
+    return /^BREAD\s*\d+x\d+$/i.test(c) || /^(SUB|BUN|BROTA|PIZZA|BRIOCHE)/i.test(c);
+  }
+  function isShopNameLine(s) {
+    const c = stripEmoji(cleanLine(s));
+    if (!c || c.length < 2) return false;
+    if (isDateLine(s)) return false;
+    if (isItemLine(s)) return false;
+    if (isSpecLine(s)) return false;
+    if (isAreaLine(s)) return false;
+    if (isBreadHeader(s)) return false;
+    // Shop names are typically ALL CAPS or mostly caps, at least 3 chars
+    const alpha = c.replace(/[^A-Za-z]/g, '');
+    const upper = c.replace(/[^A-Z]/g, '');
+    if (alpha.length >= 2 && upper.length / Math.max(alpha.length, 1) > 0.6) return true;
+    return false;
+  }
+
+  function extractDate(s) {
+    const c = stripEmoji(cleanLine(s));
+    const m = c.match(/(\d{1,2})[\.\/-](\d{1,2})[\.\/-](\d{2,4})/);
+    if (!m) return '';
+    let y = m[3]; if (y.length === 2) y = '20' + y;
+    return y + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+  }
+
+  function parseItemLine(s) {
+    const c = stripEmoji(cleanLine(s));
+    const m = c.match(/^(.+?)\s*-\s*(\d+)\s*$/);
+    if (!m) return null;
+    return { name: m[1].trim(), qty: parseInt(m[2]) };
+  }
+
+  function finishCurrent() {
+    if (current && current.shop_name) {
+      // Build items string
+      const itemStr = current.items.map(it => it.name + (it.spec ? ' (' + it.spec + ')' : '')).join(', ');
+      const qtyStr = current.items.map(it => it.qty).join(', ');
+      const fullItems = current.items.map(it => {
+        let s = it.name + ' - ' + it.qty;
+        if (it.spec) s += ' [' + it.spec + ']';
+        return s;
+      });
+      orders.push({
+        shop_name: current.shop_name,
+        area: current.areas.join(' '),
+        date: current.date,
+        items: current.items,
+        items_str: itemStr,
+        qty_str: qtyStr,
+        full_text: fullItems.join('\n'),
+        raw_block: current.raw_lines.join('\n')
+      });
+    }
+    current = null;
+  }
+
+  // State machine parse
+  let lastItemRef = null;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    // Check if this is a new shop name
+    if (isShopNameLine(trimmed)) {
+      // Look ahead: if next non-empty lines are area/date/items, this is a shop
+      // But first, save previous order
+      finishCurrent();
+      current = {
+        shop_name: cleanLine(trimmed).replace(/^\./, '').trim(),
+        areas: [],
+        date: '',
+        items: [],
+        raw_lines: [trimmed]
+      };
+      lastItemRef = null;
+      continue;
+    }
+
+    if (!current) continue;
+    current.raw_lines.push(trimmed);
+
+    // Area line
+    if (isAreaLine(trimmed)) {
+      current.areas.push(stripEmoji(cleanLine(trimmed)));
+      continue;
+    }
+
+    // Date line
+    if (isDateLine(trimmed)) {
+      current.date = extractDate(trimmed);
+      continue;
+    }
+
+    // Item line: "Something - 30"
+    if (isItemLine(trimmed)) {
+      const item = parseItemLine(trimmed);
+      if (item) {
+        current.items.push({ name: item.name, qty: item.qty, spec: '' });
+        lastItemRef = current.items[current.items.length - 1];
+      }
+      continue;
+    }
+
+    // Bread header like "BREAD 5x5" — treat as a category label, attach as spec to next items
+    if (isBreadHeader(trimmed)) {
+      // This is a size/category header — attach to previously added items or as context
+      const specText = stripEmoji(cleanLine(trimmed));
+      // If previous item has no spec, add it
+      if (lastItemRef && !lastItemRef.spec) {
+        lastItemRef.spec = specText;
+      }
+      continue;
+    }
+
+    // Spec/size line — attach to last item
+    if (isSpecLine(trimmed) && lastItemRef) {
+      const specText = stripEmoji(cleanLine(trimmed));
+      if (specText) {
+        lastItemRef.spec = lastItemRef.spec ? lastItemRef.spec + ' ' + specText : specText;
+      }
+      continue;
+    }
+
+    // Color/variant lines like "⬜White - 1" or "🟫Brown - 3"
+    // These look like items but with emoji prefix
+    const emojiItem = stripEmoji(trimmed);
+    const eim = emojiItem.match(/^(.+?)\s*-\s*(\d+)\s*$/);
+    if (eim) {
+      current.items.push({ name: eim[1].trim(), qty: parseInt(eim[2]), spec: '' });
+      lastItemRef = current.items[current.items.length - 1];
+      continue;
+    }
+
+    // 9 inch - 20 (size before dash)
+    const sizeItem = cleanLine(trimmed);
+    const sim = sizeItem.match(/^(\d+\s*inch)\s*-\s*(\d+)$/i);
+    if (sim && lastItemRef) {
+      // This is actually qty with size, attach to a contextual item
+      // e.g., "9 inch - 20" under "White Pizza"
+      lastItemRef.qty = parseInt(sim[2]);
+      lastItemRef.spec = sim[1];
+      continue;
+    }
+  }
+
+  finishCurrent();
+  return orders;
+}
+
+
+/* ═══════════════════════════════════════════
+   API & CORE LOGIC (same as before)
+   ═══════════════════════════════════════════ */
+
 if(sessionStorage.getItem('role')!=='admin') window.location.href='index.html';
 
 const API = CONFIG.API_URL;
@@ -232,219 +478,432 @@ function showTab(t){
 
 // ── SHOPS ──
 let allShops=[], parsedOrders=[];
-async function loadShops(){ const d=await api({action:'getShops'}); if(Array.isArray(d)) allShops=d; }
+async function loadShops(){ const d=await api({action:'getShops'}); if(Array.isArray(d)) allShops=d; return allShops; }
 loadShops();
 
 function normalize(s){ return (s||'').toLowerCase().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ').trim(); }
-function fuzzyMatch(q,shops){
-  const nq=normalize(q);
-  let m=shops.find(s=>normalize(s.name)===nq);
-  if(m) return {shop:m,score:100};
-  const words=nq.split(' ').filter(w=>w.length>2);
-  let best=null,bs=0;
-  shops.forEach(s=>{
-    const n=normalize(s.name),a=normalize(s.area||'');
-    let sc=0;
-    words.forEach(w=>{ if(n.includes(w)) sc+=w.length; if(a.includes(w)) sc+=w.length*.5; });
-    if(sc>bs){bs=sc;best=s;}
+
+function fuzzyMatch(shopName, area, shops) {
+  const nq = normalize(shopName);
+  const na = normalize(area);
+
+  // 1. Exact name match
+  let m = shops.find(s => normalize(s.name) === nq);
+  if (m) return { shop: m, score: 100 };
+
+  // 2. Name + area match
+  m = shops.find(s => normalize(s.name) === nq && normalize(s.area || '') === na);
+  if (m) return { shop: m, score: 100 };
+
+  // 3. Fuzzy: score by word overlap
+  const nameWords = nq.split(' ').filter(w => w.length > 1);
+  const areaWords = na.split(' ').filter(w => w.length > 1);
+
+  let best = null, bs = 0;
+  shops.forEach(s => {
+    const sn = normalize(s.name);
+    const sa = normalize(s.area || '');
+    let sc = 0;
+
+    // Name word matches (high weight)
+    nameWords.forEach(w => {
+      if (sn.includes(w)) sc += w.length * 2;
+    });
+
+    // Area word matches (medium weight)
+    areaWords.forEach(w => {
+      if (sa.includes(w)) sc += w.length;
+      if (sn.includes(w)) sc += w.length * 0.3; // area word in shop name
+    });
+
+    // Bonus for exact area match
+    if (na && sa === na) sc += 5;
+
+    if (sc > bs) { bs = sc; best = s; }
   });
-  return bs>=4?{shop:best,score:bs}:null;
+
+  return bs >= 5 ? { shop: best, score: bs } : null;
 }
 
-// ── PARSE ──
-function parseOrders(){
-  const text=document.getElementById('orderPaste').value.trim();
-  const pmsg=document.getElementById('parse-msg');
-  if(!text){pmsg.textContent='Paste order text first.';pmsg.className='msg er';pmsg.style.display='block';return;}
-  if(!allShops.length){pmsg.textContent='Loading shops… try again.';pmsg.className='msg in';pmsg.style.display='block';loadShops();return;}
-  const lines=text.split('\n').map(l=>l.trim()).filter(l=>l.length>2);
-  parsedOrders=[];
-  let unmatched=0;
-  lines.forEach((line,i)=>{
-    const parts=line.split(/\s*[–\-|:]\s*/);
-    const shopRaw=parts[0]||'', items=parts[1]||'', qty=parts[2]||'';
-    const match=fuzzyMatch(shopRaw,allShops);
-    if(match){
-      parsedOrders.push({raw:line,shopRaw,shop_id:match.shop.shop_id,shop_name:match.shop.name,area:match.shop.area||'',driver:match.shop.assigned_driver||CONFIG.UNASSIGNED_OWNER,items:items||shopRaw,qty:qty||'—',matched:true});
+
+/* ═══════════════════════════════════════════
+   PARSE BUTTON — Main flow
+   ═══════════════════════════════════════════ */
+
+function parseWhatsAppOrders() {
+  const text = document.getElementById('orderPaste').value.trim();
+  const pmsg = document.getElementById('parse-msg');
+
+  if (!text) {
+    pmsg.textContent = '❌ Paste WhatsApp order text first.';
+    pmsg.className = 'msg er'; pmsg.style.display = 'block';
+    return;
+  }
+
+  if (!allShops.length) {
+    pmsg.textContent = '⏳ Loading shops… try again in a moment.';
+    pmsg.className = 'msg in'; pmsg.style.display = 'block';
+    loadShops();
+    return;
+  }
+
+  // Parse the WhatsApp text into structured orders
+  const waOrders = parseWhatsAppText(text);
+
+  if (!waOrders.length) {
+    pmsg.textContent = '❌ No orders detected. Check the format.';
+    pmsg.className = 'msg er'; pmsg.style.display = 'block';
+    return;
+  }
+
+  // Match each order to a shop
+  parsedOrders = [];
+  let matched = 0, unmatched = 0, totalItems = 0;
+
+  waOrders.forEach(wo => {
+    const match = fuzzyMatch(wo.shop_name, wo.area, allShops);
+    totalItems += wo.items.length;
+
+    if (match) {
+      matched++;
+      parsedOrders.push({
+        shop_id: match.shop.shop_id,
+        shop_name: match.shop.name,
+        area: match.shop.area || wo.area,
+        driver: match.shop.assigned_driver || CONFIG.UNASSIGNED_OWNER,
+        items: wo.items,
+        items_str: wo.items_str,
+        qty_str: wo.qty_str,
+        full_text: wo.full_text,
+        date: wo.date,
+        matched: true,
+        raw_name: wo.shop_name,
+        raw_block: wo.raw_block
+      });
     } else {
-      parsedOrders.push({raw:line,shopRaw,shop_id:'',shop_name:shopRaw,area:'?',driver:CONFIG.UNASSIGNED_OWNER,items:items||line,qty:qty||'—',matched:false});
       unmatched++;
+      parsedOrders.push({
+        shop_id: '',
+        shop_name: wo.shop_name,
+        area: wo.area || '?',
+        driver: CONFIG.UNASSIGNED_OWNER,
+        items: wo.items,
+        items_str: wo.items_str,
+        qty_str: wo.qty_str,
+        full_text: wo.full_text,
+        date: wo.date,
+        matched: false,
+        raw_name: wo.shop_name,
+        raw_block: wo.raw_block
+      });
     }
   });
-  if(!parsedOrders.length){pmsg.textContent='No valid lines found.';pmsg.className='msg er';pmsg.style.display='block';return;}
-  pmsg.textContent=`✅ ${parsedOrders.length} orders · ${parsedOrders.length-unmatched} matched · ${unmatched} → Dinesh`;
-  pmsg.className='msg ok'; pmsg.style.display='block';
+
+  // Show stats
+  const statsBox = document.getElementById('parseStatsBox');
+  statsBox.style.display = 'block';
+  document.getElementById('parseStats').innerHTML = `
+    <div class="ps"><div class="ps-n">${parsedOrders.length}</div><div class="ps-l">Shops</div></div>
+    <div class="ps"><div class="ps-n" style="color:#2d7a4f">${matched}</div><div class="ps-l">Matched</div></div>
+    <div class="ps"><div class="ps-n" style="color:#c8382a">${unmatched}</div><div class="ps-l">→ Dinesh</div></div>
+    <div class="ps"><div class="ps-n" style="color:#6e3da8">${totalItems}</div><div class="ps-l">Items</div></div>
+  `;
+
+  pmsg.textContent = `✅ Parsed ${parsedOrders.length} orders · ${matched} matched · ${unmatched} new → Dinesh`;
+  pmsg.className = 'msg ok'; pmsg.style.display = 'block';
+
   renderPreview();
 }
 
-function renderPreview(){
-  document.getElementById('previewBox').style.display='block';
-  document.getElementById('previewTitle').textContent=`Preview — ${parsedOrders.length} Orders`;
-  const uw=document.getElementById('preview-warn');
-  const unm=parsedOrders.filter(o=>!o.matched);
-  if(unm.length){ uw.textContent=`⚠ ${unm.length} new shops assigned to Dinesh:\n${unm.map(o=>o.shopRaw).join(', ')}`; uw.style.display='block'; }
-  document.getElementById('previewList').innerHTML=parsedOrders.map((o,i)=>`
-    <div class="parsed-item ${o.matched?'':'unmatched'}">
-      <div style="display:flex;justify-content:space-between">
-        <div style="font-size:13px;font-weight:800;color:#4a2f14">${o.shop_name}</div>
-        <span class="badge DC-${o.driver}">${o.driver}</span>
-      </div>
-      <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin:3px 0">${o.area} · ${o.matched?'✅ Matched':'⚠ New'}</div>
-      <div style="font-size:12px;font-family:monospace;background:#f5ede0;padding:7px 10px;border-radius:8px;margin-top:4px"><b>Items:</b> ${o.items}<br><b>Qty:</b> ${o.qty}</div>
-      ${!o.matched?`<div style="margin-top:6px;font-size:11px;color:#8a7a6a">Reassign: <select onchange="parsedOrders[${i}].driver=this.value" style="padding:4px 8px;font-size:12px;background:#f5ede0;border:1px solid #e8dfd2;border-radius:6px;margin-left:4px"><option>Dinesh</option><option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option></select></div>`:''}
-    </div>`).join('');
-  document.getElementById('previewBox').scrollIntoView({behavior:'smooth',block:'start'});
+
+/* ═══════════════════════════════════════════
+   PREVIEW RENDERING
+   ═══════════════════════════════════════════ */
+
+let previewCollapsed = false;
+
+function toggleAllPreviews() {
+  previewCollapsed = !previewCollapsed;
+  document.querySelectorAll('.parsed-item').forEach(el => {
+    el.classList.toggle('collapsed', previewCollapsed);
+  });
 }
 
-async function confirmAllOrders(){
-  const btn=document.getElementById('confirmBtn'); btn.textContent='Saving…'; btn.disabled=true;
-  const date=document.getElementById('ord-date').value||todayStr();
-  let ok=0,fail=0;
-  for(const o of parsedOrders){
-    const res=await apiPost({action:'addOrder',driver:o.driver,shop_id:o.shop_id,shop_name:o.shop_name,items:o.items,qty:o.qty,note:o.matched?'':'NEW SHOP',date});
-    res.ok?ok++:fail++;
+function renderPreview() {
+  document.getElementById('previewBox').style.display = 'block';
+  document.getElementById('previewTitle').textContent = `Preview — ${parsedOrders.length} Orders`;
+
+  const uw = document.getElementById('preview-warn');
+  const unm = parsedOrders.filter(o => !o.matched);
+  if (unm.length) {
+    uw.textContent = `⚠ ${unm.length} new shop(s) assigned to Dinesh:\n${unm.map(o => o.shop_name).join(', ')}\n\nDinesh will add these to the shop list & assign to a driver.`;
+    uw.style.display = 'block';
+  } else {
+    uw.style.display = 'none';
   }
-  btn.textContent='✅ Confirm & Save All Orders'; btn.disabled=false;
-  const pm=document.getElementById('parse-msg');
-  pm.textContent=`✅ ${ok} saved!${fail?` ❌ ${fail} failed.`:''}`; pm.className='msg ok'; pm.style.display='block';
-  clearPreview(); loadOrders();
+
+  document.getElementById('previewList').innerHTML = parsedOrders.map((o, i) => {
+    const itemTags = o.items.map(it =>
+      `<span class="itag"><b>${it.qty}</b> ${it.name}${it.spec ? ' <span style="color:#8a7a6a;font-size:10px">' + it.spec + '</span>' : ''}</span>`
+    ).join(' ');
+
+    return `
+    <div class="parsed-item ${o.matched ? '' : 'unmatched'}" id="pi-${i}">
+      <div class="pi-head" onclick="document.getElementById('pi-${i}').classList.toggle('collapsed')">
+        <div>
+          <div style="font-size:14px;font-weight:800;color:#4a2f14">${o.shop_name}</div>
+          <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px">
+            ${o.area} · ${o.matched ? '✅ Matched' : '⚠ NEW → Dinesh'} · ${o.items.length} items
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="badge DC-${o.driver}">${o.driver}</span>
+          <span class="pi-toggle">▾</span>
+        </div>
+      </div>
+      <div class="pi-body" style="margin-top:8px">
+        <div style="margin-bottom:8px">${itemTags}</div>
+        ${!o.matched ? `
+        <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+          <span style="font-size:11px;color:#8a7a6a">Reassign:</span>
+          <select onchange="parsedOrders[${i}].driver=this.value" style="padding:5px 10px;font-size:12px;background:#f5ede0;border:1px solid #e8dfd2;border-radius:6px;flex:1">
+            <option selected>Dinesh</option>
+            <option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option>
+          </select>
+        </div>` : ''}
+        <details style="margin-top:6px">
+          <summary style="font-size:10px;color:#8a7a6a;cursor:pointer">Raw text</summary>
+          <pre style="font-size:10px;font-family:monospace;background:#f5ede0;padding:8px;border-radius:8px;margin-top:4px;white-space:pre-wrap;line-height:1.6">${o.raw_block}</pre>
+        </details>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('previewBox').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function clearPreview(){ document.getElementById('previewBox').style.display='none'; parsedOrders=[]; }
 
-function handleFile(e){
-  const file=e.target.files[0]; if(!file) return;
-  const reader=new FileReader();
-  reader.onload=ev=>{
-    const lines=ev.target.result.split('\n').slice(1);
-    document.getElementById('orderPaste').value=lines.filter(l=>l.trim()).map(l=>{
-      const c=l.split(',').map(x=>x.replace(/^"|"$/g,'').trim());
-      return [c[0],c[1]||'',c[2]||''].join(' – ');
+/* ═══════════════════════════════════════════
+   CONFIRM & SAVE
+   ═══════════════════════════════════════════ */
+
+async function confirmAllOrders() {
+  const btn = document.getElementById('confirmBtn');
+  btn.textContent = '⏳ Saving…';
+  btn.disabled = true;
+
+  const dateInput = document.getElementById('ord-date').value || todayStr();
+  let ok = 0, fail = 0;
+
+  for (const o of parsedOrders) {
+    const date = o.date || dateInput;
+    const itemsStr = o.items.map(it => {
+      let s = it.name;
+      if (it.spec) s += ' (' + it.spec + ')';
+      return s;
+    }).join(', ');
+    const qtyStr = o.items.map(it => it.qty).join(', ');
+
+    const res = await apiPost({
+      action: 'addOrder',
+      driver: o.driver,
+      shop_id: o.shop_id,
+      shop_name: o.shop_name,
+      items: itemsStr,
+      qty: qtyStr,
+      note: o.matched ? '' : 'NEW SHOP - ' + o.area,
+      date: date
+    });
+    res.ok ? ok++ : fail++;
+  }
+
+  btn.textContent = '✅ Confirm & Save All Orders';
+  btn.disabled = false;
+
+  const pm = document.getElementById('parse-msg');
+  pm.textContent = `✅ ${ok} orders saved!${fail ? ` ❌ ${fail} failed.` : ''}`;
+  pm.className = 'msg ok';
+  pm.style.display = 'block';
+
+  clearPreview();
+  loadOrders();
+}
+
+function clearPreview() {
+  document.getElementById('previewBox').style.display = 'none';
+  document.getElementById('parseStatsBox').style.display = 'none';
+  parsedOrders = [];
+}
+
+function handleFile(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const lines = ev.target.result.split('\n').slice(1);
+    document.getElementById('orderPaste').value = lines.filter(l => l.trim()).map(l => {
+      const c = l.split(',').map(x => x.replace(/^"|"$/g, '').trim());
+      return [c[0], c[1] || '', c[2] || ''].join(' – ');
     }).join('\n');
   };
   reader.readAsText(file);
 }
 
-// ── ORDERS LIST ──
-async function loadOrders(){
-  const el=document.getElementById('ordersList');
-  el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
-  const driver=document.getElementById('f-ord-driver').value;
-  const date=document.getElementById('f-ord-date').value||todayStr();
-  const data=await api({action:'getOrders',driver,date});
-  if(!Array.isArray(data)||!data.length){ el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders for this filter.</div>'; return; }
-  el.innerHTML=data.map(o=>`
+
+/* ═══════════════════════════════════════════
+   ORDERS LIST
+   ═══════════════════════════════════════════ */
+
+async function loadOrders() {
+  const el = document.getElementById('ordersList');
+  el.innerHTML = '<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
+  const driver = document.getElementById('f-ord-driver').value;
+  const date = document.getElementById('f-ord-date').value || todayStr();
+  const data = await api({ action: 'getOrders', driver, date });
+  if (!Array.isArray(data) || !data.length) {
+    el.innerHTML = '<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders for this filter.</div>';
+    return;
+  }
+  el.innerHTML = data.map(o => `
     <div class="order-card">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div style="font-size:14px;font-weight:800;color:#4a2f14">${o.shop_name}</div>
         <span class="badge DC-${o.driver}">${o.driver}</span>
       </div>
       <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin:3px 0 6px">Delivery: ${o.date} · ${o.order_id}</div>
-      <div style="font-size:12px;font-family:monospace;background:#f5ede0;padding:7px 10px;border-radius:8px;margin-bottom:7px"><b>Items:</b> ${o.items}<br><b>Qty:</b> ${o.qty}${o.note&&o.note!=='—'?'<br><b>Note:</b> '+o.note:''}</div>
+      <div style="font-size:12px;font-family:monospace;background:#f5ede0;padding:7px 10px;border-radius:8px;margin-bottom:7px"><b>Items:</b> ${o.items}<br><b>Qty:</b> ${o.qty}${o.note && o.note !== '—' ? '<br><b>Note:</b> ' + o.note : ''}</div>
       <button class="btn-sm btn-del" onclick="deleteOrder('${o.order_id}')">🗑 Delete</button>
     </div>`).join('');
 }
-async function deleteOrder(id){ if(!confirm('Delete this order?')) return; const r=await apiPost({action:'deleteOrder',order_id:id}); if(r.ok) loadOrders(); }
 
-// ── SUMMARY ──
-async function loadSummary(){
-  const el=document.getElementById('summaryBody');
-  el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
-  const date=document.getElementById('f-sum-date').value||todayStr();
-  const data=await api({action:'getOrders',date});
-  if(!Array.isArray(data)||!data.length){ el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders for this date.</div>'; return; }
-
-  // Group by driver
-  const byDriver={};
-  data.forEach(o=>{ if(!byDriver[o.driver]) byDriver[o.driver]=[]; byDriver[o.driver].push(o); });
-
-  // Grand total
-  const allItems={};
-  data.forEach(o=>{ (o.items||'').split(',').map(s=>s.trim()).filter(Boolean).forEach(item=>{ allItems[item]=(allItems[item]||0)+1; }); });
-
-  let html=`<div class="card" style="margin-bottom:10px">
-    <div class="lbl">Grand Total — All Drivers</div>
-    <div style="font-size:13px;font-weight:800;color:#4a2f14;margin-bottom:6px">${data.length} orders · ${CONFIG.DRIVERS.filter(d=>byDriver[d]).length} drivers active</div>
-    ${Object.entries(allItems).map(([item,cnt])=>`<div class="summary-row">${item}: <b>${cnt}</b></div>`).join('')}
-  </div>`;
-
-  Object.entries(byDriver).forEach(([drv,ords])=>{
-    // Count items per driver
-    const dItems={};
-    ords.forEach(o=>{ (o.items||'').split(',').map(s=>s.trim()).filter(Boolean).forEach(item=>{ dItems[item]=(dItems[item]||0)+1; }); });
-    html+=`<div class="summary-card">
-      <div class="summary-driver"><span class="badge DC-${drv}">${drv}</span> · ${ords.length} shops</div>
-      ${ords.map(o=>`<div class="summary-row">• ${o.shop_name} — ${o.items} (${o.qty})</div>`).join('')}
-      <div class="summary-total" style="margin-top:6px;padding-top:6px;border-top:1px solid #f0e8dc">Items: ${Object.entries(dItems).map(([i,c])=>i+' ×'+c).join(', ')}</div>
-    </div>`;
-  });
-  el.innerHTML=html;
+async function deleteOrder(id) {
+  if (!confirm('Delete this order?')) return;
+  const r = await apiPost({ action: 'deleteOrder', order_id: id });
+  if (r.ok) loadOrders();
 }
 
-// ── DELIVERY STATUS ──
-async function loadDeliveries(){
-  const el=document.getElementById('deliveryList');
-  el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
-  const driver=document.getElementById('f-del-driver').value;
-  const date=document.getElementById('f-del-date').value||todayStr();
-  const [orders,delivs,routes]=await Promise.all([
-    api({action:'getOrders',driver,date}),
-    api({action:'getDeliveries',driver,date}),
-    api({action:'getRoutes',driver,date})
-  ]);
-  const ordArr=Array.isArray(orders)?orders:[];
-  const delArr=Array.isArray(delivs)?delivs:[];
-  const routeArr=Array.isArray(routes)?routes:[];
 
-  const delivMap={};
-  delArr.forEach(d=>delivMap[d.shop_id]=d);
-  const done=delArr.length;
-  const total=ordArr.length;
+/* ═══════════════════════════════════════════
+   SUMMARY
+   ═══════════════════════════════════════════ */
 
-  document.getElementById('delivStats').innerHTML=`
-    <div class="stat"><div class="stat-n">${total}</div><div class="stat-l">Total</div></div>
-    <div class="stat"><div class="stat-n" style="color:#2d7a4f">${done}</div><div class="stat-l">Delivered</div></div>
-    <div class="stat"><div class="stat-n" style="color:#c8382a">${total-done}</div><div class="stat-l">Pending</div></div>`;
-
-  if(!ordArr.length){ el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders for this filter.</div>'; return; }
-
-  // Show route start times
-  let routeInfo='';
-  if(routeArr.length){
-    routeInfo=`<div class="card" style="margin-bottom:10px"><div class="lbl">Route Status</div>${routeArr.map(r=>`<div style="font-size:12px;font-family:monospace;padding:3px 0"><span class="badge DC-${r.driver}">${r.driver}</span> started ${r.start_time||'—'} · ${r.total_shops||'?'} shops · ${r.total_km||'?'} km</div>`).join('')}</div>`;
+async function loadSummary() {
+  const el = document.getElementById('summaryBody');
+  el.innerHTML = '<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
+  const date = document.getElementById('f-sum-date').value || todayStr();
+  const data = await api({ action: 'getOrders', date });
+  if (!Array.isArray(data) || !data.length) {
+    el.innerHTML = '<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders for this date.</div>';
+    return;
   }
 
-  el.innerHTML=routeInfo+ordArr.map(o=>{
-    const isDone=!!delivMap[o.shop_id];
+  const byDriver = {};
+  data.forEach(o => { if (!byDriver[o.driver]) byDriver[o.driver] = []; byDriver[o.driver].push(o); });
+
+  const allItems = {};
+  data.forEach(o => {
+    (o.items || '').split(',').map(s => s.trim()).filter(Boolean).forEach(item => {
+      allItems[item] = (allItems[item] || 0) + 1;
+    });
+  });
+
+  let html = `<div class="card" style="margin-bottom:10px">
+    <div class="lbl">Grand Total — All Drivers</div>
+    <div style="font-size:13px;font-weight:800;color:#4a2f14;margin-bottom:6px">${data.length} orders · ${Object.keys(byDriver).length} drivers active</div>
+    ${Object.entries(allItems).map(([item, cnt]) => `<div class="summary-row">${item}: <b>${cnt}</b></div>`).join('')}
+  </div>`;
+
+  Object.entries(byDriver).forEach(([drv, ords]) => {
+    const dItems = {};
+    ords.forEach(o => {
+      (o.items || '').split(',').map(s => s.trim()).filter(Boolean).forEach(item => {
+        dItems[item] = (dItems[item] || 0) + 1;
+      });
+    });
+    html += `<div class="summary-card">
+      <div class="summary-driver"><span class="badge DC-${drv}">${drv}</span> · ${ords.length} shops</div>
+      ${ords.map(o => `<div class="summary-row">• ${o.shop_name} — ${o.items} (${o.qty})</div>`).join('')}
+      <div class="summary-total" style="margin-top:6px;padding-top:6px;border-top:1px solid #f0e8dc">Items: ${Object.entries(dItems).map(([i, c]) => i + ' ×' + c).join(', ')}</div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+
+/* ═══════════════════════════════════════════
+   DELIVERY STATUS
+   ═══════════════════════════════════════════ */
+
+async function loadDeliveries() {
+  const el = document.getElementById('deliveryList');
+  el.innerHTML = '<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
+  const driver = document.getElementById('f-del-driver').value;
+  const date = document.getElementById('f-del-date').value || todayStr();
+  const [orders, delivs, routes] = await Promise.all([
+    api({ action: 'getOrders', driver, date }),
+    api({ action: 'getDeliveries', driver, date }),
+    api({ action: 'getRoutes', driver, date })
+  ]);
+  const ordArr = Array.isArray(orders) ? orders : [];
+  const delArr = Array.isArray(delivs) ? delivs : [];
+  const routeArr = Array.isArray(routes) ? routes : [];
+
+  const delivMap = {};
+  delArr.forEach(d => delivMap[d.shop_id] = d);
+  const done = delArr.length, total = ordArr.length;
+
+  document.getElementById('delivStats').innerHTML = `
+    <div class="stat"><div class="stat-n">${total}</div><div class="stat-l">Total</div></div>
+    <div class="stat"><div class="stat-n" style="color:#2d7a4f">${done}</div><div class="stat-l">Delivered</div></div>
+    <div class="stat"><div class="stat-n" style="color:#c8382a">${total - done}</div><div class="stat-l">Pending</div></div>`;
+
+  if (!ordArr.length) {
+    el.innerHTML = '<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders for this filter.</div>';
+    return;
+  }
+
+  let routeInfo = '';
+  if (routeArr.length) {
+    routeInfo = `<div class="card" style="margin-bottom:10px"><div class="lbl">Route Status</div>${routeArr.map(r => `<div style="font-size:12px;font-family:monospace;padding:3px 0"><span class="badge DC-${r.driver}">${r.driver}</span> started ${r.start_time || '—'} · ${r.total_shops || '?'} shops · ${r.total_km || '?'} km</div>`).join('')}</div>`;
+  }
+
+  el.innerHTML = routeInfo + ordArr.map(o => {
+    const isDone = !!delivMap[o.shop_id];
     return `<div class="deliv-row">
       <div style="flex:1">
         <div style="font-size:13px;font-weight:800">${o.shop_name}</div>
         <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px"><span class="badge DC-${o.driver}">${o.driver}</span> · ${o.items}</div>
-        ${isDone?`<div style="font-size:10px;font-family:monospace;color:#2d7a4f;margin-top:2px">✅ Delivered at ${delivMap[o.shop_id]?.time||''}</div>`:''}
+        ${isDone ? `<div style="font-size:10px;font-family:monospace;color:#2d7a4f;margin-top:2px">✅ Delivered at ${delivMap[o.shop_id]?.time || ''}</div>` : ''}
       </div>
-      <span class="badge ${isDone?'b-done':'b-miss'}">${isDone?'Done':'Pending'}</span>
+      <span class="badge ${isDone ? 'b-done' : 'b-miss'}">${isDone ? 'Done' : 'Pending'}</span>
     </div>`;
   }).join('');
 }
 
-// ── ROUTES ──
-let routesData=[];
-async function loadRoutes(){
-  const el=document.getElementById('routesList');
-  el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
-  const date=document.getElementById('f-rt-date').value||todayStr();
-  const driver=document.getElementById('f-rt-driver').value;
-  routesData=await api({action:'getRoutes',date,driver});
-  if(!Array.isArray(routesData)) routesData=[];
-  const ts=routesData.reduce((s,r)=>s+(parseInt(r.total_shops)||0),0);
-  const tk=routesData.reduce((s,r)=>s+(parseInt(r.total_km)||0),0);
-  document.getElementById('routeStats').innerHTML=`
+
+/* ═══════════════════════════════════════════
+   ROUTES
+   ═══════════════════════════════════════════ */
+
+let routesData = [];
+async function loadRoutes() {
+  const el = document.getElementById('routesList');
+  el.innerHTML = '<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
+  const date = document.getElementById('f-rt-date').value || todayStr();
+  const driver = document.getElementById('f-rt-driver').value;
+  routesData = await api({ action: 'getRoutes', date, driver });
+  if (!Array.isArray(routesData)) routesData = [];
+  const ts = routesData.reduce((s, r) => s + (parseInt(r.total_shops) || 0), 0);
+  const tk = routesData.reduce((s, r) => s + (parseInt(r.total_km) || 0), 0);
+  document.getElementById('routeStats').innerHTML = `
     <div class="stat"><div class="stat-n">${routesData.length}</div><div class="stat-l">Drivers</div></div>
     <div class="stat"><div class="stat-n">${ts}</div><div class="stat-l">Shops</div></div>
     <div class="stat"><div class="stat-n">${tk}</div><div class="stat-l">KM</div></div>`;
-  if(!routesData.length){ el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No route data.</div>'; return; }
-  el.innerHTML=routesData.map(r=>{
-    let shops=[]; try{shops=JSON.parse(r.shop_order||'[]');}catch(e){}
+  if (!routesData.length) {
+    el.innerHTML = '<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No route data.</div>';
+    return;
+  }
+  el.innerHTML = routesData.map(r => {
+    let shops = []; try { shops = JSON.parse(r.shop_order || '[]'); } catch (e) {}
     return `<div class="driver-card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
         <div style="font-size:15px;font-weight:800">${r.driver}</div>
@@ -454,51 +913,60 @@ async function loadRoutes(){
           <span class="badge" style="background:#f3e8ff;color:#6e3da8">${r.est_time}</span>
         </div>
       </div>
-      <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-bottom:6px">Started: ${r.start_time||'—'} · Updated: ${r.updated_at||''}</div>
-      ${shops.map((s,i)=>`<div class="route-mini">${i+1}. ${s}</div>`).join('')}
+      <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-bottom:6px">Started: ${r.start_time || '—'} · Updated: ${r.updated_at || ''}</div>
+      ${shops.map((s, i) => `<div class="route-mini">${i + 1}. ${s}</div>`).join('')}
     </div>`;
   }).join('');
 }
 
-// ── GPS ──
-let gpsShops=[];
-async function loadGPS(){ gpsShops=await api({action:'getShops'}); if(!Array.isArray(gpsShops)) gpsShops=[]; renderGPS(); }
-function renderGPS(){
-  const driver=document.getElementById('f-gps-driver').value;
-  const status=document.getElementById('f-gps-status').value;
-  let list=gpsShops;
-  if(driver) list=list.filter(s=>s.assigned_driver===driver);
-  if(status==='saved') list=list.filter(s=>s.lat);
-  if(status==='missing') list=list.filter(s=>!s.lat);
-  const saved=gpsShops.filter(s=>s.lat).length;
-  document.getElementById('gpsStats').innerHTML=`
+
+/* ═══════════════════════════════════════════
+   GPS
+   ═══════════════════════════════════════════ */
+
+let gpsShops = [];
+async function loadGPS() { gpsShops = await api({ action: 'getShops' }); if (!Array.isArray(gpsShops)) gpsShops = []; renderGPS(); }
+
+function renderGPS() {
+  const driver = document.getElementById('f-gps-driver').value;
+  const status = document.getElementById('f-gps-status').value;
+  let list = gpsShops;
+  if (driver) list = list.filter(s => s.assigned_driver === driver);
+  if (status === 'saved') list = list.filter(s => s.lat);
+  if (status === 'missing') list = list.filter(s => !s.lat);
+  const saved = gpsShops.filter(s => s.lat).length;
+  document.getElementById('gpsStats').innerHTML = `
     <div class="stat"><div class="stat-n">${gpsShops.length}</div><div class="stat-l">Total</div></div>
     <div class="stat"><div class="stat-n" style="color:#2d7a4f">${saved}</div><div class="stat-l">Saved</div></div>
-    <div class="stat"><div class="stat-n" style="color:#c8382a">${gpsShops.length-saved}</div><div class="stat-l">Missing</div></div>`;
-  document.getElementById('gpsList').innerHTML=list.map(s=>`
+    <div class="stat"><div class="stat-n" style="color:#c8382a">${gpsShops.length - saved}</div><div class="stat-l">Missing</div></div>`;
+  document.getElementById('gpsList').innerHTML = list.map(s => `
     <div class="order-card">
       <div style="display:flex;justify-content:space-between">
         <div style="font-size:14px;font-weight:800;color:#4a2f14">${s.name}</div>
-        <span class="badge ${s.lat?'b-ok':'b-miss'}">${s.lat?'✅ GPS':'⚠ No GPS'}</span>
+        <span class="badge ${s.lat ? 'b-ok' : 'b-miss'}">${s.lat ? '✅ GPS' : '⚠ No GPS'}</span>
       </div>
-      <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin:3px 0 6px">${s.area||''} · <span class="badge DC-${s.assigned_driver||'Dinesh'}">${s.assigned_driver||'Unassigned'}</span></div>
-      ${s.lat?`<div style="font-size:11px;font-family:monospace;color:#2d7a4f;margin-bottom:6px">${s.lat}, ${s.lng}</div>
-        <button class="btn-sm btn-map" onclick="window.open('https://www.google.com/maps?q=${s.lat},${s.lng}','_blank')">🗺 Open Map</button>`:''}
+      <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin:3px 0 6px">${s.area || ''} · <span class="badge DC-${s.assigned_driver || 'Dinesh'}">${s.assigned_driver || 'Unassigned'}</span></div>
+      ${s.lat ? `<div style="font-size:11px;font-family:monospace;color:#2d7a4f;margin-bottom:6px">${s.lat}, ${s.lng}</div>
+        <button class="btn-sm btn-map" onclick="window.open('https://www.google.com/maps?q=${s.lat},${s.lng}','_blank')">🗺 Open Map</button>` : ''}
     </div>`).join('');
 }
 
-// ── EXPORTS ──
-function exportRouteCSV(){
-  const rows=[['Date','Driver','Start Time','Total Shops','KM','Est Time'],...routesData.map(r=>[r.date,r.driver,r.start_time||'',r.total_shops,r.total_km,r.est_time])];
-  dlCSV(rows,'baked-routes-'+todayStr()+'.csv');
+
+/* ═══════════════════════════════════════════
+   EXPORTS
+   ═══════════════════════════════════════════ */
+
+function exportRouteCSV() {
+  const rows = [['Date', 'Driver', 'Start Time', 'Total Shops', 'KM', 'Est Time'], ...routesData.map(r => [r.date, r.driver, r.start_time || '', r.total_shops, r.total_km, r.est_time])];
+  dlCSV(rows, 'baked-routes-' + todayStr() + '.csv');
 }
-function exportGPSCSV(){
-  const rows=[['Shop','Area','Driver','Lat','Lng','Updated By','At'],...gpsShops.map(s=>[s.name,s.area,s.assigned_driver,s.lat||'',s.lng||'',s.last_updated_by||'',s.last_updated_at||''])];
-  dlCSV(rows,'baked-gps-'+todayStr()+'.csv');
+function exportGPSCSV() {
+  const rows = [['Shop', 'Area', 'Driver', 'Lat', 'Lng', 'Updated By', 'At'], ...gpsShops.map(s => [s.name, s.area, s.assigned_driver, s.lat || '', s.lng || '', s.last_updated_by || '', s.last_updated_at || ''])];
+  dlCSV(rows, 'baked-gps-' + todayStr() + '.csv');
 }
-function dlCSV(rows,fname){
-  const csv=rows.map(r=>r.map(c=>'"'+String(c||'').replace(/"/g,'""')+'"').join(',')).join('\n');
-  const a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv); a.download=fname; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+function dlCSV(rows, fname) {
+  const csv = rows.map(r => r.map(c => '"' + String(c || '').replace(/"/g, '""') + '"').join(',')).join('\n');
+  const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv); a.download = fname; document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
 loadOrders();
