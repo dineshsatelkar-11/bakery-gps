@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Baked GPS">
 <link rel="apple-touch-icon" href="icon-192.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:520px;margin:0 auto;min-height:100vh}
@@ -19,22 +20,27 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;
 .topbar-right{display:flex;gap:8px}
 .tbtn{background:rgba(255,255,255,.2);border:none;color:#fff;padding:6px 11px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif;text-decoration:none;display:inline-block}
 .tabs{display:flex;background:#fff;border-bottom:2px solid #e8dfd2;position:sticky;top:53px;z-index:98;overflow-x:auto}
-.tab{flex:1;min-width:70px;padding:11px 4px;border:none;background:none;font-size:11px;font-weight:700;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap}
+.tab{flex:1;min-width:58px;padding:11px 3px;border:none;background:none;font-size:10px;font-weight:700;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap}
 .tab.on{color:#4a2f14;border-bottom-color:#4a2f14}
 .page{display:none;padding:12px 14px 80px}.page.on{display:block}
 .card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:14px;margin-bottom:10px}
 .lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:8px;text-transform:uppercase}
-select,input[type=text],input[type=date]{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:8px}
+select,input[type=text],input[type=date],input[type=tel],textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:8px}
+textarea{resize:vertical;min-height:80px;font-size:13px;line-height:1.7}
 .btn{width:100%;padding:13px;border:none;border-radius:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:8px}
 .btn-parse{background:#2d7a4f;color:#fff}
 .btn-refresh{background:#e8dfd2;color:#4a2f14}
+.btn-add{background:#4a2f14;color:#fff}
 .btn-sm{padding:7px 11px;border-radius:10px;font-size:11px;font-weight:700;border:none;cursor:pointer;font-family:-apple-system,sans-serif}
 .btn-del{background:#fde8e8;color:#c8382a}
+.btn-edit{background:#e3f2fd;color:#1565c0}
 .btn-map{background:#e3f2fd;color:#1565c0}
 .btn-csv{background:#e8f5e9;color:#2d7a4f;width:100%;padding:12px;border-radius:12px;font-size:14px;font-weight:800;border:none;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:10px}
 .msg{padding:11px 14px;border-radius:12px;font-size:12px;font-weight:600;font-family:monospace;margin-bottom:10px;line-height:1.8;white-space:pre-line}
 .ok{background:#e8f5e9;color:#2d7a4f;border:1px solid #a5d6a7}
 .er{background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0}
+.in{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9}
+.warn{background:#fff8e1;color:#7a4800;border:1px solid #ffe082}
 .summary-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;padding:12px 14px;margin-bottom:8px}
 .summary-row{font-size:12px;font-family:monospace;padding:3px 0;border-bottom:1px solid #f0e8dc}
 .order-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;padding:11px 14px;margin-bottom:8px}
@@ -48,35 +54,29 @@ select,input[type=text],input[type=date]{width:100%;padding:11px 14px;border:1.5
 .badge{display:inline-block;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;font-family:monospace}
 .b-ok{background:#e8f5e9;color:#2d7a4f}.b-warn{background:#fff8e1;color:#7a4800}
 .b-miss{background:#fde8e8;color:#c8382a}.b-done{background:#e8f5e9;color:#2d7a4f}
+.b-logistics{background:#fff3e0;color:#c8864a}
 .filter-row{display:flex;gap:8px;margin-bottom:8px}
 .filter-row select,.filter-row input{margin-bottom:0}
 .DC-Bharat{background:#fff3e0;color:#c8864a}.DC-Anand{background:#e3f2fd;color:#1a5fa8}
 .DC-Vikas{background:#e8f5e9;color:#2d7a4f}.DC-Yuvraj{background:#f3e8ff;color:#6e3da8}
 .DC-Rama{background:#fde8e8;color:#c8382a}.DC-Dinesh{background:#fce4ec;color:#880e4f}
-
-/* XLS Upload */
-.upload-zone{border:2.5px dashed #c8a87a;border-radius:16px;padding:28px 14px;text-align:center;background:#fffdf9;cursor:pointer;transition:border-color .2s,background .2s;margin-bottom:10px;position:relative}
+.DC-Logistics{background:#fff3e0;color:#c8864a}
+.itag{display:inline-block;background:#f5ede0;border:1px solid #e8dfd2;padding:3px 8px;border-radius:6px;font-size:11px;font-family:monospace;margin:2px 2px 2px 0}
+.itag b{color:#4a2f14}
+.parse-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
+.ps{background:#fff;border:1.5px solid #e8dfd2;border-radius:10px;padding:8px;text-align:center}
+.ps-n{font-size:18px;font-weight:900;color:#4a2f14}
+.ps-l{font-size:8px;color:#8a7a6a;font-family:monospace;text-transform:uppercase;letter-spacing:1px}
+.upload-zone{border:2px dashed #c8a87a;border-radius:14px;padding:24px 16px;text-align:center;background:#fffaf4;cursor:pointer;transition:border-color .2s,background .2s;margin-bottom:10px;position:relative}
 .upload-zone:hover,.upload-zone.drag{border-color:#4a2f14;background:#f5ede0}
 .upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
-.upload-icon{font-size:32px;margin-bottom:6px}
-.upload-title{font-size:14px;font-weight:800;color:#4a2f14;margin-bottom:4px}
-.upload-sub{font-size:11px;color:#8a7a6a;font-family:monospace}
-.challan-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;padding:13px 14px;margin-bottom:10px}
-.challan-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0;cursor:pointer;user-select:none}
-.challan-title{font-size:14px;font-weight:800;color:#4a2f14}
-.challan-meta{font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:3px}
-.challan-items{margin-top:10px}
-.challan-item-row{display:grid;grid-template-columns:1fr auto;gap:6px;padding:7px 0;border-bottom:1px solid #f0e8dc}
-.challan-item-row:last-child{border-bottom:none}
-.item-name{color:#1e1611;font-weight:700;font-size:12px}
-.item-pid{color:#8a7a6a;font-size:10px;font-family:monospace}
-.item-desc{color:#8a7a6a;font-size:10px;font-style:italic}
-.item-qty{font-size:15px;font-weight:900;color:#4a2f14;text-align:right}
-.item-qty-lbl{font-size:9px;color:#8a7a6a;text-align:right;font-family:monospace;letter-spacing:1px}
-.challan-collapsed .challan-items{display:none}
-.xls-stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
-.xls-stat{background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:10px;text-align:center}
-.search-box{background:#fff;border:1.5px solid #e8dfd2;border-radius:10px;padding:10px 14px;font-size:13px;color:#1e1611;outline:none;width:100%;margin-bottom:8px;font-family:-apple-system,sans-serif}
+.upload-zone.has-file{border-color:#2d7a4f;background:#f0faf4}
+.product-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;padding:12px 14px;margin-bottom:8px}
+.unassigned-banner{background:#fff3e0;border:1.5px solid #ffc87a;border-radius:12px;padding:12px 14px;margin-bottom:10px;font-size:12px;font-family:monospace;color:#7a4800;line-height:1.8}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:flex-end;justify-content:center}
+.modal{background:#f5ede0;border-radius:20px 20px 0 0;padding:20px 16px 40px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto}
+.modal-title{font-size:17px;font-weight:900;color:#4a2f14;margin-bottom:16px}
+.btn-cancel-modal{background:#e8dfd2;color:#4a2f14;width:100%;padding:12px;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif}
 </style>
 </head>
 <body>
@@ -90,106 +90,177 @@ select,input[type=text],input[type=date]{width:100%;padding:11px 14px;border:1.5
 </div>
 
 <div class="tabs">
-  <button class="tab on" id="tb-orders"   onclick="showTab('orders')">Orders</button>
-  <button class="tab"    id="tb-summary"  onclick="showTab('summary')">Summary</button>
-  <button class="tab"    id="tb-delivery" onclick="showTab('delivery')">Delivery</button>
-  <button class="tab"    id="tb-routes"   onclick="showTab('routes')">Routes</button>
-  <button class="tab"    id="tb-gps"      onclick="showTab('gps')">GPS</button>
+  <button class="tab on" id="tb-orders"     onclick="showTab('orders')">📋 Orders</button>
+  <button class="tab"    id="tb-unassigned" onclick="showTab('unassigned')">⚠️ Queue</button>
+  <button class="tab"    id="tb-summary"    onclick="showTab('summary')">Summary</button>
+  <button class="tab"    id="tb-delivery"   onclick="showTab('delivery')">Delivery</button>
+  <button class="tab"    id="tb-routes"     onclick="showTab('routes')">Routes</button>
+  <button class="tab"    id="tb-products"   onclick="showTab('products')">Products</button>
+  <button class="tab"    id="tb-gps"        onclick="showTab('gps')">GPS</button>
 </div>
 
-<!-- ORDERS — XLS Upload (no WhatsApp chat) -->
+<!-- ══ ORDERS ══ -->
 <div class="page on" id="pg-orders">
-
   <div class="card">
-    <div class="lbl">Import Delivery Challan</div>
+    <div class="lbl">Import Delivery Challan (.xls / .xlsx)</div>
     <div class="upload-zone" id="uploadZone">
-      <input type="file" id="xlsFile" accept=".xls,.xlsx,.csv">
-      <div class="upload-icon">📂</div>
-      <div class="upload-title">Tap to choose file</div>
-      <div class="upload-sub">Supports .xls · .xlsx · .csv</div>
+      <input type="file" id="xlsFile" accept=".xls,.xlsx" onchange="handleFileSelect(this)">
+      <div style="font-size:28px;margin-bottom:6px" id="uploadIcon">📋</div>
+      <div style="font-size:13px;font-weight:700;color:#4a2f14;margin-bottom:3px" id="uploadLabel">Tap to upload Delivery Challan</div>
+      <div style="font-size:11px;color:#8a7a6a;font-family:monospace">Supports .xls and .xlsx · Zoho Books export</div>
     </div>
-    <div id="xls-file-name" style="display:none;font-size:12px;font-family:monospace;color:#4a2f14;background:#f5ede0;padding:8px 12px;border-radius:8px;margin-bottom:8px"></div>
-    <div id="xls-msg" style="display:none" class="msg ok"></div>
-    <button class="btn btn-parse" id="parseXlsBtn" style="display:none">Parse Challan</button>
-  </div>
-
-  <div id="xlsStatsBox" style="display:none">
-    <div class="xls-stats-grid" id="xlsStats"></div>
-  </div>
-
-  <div id="xlsPreviewBox" style="display:none">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <div style="font-size:13px;font-weight:800;color:#4a2f14" id="xlsPreviewTitle"></div>
-      <div style="display:flex;gap:6px">
-        <button class="btn-sm" style="background:#f5ede0;color:#4a2f14" id="xlsToggleBtn" onclick="toggleXlsAll()">Collapse All</button>
-        <button class="btn-sm" style="background:#e8f5e9;color:#2d7a4f" id="xlsExportBtn">Export CSV</button>
+    <div id="xlsMsg" style="display:none" class="msg ok"></div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <div style="flex:1">
+        <div class="lbl" style="margin-bottom:4px">Delivery Date</div>
+        <input type="date" id="ord-date" style="margin-bottom:0">
       </div>
     </div>
-    <input class="search-box" id="xlsSearch" placeholder="Search customer / item..." oninput="renderXlsChallans()">
-    <div id="xlsChallanList"></div>
+    <button class="btn btn-parse" id="parseBtn" style="display:none" onclick="doParse()">⚡ Parse &amp; Auto-Save All Orders</button>
+  </div>
+
+  <div id="parseStatsBox" style="display:none">
+    <div class="parse-stats" id="parseStats"></div>
   </div>
 
   <div style="display:flex;align-items:center;justify-content:space-between;margin:4px 0 8px">
     <div style="font-size:13px;font-weight:800;color:#4a2f14">Saved Orders</div>
-    <button class="btn-sm btn-refresh" id="refreshOrdersBtn">Refresh</button>
+    <button class="btn-sm btn-refresh" onclick="loadOrders()">Refresh</button>
   </div>
   <div class="filter-row">
-    <select id="f-ord-driver">
+    <select id="f-ord-driver" onchange="loadOrders()">
       <option value="">All Drivers</option>
       <option>Bharat</option><option>Anand</option><option>Vikas</option>
       <option>Yuvraj</option><option>Rama</option><option>Dinesh</option>
+      <option>Logistics</option>
     </select>
-    <input type="date" id="f-ord-date" style="margin-bottom:0">
+    <input type="date" id="f-ord-date" onchange="loadOrders()" style="margin-bottom:0">
   </div>
   <div id="ordersList"></div>
 </div>
 
-<!-- SUMMARY -->
+<!-- ══ UNASSIGNED QUEUE ══ -->
+<div class="page" id="pg-unassigned">
+  <div class="unassigned-banner">
+    ⚠️ These orders have no matched shop driver.<br>
+    As logistics owner, assign each one before delivery day.
+  </div>
+  <div class="parse-stats" id="unassignedStats" style="margin-bottom:10px"></div>
+  <button class="btn btn-refresh" onclick="loadUnassigned()">Refresh Queue</button>
+  <div id="unassignedList"></div>
+</div>
+
+<!-- ══ SUMMARY ══ -->
 <div class="page" id="pg-summary">
-  <div class="filter-row"><input type="date" id="f-sum-date" style="margin-bottom:0"></div>
-  <button class="btn btn-refresh" id="refreshSumBtn">Refresh</button>
+  <div class="filter-row"><input type="date" id="f-sum-date" onchange="loadSummary()" style="margin-bottom:0"></div>
+  <button class="btn btn-refresh" onclick="loadSummary()">Refresh</button>
   <div id="summaryBody"></div>
 </div>
 
-<!-- DELIVERY -->
+<!-- ══ DELIVERY ══ -->
 <div class="page" id="pg-delivery">
   <div class="stats-grid" id="delivStats"></div>
   <div class="filter-row">
-    <select id="f-del-driver"><option value="">All</option><option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option></select>
-    <input type="date" id="f-del-date" style="margin-bottom:0">
+    <select id="f-del-driver" onchange="loadDeliveries()">
+      <option value="">All</option><option>Bharat</option><option>Anand</option>
+      <option>Vikas</option><option>Yuvraj</option><option>Rama</option>
+    </select>
+    <input type="date" id="f-del-date" onchange="loadDeliveries()" style="margin-bottom:0">
   </div>
-  <button class="btn btn-refresh" id="refreshDelBtn">Refresh</button>
+  <button class="btn btn-refresh" onclick="loadDeliveries()">Refresh</button>
   <div id="deliveryList"></div>
 </div>
 
-<!-- ROUTES -->
+<!-- ══ ROUTES ══ -->
 <div class="page" id="pg-routes">
   <div class="stats-grid" id="routeStats"></div>
   <div class="filter-row">
-    <select id="f-rt-driver"><option value="">All</option><option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option></select>
-    <input type="date" id="f-rt-date" style="margin-bottom:0">
+    <select id="f-rt-driver" onchange="loadRoutes()">
+      <option value="">All</option><option>Bharat</option><option>Anand</option>
+      <option>Vikas</option><option>Yuvraj</option><option>Rama</option>
+    </select>
+    <input type="date" id="f-rt-date" onchange="loadRoutes()" style="margin-bottom:0">
   </div>
-  <button class="btn btn-refresh" id="refreshRtBtn">Refresh</button>
-  <button class="btn-csv" id="exportRtBtn">Export CSV</button>
+  <button class="btn btn-refresh" onclick="loadRoutes()">Refresh</button>
+  <button class="btn-csv" onclick="exportRouteCSV()">Export CSV</button>
   <div id="routesList"></div>
 </div>
 
-<!-- GPS -->
+<!-- ══ PRODUCTS ══ -->
+<div class="page" id="pg-products">
+  <div class="stats-grid" id="productStats"></div>
+  <button class="btn btn-add" onclick="openAddProduct()">➕ Add Product</button>
+  <div class="filter-row">
+    <input type="text" id="f-prod-search" placeholder="Search products…" oninput="renderProducts()" style="margin-bottom:0">
+    <select id="f-prod-cat" onchange="renderProducts()" style="margin-bottom:0">
+      <option value="">All Categories</option>
+    </select>
+  </div>
+  <div id="productsList"></div>
+</div>
+
+<!-- ══ GPS ══ -->
 <div class="page" id="pg-gps">
   <div class="stats-grid" id="gpsStats"></div>
   <div class="filter-row">
-    <select id="f-gps-driver"><option value="">All</option><option>Bharat</option><option>Anand</option><option>Vikas</option><option>Yuvraj</option><option>Rama</option><option>Dinesh</option></select>
-    <select id="f-gps-status"><option value="">All</option><option value="saved">Saved</option><option value="missing">Missing</option></select>
+    <select id="f-gps-driver" onchange="renderGPS()">
+      <option value="">All</option><option>Bharat</option><option>Anand</option>
+      <option>Vikas</option><option>Yuvraj</option><option>Rama</option><option>Dinesh</option>
+    </select>
+    <select id="f-gps-status" onchange="renderGPS()">
+      <option value="">All</option><option value="saved">Saved</option><option value="missing">Missing</option>
+    </select>
   </div>
-  <button class="btn-csv" id="exportGpsBtn">Export CSV</button>
+  <button class="btn-csv" onclick="exportGPSCSV()">Export GPS CSV</button>
   <div id="gpsList"></div>
 </div>
 
-<!-- SheetJS CDN -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- ══ PRODUCT MODAL ══ -->
+<div class="modal-bg" id="productModal" style="display:none" onclick="if(event.target===this)closeProductModal()">
+  <div class="modal">
+    <div class="modal-title" id="productModalTitle">Add Product</div>
+    <input type="hidden" id="pm-id">
+    <div class="lbl">Product Name *</div>
+    <input type="text" id="pm-name" placeholder="e.g. 23 TP VEG PUFF">
+    <div class="lbl">Product ID</div>
+    <input type="text" id="pm-pid" placeholder="e.g. 3249544000000041334">
+    <div class="lbl">Category</div>
+    <input type="text" id="pm-cat" placeholder="e.g. Puff, Bread, Bun">
+    <div class="lbl">Unit Price (₹)</div>
+    <input type="text" id="pm-price" placeholder="e.g. 18">
+    <div class="lbl">Unit</div>
+    <input type="text" id="pm-unit" placeholder="e.g. Pieces">
+    <div class="lbl">Description / Notes</div>
+    <textarea id="pm-desc" placeholder="Size, specs, notes…"></textarea>
+    <div id="pm-msg" style="display:none" class="msg ok"></div>
+    <button class="btn btn-add" onclick="saveProduct()">💾 Save Product</button>
+    <button class="btn-cancel-modal" onclick="closeProductModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- ══ ASSIGN DRIVER MODAL ══ -->
+<div class="modal-bg" id="assignModal" style="display:none" onclick="if(event.target===this)closeAssignModal()">
+  <div class="modal">
+    <div class="modal-title">Assign Driver</div>
+    <input type="hidden" id="am-order-id">
+    <div id="am-shop-name" style="font-size:15px;font-weight:800;color:#4a2f14;margin-bottom:4px"></div>
+    <div id="am-challan" style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:14px"></div>
+    <div id="am-items" style="font-size:12px;font-family:monospace;background:#f5ede0;padding:10px 12px;border-radius:10px;margin-bottom:14px;line-height:1.8"></div>
+    <div class="lbl">Assign to Driver</div>
+    <select id="am-driver" style="margin-bottom:14px">
+      <option value="">— Select Driver —</option>
+      <option>Bharat</option><option>Anand</option><option>Vikas</option>
+      <option>Yuvraj</option><option>Rama</option><option>Dinesh</option>
+    </select>
+    <div id="am-msg" style="display:none" class="msg ok"></div>
+    <button class="btn btn-add" onclick="confirmAssign()">✅ Confirm Assignment</button>
+    <button class="btn-cancel-modal" onclick="closeAssignModal()">Cancel</button>
+  </div>
+</div>
 
 <script>
 var SHEET_API = 'https://script.google.com/macros/s/AKfycbyi-IJ6NLR28hRTeesy52THTbdcYCSnz3lp7NtEaJsxBOiNOm-9emMu0xOHT6hvWSE-/exec';
+var LOGISTICS_OWNER = 'Logistics'; // unmatched → logistics queue for manual assignment
 
 if(sessionStorage.getItem('role') !== 'admin') window.location.href = 'index.html';
 
@@ -197,243 +268,248 @@ function api(p){ return fetch(SHEET_API+'?'+new URLSearchParams(p)).then(functio
 function apiPost(b){ return fetch(SHEET_API,{method:'POST',body:JSON.stringify(b)}).then(function(r){return r.json();}).catch(function(){return {};}); }
 function todayStr(){ var d=new Date(); return d.getFullYear()+'-'+zp(d.getMonth()+1)+'-'+zp(d.getDate()); }
 function zp(n){ return String(n).padStart(2,'0'); }
-function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 document.getElementById('topDate').textContent = new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'});
-['f-ord-date','f-rt-date','f-sum-date','f-del-date'].forEach(function(id){ document.getElementById(id).value = todayStr(); });
+['ord-date','f-ord-date','f-rt-date','f-sum-date','f-del-date'].forEach(function(id){ document.getElementById(id).value = todayStr(); });
+document.getElementById('logoutBtn').onclick = function(){ sessionStorage.clear(); window.location.href='index.html'; };
 
-// ── BUTTON EVENTS ──
-document.getElementById('logoutBtn').onclick        = function(){ sessionStorage.clear(); window.location.href='index.html'; };
-document.getElementById('parseXlsBtn').onclick      = parseXlsFile;
-document.getElementById('xlsExportBtn').onclick     = exportXlsCSV;
-document.getElementById('refreshOrdersBtn').onclick = loadOrders;
-document.getElementById('refreshSumBtn').onclick    = loadSummary;
-document.getElementById('refreshDelBtn').onclick    = loadDeliveries;
-document.getElementById('refreshRtBtn').onclick     = loadRoutes;
-document.getElementById('exportRtBtn').onclick      = exportRouteCSV;
-document.getElementById('exportGpsBtn').onclick     = exportGPSCSV;
-document.getElementById('f-ord-driver').onchange    = loadOrders;
-document.getElementById('f-ord-date').onchange      = loadOrders;
-document.getElementById('f-sum-date').onchange      = loadSummary;
-document.getElementById('f-del-driver').onchange    = loadDeliveries;
-document.getElementById('f-del-date').onchange      = loadDeliveries;
-document.getElementById('f-rt-driver').onchange     = loadRoutes;
-document.getElementById('f-rt-date').onchange       = loadRoutes;
-document.getElementById('f-gps-driver').onchange    = renderGPS;
-document.getElementById('f-gps-status').onchange    = renderGPS;
+function showTab(t){
+  ['orders','unassigned','summary','delivery','routes','products','gps'].forEach(function(x){
+    document.getElementById('pg-'+x).classList.toggle('on',x===t);
+    document.getElementById('tb-'+x).classList.toggle('on',x===t);
+  });
+  if(t==='summary')    loadSummary();
+  if(t==='delivery')   loadDeliveries();
+  if(t==='routes')     loadRoutes();
+  if(t==='gps')        loadGPS();
+  if(t==='unassigned') loadUnassigned();
+  if(t==='products')   loadProducts();
+}
+
+// ── SHOPS ──
+var allShops = [];
+function loadShops(){ return api({action:'getShops'}).then(function(d){ if(Array.isArray(d)) allShops=d; }); }
+loadShops();
+
+function nrm(s){ return (s||'').toLowerCase().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ').trim(); }
+function fuzzyMatch(name){
+  var q=nrm(name);
+  var exact=allShops.filter(function(s){return nrm(s.name)===q;});
+  if(exact.length>=1) return exact[0];
+  var qw=q.split(' ').filter(function(w){return w.length>2;});
+  var best=null,bs=0;
+  allShops.forEach(function(s){
+    var sn=nrm(s.name),sc=0;
+    qw.forEach(function(w){ if(sn.indexOf(w)>=0) sc+=w.length*2; });
+    if(sc>bs){bs=sc;best=s;}
+  });
+  return bs>=6?best:null;
+}
 
 // ── XLS UPLOAD ──
-var xlsData    = [];   // grouped challan objects
-var xlsRawRows = [];   // flat extracted rows
-
-var xlsInput   = document.getElementById('xlsFile');
-var uploadZone = document.getElementById('uploadZone');
-
-xlsInput.addEventListener('change', function(){
-  if(!this.files || !this.files[0]) return;
-  var f = this.files[0];
-  document.getElementById('xls-file-name').textContent = '📄 ' + f.name + '  (' + (f.size/1024).toFixed(1) + ' KB)';
-  document.getElementById('xls-file-name').style.display = 'block';
-  document.getElementById('parseXlsBtn').style.display   = 'block';
-  document.getElementById('xls-msg').style.display       = 'none';
+var rawChallans = [];
+var zone = document.getElementById('uploadZone');
+zone.addEventListener('dragover', function(e){ e.preventDefault(); zone.classList.add('drag'); });
+zone.addEventListener('dragleave', function(){ zone.classList.remove('drag'); });
+zone.addEventListener('drop', function(e){
+  e.preventDefault(); zone.classList.remove('drag');
+  if(e.dataTransfer.files[0]) processXlsFile(e.dataTransfer.files[0]);
 });
-
-uploadZone.addEventListener('dragover',  function(e){ e.preventDefault(); uploadZone.classList.add('drag'); });
-uploadZone.addEventListener('dragleave', function(){ uploadZone.classList.remove('drag'); });
-uploadZone.addEventListener('drop', function(e){
-  e.preventDefault(); uploadZone.classList.remove('drag');
-  if(e.dataTransfer.files[0]){
-    xlsInput.files = e.dataTransfer.files;
-    xlsInput.dispatchEvent(new Event('change'));
-  }
-});
-
-// Required columns mapped to internal keys
-var COL_MAP = {
-  'Challan Date':    'challan_date',
-  'Customer ID':     'customer_id',
-  'Customer Name':   'customer_name',
-  'Item Name':       'item_name',
-  'Product ID':      'product_id',
-  'Item Desc':       'item_desc',
-  'QuantityOrdered': 'qty'
-};
-
-function parseXlsFile(){
-  var file = xlsInput.files[0];
-  if(!file){ showMsg('No file selected.','er'); return; }
-  var reader = new FileReader();
-  reader.onload = function(e){
+function handleFileSelect(input){
+  if(input.files&&input.files[0]) processXlsFile(input.files[0]);
+}
+function processXlsFile(file){
+  var msg=document.getElementById('xlsMsg');
+  msg.textContent='Reading file…';msg.className='msg in';msg.style.display='block';
+  var reader=new FileReader();
+  reader.onload=function(e){
     try{
-      var wb   = XLSX.read(e.target.result, {type:'array', cellDates:true});
-      var ws   = wb.Sheets[wb.SheetNames[0]];
-      var rows = XLSX.utils.sheet_to_json(ws, {defval:''});
-
-      if(!rows.length){ showMsg('File is empty or unreadable.','er'); return; }
-
-      // Check required columns exist
-      var firstRow = rows[0];
-      var missing  = Object.keys(COL_MAP).filter(function(c){ return !(c in firstRow); });
-      if(missing.length){
-        showMsg('Missing columns:\n' + missing.join(', '), 'er');
-        return;
+      var data=new Uint8Array(e.target.result);
+      var wb=XLSX.read(data,{type:'array',cellDates:true});
+      var sheet=wb.Sheets[wb.SheetNames[0]];
+      var rows=XLSX.utils.sheet_to_json(sheet,{header:1,raw:false,dateNF:'YYYY-MM-DD'});
+      if(!rows||rows.length<2){msg.textContent='No data found.';msg.className='msg er';return;}
+      var header=rows[0].map(function(h){return (h||'').toString().trim();});
+      var COL={
+        challan_num:  header.indexOf('Delivery Challan Number'),
+        challan_date: header.indexOf('Challan Date'),
+        customer_id:  header.indexOf('Customer ID'),
+        customer_name:header.indexOf('Customer Name'),
+        item_name:    header.indexOf('Item Name'),
+        product_id:   header.indexOf('Product ID'),
+        item_desc:    header.indexOf('Item Desc'),
+        qty:          header.indexOf('QuantityOrdered')
+      };
+      var missing=Object.keys(COL).filter(function(k){return COL[k]===-1;});
+      if(missing.length){msg.textContent='Missing columns: '+missing.join(', ');msg.className='msg er';return;}
+      var challanMap={},challanOrder=[];
+      for(var i=1;i<rows.length;i++){
+        var row=rows[i];if(!row||row.length<5)continue;
+        var dcNum=(row[COL.challan_num]||'').toString().trim();if(!dcNum)continue;
+        if(!challanMap[dcNum]){
+          challanMap[dcNum]={challan_num:dcNum,challan_date:row[COL.challan_date]?row[COL.challan_date].toString().substring(0,10):todayStr(),customer_id:(row[COL.customer_id]||'').toString().trim(),customer_name:(row[COL.customer_name]||'').toString().trim(),items:[]};
+          challanOrder.push(dcNum);
+        }
+        var qty=parseInt(row[COL.qty])||0;
+        if(qty>0) challanMap[dcNum].items.push({item_name:(row[COL.item_name]||'').toString().trim(),product_id:(row[COL.product_id]||'').toString().trim(),item_desc:(row[COL.item_desc]||'').toString().trim(),qty:qty});
       }
-
-      // Extract required fields only
-      xlsRawRows = rows.map(function(row){
-        var r = {};
-        Object.keys(COL_MAP).forEach(function(col){ r[COL_MAP[col]] = String(row[col]||'').trim(); });
-        return r;
-      }).filter(function(r){ return r.customer_name && r.item_name; });
-
-      if(!xlsRawRows.length){ showMsg('No valid data rows found.','er'); return; }
-
-      // Group rows by customer (customer_id + challan_date)
-      var grouped = {};
-      xlsRawRows.forEach(function(r){
-        var key = r.customer_id + '||' + r.challan_date;
-        if(!grouped[key]) grouped[key] = {
-          challan_date:  r.challan_date,
-          customer_id:   r.customer_id,
-          customer_name: r.customer_name,
-          items: []
-        };
-        grouped[key].items.push({
-          item_name:  r.item_name,
-          product_id: r.product_id,
-          item_desc:  r.item_desc,
-          qty:        r.qty
-        });
-      });
-      xlsData = Object.values(grouped);
-
-      var totalQty = xlsRawRows.reduce(function(s,r){ return s+(parseInt(r.qty)||0); }, 0);
-
-      // Stats
-      document.getElementById('xlsStatsBox').style.display = 'block';
-      document.getElementById('xlsStats').innerHTML =
-        '<div class="xls-stat"><div class="stat-n">'+xlsData.length+'</div><div class="stat-l">Customers</div></div>'+
-        '<div class="xls-stat"><div class="stat-n">'+xlsRawRows.length+'</div><div class="stat-l">Line Items</div></div>'+
-        '<div class="xls-stat"><div class="stat-n">'+totalQty+'</div><div class="stat-l">Total Qty</div></div>';
-
-      // Preview
-      document.getElementById('xlsPreviewBox').style.display = 'block';
-      document.getElementById('xlsPreviewTitle').textContent = 'Delivery Challan — ' + xlsData.length + ' customers';
-      document.getElementById('xlsSearch').value = '';
-      renderXlsChallans();
-      showMsg('Parsed ' + xlsData.length + ' customers · ' + xlsRawRows.length + ' line items · ' + totalQty + ' total qty.', 'ok');
-
-    } catch(err){
-      showMsg('Parse error: ' + err.message, 'er');
-    }
+      rawChallans=challanOrder.map(function(k){return challanMap[k];}).filter(function(c){return c.items.length>0;});
+      if(!rawChallans.length){msg.textContent='No valid challan rows found.';msg.className='msg er';return;}
+      document.getElementById('uploadIcon').textContent='✅';
+      document.getElementById('uploadLabel').textContent=file.name+' · '+rawChallans.length+' challans';
+      zone.classList.add('has-file');
+      document.getElementById('parseBtn').style.display='block';
+      msg.textContent='Loaded '+rawChallans.length+' challans.\nTap "Parse & Auto-Save" to import.';
+      msg.className='msg ok';
+    }catch(err){msg.textContent='Error: '+err.message;msg.className='msg er';}
   };
   reader.readAsArrayBuffer(file);
 }
 
-function showMsg(txt, cls){
-  var el = document.getElementById('xls-msg');
-  el.textContent = txt; el.className = 'msg ' + cls; el.style.display = 'block';
-}
-
-// ── RENDER CHALLANS ──
-var xlsAllCollapsed = false;
-
-function toggleXlsAll(){
-  xlsAllCollapsed = !xlsAllCollapsed;
-  document.getElementById('xlsToggleBtn').textContent = xlsAllCollapsed ? 'Expand All' : 'Collapse All';
-  document.querySelectorAll('.challan-card').forEach(function(el){
-    el.classList.toggle('challan-collapsed', xlsAllCollapsed);
+// ── PARSE & AUTO-SAVE (no confirm button needed) ──
+function doParse(){
+  if(!rawChallans.length) return;
+  if(!allShops.length){ loadShops().then(doParse); return; }
+  var dateInput=document.getElementById('ord-date').value||todayStr();
+  var matched=0,unmatched=0,totalItems=0,toSave=[];
+  rawChallans.forEach(function(c){
+    var shop=fuzzyMatch(c.customer_name);
+    var items=c.items.map(function(it){return{name:it.item_name,qty:it.qty,spec:it.item_desc||'',product_id:it.product_id};});
+    totalItems+=items.length;
+    // If no shop match OR shop has no assigned driver → Logistics queue
+    var driver=shop?(shop.assigned_driver||LOGISTICS_OWNER):LOGISTICS_OWNER;
+    toSave.push({shop_id:shop?shop.shop_id:'',shop_name:shop?shop.name:c.customer_name,customer_id:c.customer_id,driver:driver,items:items,date:c.challan_date||dateInput,challan_num:c.challan_num,matched:!!shop,raw_name:c.customer_name});
+    shop?matched++:unmatched++;
   });
-}
-
-function renderXlsChallans(){
-  var q = (document.getElementById('xlsSearch').value || '').toLowerCase().trim();
-  var list = xlsData.filter(function(c){
-    if(!q) return true;
-    if(c.customer_name.toLowerCase().indexOf(q) >= 0) return true;
-    if(c.customer_id.toLowerCase().indexOf(q) >= 0) return true;
-    return c.items.some(function(it){ return it.item_name.toLowerCase().indexOf(q) >= 0; });
+  document.getElementById('parseStatsBox').style.display='block';
+  document.getElementById('parseStats').innerHTML=
+    '<div class="ps"><div class="ps-n">'+toSave.length+'</div><div class="ps-l">Challans</div></div>'+
+    '<div class="ps"><div class="ps-n" style="color:#2d7a4f">'+matched+'</div><div class="ps-l">Matched</div></div>'+
+    '<div class="ps"><div class="ps-n" style="color:#c8864a">'+unmatched+'</div><div class="ps-l">Queue</div></div>';
+  var pmsg=document.getElementById('xlsMsg');
+  pmsg.textContent='Saving '+toSave.length+' orders…'+(unmatched?' ('+unmatched+' → Logistics Queue)':'');
+  pmsg.className='msg in';pmsg.style.display='block';
+  var parseBtn=document.getElementById('parseBtn');
+  parseBtn.disabled=true;parseBtn.textContent='Saving…';
+  var ok=0,fail=0,chain=Promise.resolve();
+  toSave.forEach(function(o){
+    chain=chain.then(function(){
+      return apiPost({action:'addOrder',driver:o.driver,shop_id:o.shop_id,shop_name:o.shop_name,
+        items:o.items.map(function(it){return it.name+(it.spec?' ('+it.spec+')':'');}).join(', '),
+        qty:o.items.map(function(it){return it.qty;}).join(', '),
+        note:(o.matched?'':'UNMATCHED')+' ['+o.challan_num+']',
+        date:o.date
+      }).then(function(res){res&&res.ok?ok++:fail++;});
+    });
   });
-
-  if(!list.length){
-    document.getElementById('xlsChallanList').innerHTML =
-      '<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No results.</div>';
-    return;
-  }
-
-  document.getElementById('xlsChallanList').innerHTML = list.map(function(c, i){
-    var itemsHtml = c.items.map(function(it){
-      return '<div class="challan-item-row">'+
-        '<div>'+
-          '<div class="item-name">'+esc(it.item_name)+'</div>'+
-          (it.item_desc ? '<div class="item-desc">'+esc(it.item_desc)+'</div>' : '')+
-          '<div class="item-pid">Product ID: '+esc(it.product_id)+'</div>'+
-        '</div>'+
-        '<div>'+
-          '<div class="item-qty">'+esc(it.qty)+'</div>'+
-          '<div class="item-qty-lbl">QTY</div>'+
-        '</div>'+
-      '</div>';
-    }).join('');
-
-    return '<div class="challan-card" id="cc-'+i+'">'+
-      '<div class="challan-header" onclick="document.getElementById(\'cc-'+i+'\').classList.toggle(\'challan-collapsed\')">'+
-        '<div>'+
-          '<div class="challan-title">'+esc(c.customer_name)+'</div>'+
-          '<div class="challan-meta">'+esc(c.customer_id)+' &nbsp;·&nbsp; '+esc(c.challan_date)+' &nbsp;·&nbsp; '+c.items.length+' item'+(c.items.length!==1?'s':'')+'</div>'+
-        '</div>'+
-        '<span style="font-size:20px;color:#c8a87a;margin-left:8px">⌄</span>'+
-      '</div>'+
-      '<div class="challan-items">'+itemsHtml+'</div>'+
-    '</div>';
-  }).join('');
-}
-
-function exportXlsCSV(){
-  if(!xlsRawRows.length){ alert('No data to export.'); return; }
-  var rows = [['Challan Date','Customer ID','Customer Name','Item Name','Product ID','Item Desc','QuantityOrdered']];
-  xlsRawRows.forEach(function(r){
-    rows.push([r.challan_date, r.customer_id, r.customer_name, r.item_name, r.product_id, r.item_desc, r.qty]);
+  chain.then(function(){
+    parseBtn.textContent='⚡ Parse & Auto-Save All Orders';parseBtn.disabled=false;
+    pmsg.textContent='✅ '+ok+' orders saved!'+(fail?' '+fail+' failed.':'')+(unmatched?'\n⚠️ '+unmatched+' unmatched → tap "Queue" tab to assign drivers':'');
+    pmsg.className='msg ok';
+    zone.classList.remove('has-file');
+    document.getElementById('uploadIcon').textContent='📋';
+    document.getElementById('uploadLabel').textContent='Tap to upload Delivery Challan';
+    document.getElementById('xlsFile').value='';
+    parseBtn.style.display='none';
+    rawChallans=[];
+    loadOrders();
+    if(unmatched>0) document.getElementById('tb-unassigned').textContent='⚠️ Queue ('+unmatched+')';
   });
-  dlCSV(rows, 'delivery-challan-'+todayStr()+'.csv');
-}
-
-function showTab(t){
-  ['orders','summary','delivery','routes','gps'].forEach(function(x){
-    document.getElementById('pg-'+x).classList.toggle('on', x===t);
-    document.getElementById('tb-'+x).classList.toggle('on', x===t);
-  });
-  if(t==='summary')  loadSummary();
-  if(t==='delivery') loadDeliveries();
-  if(t==='routes')   loadRoutes();
-  if(t==='gps')      loadGPS();
 }
 
 // ── ORDERS LIST ──
 function loadOrders(){
   var el=document.getElementById('ordersList');
-  el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading...</div>';
+  el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
   api({action:'getOrders',driver:document.getElementById('f-ord-driver').value,date:document.getElementById('f-ord-date').value||todayStr()})
   .then(function(data){
     if(!Array.isArray(data)||!data.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders.</div>';return;}
     el.innerHTML=data.map(function(o){
+      var dc=o.driver==='Logistics'?'DC-Logistics':'DC-'+o.driver;
       return '<div class="order-card">'+
         '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
-        '<div style="font-size:14px;font-weight:800;color:#4a2f14">'+o.shop_name+'</div>'+
-        '<span class="badge DC-'+o.driver+'">'+o.driver+'</span></div>'+
+          '<div style="font-size:14px;font-weight:800;color:#4a2f14">'+o.shop_name+'</div>'+
+          '<span class="badge '+dc+'">'+o.driver+'</span>'+
+        '</div>'+
         '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin:3px 0 6px">'+o.date+' · '+o.order_id+'</div>'+
         '<div style="font-size:12px;font-family:monospace;background:#f5ede0;padding:7px 10px;border-radius:8px;margin-bottom:7px">'+
-        '<b>Items:</b> '+o.items+'<br><b>Qty:</b> '+o.qty+(o.note&&o.note!='—'?'<br><b>Note:</b> '+o.note:'')+'</div>'+
-        '<button class="btn-sm btn-del" onclick="deleteOrder(\''+o.order_id+'\')">Delete</button></div>';
+          '<b>Items:</b> '+o.items+'<br><b>Qty:</b> '+o.qty+(o.note&&o.note!='—'?'<br><b>Note:</b> '+o.note:'')+
+        '</div>'+
+        '<button class="btn-sm btn-del" onclick="deleteOrder(\''+o.order_id+'\')">Delete</button>'+
+      '</div>';
     }).join('');
   });
 }
 function deleteOrder(id){if(!confirm('Delete?'))return;apiPost({action:'deleteOrder',order_id:id}).then(loadOrders);}
 
+// ── UNASSIGNED QUEUE ──
+function loadUnassigned(){
+  var el=document.getElementById('unassignedList');
+  el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
+  api({action:'getOrders',driver:LOGISTICS_OWNER,date:document.getElementById('f-ord-date').value||todayStr()})
+  .then(function(data){
+    var stats=document.getElementById('unassignedStats');
+    if(!Array.isArray(data)||!data.length){
+      el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#2d7a4f;font-family:monospace">✅ Queue empty — all orders assigned!</div>';
+      stats.innerHTML='<div class="ps"><div class="ps-n" style="color:#2d7a4f">0</div><div class="ps-l">Pending</div></div>';
+      document.getElementById('tb-unassigned').textContent='⚠️ Queue';
+      return;
+    }
+    document.getElementById('tb-unassigned').textContent='⚠️ Queue ('+data.length+')';
+    stats.innerHTML='<div class="ps"><div class="ps-n" style="color:#c8864a">'+data.length+'</div><div class="ps-l">Need Driver</div></div>';
+    el.innerHTML=data.map(function(o){
+      var safeShop=o.shop_name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+      var safeItems=o.items.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+      return '<div class="order-card" style="border-color:#ffc87a">'+
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
+          '<div style="font-size:14px;font-weight:800;color:#4a2f14">'+o.shop_name+'</div>'+
+          '<span class="badge b-logistics">Unassigned</span>'+
+        '</div>'+
+        '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin:3px 0 6px">'+o.date+' · '+o.order_id+'</div>'+
+        '<div style="font-size:12px;font-family:monospace;background:#fff8f0;padding:7px 10px;border-radius:8px;margin-bottom:8px">'+
+          '<b>Items:</b> '+o.items+'<br><b>Qty:</b> '+o.qty+
+        '</div>'+
+        '<div style="display:flex;gap:8px">'+
+          '<button class="btn-sm" style="background:#4a2f14;color:#fff;flex:1;padding:9px" onclick="openAssign(\''+o.order_id+'\',\''+safeShop+'\',\''+safeItems+'\',\''+o.qty+'\',\''+o.date+'\')">👤 Assign Driver</button>'+
+          '<button class="btn-sm btn-del" onclick="deleteOrder(\''+o.order_id+'\')">Delete</button>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+  });
+}
+
+function openAssign(orderId,shopName,items,qty,date){
+  document.getElementById('am-order-id').value=orderId;
+  document.getElementById('am-shop-name').textContent=shopName;
+  document.getElementById('am-challan').textContent=date;
+  document.getElementById('am-items').innerHTML='<b>Items:</b> '+items+'<br><b>Qty:</b> '+qty;
+  document.getElementById('am-driver').value='';
+  document.getElementById('am-msg').style.display='none';
+  document.getElementById('assignModal').style.display='flex';
+}
+function closeAssignModal(){ document.getElementById('assignModal').style.display='none'; }
+
+function confirmAssign(){
+  var orderId=document.getElementById('am-order-id').value;
+  var driver=document.getElementById('am-driver').value;
+  var msg=document.getElementById('am-msg');
+  if(!driver){msg.textContent='Select a driver.';msg.className='msg er';msg.style.display='block';return;}
+  msg.textContent='Saving…';msg.className='msg in';msg.style.display='block';
+  apiPost({action:'updateOrderDriver',order_id:orderId,driver:driver})
+  .then(function(res){
+    if(res&&res.ok){
+      msg.textContent='✅ Assigned to '+driver;msg.className='msg ok';
+      setTimeout(function(){closeAssignModal();loadUnassigned();loadOrders();},700);
+    } else {
+      msg.textContent='❌ Failed: '+(res.error||'unknown');msg.className='msg er';
+    }
+  });
+}
+
 // ── SUMMARY ──
 function loadSummary(){
   var el=document.getElementById('summaryBody');
-  el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading...</div>';
+  el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
   api({action:'getOrders',date:document.getElementById('f-sum-date').value||todayStr()}).then(function(data){
     if(!Array.isArray(data)||!data.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders.</div>';return;}
     var byD={};
@@ -446,8 +522,9 @@ function loadSummary(){
     Object.entries(byD).forEach(function(e){
       var drv=e[0],ords=e[1],dI={};
       ords.forEach(function(o){(o.items||'').split(',').map(function(s){return s.trim();}).filter(Boolean).forEach(function(item){dI[item]=(dI[item]||0)+1;});});
+      var dc=drv==='Logistics'?'DC-Logistics':'DC-'+drv;
       h+='<div class="summary-card">'+
-        '<div style="font-size:15px;font-weight:800;margin-bottom:6px"><span class="badge DC-'+drv+'">'+drv+'</span> · '+ords.length+' shops</div>'+
+        '<div style="font-size:15px;font-weight:800;margin-bottom:6px"><span class="badge '+dc+'">'+drv+'</span> · '+ords.length+' shops</div>'+
         ords.map(function(o){return '<div class="summary-row">• '+o.shop_name+' — '+o.items+' ('+o.qty+')</div>';}).join('')+
         '<div style="font-size:13px;font-weight:800;color:#4a2f14;padding-top:6px;border-top:1px solid #f0e8dc">'+
         Object.entries(dI).map(function(e){return e[0]+' x'+e[1];}).join(', ')+'</div></div>';
@@ -459,7 +536,7 @@ function loadSummary(){
 // ── DELIVERY ──
 function loadDeliveries(){
   var el=document.getElementById('deliveryList');
-  el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading...</div>';
+  el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
   var drv=document.getElementById('f-del-driver').value,dt=document.getElementById('f-del-date').value||todayStr();
   Promise.all([api({action:'getOrders',driver:drv,date:dt}),api({action:'getDeliveries',driver:drv,date:dt}),api({action:'getRoutes',driver:drv,date:dt})])
   .then(function(res){
@@ -487,7 +564,7 @@ function loadDeliveries(){
 var routesData=[];
 function loadRoutes(){
   var el=document.getElementById('routesList');
-  el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading...</div>';
+  el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
   api({action:'getRoutes',date:document.getElementById('f-rt-date').value||todayStr(),driver:document.getElementById('f-rt-driver').value})
   .then(function(data){
     routesData=Array.isArray(data)?data:[];
@@ -502,12 +579,94 @@ function loadRoutes(){
       var sh=[];try{sh=JSON.parse(r.shop_order||'[]');}catch(e){}
       return '<div class="driver-card">'+
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+
-        '<div style="font-size:15px;font-weight:800">'+r.driver+'</div>'+
-        '<div style="display:flex;gap:4px"><span class="badge b-ok">'+r.total_shops+' shops</span><span class="badge b-warn">'+r.total_km+'km</span></div></div>'+
+          '<div style="font-size:15px;font-weight:800">'+r.driver+'</div>'+
+          '<div style="display:flex;gap:4px"><span class="badge b-ok">'+r.total_shops+' shops</span><span class="badge b-warn">'+r.total_km+'km</span></div>'+
+        '</div>'+
         '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-bottom:6px">Started: '+(r.start_time||'not started')+'</div>'+
-        sh.map(function(s,j){return '<div class="route-mini">'+(j+1)+'. '+s+'</div>';}).join('')+'</div>';
+        sh.map(function(s,j){return '<div class="route-mini">'+(j+1)+'. '+s+'</div>';}).join('')+
+      '</div>';
     }).join('');
   });
+}
+
+// ── PRODUCTS ──
+var allProducts=[];
+function loadProducts(){
+  var el=document.getElementById('productsList');
+  el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
+  api({action:'getProducts'}).then(function(data){
+    allProducts=Array.isArray(data)?data:[];
+    var cats=[...new Set(allProducts.map(function(p){return p.category||'';}).filter(Boolean))].sort();
+    var catSel=document.getElementById('f-prod-cat');
+    catSel.innerHTML='<option value="">All Categories</option>'+cats.map(function(c){return '<option>'+c+'</option>';}).join('');
+    document.getElementById('productStats').innerHTML=
+      '<div class="stat"><div class="stat-n">'+allProducts.length+'</div><div class="stat-l">Products</div></div>'+
+      '<div class="stat"><div class="stat-n">'+cats.length+'</div><div class="stat-l">Categories</div></div>'+
+      '<div class="stat"><div class="stat-n" style="color:#2d7a4f">'+allProducts.filter(function(p){return p.price;}).length+'</div><div class="stat-l">Priced</div></div>';
+    renderProducts();
+  });
+}
+function renderProducts(){
+  var q=(document.getElementById('f-prod-search').value||'').toLowerCase();
+  var cat=document.getElementById('f-prod-cat').value;
+  var list=allProducts;
+  if(q) list=list.filter(function(p){return (p.name+' '+(p.category||'')+' '+(p.product_id||'')).toLowerCase().indexOf(q)>=0;});
+  if(cat) list=list.filter(function(p){return p.category===cat;});
+  var el=document.getElementById('productsList');
+  if(!list.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No products found.</div>';return;}
+  el.innerHTML=list.map(function(p){
+    return '<div class="product-card">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
+        '<div style="font-size:14px;font-weight:800;color:#4a2f14">'+p.name+'</div>'+
+        (p.price?'<span class="badge b-ok">₹'+p.price+'</span>':'')+
+      '</div>'+
+      '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin:3px 0 6px">'+
+        (p.category?p.category+' · ':'')+
+        (p.unit?p.unit+' · ':'')+
+        (p.product_id?'ID: '+p.product_id:'')+
+      '</div>'+
+      (p.description?'<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:8px">'+p.description+'</div>':'')+
+      '<div style="display:flex;gap:8px">'+
+        '<button class="btn-sm btn-edit" onclick=\'openEditProduct('+JSON.stringify(p).replace(/'/g,"&#39;")+')\'>✏️ Edit</button>'+
+        '<button class="btn-sm btn-del" onclick="deleteProduct(\''+p.product_id+'\',\''+p.name.replace(/'/g,"\\'")+'\'  )">🗑 Delete</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+function openAddProduct(){
+  document.getElementById('productModalTitle').textContent='Add Product';
+  ['pm-id','pm-name','pm-pid','pm-cat','pm-price','pm-unit','pm-desc'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('pm-msg').style.display='none';
+  document.getElementById('productModal').style.display='flex';
+}
+function openEditProduct(p){
+  document.getElementById('productModalTitle').textContent='Edit Product';
+  document.getElementById('pm-id').value=p.product_id||'';
+  document.getElementById('pm-name').value=p.name||'';
+  document.getElementById('pm-pid').value=p.product_id||'';
+  document.getElementById('pm-cat').value=p.category||'';
+  document.getElementById('pm-price').value=p.price||'';
+  document.getElementById('pm-unit').value=p.unit||'';
+  document.getElementById('pm-desc').value=p.description||'';
+  document.getElementById('pm-msg').style.display='none';
+  document.getElementById('productModal').style.display='flex';
+}
+function closeProductModal(){document.getElementById('productModal').style.display='none';}
+function saveProduct(){
+  var name=document.getElementById('pm-name').value.trim();
+  if(!name){alert('Product name required');return;}
+  var id=document.getElementById('pm-id').value;
+  var msg=document.getElementById('pm-msg');
+  msg.textContent='Saving…';msg.className='msg in';msg.style.display='block';
+  apiPost({action:id?'updateProduct':'addProduct',product_id:document.getElementById('pm-pid').value.trim()||id,name:name,category:document.getElementById('pm-cat').value.trim(),price:document.getElementById('pm-price').value.trim(),unit:document.getElementById('pm-unit').value.trim(),description:document.getElementById('pm-desc').value.trim()})
+  .then(function(res){
+    if(res&&res.ok){msg.textContent='✅ Saved!';msg.className='msg ok';setTimeout(function(){closeProductModal();loadProducts();},600);}
+    else{msg.textContent='❌ '+(res.error||'Failed');msg.className='msg er';}
+  });
+}
+function deleteProduct(pid,name){
+  if(!confirm('Delete "'+name+'"?'))return;
+  apiPost({action:'deleteProduct',product_id:pid}).then(function(res){if(res&&res.ok)loadProducts();else alert('Delete failed');});
 }
 
 // ── GPS ──
@@ -527,12 +686,13 @@ function renderGPS(){
   document.getElementById('gpsList').innerHTML=list.map(function(s){
     return '<div class="order-card">'+
       '<div style="display:flex;justify-content:space-between">'+
-      '<div style="font-size:14px;font-weight:800;color:#4a2f14">'+s.name+'</div>'+
-      '<span class="badge '+(s.lat?'b-ok':'b-miss')+'">'+(s.lat?'GPS':'No GPS')+'</span></div>'+
+        '<div style="font-size:14px;font-weight:800;color:#4a2f14">'+s.name+'</div>'+
+        '<span class="badge '+(s.lat?'b-ok':'b-miss')+'">'+(s.lat?'GPS':'No GPS')+'</span>'+
+      '</div>'+
       '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin:3px 0 6px">'+(s.area||'')+' · <span class="badge DC-'+(s.assigned_driver||'Dinesh')+'">'+(s.assigned_driver||'-')+'</span></div>'+
       (s.lat?'<div style="font-size:11px;font-family:monospace;color:#2d7a4f;margin-bottom:6px">'+s.lat+', '+s.lng+'</div>'+
       '<button class="btn-sm btn-map" onclick="window.open(\'https://www.google.com/maps?q='+s.lat+','+s.lng+'\',\'_blank\')">Map</button>':'')+
-      '</div>';
+    '</div>';
   }).join('');
 }
 
