@@ -246,7 +246,7 @@ function fuzzyMatch(name, area){
 }
 
 // ── GEMINI AI PARSE ──
-async function callGemini(text){
+async function callGemini(text, attempt=1){
   if(!GEMINI_KEY) throw new Error('No Gemini API key — add it above (free from aistudio.google.com)');
 
   const prompt = `You are a bakery order parser for "It's Baked" bakery in Pune, India.
@@ -292,7 +292,16 @@ ${text}`;
   if(!res.ok){
     const e=await res.text();
     if(res.status===400&&e.includes('API_KEY_INVALID')) throw new Error('Invalid API key');
-    if(res.status===429) throw new Error('Rate limit — wait 1 min and try again');
+    if(res.status===429){
+      if(attempt<=3){
+        const wait=attempt*20; // 20s, 40s, 60s
+        document.getElementById('ai-loading').querySelector('.ai-label').textContent=
+          `Rate limit — retrying in ${wait}s (attempt ${attempt}/3)…`;
+        await new Promise(r=>setTimeout(r,wait*1000));
+        return callGemini(text, attempt+1);
+      }
+      throw new Error('Rate limit — try again in 2 minutes');
+    }
     throw new Error('Gemini error '+res.status);
   }
 
