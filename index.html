@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>Baked GPS</title>
+<script src="config.js"></script>
+<script src="api.js"></script>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#4a2f14">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -43,9 +45,7 @@ select,input{width:100%;padding:13px;border:1.5px solid #e8dfd2;border-radius:12
 <div class="card">
   <div class="lbl" id="lbl-driver">Driver Login</div>
   <select id="driverName">
-    <option value="">Select your name…</option>
-    <option>Bharat</option><option>Anand</option><option>Vikas</option>
-    <option>Yuvraj</option><option>Rama</option>
+    <option value="">Loading drivers…</option>
   </select>
   <input type="password" id="driverPass" placeholder="Password">
   <button class="btn btn-driver" id="btn-dlogin" onclick="driverLogin()">🚗 Driver Login</button>
@@ -55,10 +55,13 @@ select,input{width:100%;padding:13px;border:1.5px solid #e8dfd2;border-radius:12
 <div class="divider">or</div>
 
 <div class="card">
-  <div class="lbl">Admin Login</div>
-  <input type="password" id="adminPass" placeholder="Admin password">
-  <button class="btn btn-admin" onclick="adminLogin()">📊 Admin Login</button>
-  <div class="err" id="a-err">Wrong password.</div>
+  <div class="lbl">Staff Login</div>
+  <select id="staffName">
+    <option value="">Loading…</option>
+  </select>
+  <input type="password" id="staffPass" placeholder="Password">
+  <button class="btn btn-admin" onclick="staffLogin()">📊 Staff Login</button>
+  <div class="err" id="a-err">Wrong name or password.</div>
 </div>
 
 <script>
@@ -71,12 +74,22 @@ if('serviceWorker' in navigator) {
   });
 }
 
-var DRIVER_PASS = {
-  Bharat:'bharat123', Anand:'anand123', Vikas:'vikas123',
-  Yuvraj:'yuvraj123', Rama:'rama123'
-};
-var ADMIN_PASS = 'baked@admin';
+var driverPassMap = {};  // name → password (loaded from DB)
+var staffPassMap = {};   // name → {password, role, tabs}
 var lang = localStorage.getItem('lang') || 'en';
+
+function loadDriversForLogin(){
+  var sel = document.getElementById('driverName');
+  api({action:'getDrivers'}).then(function(data){
+    var list = Array.isArray(data) ? data.filter(function(d){return d.active;}) : [];
+    driverPassMap = {};
+    list.forEach(function(d){ driverPassMap[d.name] = d.password; });
+    sel.innerHTML = '<option value="">Select your name…</option>' +
+      list.map(function(d){ return '<option value="'+d.name+'">'+d.name+'</option>'; }).join('');
+  }).catch(function(){
+    sel.innerHTML = '<option value="">Select your name…</option>';
+  });
+}
 
 function setLang(l) {
   lang = l;
@@ -94,14 +107,46 @@ function setLang(l) {
   }
 }
 
+function loadStaffForLogin(){
+  var sel = document.getElementById('staffName');
+  api({action:'getStaff'}).then(function(data){
+    var list = Array.isArray(data) ? data.filter(function(s){return s.active && s.role !== 'super_admin';}) : [];
+    staffPassMap = {};
+    list.forEach(function(s){ staffPassMap[s.name] = s; });
+    sel.innerHTML = '<option value="">Select name…</option>' +
+      list.map(function(s){
+        var icon = s.role==='super_admin'?'👑':s.role==='chef'?'👨‍🍳':s.role==='packer'?'📦':'👤';
+        return '<option value="'+s.name+'">'+icon+' '+s.name+'</option>';
+      }).join('');
+  }).catch(function(){
+    sel.innerHTML = '<option value="">Select name…</option>';
+  });
+}
+
+function staffLogin(){
+  var name = document.getElementById('staffName').value;
+  var pass = document.getElementById('staffPass').value;
+  var err  = document.getElementById('a-err');
+  err.style.display = 'none';
+  if(!name){ alert('Select your name'); return; }
+  var s = staffPassMap[name];
+  if(!s || pass !== s.password){ err.style.display='block'; return; }
+  sessionStorage.setItem('role', s.role);
+  sessionStorage.setItem('tabs', s.tabs || '[]');
+  sessionStorage.setItem('staffName', s.name);
+  window.location.href = 'admin.html';
+}
+
 // apply saved lang on load
 setLang(lang);
+loadDriversForLogin();
+loadStaffForLogin();
 
-function driverLogin() {
+function driverLogin(){
   var name = document.getElementById('driverName').value;
   var pass = document.getElementById('driverPass').value;
   if (!name) { alert(lang==='mr' ? 'नाव निवडा' : 'Select your name'); return; }
-  if (pass !== DRIVER_PASS[name]) {
+  if (!driverPassMap[name] || pass !== driverPassMap[name]) {
     document.getElementById('d-err').style.display = 'block'; return;
   }
   sessionStorage.setItem('role', 'driver');
@@ -110,20 +155,13 @@ function driverLogin() {
   window.location.href = 'driver.html';
 }
 
-function adminLogin() {
-  if (document.getElementById('adminPass').value !== ADMIN_PASS) {
-    document.getElementById('a-err').style.display = 'block'; return;
-  }
-  sessionStorage.setItem('role', 'admin');
-  window.location.href = 'admin.html';
-}
-
 document.getElementById('driverPass').addEventListener('keydown', function(e){ if(e.key==='Enter') driverLogin(); });
-document.getElementById('adminPass').addEventListener('keydown',  function(e){ if(e.key==='Enter') adminLogin(); });
+document.getElementById('staffPass').addEventListener('keydown', function(e){ if(e.key==='Enter') staffLogin(); });
 
 // redirect if already logged in
-if (sessionStorage.getItem('role')==='driver') window.location.href='driver.html';
-if (sessionStorage.getItem('role')==='admin')  window.location.href='admin.html';
+var _r = sessionStorage.getItem('role');
+if(_r==='driver') window.location.href='driver.html';
+if(_r==='super_admin'||_r==='admin'||_r==='assistant'||_r==='chef'||_r==='packer') window.location.href='admin.html';
 </script>
 </body>
 </html>

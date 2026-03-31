@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>Baked — Customers</title>
+<script src="config.js"></script>
+<script src="api.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:520px;margin:0 auto;min-height:100vh}
@@ -81,16 +83,12 @@ select,input[type=text],input[type=tel]{width:100%;padding:11px 14px;border:1.5p
         <span style="font-size:12px;color:#8a7a6a;white-space:nowrap">From</span>
         <select id="bulk-from" style="margin-bottom:0;flex:1;padding:9px 10px;font-size:13px">
           <option value="">Any Driver</option>
-          <option>Bharat</option><option>Anand</option><option>Vikas</option>
-          <option>Yuvraj</option><option>Rama</option><option>Dinesh</option>
         </select>
       </div>
       <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:180px">
         <span style="font-size:12px;color:#8a7a6a;white-space:nowrap">To</span>
         <select id="bulk-to" style="margin-bottom:0;flex:1;padding:9px 10px;font-size:13px">
           <option value="">— Select —</option>
-          <option>Bharat</option><option>Anand</option><option>Vikas</option>
-          <option>Yuvraj</option><option>Rama</option><option>Dinesh</option>
         </select>
       </div>
     </div>
@@ -104,8 +102,6 @@ select,input[type=text],input[type=tel]{width:100%;padding:11px 14px;border:1.5p
     <input type="text" id="srch" placeholder="Search name / ID / area…" oninput="renderList()" style="margin-bottom:0">
     <select id="fDrv" onchange="renderList()" style="margin-bottom:0">
       <option value="">All Drivers</option>
-      <option>Bharat</option><option>Anand</option><option>Vikas</option>
-      <option>Yuvraj</option><option>Rama</option><option>Dinesh</option>
     </select>
   </div>
   <div class="filter-row">
@@ -140,8 +136,6 @@ select,input[type=text],input[type=tel]{width:100%;padding:11px 14px;border:1.5p
     <div class="lbl">Assigned Driver</div>
     <select id="f-driver">
       <option value="">Unassigned</option>
-      <option>Bharat</option><option>Anand</option><option>Vikas</option>
-      <option>Yuvraj</option><option>Rama</option><option>Dinesh</option>
     </select>
     <div class="lbl">Mobile</div>
     <input type="tel" id="f-mobile" placeholder="Contact number">
@@ -161,14 +155,43 @@ select,input[type=text],input[type=tel]{width:100%;padding:11px 14px;border:1.5p
 </div>
 
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbyi-IJ6NLR28hRTeesy52THTbdcYCSnz3lp7NtEaJsxBOiNOm-9emMu0xOHT6hvWSE-/exec';
-const DRIVERS = ['Bharat','Anand','Vikas','Yuvraj','Rama','Dinesh'];
-
 if(sessionStorage.getItem('role')!=='admin') window.location.href='index.html';
 
-function api(p){return fetch(API+'?'+new URLSearchParams(p)).then(r=>r.json()).catch(()=>[]);}
-function apiPost(b){return fetch(API,{method:'POST',body:JSON.stringify(b)}).then(r=>r.json()).catch(()=>({}));}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+
+var DRIVERS=[];
+var DRIVER_COLORS={
+  orange:{bg:'#fff3e0',fg:'#c8864a'},blue:{bg:'#e3f2fd',fg:'#1a5fa8'},
+  green:{bg:'#e8f5e9',fg:'#2d7a4f'},purple:{bg:'#f3e8ff',fg:'#6e3da8'},
+  red:{bg:'#fde8e8',fg:'#c8382a'},pink:{bg:'#fce4ec',fg:'#880e4f'},
+  teal:{bg:'#e0f7fa',fg:'#00838f'},brown:{bg:'#efebe9',fg:'#4e342e'}
+};
+
+function injectDriverCSS(list){
+  var el=document.getElementById('driverCSS');
+  if(!el){el=document.createElement('style');el.id='driverCSS';document.head.appendChild(el);}
+  el.textContent=list.map(function(d){
+    var c=DRIVER_COLORS[d.color]||DRIVER_COLORS.blue;
+    return '.DC-'+d.name+'{background:'+c.bg+';color:'+c.fg+'}';
+  }).join('');
+}
+
+function populateDriverSelects(active){
+  var opt=active.map(function(d){return '<option value="'+esc(d.name)+'">'+esc(d.name)+'</option>';}).join('');
+  document.getElementById('bulk-from').innerHTML='<option value="">Any Driver</option>'+opt;
+  document.getElementById('bulk-to').innerHTML='<option value="">— Select —</option>'+opt;
+  document.getElementById('fDrv').innerHTML='<option value="">All Drivers</option>'+opt;
+  document.getElementById('f-driver').innerHTML='<option value="">Unassigned</option>'+opt;
+}
+
+function loadDrivers(){
+  return api({action:'getDrivers'}).then(function(data){
+    var list=Array.isArray(data)?data:[];
+    DRIVERS=list.filter(function(d){return d.active;}).map(function(d){return d.name;});
+    injectDriverCSS(list);
+    populateDriverSelects(list.filter(function(d){return d.active;}));
+  });
+}
 
 let customers=[], shuffleOpen=null;
 
@@ -301,16 +324,15 @@ async function bulkReassign(){
   if(!targets.length){bmsg.textContent='No customers to move.';bmsg.className='msg er';bmsg.style.display='block';return;}
   if(!confirm(`Move ${targets.length} customers${from?' from '+from:''} → ${to}?`))return;
   bmsg.textContent=`Moving ${targets.length}…`;bmsg.className='msg in';bmsg.style.display='block';
-  const now=new Date().toLocaleString('en-IN');let ok=0;
-  for(const c of targets){
-    const cid=c.customer_id||c.shop_id;
-    const res=await apiPost({action:'updateShop',shop_id:cid,customer_id:cid,name:c.name,
-      address:c.address||'',area:c.area||'',lat:c.lat||'',lng:c.lng||'',
-      mobile:c.mobile||'',flag:c.flag||'',assigned_driver:to,
-      last_updated_by:'Admin (Bulk)',last_updated_at:now});
-    if(res.ok){c.assigned_driver=to;c.last_updated_at=now;c.last_updated_by='Admin (Bulk)';ok++;}
+  // Single PATCH — updates all matching rows in one request
+  const res=await apiPost({action:'bulkReassignDriver', from, to});
+  if(res.ok){
+    const now=new Date().toLocaleString('en-IN');
+    targets.forEach(c=>{c.assigned_driver=to;c.last_updated_at=now;c.last_updated_by='Admin (Bulk)';});
+    bmsg.textContent=`✅ Moved ${targets.length} → ${to}`;bmsg.className='msg ok';
+  }else{
+    bmsg.textContent=`❌ Failed: ${res.error||'unknown'}`;bmsg.className='msg er';
   }
-  bmsg.textContent=`✅ Moved ${ok}/${targets.length} → ${to}`;bmsg.className='msg ok';
   renderList();
 }
 
@@ -398,6 +420,7 @@ function showMsg(txt,type){
   setTimeout(()=>el.style.display='none',3500);
 }
 
+loadDrivers();
 load();
 </script>
 </body>

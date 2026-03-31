@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>Baked — Admin</title>
+<script src="config.js"></script>
+<script src="api.js"></script>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#4a2f14">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -81,6 +83,25 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
 .driver-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;padding:13px;margin-bottom:10px}
 .route-mini{font-size:11px;font-family:monospace;padding:3px 0;border-bottom:1px solid #f0e8dc}
 .deliv-row{background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:10px 14px;margin-bottom:7px;display:flex;align-items:center;gap:10px}
+.progress-wrap{background:#e8dfd2;border-radius:6px;height:6px;margin:6px 0 8px;overflow:hidden}
+.progress-fill{height:6px;border-radius:6px;background:#2d7a4f;transition:width .3s}
+/* ── Laptop / Desktop Layout ── */
+@media(min-width:768px){
+  body{max-width:960px}
+  .stats-grid{grid-template-columns:repeat(6,1fr)}
+  .modal-bg{align-items:center}
+  .modal{border-radius:20px;margin:20px auto;align-self:center;max-height:85vh}
+  .filter-row{flex-wrap:nowrap}
+  .tabs{justify-content:flex-start}
+  .tab{padding:11px 14px}
+  .card{padding:16px 20px}
+  .page{padding:16px 20px 80px}
+  .topbar{padding:13px 24px}
+}
+@media(min-width:1024px){
+  body{max-width:1200px}
+  .stats-grid{grid-template-columns:repeat(6,1fr)}
+}
 </style>
 </head>
 <body>
@@ -97,6 +118,8 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   <button class="tab"    id="tb-routes"    onclick="showTab('routes')">🗺 Routes</button>
   <button class="tab"    id="tb-customers" onclick="showTab('customers')">🏪 Customers</button>
   <button class="tab"    id="tb-products"  onclick="showTab('products')">📦 Products</button>
+  <button class="tab"    id="tb-drivers"   onclick="showTab('drivers')">🚗 Drivers</button>
+  <button class="tab"    id="tb-users"     onclick="showTab('users')">👥 Users</button>
   <button class="tab"    id="tb-gps"       onclick="showTab('gps')">📍 GPS</button>
 </div>
 
@@ -114,9 +137,6 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
     </div>
 
     <div id="xlsMsg" style="display:none" class="msg ok"></div>
-
-    <div class="lbl" style="margin-bottom:4px">Delivery Date</div>
-    <input type="date" id="ord-date">
 
     <!-- Step 1: Preview parsed data -->
     <button class="btn btn-green" id="previewBtn" style="display:none" onclick="doPreview()">🔍 Preview &amp; Validate Orders</button>
@@ -146,8 +166,6 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   <div class="filter-row">
     <select id="f-ord-driver" onchange="loadOrders()">
       <option value="">All Drivers</option>
-      <option>Bharat</option><option>Anand</option><option>Vikas</option>
-      <option>Yuvraj</option><option>Rama</option><option>Dinesh</option>
     </select>
     <input type="date" id="f-ord-date" onchange="loadOrders()" style="margin-bottom:0">
   </div>
@@ -171,7 +189,22 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
 <div class="page" id="pg-queue">
   <div class="queue-banner">⚠️ Orders saved but no driver assigned yet.<br>Assign a driver to each before delivery.</div>
   <div class="stats-grid" id="queueStats"></div>
-  <button class="btn btn-grey" onclick="loadQueue()">Refresh</button>
+  <!-- Bulk assign bar (shown when items selected) -->
+  <div class="card" id="bulkAssignBar" style="display:none;margin-bottom:10px;background:#fffaf4;border-color:#ffc87a">
+    <div class="lbl">Assign Selected Orders to Driver</div>
+    <div style="display:flex;gap:8px">
+      <select id="bulk-queue-driver" style="flex:1;margin-bottom:0;font-size:13px;padding:9px 10px">
+        <option value="">— Select Driver —</option>
+      </select>
+      <button class="btn-sm" style="background:#4a2f14;color:#fff;padding:9px 16px;white-space:nowrap;font-size:13px" onclick="bulkAssignQueue()">✅ Assign</button>
+    </div>
+    <div id="bulk-queue-msg" style="display:none;margin-top:8px" class="msg ok"></div>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
+    <button class="btn-sm" style="background:#4a2f14;color:#fff" onclick="selectAllQueue()" id="selectAllBtn">☑ Select All</button>
+    <button class="btn-sm btn-grey" onclick="loadQueue()">↻ Refresh</button>
+    <span id="selectedCount" style="font-size:11px;font-family:monospace;color:#8a7a6a"></span>
+  </div>
   <div id="queueList"></div>
 </div>
 
@@ -187,8 +220,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   <div class="stats-grid" id="delivStats"></div>
   <div class="filter-row">
     <select id="f-del-driver" onchange="loadDeliveries()">
-      <option value="">All</option><option>Bharat</option><option>Anand</option>
-      <option>Vikas</option><option>Yuvraj</option><option>Rama</option>
+      <option value="">All</option>
     </select>
     <input type="date" id="f-del-date" onchange="loadDeliveries()" style="margin-bottom:0">
   </div>
@@ -201,8 +233,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   <div class="stats-grid" id="routeStats"></div>
   <div class="filter-row">
     <select id="f-rt-driver" onchange="loadRoutes()">
-      <option value="">All</option><option>Bharat</option><option>Anand</option>
-      <option>Vikas</option><option>Yuvraj</option><option>Rama</option>
+      <option value="">All</option>
     </select>
     <input type="date" id="f-rt-date" onchange="loadRoutes()" style="margin-bottom:0">
   </div>
@@ -220,13 +251,9 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
     <div style="display:flex;gap:8px;margin-bottom:8px">
       <select id="bulk-from" style="margin-bottom:0;flex:1;font-size:13px;padding:9px 10px">
         <option value="">From (any)</option>
-        <option>Bharat</option><option>Anand</option><option>Vikas</option>
-        <option>Yuvraj</option><option>Rama</option><option>Dinesh</option>
       </select>
       <select id="bulk-to" style="margin-bottom:0;flex:1;font-size:13px;padding:9px 10px">
         <option value="">To — select</option>
-        <option>Bharat</option><option>Anand</option><option>Vikas</option>
-        <option>Yuvraj</option><option>Rama</option><option>Dinesh</option>
       </select>
     </div>
     <button class="btn" style="background:#6e3da8;color:#fff;margin-bottom:0;padding:11px" onclick="bulkReassign()">🔀 Move Customers</button>
@@ -236,8 +263,6 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
     <input type="text" id="f-cust-search" placeholder="Search name / ID / area…" oninput="renderCustomers()" style="margin-bottom:0">
     <select id="f-cust-driver" onchange="renderCustomers()" style="margin-bottom:0">
       <option value="">All Drivers</option>
-      <option>Bharat</option><option>Anand</option><option>Vikas</option>
-      <option>Yuvraj</option><option>Rama</option><option>Dinesh</option>
     </select>
   </div>
   <div class="filter-row">
@@ -262,13 +287,26 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   <div id="productsList"></div>
 </div>
 
+<!-- DRIVERS -->
+<div class="page" id="pg-drivers">
+  <div class="stats-grid" id="driverStats"></div>
+  <button class="btn btn-brown" onclick="openAddDriver()">➕ Add Driver</button>
+  <div id="driversList"></div>
+</div>
+
+<!-- USERS (super_admin only) -->
+<div class="page" id="pg-users">
+  <div class="stats-grid" id="staffStats"></div>
+  <button class="btn btn-brown" onclick="openAddStaff()">➕ Add Staff User</button>
+  <div id="staffList"></div>
+</div>
+
 <!-- GPS -->
 <div class="page" id="pg-gps">
   <div class="stats-grid" id="gpsStats"></div>
   <div class="filter-row">
     <select id="f-gps-driver" onchange="renderGPS()">
-      <option value="">All</option><option>Bharat</option><option>Anand</option>
-      <option>Vikas</option><option>Yuvraj</option><option>Rama</option><option>Dinesh</option>
+      <option value="">All</option>
     </select>
     <select id="f-gps-status" onchange="renderGPS()">
       <option value="">All</option><option value="saved">Saved ✅</option><option value="missing">Missing ⚠️</option>
@@ -293,8 +331,6 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
     <div class="lbl">Assign Driver *</div>
     <select id="apm-driver">
       <option value="">— Select Driver —</option>
-      <option>Bharat</option><option>Anand</option><option>Vikas</option>
-      <option>Yuvraj</option><option>Rama</option><option>Dinesh</option>
     </select>
     <div id="apm-msg" style="display:none" class="msg ok"></div>
     <button class="btn btn-green" onclick="confirmApprove()">✅ Approve &amp; Add Customer</button>
@@ -315,8 +351,6 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
     <div class="lbl">Assign Driver</div>
     <select id="am-driver">
       <option value="">— Select —</option>
-      <option>Bharat</option><option>Anand</option><option>Vikas</option>
-      <option>Yuvraj</option><option>Rama</option><option>Dinesh</option>
     </select>
     <div id="am-msg" style="display:none" class="msg ok"></div>
     <button class="btn btn-brown" onclick="confirmAssign()">✅ Confirm Assignment</button>
@@ -338,8 +372,6 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
     <div class="lbl">Assigned Driver</div>
     <select id="cm-driver">
       <option value="">Unassigned</option>
-      <option>Bharat</option><option>Anand</option><option>Vikas</option>
-      <option>Yuvraj</option><option>Rama</option><option>Dinesh</option>
     </select>
     <div class="lbl">Mobile</div><input type="tel" id="cm-mobile" placeholder="Contact number">
     <div class="lbl">Flag / Note</div><input type="text" id="cm-flag" placeholder="e.g. weekend only">
@@ -370,27 +402,146 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   </div>
 </div>
 
+<!-- DRIVER MODAL -->
+<div class="modal-bg" id="driverModal" style="display:none" onclick="if(event.target===this)closeDriverModal()">
+  <div class="modal">
+    <div class="modal-title" id="driverModalTitle">Add Driver</div>
+    <input type="hidden" id="dm-id">
+    <div class="lbl">Driver Name *</div>
+    <input type="text" id="dm-name" placeholder="e.g. Rahul" autocomplete="off">
+    <div class="lbl">Mobile Number</div>
+    <input type="tel" id="dm-mobile" placeholder="e.g. 9876543210" autocomplete="off">
+    <div class="lbl" id="dm-pw-lbl">Password *</div>
+    <div id="dm-pw-hint" style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:6px;display:none">Leave blank to keep existing password</div>
+    <div style="position:relative;margin-bottom:10px">
+      <input type="password" id="dm-password" placeholder="Enter password" autocomplete="new-password"
+        style="width:100%;padding:11px 44px 11px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;color:#1e1611;background:#f5ede0;outline:none;font-family:-apple-system,sans-serif">
+      <button type="button" onclick="toggleDmPw()" id="dm-pw-eye"
+        style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:#8a7a6a;padding:4px">👁</button>
+    </div>
+    <div class="lbl">Badge Color</div>
+    <select id="dm-color">
+      <option value="orange">🟠 Orange</option>
+      <option value="blue" selected>🔵 Blue</option>
+      <option value="green">🟢 Green</option>
+      <option value="purple">🟣 Purple</option>
+      <option value="red">🔴 Red</option>
+      <option value="pink">🩷 Pink</option>
+      <option value="teal">🩵 Teal</option>
+      <option value="brown">🟤 Brown</option>
+    </select>
+    <div class="lbl">Status</div>
+    <select id="dm-active">
+      <option value="true">✅ Active</option>
+      <option value="false">❌ Inactive</option>
+    </select>
+    <div id="dm-msg" style="display:none" class="msg ok"></div>
+    <button class="btn btn-brown" onclick="saveDriver()">💾 Save Driver</button>
+    <button class="btn btn-grey" style="margin-bottom:0" onclick="closeDriverModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- STAFF MODAL -->
+<div class="modal-bg" id="staffModal" style="display:none" onclick="if(event.target===this)closeStaffModal()">
+  <div class="modal">
+    <div class="modal-title" id="staffModalTitle">Add Staff User</div>
+    <input type="hidden" id="sm-id">
+    <div class="lbl">Name *</div>
+    <input type="text" id="sm-name" placeholder="e.g. Ravi">
+    <div class="lbl">Password *</div>
+    <input type="password" id="sm-password" placeholder="Leave blank to keep current">
+    <div class="lbl">Role</div>
+    <select id="sm-role" onchange="onStaffRoleChange()">
+      <option value="admin">👤 Admin</option>
+      <option value="assistant">🤝 Assistant</option>
+      <option value="chef">👨‍🍳 Bakery Chef</option>
+      <option value="packer">📦 Packer</option>
+    </select>
+    <div class="lbl">Tab Access</div>
+    <div id="sm-tabs-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px;padding:10px;background:#fff;border:1.5px solid #e8dfd2;border-radius:10px"></div>
+    <div class="lbl">Status</div>
+    <select id="sm-active">
+      <option value="true">Active</option>
+      <option value="false">Inactive</option>
+    </select>
+    <div id="sm-msg" style="display:none" class="msg ok"></div>
+    <button class="btn btn-brown" onclick="saveStaff()">💾 Save</button>
+    <button class="btn btn-grey" style="margin-bottom:0" onclick="closeStaffModal()">Cancel</button>
+  </div>
+</div>
+
 <script>
-var SHEET_API = 'https://script.google.com/macros/s/AKfycbyi-IJ6NLR28hRTeesy52THTbdcYCSnz3lp7NtEaJsxBOiNOm-9emMu0xOHT6hvWSE-/exec';
-var DRIVERS   = ['Bharat','Anand','Vikas','Yuvraj','Rama','Dinesh'];
+var DRIVERS   = []; // populated from drivers table — no longer hardcoded
 var LOGISTICS = 'Logistics';
 
-if(sessionStorage.getItem('role')!=='admin') window.location.href='index.html';
+/* ── DRIVER COLOURS (badge palette) ── */
+var DRIVER_COLORS = {
+  orange:{bg:'#fff3e0',fg:'#c8864a'}, blue:  {bg:'#e3f2fd',fg:'#1a5fa8'},
+  green: {bg:'#e8f5e9',fg:'#2d7a4f'}, purple:{bg:'#f3e8ff',fg:'#6e3da8'},
+  red:   {bg:'#fde8e8',fg:'#c8382a'}, pink:  {bg:'#fce4ec',fg:'#880e4f'},
+  teal:  {bg:'#e0f7fa',fg:'#00838f'}, brown: {bg:'#efebe9',fg:'#4e342e'}
+};
+var driverMap      = {}; // name → driver object
+var allDriversList = []; // full list including inactive
 
-function api(p){return fetch(SHEET_API+'?'+new URLSearchParams(p)).then(function(r){return r.json();}).catch(function(){return[];});}
-function apiPost(b){return fetch(SHEET_API,{method:'POST',body:JSON.stringify(b)}).then(function(r){return r.json();}).catch(function(){return{};});}
+var TAB_LIST = [
+  {key:'orders',   label:'📋 Orders'},
+  {key:'approve',  label:'⏳ New Customers'},
+  {key:'queue',    label:'⚠️ Queue'},
+  {key:'summary',  label:'📊 Summary'},
+  {key:'delivery', label:'🚚 Delivery'},
+  {key:'routes',   label:'🗺 Routes'},
+  {key:'customers',label:'🏪 Customers'},
+  {key:'products', label:'📦 Products'},
+  {key:'drivers',  label:'🚗 Drivers'},
+  {key:'gps',      label:'📍 GPS'}
+];
+var ROLE_DEFAULT_TABS = {
+  admin:     ['orders','approve','queue','summary','delivery','routes','customers','products','gps'],
+  assistant: ['orders','delivery','summary'],
+  chef:      ['summary'],
+  packer:    ['orders','summary']
+};
+var _staffRole = sessionStorage.getItem('role') || 'admin';
+var _staffName = sessionStorage.getItem('staffName') || 'Admin';
+var _allowedTabs = _staffRole === 'super_admin' ? null : JSON.parse(sessionStorage.getItem('tabs') || '[]');
+
+(function(){var r=sessionStorage.getItem('role');if(['super_admin','admin','assistant','chef','packer'].indexOf(r)<0)window.location.href='index.html';})();
+
+function initTabVisibility(){
+  var allTabKeys = ['orders','approve','queue','summary','delivery','routes','customers','products','drivers','gps','users'];
+  allTabKeys.forEach(function(t){
+    var btn = document.getElementById('tb-'+t);
+    if(!btn) return;
+    var show;
+    if(t === 'users') {
+      show = (_staffRole === 'super_admin');
+    } else if(_allowedTabs === null) {
+      show = true; // super_admin sees all
+    } else {
+      show = (_allowedTabs.indexOf(t) >= 0);
+    }
+    btn.style.display = show ? '' : 'none';
+  });
+  // Show topbar name
+  var sub = document.getElementById('topDate');
+  if(sub) sub.textContent = _staffName + ' · ' + sub.textContent;
+}
+
 function todayStr(){var d=new Date();return d.getFullYear()+'-'+zp(d.getMonth()+1)+'-'+zp(d.getDate());}
 function zp(n){return String(n).padStart(2,'0');}
+// Delivery date = challan date + 1 day
+function nextDay(dateStr){var d=new Date(dateStr);d.setDate(d.getDate()+1);return d.getFullYear()+'-'+zp(d.getMonth()+1)+'-'+zp(d.getDate());}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function nrm(s){return(s||'').toLowerCase().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ').trim();}
 
 document.getElementById('topDate').textContent=new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'});
-['ord-date','f-ord-date','f-rt-date','f-sum-date','f-del-date'].forEach(function(id){document.getElementById(id).value=todayStr();});
+['f-ord-date','f-rt-date','f-sum-date','f-del-date'].forEach(function(id){document.getElementById(id).value=todayStr();});
 document.getElementById('logoutBtn').onclick=function(){sessionStorage.clear();window.location.href='index.html';};
 
 /* ── TAB SWITCHER ── */
 function showTab(t){
-  ['orders','approve','queue','summary','delivery','routes','customers','products','gps'].forEach(function(x){
+  ['orders','approve','queue','summary','delivery','routes','customers','products','drivers','gps','users'].forEach(function(x){
     document.getElementById('pg-'+x).classList.toggle('on',x===t);
     document.getElementById('tb-'+x).classList.toggle('on',x===t);
   });
@@ -402,6 +553,8 @@ function showTab(t){
   if(t==='queue')     loadQueue();
   if(t==='customers') loadCustomers();
   if(t==='products')  loadProducts();
+  if(t==='drivers')   loadDrivers().then(renderDrivers);
+  if(t==='users')     loadStaff().then(renderStaff);
 }
 
 /* ── CUSTOMER MASTER (replaces allShops) ──
@@ -409,19 +562,26 @@ function showTab(t){
            lat, lng, assigned_driver, mobile, flag, last_updated_by, last_updated_at */
 var allCustomers = [];
 var newCustQueue = [];    // new customers from XLS awaiting approval
+var _custLoaded  = false; // true once getShops has completed (even if result is empty)
+var _prodLoaded  = false; // true once getProducts has completed (even if result is empty)
 
-function loadCustomerMaster(){
+function loadCustomerMaster(force){
+  // Use cached result unless forced — flag prevents re-fetch when table is empty
+  if(!force && _custLoaded) return Promise.resolve(allCustomers);
   return api({action:'getShops'}).then(function(d){
-    allCustomers=Array.isArray(d)?d:[];
+    allCustomers = Array.isArray(d) ? d : [];
+    _custLoaded  = true;
   });
 }
 
-function loadProductMaster(){
+function loadProductMaster(force){
+  if(!force && _prodLoaded) return Promise.resolve(allProducts);
   return api({action:'getProducts'}).then(function(d){
-    // If script not yet redeployed, d may be {error:'Unknown action'} — treat as empty
     allProducts = Array.isArray(d) ? d : [];
+    _prodLoaded  = true;
   }).catch(function(){
-    allProducts = [];
+    allProducts  = [];
+    _prodLoaded  = true;
   });
 }
 
@@ -510,15 +670,14 @@ function processXlsFile(file){
 /* ── STEP 2: PREVIEW & VALIDATE ── */
 function doPreview(){
   if(!rawChallans.length) return;
-  // Only block if customers not loaded — products are optional (may not exist yet)
-  if(!allCustomers.length){
+  // Load masters once — _custLoaded flag prevents infinite retry when table is empty
+  if(!_custLoaded){
     var btn=document.getElementById('previewBtn');
     btn.textContent='Loading customers…';btn.disabled=true;
     Promise.all([loadCustomerMaster(), loadProductMaster()])
     .then(function(){btn.textContent='🔍 Preview & Validate Orders';btn.disabled=false;doPreview();});
     return;
   }
-  var dateInput=document.getElementById('ord-date').value||todayStr();
   parsedOrders=[];
   newCustQueue=[];
   var seenNewCust={},seenNewProd={},autoNewProducts=[];
@@ -535,7 +694,7 @@ function doPreview(){
       items:       itemsStr,
       qty:         qtyStr,
       raw_items:   c.items,
-      date:        c.dc_date||dateInput,
+      date:        nextDay(c.dc_date||todayStr()),
       dc_num:      c.dc_num,
       is_new:      !cust,
       matched:     !!cust
@@ -622,68 +781,90 @@ function cancelPreview(){
 function doSave(){
   if(!parsedOrders.length) return;
   var btn=document.getElementById('confirmSaveBtn');
-  btn.textContent='Saving…';btn.disabled=true;
+  btn.textContent='Checking duplicates…'; btn.disabled=true;
 
-  // Collect new products across all orders (deduplicated by product_id)
-  var seenNewProd={};
-  var newProdsToSave=[];
-  parsedOrders.forEach(function(o){
-    (o.raw_items||[]).forEach(function(it){
-      if(!it.product_id||seenNewProd[it.product_id]) return;
-      var sid=String(it.product_id).trim();
-      var exists=allProducts.find(function(p){return String(p.product_id||'').trim()===sid;});
-      if(!exists){
-        seenNewProd[sid]=true;
-        newProdsToSave.push({product_id:sid,name:it.name,category:'',price:'',unit:'Pieces',description:it.desc||''});
-        // Add to local cache immediately so duplicates don't re-queue
-        allProducts.push({product_id:sid,name:it.name,category:'',price:'',unit:'Pieces',description:it.desc||''});
-      }
+  // Get unique delivery dates from this upload
+  var dates=[...new Set(parsedOrders.map(function(o){return o.date;}))];
+
+  // Fetch existing orders for each date to detect already-imported challans
+  Promise.all(dates.map(function(d){ return api({action:'getOrders', date:d}); }))
+  .then(function(allRes){
+    // Build set of dc_nums already saved (dc_num is stored in note field)
+    var savedDcNums=new Set();
+    allRes.forEach(function(orders){
+      (Array.isArray(orders)?orders:[]).forEach(function(o){
+        // note = "DC/xxx" or "NEW CUSTOMER DC/xxx"
+        var dc=(o.note||'').replace(/^NEW CUSTOMER\s+/,'').trim();
+        if(dc) savedDcNums.add(dc);
+      });
     });
-  });
 
-  // Fire product saves (don't wait — if script not redeployed yet, orders still save)
-  newProdsToSave.forEach(function(p){
-    apiPost({action:'addProduct',product_id:p.product_id,name:p.name,
-      category:p.category,price:p.price,unit:p.unit,description:p.description})
-    .then(function(res){
-      if(res&&res.error) console.warn('addProduct failed for',p.product_id,':',res.error);
+    // Filter: only save orders whose dc_num is NOT already in DB
+    var toSave=parsedOrders.filter(function(o){ return !savedDcNums.has(o.dc_num); });
+    var skippedCount=parsedOrders.length-toSave.length;
+
+    // If everything already imported — just show message, do nothing
+    if(!toSave.length){
+      btn.textContent='✅ Confirm & Save All'; btn.disabled=false;
+      document.getElementById('previewSection').style.display='none';
+      zone.classList.remove('has-file');
+      document.getElementById('uploadIcon').textContent='📋';
+      document.getElementById('uploadLabel').textContent='Tap to upload Delivery Challan';
+      document.getElementById('xlsFile').value='';
+      document.getElementById('previewBtn').style.display='none';
+      var xlsMsg=document.getElementById('xlsMsg');
+      xlsMsg.textContent='⏭ All '+parsedOrders.length+' orders already imported — nothing new to save.';
+      xlsMsg.className='msg warn'; xlsMsg.style.display='block';
+      rawChallans=[]; parsedOrders=[];
+      return;
+    }
+
+    btn.textContent='Saving…';
+
+    // Collect new products from toSave only
+    var seenNewProd={};
+    var newProdsToSave=[];
+    toSave.forEach(function(o){
+      (o.raw_items||[]).forEach(function(it){
+        if(!it.product_id||seenNewProd[it.product_id]) return;
+        var sid=String(it.product_id).trim();
+        var exists=allProducts.find(function(p){return String(p.product_id||'').trim()===sid;});
+        if(!exists){
+          seenNewProd[sid]=true;
+          newProdsToSave.push({product_id:sid,name:it.name,category:'',price:'',unit:'Pieces',description:it.desc||''});
+          allProducts.push({product_id:sid,name:it.name,category:'',price:'',unit:'Pieces',description:it.desc||''});
+        }
+      });
     });
-  });
 
-  // Save orders sequentially
-  var ok=0,fail=0,chain=Promise.resolve();
-  parsedOrders.forEach(function(o){
-    chain=chain.then(function(){
-      return apiPost({
-        action:'addOrder',
-        customer_id:o.customer_id,
-        shop_id:o.customer_id,
-        shop_name:o.shop_name,
-        driver:o.driver,
-        items:o.items,
-        qty:o.qty,
-        date:o.date,
+    if(newProdsToSave.length) apiPost({action:'addProducts', products:newProdsToSave});
+
+    // Batch save new orders only
+    apiPost({action:'addOrders', orders:toSave.map(function(o){
+      return {
+        customer_id:o.customer_id, shop_id:o.customer_id, shop_name:o.shop_name,
+        driver:o.driver, items:o.items, qty:o.qty, date:o.date,
         note:(o.is_new?'NEW CUSTOMER ':'')+o.dc_num
-      }).then(function(res){res&&res.ok?ok++:fail++;});
+      };
+    })}).then(function(res){
+      btn.textContent='✅ Confirm & Save All'; btn.disabled=false;
+      zone.classList.remove('has-file');
+      document.getElementById('uploadIcon').textContent='📋';
+      document.getElementById('uploadLabel').textContent='Tap to upload Delivery Challan';
+      document.getElementById('xlsFile').value='';
+      document.getElementById('previewBtn').style.display='none';
+      document.getElementById('previewSection').style.display='none';
+      var msg=document.getElementById('xlsMsg');
+      var saved=res.ok?toSave.length:0;
+      msg.textContent=(res.ok?'✅ ':'❌ ')+saved+' orders saved'+(res.ok?'':' — '+res.error)+'.'
+        +(skippedCount>0?'\n⏭ '+skippedCount+' already imported — skipped.':'')
+        +(newCustQueue.length?'\n🆕 '+newCustQueue.length+' new customers → tap "⏳ New" tab':'')
+        +(newProdsToSave.length?'\n📦 '+newProdsToSave.length+' new products saved':'');
+      msg.className=res.ok?'msg ok':'msg er'; msg.style.display='block';
+      rawChallans=[]; parsedOrders=[];
+      if(newCustQueue.length) document.getElementById('tb-approve').textContent='⏳ New ('+newCustQueue.length+')';
+      if(res.ok) showTab('summary');
     });
-  });
-
-  chain.then(function(){
-    btn.textContent='✅ Confirm & Save All';btn.disabled=false;
-    zone.classList.remove('has-file');
-    document.getElementById('uploadIcon').textContent='📋';
-    document.getElementById('uploadLabel').textContent='Tap to upload Delivery Challan';
-    document.getElementById('xlsFile').value='';
-    document.getElementById('previewBtn').style.display='none';
-    document.getElementById('previewSection').style.display='none';
-    var msg=document.getElementById('xlsMsg');
-    msg.textContent='✅ '+ok+' orders saved'+(fail?' ('+fail+' failed)':'')+'.'
-      +(newCustQueue.length?'\n🆕 '+newCustQueue.length+' new customers → tap "⏳ New" tab':'')
-      +(newProdsToSave.length?'\n📦 '+newProdsToSave.length+' new products added to Products sheet':'');
-    msg.className='msg ok';msg.style.display='block';
-    rawChallans=[];parsedOrders=[];
-    if(newCustQueue.length) document.getElementById('tb-approve').textContent='⏳ New ('+newCustQueue.length+')';
-    showTab('summary');
   });
 }
 
@@ -805,18 +986,24 @@ function loadQueue(){
     document.getElementById('tb-queue').textContent='⚠️ Queue ('+data.length+')';
     stats.innerHTML='<div class="stat"><div class="stat-n" style="color:#c8864a">'+data.length+'</div><div class="stat-l">Need Driver</div></div>';
     el.innerHTML=data.map(function(o){
-      return '<div class="item-card pending">'+
-        '<div style="font-size:14px;font-weight:800;color:#4a2f14;margin-bottom:3px">'+esc(o.shop_name)+'</div>'+
-        '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-bottom:6px">'+esc(o.date)+' · '+esc(o.order_id||'')+'</div>'+
-        '<div style="font-size:12px;font-family:monospace;background:#fff8f0;padding:7px 10px;border-radius:8px;margin-bottom:8px;line-height:1.8">'+
-          '<b>Items:</b> '+esc(o.items)+'<br><b>Qty:</b> '+esc(o.qty)+
-        '</div>'+
-        '<div style="display:flex;gap:8px">'+
-          '<button class="btn-sm" style="background:#4a2f14;color:#fff;flex:1;padding:9px" onclick="openAssignModal(\''+esc(o.order_id)+'\',\''+esc(o.shop_name)+'\',\''+esc(o.items)+'\',\''+esc(o.qty)+'\',\''+esc(o.date)+'\')">👤 Assign Driver</button>'+
-          '<button class="btn-sm btn-del" onclick="delOrder(\''+esc(o.order_id)+'\')">Delete</button>'+
+      return '<div class="item-card pending" id="qi-'+esc(o.order_id)+'">'+
+        '<div style="display:flex;align-items:flex-start;gap:10px">'+
+          '<input type="checkbox" class="queue-cb" value="'+esc(o.order_id)+'" onchange="updateQueueSelection()" style="width:18px;height:18px;flex-shrink:0;margin-top:2px;accent-color:#4a2f14">'+
+          '<div style="flex:1">'+
+            '<div style="font-size:14px;font-weight:800;color:#4a2f14;margin-bottom:3px">'+esc(o.shop_name)+'</div>'+
+            '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-bottom:6px">'+esc(o.date)+' · '+esc(o.order_id||'')+'</div>'+
+            '<div style="font-size:12px;font-family:monospace;background:#fff8f0;padding:7px 10px;border-radius:8px;margin-bottom:8px;line-height:1.8">'+
+              '<b>Items:</b> '+esc(o.items)+'<br><b>Qty:</b> '+esc(o.qty)+
+            '</div>'+
+            '<div style="display:flex;gap:8px">'+
+              '<button class="btn-sm" style="background:#4a2f14;color:#fff;flex:1;padding:9px" onclick="openAssignModal(\''+esc(o.order_id)+'\',\''+esc(o.shop_name)+'\',\''+esc(o.items)+'\',\''+esc(o.qty)+'\',\''+esc(o.date)+'\')">👤 Assign</button>'+
+              '<button class="btn-sm btn-del" onclick="delOrder(\''+esc(o.order_id)+'\')">Delete</button>'+
+            '</div>'+
+          '</div>'+
         '</div>'+
       '</div>';
     }).join('');
+    updateQueueSelection();
   });
 }
 function openAssignModal(oid,shop,items,qty,date){
@@ -838,6 +1025,45 @@ function confirmAssign(){
   apiPost({action:'updateOrderDriver',order_id:oid,driver:drv}).then(function(res){
     if(res&&res.ok){msg.textContent='✅ Assigned to '+drv;msg.className='msg ok';setTimeout(function(){closeAssignModal();loadQueue();loadOrders();},700);}
     else{msg.textContent='❌ '+(res.error||'Failed');msg.className='msg er';}
+  });
+}
+
+/* ── QUEUE MULTI-SELECT ── */
+function updateQueueSelection(){
+  var cbs = document.querySelectorAll('.queue-cb');
+  var checked = Array.from(cbs).filter(function(cb){return cb.checked;});
+  var bar = document.getElementById('bulkAssignBar');
+  var cnt = document.getElementById('selectedCount');
+  if(bar) bar.style.display = checked.length > 0 ? 'block' : 'none';
+  if(cnt) cnt.textContent = checked.length > 0 ? checked.length+' selected' : '';
+  // Update select-all button label
+  var btn = document.getElementById('selectAllBtn');
+  if(btn) btn.textContent = (cbs.length > 0 && checked.length === cbs.length) ? '☐ Deselect All' : '☑ Select All';
+}
+function selectAllQueue(){
+  var cbs = document.querySelectorAll('.queue-cb');
+  var allChecked = Array.from(cbs).every(function(cb){return cb.checked;});
+  cbs.forEach(function(cb){ cb.checked = !allChecked; });
+  updateQueueSelection();
+}
+function bulkAssignQueue(){
+  var driver = document.getElementById('bulk-queue-driver').value;
+  var msg = document.getElementById('bulk-queue-msg');
+  if(!driver){ msg.textContent='Select a driver first.'; msg.className='msg er'; msg.style.display='block'; return; }
+  var ids = Array.from(document.querySelectorAll('.queue-cb:checked')).map(function(cb){return cb.value;});
+  if(!ids.length){ return; }
+  msg.textContent='Assigning '+ids.length+' orders…'; msg.className='msg in'; msg.style.display='block';
+  Promise.all(ids.map(function(id){
+    return apiPost({action:'updateOrderDriver', order_id:id, driver:driver});
+  })).then(function(results){
+    var ok = results.filter(function(r){return r && r.ok;}).length;
+    msg.textContent = '✅ '+ok+' of '+ids.length+' orders assigned to '+driver;
+    msg.className = ok === ids.length ? 'msg ok' : 'msg warn';
+    setTimeout(function(){
+      msg.style.display='none';
+      document.getElementById('bulkAssignBar').style.display='none';
+      loadQueue(); loadOrders();
+    }, 1400);
   });
 }
 
@@ -934,25 +1160,68 @@ var routesData=[];
 function loadRoutes(){
   var el=document.getElementById('routesList');
   el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
-  api({action:'getRoutes',date:document.getElementById('f-rt-date').value||todayStr(),driver:document.getElementById('f-rt-driver').value})
-  .then(function(data){
-    routesData=Array.isArray(data)?data:[];
+  var date=document.getElementById('f-rt-date').value||todayStr();
+  var driverFilter=document.getElementById('f-rt-driver').value;
+  Promise.all([
+    api({action:'getRoutes',date:date,driver:driverFilter}),
+    api({action:'getDeliveries',date:date,driver:driverFilter})
+  ]).then(function(res){
+    routesData=Array.isArray(res[0])?res[0]:[];
+    var deliveries=Array.isArray(res[1])?res[1]:[];
+    // Build delivery map: driver → { shop_name: delivery_record }
+    var delivMap={};
+    deliveries.forEach(function(d){
+      if(!delivMap[d.driver]) delivMap[d.driver]={};
+      delivMap[d.driver][d.shop_name]=d;
+    });
+    // Last delivery per driver (most recently timed)
+    var lastDelivMap={};
+    deliveries.forEach(function(d){
+      if(!lastDelivMap[d.driver]||((d.time||'')>(lastDelivMap[d.driver].time||''))){
+        lastDelivMap[d.driver]=d;
+      }
+    });
+
     var ts=routesData.reduce(function(s,r){return s+(parseInt(r.total_shops)||0);},0);
     var tk=routesData.reduce(function(s,r){return s+(parseInt(r.total_km)||0);},0);
+    var totalDone=deliveries.length;
     document.getElementById('routeStats').innerHTML=
       '<div class="stat"><div class="stat-n">'+routesData.length+'</div><div class="stat-l">Drivers</div></div>'+
-      '<div class="stat"><div class="stat-n">'+ts+'</div><div class="stat-l">Stops</div></div>'+
-      '<div class="stat"><div class="stat-n">'+tk+'</div><div class="stat-l">KM</div></div>';
-    if(!routesData.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No routes.</div>';return;}
+      '<div class="stat"><div class="stat-n" style="color:#2d7a4f">'+totalDone+'</div><div class="stat-l">Done</div></div>'+
+      '<div class="stat"><div class="stat-n" style="color:#c8382a">'+(ts-totalDone)+'</div><div class="stat-l">Pending</div></div>';
+    if(!routesData.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No routes for this date.</div>';return;}
     el.innerHTML=routesData.map(function(r){
       var sh=[];try{sh=JSON.parse(r.shop_order||'[]');}catch(e){}
+      var dDelivs=delivMap[r.driver]||{};
+      var doneCount=sh.filter(function(s){return dDelivs[s];}).length;
+      var pendingCount=sh.length-doneCount;
+      var pct=sh.length>0?Math.round(doneCount/sh.length*100):0;
+      var last=lastDelivMap[r.driver];
+
       return '<div class="driver-card">'+
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+
           '<div style="font-size:15px;font-weight:800">'+esc(r.driver)+'</div>'+
-          '<div style="display:flex;gap:4px"><span class="badge b-ok">'+r.total_shops+' stops</span><span class="badge b-warn">'+r.total_km+' km</span></div>'+
+          '<div style="display:flex;gap:4px;flex-wrap:wrap">'+
+            '<span class="badge b-ok">✅ '+doneCount+'</span>'+
+            (pendingCount>0?'<span class="badge b-warn">⚠ '+pendingCount+'</span>':'')+
+            '<span class="badge b-blue">'+r.total_km+' km</span>'+
+          '</div>'+
         '</div>'+
-        '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-bottom:6px">Started: '+(r.start_time||'not started')+'</div>'+
-        sh.map(function(s,j){return '<div class="route-mini">'+(j+1)+'. '+esc(s)+'</div>';}).join('')+
+        '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-bottom:6px">'+
+          '🕐 Started: '+(r.start_time||'not started')+
+          (r.start_lat?'&nbsp; <a href="https://www.google.com/maps?q='+r.start_lat+','+r.start_lng+'" target="_blank" style="color:#1565c0;font-weight:700">📍 Start Loc</a>':'')+
+          (last?'&nbsp;&nbsp;|&nbsp;&nbsp;📦 Last: <b style="color:#4a2f14">'+esc(last.shop_name)+'</b> @ '+esc(last.time||''):'') +
+        '</div>'+
+        // Progress bar
+        '<div class="progress-wrap"><div class="progress-fill" style="width:'+pct+'%"></div></div>'+
+        '<div style="font-size:10px;font-family:monospace;color:#8a7a6a;margin-bottom:6px">'+doneCount+' of '+sh.length+' stops completed ('+pct+'%)</div>'+
+        sh.map(function(s,j){
+          var d=dDelivs[s];
+          return '<div class="route-mini" style="display:flex;justify-content:space-between;color:'+(d?'#2d7a4f':'#7a4800')+';border-color:'+(d?'#c8e6c9':'#ffe082')+'">'+
+            '<span>'+(d?'✅':'⚠️')+' '+(j+1)+'. '+esc(s)+'</span>'+
+            (d?'<span style="font-size:10px;color:#2d7a4f;font-family:monospace">'+esc(d.time||'')+'</span>':'<span style="font-size:10px;color:#c8864a;font-family:monospace">Pending</span>')+
+          '</div>';
+        }).join('')+
       '</div>';
     }).join('');
   });
@@ -1074,8 +1343,11 @@ function saveCustomer(){
   });
 }
 function delCustomer(id,name){
-  if(!confirm('Delete "'+name+'"?'))return;
-  apiPost({action:'deleteShop',shop_id:id}).then(function(res){if(res&&res.ok)loadCustomers();else alert('Delete failed');});
+  if(!confirm('Delete "'+name+'"?\nThis cannot be undone.'))return;
+  apiPost({action:'deleteShop',shop_id:id}).then(function(res){
+    if(res&&res.ok){ _custLoaded=false; loadCustomers(); }
+    else alert('Delete failed: '+(res.error||'unknown error'));
+  });
 }
 function bulkReassign(){
   var from=document.getElementById('bulk-from').value,to=document.getElementById('bulk-to').value;
@@ -1086,14 +1358,16 @@ function bulkReassign(){
   if(!targets.length){bmsg.textContent='No customers to move.';bmsg.className='msg er';bmsg.style.display='block';return;}
   if(!confirm('Move '+targets.length+' customers'+(from?' from '+from:'')+' → '+to+'?'))return;
   bmsg.textContent='Moving '+targets.length+'…';bmsg.className='msg in';bmsg.style.display='block';
-  var now=new Date().toLocaleString('en-IN'),ok=0,chain=Promise.resolve();
-  targets.forEach(function(c){
-    chain=chain.then(function(){
-      return apiPost({action:'updateShop',shop_id:c.customer_id||c.shop_id,customer_id:c.customer_id||c.shop_id,name:c.name,address:c.address||'',area:c.area||'',lat:c.lat||'',lng:c.lng||'',mobile:c.mobile||'',flag:c.flag||'',assigned_driver:to,last_updated_by:'Admin (Bulk)',last_updated_at:now})
-      .then(function(res){if(res&&res.ok){c.assigned_driver=to;ok++;}});
-    });
+  // Single PATCH — updates all matching rows in one request
+  apiPost({action:'bulkReassignDriver',from:from,to:to}).then(function(res){
+    if(res&&res.ok){
+      targets.forEach(function(c){c.assigned_driver=to;});
+      bmsg.textContent='✅ Moved '+targets.length+' → '+to;bmsg.className='msg ok';
+      renderCustomers();
+    }else{
+      bmsg.textContent='❌ Failed: '+(res.error||'unknown');bmsg.className='msg er';
+    }
   });
-  chain.then(function(){bmsg.textContent='✅ Moved '+ok+'/'+targets.length+' → '+to;bmsg.className='msg ok';renderCustomers();});
 }
 
 /* ── PRODUCTS ── */
@@ -1174,6 +1448,154 @@ function delProduct(pid,name){
   apiPost({action:'deleteProduct',product_id:pid}).then(function(res){if(res&&res.ok)loadProducts();else alert('Delete failed');});
 }
 
+/* ── DRIVERS ── */
+function injectDriverCSS(list){
+  var el=document.getElementById('driverCSS');
+  if(!el){el=document.createElement('style');el.id='driverCSS';document.head.appendChild(el);}
+  el.textContent=list.map(function(d){
+    var c=DRIVER_COLORS[d.color]||DRIVER_COLORS.blue;
+    return '.DC-'+d.name+'{background:'+c.bg+';color:'+c.fg+'}';
+  }).join('');
+}
+
+function populateDriverSelects(list){
+  var active=list.filter(function(d){return d.active;});
+  var allOpt=active.map(function(d){return '<option value="'+esc(d.name)+'">'+esc(d.name)+'</option>';}).join('');
+  // Filter selects — preserve first "All" option
+  ['f-ord-driver','f-del-driver','f-rt-driver','f-gps-driver'].forEach(function(id){
+    var sel=document.getElementById(id);if(!sel)return;
+    var first=sel.options[0].outerHTML;
+    sel.innerHTML=first+allOpt;
+  });
+  var cfd=document.getElementById('f-cust-driver');
+  if(cfd)cfd.innerHTML='<option value="">All Drivers</option>'+allOpt;
+  var bf=document.getElementById('bulk-from');
+  if(bf)bf.innerHTML='<option value="">From (any)</option>'+allOpt;
+  var bt=document.getElementById('bulk-to');
+  if(bt)bt.innerHTML='<option value="">To — select</option>'+allOpt;
+  var apm=document.getElementById('apm-driver');
+  if(apm)apm.innerHTML='<option value="">— Select Driver —</option>'+allOpt;
+  var am=document.getElementById('am-driver');
+  if(am)am.innerHTML='<option value="">— Select —</option>'+allOpt;
+  var cm=document.getElementById('cm-driver');
+  if(cm)cm.innerHTML='<option value="">Unassigned</option>'+allOpt;
+  var bqd=document.getElementById('bulk-queue-driver');
+  if(bqd)bqd.innerHTML='<option value="">— Select Driver —</option>'+allOpt;
+}
+
+function loadDrivers(){
+  return api({action:'getDrivers'}).then(function(data){
+    allDriversList=Array.isArray(data)?data:[];
+    DRIVERS=allDriversList.filter(function(d){return d.active;}).map(function(d){return d.name;});
+    driverMap={};allDriversList.forEach(function(d){driverMap[d.name]=d;});
+    injectDriverCSS(allDriversList);
+    populateDriverSelects(allDriversList);
+  });
+}
+
+function renderDrivers(){
+  var el=document.getElementById('driversList');
+  var active=allDriversList.filter(function(d){return d.active;}).length;
+  document.getElementById('driverStats').innerHTML=
+    '<div class="stat"><div class="stat-n">'+allDriversList.length+'</div><div class="stat-l">Total</div></div>'+
+    '<div class="stat"><div class="stat-n" style="color:#2d7a4f">'+active+'</div><div class="stat-l">Active</div></div>'+
+    '<div class="stat"><div class="stat-n" style="color:#c8382a">'+(allDriversList.length-active)+'</div><div class="stat-l">Inactive</div></div>';
+  if(!allDriversList.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No drivers yet. Add one above.</div>';return;}
+  el.innerHTML=allDriversList.map(function(d){
+    return '<div class="item-card">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+
+        '<span class="badge DC-'+esc(d.name)+'" style="font-size:13px;padding:5px 14px">'+esc(d.name)+'</span>'+
+        '<span class="badge '+(d.active?'b-ok':'b-miss')+'">'+(d.active?'✅ Active':'❌ Inactive')+'</span>'+
+      '</div>'+
+      '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;line-height:1.9;margin-bottom:8px">'+
+        (d.mobile?'<div>📞 <a href="tel:'+esc(d.mobile)+'" style="color:#1565c0;font-weight:700">'+esc(d.mobile)+'</a></div>':
+          '<div style="color:#c8382a">📞 No mobile saved</div>')+
+        '<div>🎨 Color: '+esc(d.color||'blue')+'</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:8px">'+
+        '<button class="btn-sm btn-edit" onclick=\'openEditDriver('+esc(JSON.stringify(d))+')\'>✏️ Edit</button>'+
+        '<button class="btn-sm btn-del" onclick="deleteDriver(\''+esc(String(d.id))+'\',\''+esc(d.name)+'\')">🗑 Delete</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+function toggleDmPw(){
+  var inp=document.getElementById('dm-password');
+  var eye=document.getElementById('dm-pw-eye');
+  if(inp.type==='password'){inp.type='text';eye.textContent='🙈';}
+  else{inp.type='password';eye.textContent='👁';}
+}
+
+function openAddDriver(){
+  document.getElementById('driverModalTitle').textContent='Add Driver';
+  document.getElementById('dm-id').value='';
+  document.getElementById('dm-name').value='';
+  document.getElementById('dm-mobile').value='';
+  document.getElementById('dm-password').value='';
+  document.getElementById('dm-password').type='password';
+  document.getElementById('dm-pw-eye').textContent='👁';
+  document.getElementById('dm-pw-lbl').textContent='Password *';
+  document.getElementById('dm-pw-hint').style.display='none';
+  document.getElementById('dm-password').placeholder='Enter password';
+  document.getElementById('dm-color').value='blue';
+  document.getElementById('dm-active').value='true';
+  document.getElementById('dm-msg').style.display='none';
+  document.getElementById('driverModal').style.display='flex';
+}
+
+function openEditDriver(d){
+  document.getElementById('driverModalTitle').textContent='Edit Driver: '+esc(d.name);
+  document.getElementById('dm-id').value=d.id;
+  document.getElementById('dm-name').value=d.name||'';
+  document.getElementById('dm-mobile').value=d.mobile||'';
+  document.getElementById('dm-password').value='';
+  document.getElementById('dm-password').type='password';
+  document.getElementById('dm-pw-eye').textContent='👁';
+  document.getElementById('dm-pw-lbl').textContent='Change Password';
+  document.getElementById('dm-pw-hint').style.display='block';
+  document.getElementById('dm-password').placeholder='New password (optional)';
+  document.getElementById('dm-color').value=d.color||'blue';
+  document.getElementById('dm-active').value=String(d.active!==false);
+  document.getElementById('dm-msg').style.display='none';
+  document.getElementById('driverModal').style.display='flex';
+}
+
+function closeDriverModal(){document.getElementById('driverModal').style.display='none';}
+
+function saveDriver(){
+  var name=document.getElementById('dm-name').value.trim();
+  var msg=document.getElementById('dm-msg');
+  if(!name){msg.textContent='Name required.';msg.className='msg er';msg.style.display='block';return;}
+  var id=document.getElementById('dm-id').value;
+  var pw=document.getElementById('dm-password').value;
+  if(!id&&!pw){msg.textContent='Password is required for a new driver.';msg.className='msg er';msg.style.display='block';return;}
+  msg.textContent='Saving…';msg.className='msg in';msg.style.display='block';
+  var body={
+    action:id?'updateDriver':'addDriver',
+    name:name,
+    mobile:document.getElementById('dm-mobile').value.trim(),
+    color:document.getElementById('dm-color').value,
+    active:document.getElementById('dm-active').value==='true'
+  };
+  if(id) body.id=id;
+  if(pw) body.password=pw;
+  apiPost(body).then(function(res){
+    if(res&&res.ok){
+      msg.textContent='✅ Saved!';msg.className='msg ok';
+      setTimeout(function(){closeDriverModal();loadDrivers().then(renderDrivers);},600);
+    }else{msg.textContent='❌ '+(res.error||'Failed');msg.className='msg er';}
+  });
+}
+
+function deleteDriver(id,name){
+  if(!confirm('Delete driver "'+name+'"? This cannot be undone.'))return;
+  apiPost({action:'deleteDriver',id:id}).then(function(res){
+    if(res&&res.ok)loadDrivers().then(renderDrivers);
+    else alert('Delete failed: '+(res.error||'unknown'));
+  });
+}
+
 /* ── GPS ── */
 function loadGPS(){loadCustomerMaster().then(renderGPS);}
 function renderGPS(){
@@ -1208,12 +1630,142 @@ function exportRouteCSV(){dlCSV([['Date','Driver','Start','Shops','KM','Est']].c
 function exportGPSCSV(){dlCSV([['Customer ID','Name','Area','Driver','Lat','Lng']].concat(allCustomers.map(function(c){return[c.customer_id||c.shop_id,c.name,c.area,c.assigned_driver,c.lat||'',c.lng||''];})),'gps-'+todayStr()+'.csv');}
 function dlCSV(rows,fn){var csv=rows.map(function(r){return r.map(function(c){return'"'+String(c||'').replace(/"/g,'""')+'"';}).join(',');}).join('\n');var a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download=fn;document.body.appendChild(a);a.click();document.body.removeChild(a);}
 
+/* ── STAFF (Users tab — super_admin only) ── */
+var allStaffList = [];
+
+function loadStaff(){
+  return api({action:'getStaff'}).then(function(data){
+    allStaffList = Array.isArray(data) ? data : [];
+  });
+}
+
+function renderStaff(){
+  var el = document.getElementById('staffList');
+  var active = allStaffList.filter(function(s){return s.active;}).length;
+  document.getElementById('staffStats').innerHTML =
+    '<div class="stat"><div class="stat-n">'+allStaffList.length+'</div><div class="stat-l">Total</div></div>'+
+    '<div class="stat"><div class="stat-n" style="color:#2d7a4f">'+active+'</div><div class="stat-l">Active</div></div>'+
+    '<div class="stat"><div class="stat-n" style="color:#c8382a">'+(allStaffList.length-active)+'</div><div class="stat-l">Inactive</div></div>';
+  if(!allStaffList.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No staff users yet.</div>';return;}
+  var roleIcon = {super_admin:'👑',admin:'👤',chef:'👨‍🍳',packer:'📦'};
+  var roleLabel = {super_admin:'Super Admin',admin:'Admin',chef:'Bakery Chef',packer:'Packer'};
+  el.innerHTML = allStaffList.map(function(s){
+    var tabs = s.role === 'super_admin' ? 'All tabs' : (JSON.parse(s.tabs||'[]').join(', ')||'None');
+    var isSelf = (s.name === _staffName);
+    return '<div class="item-card">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+
+        '<div style="font-size:15px;font-weight:800;color:#4a2f14">'+(roleIcon[s.role]||'👤')+' '+esc(s.name)+'</div>'+
+        '<span class="badge '+(s.active?'b-ok':'b-miss')+'">'+(s.active?'Active':'Inactive')+'</span>'+
+      '</div>'+
+      '<div style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-bottom:8px">'+
+        'Role: '+(roleLabel[s.role]||s.role)+'<br>Tabs: '+esc(tabs)+
+      '</div>'+
+      (isSelf||s.role==='super_admin'?
+        '<div style="font-size:11px;font-family:monospace;color:#8a7a6a">'+
+          (isSelf?'(your account) ':'')+(s.role==='super_admin'?'(protected)':'')+
+        '</div>':
+        '<div style="display:flex;gap:8px">'+
+          '<button class="btn-sm btn-edit" onclick=\'openEditStaff('+esc(JSON.stringify(s))+')\'>✏️ Edit</button>'+
+          '<button class="btn-sm btn-del" onclick="deleteStaff(\''+esc(String(s.id))+'\',\''+esc(s.name)+'\')">🗑 Delete</button>'+
+        '</div>'
+      )+
+    '</div>';
+  }).join('');
+}
+
+function _renderTabCheckboxes(selectedTabs){
+  return TAB_LIST.map(function(t){
+    var checked = selectedTabs.indexOf(t.key) >= 0 ? 'checked' : '';
+    return '<label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;padding:4px 0">'+
+      '<input type="checkbox" value="'+t.key+'" '+checked+' style="width:auto;margin-bottom:0;padding:0;accent-color:#4a2f14">'+
+      t.label+'</label>';
+  }).join('');
+}
+
+function onStaffRoleChange(){
+  var role = document.getElementById('sm-role').value;
+  var defaults = ROLE_DEFAULT_TABS[role] || [];
+  document.getElementById('sm-tabs-grid').innerHTML = _renderTabCheckboxes(defaults);
+}
+
+function openAddStaff(){
+  document.getElementById('staffModalTitle').textContent = 'Add Staff User';
+  document.getElementById('sm-id').value = '';
+  document.getElementById('sm-name').value = '';
+  document.getElementById('sm-password').value = '';
+  document.getElementById('sm-role').value = 'admin';
+  document.getElementById('sm-active').value = 'true';
+  document.getElementById('sm-msg').style.display = 'none';
+  document.getElementById('sm-tabs-grid').innerHTML = _renderTabCheckboxes(ROLE_DEFAULT_TABS.admin);
+  document.getElementById('staffModal').style.display = 'flex';
+}
+
+function openEditStaff(s){
+  document.getElementById('staffModalTitle').textContent = 'Edit Staff User';
+  document.getElementById('sm-id').value = s.id;
+  document.getElementById('sm-name').value = s.name || '';
+  document.getElementById('sm-password').value = '';
+  document.getElementById('sm-role').value = s.role || 'admin';
+  document.getElementById('sm-active').value = String(s.active !== false);
+  document.getElementById('sm-msg').style.display = 'none';
+  var tabs = JSON.parse(s.tabs || '[]');
+  document.getElementById('sm-tabs-grid').innerHTML = _renderTabCheckboxes(tabs);
+  document.getElementById('staffModal').style.display = 'flex';
+}
+
+function closeStaffModal(){ document.getElementById('staffModal').style.display = 'none'; }
+
+function saveStaff(){
+  var name = document.getElementById('sm-name').value.trim();
+  var msg  = document.getElementById('sm-msg');
+  if(!name){ msg.textContent='Name required.';msg.className='msg er';msg.style.display='block';return; }
+  var id = document.getElementById('sm-id').value;
+  var pw = document.getElementById('sm-password').value;
+  if(!id && !pw){ msg.textContent='Password required for new user.';msg.className='msg er';msg.style.display='block';return; }
+  // Collect selected tabs
+  var checked = Array.from(document.querySelectorAll('#sm-tabs-grid input[type=checkbox]:checked')).map(function(cb){return cb.value;});
+  var body = {
+    action: id ? 'updateStaff' : 'addStaff',
+    name:   name,
+    role:   document.getElementById('sm-role').value,
+    tabs:   JSON.stringify(checked),
+    active: document.getElementById('sm-active').value === 'true'
+  };
+  if(id)  body.id = id;
+  if(pw)  body.password = pw;
+  msg.textContent='Saving…';msg.className='msg in';msg.style.display='block';
+  apiPost(body).then(function(res){
+    if(res && res.ok){
+      msg.textContent='✅ Saved!';msg.className='msg ok';
+      setTimeout(function(){closeStaffModal();loadStaff().then(renderStaff);},600);
+    } else { msg.textContent='❌ '+(res.error||'Failed');msg.className='msg er'; }
+  });
+}
+
+function deleteStaff(id, name){
+  if(!confirm('Delete staff user "'+name+'"?')) return;
+  apiPost({action:'deleteStaff', id:id}).then(function(res){
+    if(res && res.ok) loadStaff().then(renderStaff);
+    else alert('Delete failed: '+(res.error||'unknown'));
+  });
+}
+
 /* ── INIT ── */
-// Load customers first (required), products optional — failure treated as empty
-loadCustomerMaster().then(function(){
-  loadProductMaster(); // fire and forget — failure = empty products list
-  loadOrders();
-});
+initTabVisibility();
+loadDrivers();       // populate DRIVERS array + all select dropdowns
+loadProductMaster(); // cache products for XLS preview
+// Navigate to the first tab this role can see
+(function(){
+  var first;
+  if(_allowedTabs === null){ first='orders'; }
+  else { first = _allowedTabs.length ? _allowedTabs[0] : 'summary'; }
+  // Hide all pages, then show the right one
+  ['orders','approve','queue','summary','delivery','routes','customers','products','drivers','gps','users'].forEach(function(t){
+    var pg=document.getElementById('pg-'+t);if(pg)pg.classList.remove('on');
+    var tb=document.getElementById('tb-'+t);if(tb)tb.classList.remove('on');
+  });
+  showTab(first);
+})();
 </script>
 </body>
 </html>

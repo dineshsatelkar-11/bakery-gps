@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>Baked — Driver</title>
+<script src="config.js"></script>
+<script src="api.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:440px;margin:0 auto;min-height:100vh}
@@ -20,7 +22,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;
 .page.on{display:block}
 .card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:14px;margin-bottom:10px}
 .lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:8px;text-transform:uppercase}
-input[type=text]{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;color:#1e1611;background:#f5ede0;outline:none;font-family:-apple-system,sans-serif}
+input[type=text],input[type=date]{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;color:#1e1611;background:#f5ede0;outline:none;font-family:-apple-system,sans-serif;-webkit-appearance:none}
+.summary-item{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f5ede0}
+.summary-item:last-child{border-bottom:none}
 .btn{width:100%;padding:13px;border:none;border-radius:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:8px}
 .btn-gps{background:#2d7a4f;color:#fff}
 .btn-save{background:#4a2f14;color:#fff}
@@ -39,10 +43,13 @@ input[type=text]{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-
 .si-n{font-size:13px;font-weight:700;flex:1}
 .si-a{font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px}
 /* ROUTE */
-.stat-row{display:flex;gap:8px;margin-bottom:12px}
-.stat{flex:1;background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:10px;text-align:center}
+.stat-row{display:flex;gap:8px;margin-bottom:0}
+.stat{flex:1;background:rgba(255,255,255,.7);border:1.5px solid #e8dfd2;border-radius:12px;padding:10px;text-align:center}
 .stat-n{font-size:20px;font-weight:900;color:#4a2f14}
 .stat-l{font-size:9px;color:#8a7a6a;font-family:monospace;text-transform:uppercase}
+.route-summary-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:14px;margin-bottom:10px}
+.progress-wrap{background:#e8dfd2;border-radius:6px;height:8px;margin:8px 0 10px;overflow:hidden}
+.progress-fill{height:8px;border-radius:6px;background:linear-gradient(90deg,#2d7a4f,#4caf7d);transition:width .4s ease}
 .route-stop{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px}
 .rnum{width:30px;height:30px;border-radius:50%;background:#2d7a4f;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;flex-shrink:0}
 .rnum.done{background:#8a7a6a}
@@ -86,7 +93,23 @@ input[type=text]{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-
 
 <!-- ── ORDERS ── -->
 <div class="page on" id="pg-orders">
-  <div id="ordersList" style="margin-top:4px"></div>
+  <!-- Date picker -->
+  <div class="card" style="margin-bottom:8px;display:flex;align-items:center;gap:10px">
+    <div style="flex:1">
+      <div class="lbl" id="t-selectDate">Select Date</div>
+      <input type="date" id="orderDate" onchange="loadOrdersForDate(this.value)">
+    </div>
+    <button onclick="loadOrdersForDate(document.getElementById('orderDate').value)"
+      style="background:#f5ede0;border:1.5px solid #e8dfd2;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;color:#4a2f14;font-family:-apple-system,sans-serif;white-space:nowrap;flex-shrink:0">
+      ↻ <span id="t-refresh">Load</span>
+    </button>
+  </div>
+  <!-- Product summary -->
+  <div id="orderSummaryCard" class="card" style="display:none;margin-bottom:8px">
+    <div class="lbl" id="t-prodSummary">Product Summary</div>
+    <div id="orderSummaryBody"></div>
+  </div>
+  <div id="ordersList"></div>
 </div>
 
 <!-- ── ROUTE ── -->
@@ -98,12 +121,20 @@ input[type=text]{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-
     <button class="btn btn-start" id="startBtn" onclick="startRoute()">🚀 Start Route</button>
   </div>
 
-  <div class="stat-row" id="routeStats" style="display:none">
-    <div class="stat"><div class="stat-n" id="rs-done">0</div><div class="stat-l" id="t-done">Done</div></div>
-    <div class="stat"><div class="stat-n" id="rs-pending">0</div><div class="stat-l" id="t-pending">Pending</div></div>
-    <div class="stat"><div class="stat-n" id="rs-km">0</div><div class="stat-l">KM</div></div>
-    <div class="stat"><div class="stat-n" id="rs-time">—</div><div class="stat-l">Est. Time</div></div>
+  <div id="routeSummaryCard" class="route-summary-card" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
+      <div style="font-size:14px;font-weight:900;color:#2d7a4f" id="rs-progress-label">0 / 0 Shops</div>
+      <div style="font-size:10px;font-family:monospace;color:#8a7a6a" id="rs-start-info"></div>
+    </div>
+    <div class="progress-wrap"><div class="progress-fill" id="rs-progress-bar" style="width:0%"></div></div>
+    <div class="stat-row">
+      <div class="stat"><div class="stat-n" id="rs-done">0</div><div class="stat-l" id="t-done">Done</div></div>
+      <div class="stat"><div class="stat-n" id="rs-pending">0</div><div class="stat-l" id="t-pending">Left</div></div>
+      <div class="stat"><div class="stat-n" id="rs-km">0</div><div class="stat-l">KM</div></div>
+      <div class="stat"><div class="stat-n" id="rs-time">—</div><div class="stat-l">Est.</div></div>
+    </div>
   </div>
+  <div id="routeStats" style="display:none"></div>
 
   <div id="route-msg" style="display:none" class="msg in"></div>
   <div id="mapBtnWrap" style="display:none;margin-bottom:10px"></div>
@@ -132,23 +163,11 @@ input[type=text]{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-
 </div>
 
 <script>
-const CONFIG = {
-  API_URL: 'https://script.google.com/macros/s/AKfycbyi-IJ6NLR28hRTeesy52THTbdcYCSnz3lp7NtEaJsxBOiNOm-9emMu0xOHT6hvWSE-/exec',
-  HQ: { lat: 18.5734, lng: 73.9197, name: "It's Baked · Lohegaon" },
-  DRIVER_PASS: { Bharat:'bharat123', Anand:'anand123', Vikas:'vikas123', Yuvraj:'yuvraj123', Rama:'rama123' },
-  LANG: {
-    en:{ myRoute:'My Route', myOrders:'My Orders', startRoute:'🚀 Start Route', markDelivered:'✅ Mark Delivered', delivered:'Delivered', pending:'Pending', loading:'Loading…', captureLocation:'Capture My Location', confirmSave:'Confirm & Save', noOrders:'No orders for today.', routeStart:'Open Route in Google Maps' },
-    mr:{ myRoute:'माझा मार्ग', myOrders:'माझे ऑर्डर', startRoute:'🚀 मार्ग सुरू करा', markDelivered:'✅ डिलिव्हरी केली', delivered:'डिलिव्हर झाले', pending:'बाकी आहे', loading:'लोड होत आहे…', captureLocation:'माझे स्थान घ्या', confirmSave:'जतन करा', noOrders:'आजचे ऑर्डर नाहीत.', routeStart:'Google Maps मध्ये मार्ग उघडा' }
-  }
-};
-</script>
-<script>
 const driver = sessionStorage.getItem('driver');
 if (!sessionStorage.getItem('role') || !driver) window.location.href='index.html';
 
-const API = CONFIG.API_URL;
-const HQ  = CONFIG.HQ;
-const L   = CONFIG.LANG;
+const HQ = CONFIG.HQ;
+const L  = CONFIG.LANG;
 let lang  = sessionStorage.getItem('lang') || localStorage.getItem('lang') || 'en';
 
 function t(key) { return (L[lang]||L.en)[key] || key; }
@@ -163,7 +182,10 @@ function applyLang() {
   document.getElementById('startBtn').textContent     = t('startRoute');
   document.getElementById('t-done').textContent    = lang==='mr' ? 'झाले' : 'Done';
   document.getElementById('t-pending').textContent = lang==='mr' ? 'बाकी' : 'Pending';
-  document.getElementById('t-searchLbl').textContent  = lang==='mr' ? 'ग्राहक शोधा' : 'Search Customer';
+  document.getElementById('t-selectDate').textContent  = lang==='mr' ? 'तारीख निवडा' : 'Select Date';
+  document.getElementById('t-refresh').textContent     = lang==='mr' ? 'लोड' : 'Load';
+  document.getElementById('t-prodSummary').textContent = lang==='mr' ? 'वस्तू एकूण' : 'Product Summary';
+  document.getElementById('t-searchLbl').textContent   = lang==='mr' ? 'ग्राहक शोधा' : 'Search Customer';
   document.getElementById('srch').placeholder         = lang==='mr' ? 'नाव किंवा क्षेत्र…' : 'Search by name or area…';
   document.getElementById('t-captureBtn').textContent = lang==='mr' ? 'माझे स्थान घ्या' : 'Capture My Location';
   document.getElementById('t-saveBtn').textContent    = lang==='mr' ? 'जतन करा' : 'Confirm & Save';
@@ -184,8 +206,6 @@ function logout() { sessionStorage.clear(); window.location.href='index.html'; }
 document.getElementById('topDriver').textContent = driver;
 document.getElementById('topDate').textContent = todayStr();
 
-function api(p){ return fetch(API+'?'+new URLSearchParams(p)).then(r=>r.json()).catch(()=>({})); }
-function apiPost(b){ return fetch(API,{method:'POST',body:JSON.stringify(b)}).then(r=>r.json()).catch(()=>({})); }
 function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 
 // ── TABS ──
@@ -200,48 +220,120 @@ function showTab(tab) {
 // ── STATE ──
 let allCustomers=[], selCustomer=null, captured=null;
 let orders=[], deliveries={}, routeStarted=false, routeStartTime=null;
+let routeStartLat=null, routeStartLng=null;
+let selectedDate = '';
 
 // ── LOAD ──
 async function init() {
   applyLang();
+  selectedDate = todayStr();
+  document.getElementById('orderDate').value = selectedDate;
   const [shopsData, ordersData, delivData] = await Promise.all([
-    api({action:'getShops'}),
-    api({action:'getOrders', driver, date:todayStr()}),
-    api({action:'getDeliveries', driver, date:todayStr()})
+    api({action:'getShops', driver}),
+    api({action:'getOrders', driver, date:selectedDate}),
+    api({action:'getDeliveries', driver, date:selectedDate})
   ]);
-  allCustomers = Array.isArray(shopsData) ? shopsData.filter(s=>s.assigned_driver===driver) : [];
-  orders   = Array.isArray(ordersData) ? ordersData : [];
-  // deliveries: keyed by shop_id
+  allCustomers = Array.isArray(shopsData) ? shopsData : [];
+  orders = Array.isArray(ordersData) ? ordersData : [];
+  deliveries = {};
   if(Array.isArray(delivData)) delivData.forEach(d=>{ deliveries[d.shop_id]=d; });
   // check if route already started today
-  const savedStart = localStorage.getItem('routeStart_'+driver+'_'+todayStr());
-  if(savedStart){ routeStarted=true; routeStartTime=savedStart; }
+  const savedStart = localStorage.getItem('routeStart_'+driver+'_'+selectedDate);
+  if(savedStart){
+    routeStarted=true; routeStartTime=savedStart;
+    routeStartLat = parseFloat(localStorage.getItem('routeStartLat_'+driver+'_'+selectedDate)) || null;
+    routeStartLng = parseFloat(localStorage.getItem('routeStartLng_'+driver+'_'+selectedDate)) || null;
+  }
   renderOrdersList();
   renderCustomerList(allCustomers);
+}
+
+// ── LOAD ORDERS FOR DATE ──
+async function loadOrdersForDate(date) {
+  if(!date) return;
+  selectedDate = date;
+  const el = document.getElementById('ordersList');
+  el.innerHTML = `<div style="text-align:center;padding:24px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>`;
+  document.getElementById('orderSummaryCard').style.display = 'none';
+  const [ordersData, delivData] = await Promise.all([
+    api({action:'getOrders', driver, date:selectedDate}),
+    api({action:'getDeliveries', driver, date:selectedDate})
+  ]);
+  orders = Array.isArray(ordersData) ? ordersData : [];
+  deliveries = {};
+  if(Array.isArray(delivData)) delivData.forEach(d=>{ deliveries[d.shop_id]=d; });
+  // Restore route state for this date
+  const savedStart = localStorage.getItem('routeStart_'+driver+'_'+selectedDate);
+  routeStarted = !!savedStart;
+  routeStartTime = savedStart || null;
+  routeStartLat = parseFloat(localStorage.getItem('routeStartLat_'+driver+'_'+selectedDate)) || null;
+  routeStartLng = parseFloat(localStorage.getItem('routeStartLng_'+driver+'_'+selectedDate)) || null;
+  renderOrdersList();
+  // Rebuild route if route tab is active
+  if(document.getElementById('pg-route').classList.contains('on')) buildRouteUI();
 }
 
 // ── ORDERS ──
 function renderOrdersList() {
   const el = document.getElementById('ordersList');
   if(!orders.length){
+    document.getElementById('orderSummaryCard').style.display='none';
     el.innerHTML=`<div style="text-align:center;padding:40px;font-size:13px;color:#8a7a6a;font-family:monospace">${t('noOrders')}</div>`;
     return;
   }
-  // Group by shop
+  // ── Product summary ──
+  const totals={};
+  orders.forEach(o=>{
+    const its=(o.items||'').split(',').map(s=>s.replace(/\s*\(.*?\)/g,'').trim()).filter(Boolean);
+    const qs=(o.qty||'').split(',').map(s=>parseInt(s)||0);
+    its.forEach((it,i)=>{ totals[it]=(totals[it]||0)+(qs[i]||0); });
+  });
+  const entries=Object.entries(totals).sort((a,b)=>b[1]-a[1]);
+  const doneCount=Object.values(deliveries).length;
+  document.getElementById('orderSummaryBody').innerHTML=
+    entries.map(([item,qty])=>
+      `<div class="summary-item">
+        <span style="font-size:13px;font-weight:600;color:#1e1611">${item}</span>
+        <span style="font-size:15px;font-weight:900;color:#4a2f14">× ${qty}</span>
+      </div>`
+    ).join('')+
+    `<div style="display:flex;justify-content:space-between;margin-top:8px;padding-top:6px;border-top:1.5px solid #e8dfd2">
+      <span style="font-size:11px;font-family:monospace;color:#8a7a6a">${orders.length} ${lang==='mr'?'दुकाने':'shops'} · ${entries.length} ${lang==='mr'?'वस्तू':'products'}</span>
+      <span style="font-size:11px;font-family:monospace;color:#2d7a4f">✅ ${doneCount} ${lang==='mr'?'झाले':'done'} · ⚠ ${orders.length-doneCount} ${lang==='mr'?'बाकी':'left'}</span>
+    </div>`;
+  document.getElementById('orderSummaryCard').style.display='block';
+
+  // ── Order cards by shop ──
   const byShop={};
   orders.forEach(o=>{ if(!byShop[o.shop_id]) byShop[o.shop_id]=[]; byShop[o.shop_id].push(o); });
   el.innerHTML = Object.entries(byShop).map(([sid,ords])=>{
     const isDone = !!deliveries[sid];
     const shopName = ords[0].shop_name;
-    return `<div class="order-card" style="${isDone?'opacity:.5':''}">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+    const doneTime = isDone ? (deliveries[sid].time||'') : '';
+    return `<div class="order-card" id="oc-${sid}" style="${isDone?'opacity:.55;background:#f9f9f9':''}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
         <div class="order-shop">${shopName}</div>
-        <span class="badge ${isDone?'b-done':'b-warn'}">${isDone?t('delivered'):t('pending')}</span>
+        <span class="badge ${isDone?'b-done':'b-warn'}">${isDone?('✅ '+doneTime):t('pending')}</span>
       </div>
-      <div class="order-meta">${lang==='mr'?'डिलिव्हरी तारीख':'Delivery'}: ${ords[0].date}</div>
+      <div class="order-meta">${lang==='mr'?'डिलिव्हरी':'Delivery'}: ${ords[0].date}</div>
       ${ords.map(o=>`<div class="order-items" style="margin-bottom:4px"><b>${lang==='mr'?'वस्तू':'Items'}:</b> ${o.items}<br><b>${lang==='mr'?'संख्या':'Qty'}:</b> ${o.qty}${o.note&&o.note!=='—'?`<br><b>${lang==='mr'?'नोंद':'Note'}:</b> ${o.note}`:''}</div>`).join('')}
+      <div style="margin-top:8px">
+        ${isDone
+          ? `<span style="font-size:12px;font-family:monospace;color:#2d7a4f">✅ ${lang==='mr'?'डिलिव्हर झाले':'Delivered'} ${doneTime}</span>`
+          : `<button class="btn btn-deliver" style="margin-bottom:0;padding:10px;font-size:13px" onclick="markDeliveredFromOrders('${sid}','${shopName.replace(/'/g,"\\'")}')">
+               ✅ ${t('markDelivered')}
+             </button>`
+        }
+      </div>
     </div>`;
   }).join('');
+}
+
+async function markDeliveredFromOrders(shopId, shopName) {
+  const btn = document.querySelector(`#oc-${shopId} .btn-deliver`);
+  if(btn){ btn.disabled=true; btn.textContent=lang==='mr'?'⏳ जतन होत आहे…':'⏳ Saving…'; }
+  await markDelivered(shopId, shopName);
+  renderOrdersList();
 }
 
 // ── ROUTE ──
@@ -258,11 +350,34 @@ function nearestNeighbour(start,pts){
 }
 
 async function startRoute() {
-  routeStarted=true;
-  routeStartTime=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+  const btn = document.getElementById('startBtn');
+  btn.disabled = true;
+  btn.textContent = lang==='mr' ? '📡 स्थान मिळत आहे…' : '📡 Getting location…';
+
+  // Try to capture GPS location at route start
+  try {
+    if (navigator.geolocation) {
+      const pos = await new Promise(function(resolve, reject){
+        navigator.geolocation.getCurrentPosition(resolve, reject,
+          {enableHighAccuracy:true, timeout:12000, maximumAge:0});
+      });
+      routeStartLat = parseFloat(pos.coords.latitude.toFixed(6));
+      routeStartLng = parseFloat(pos.coords.longitude.toFixed(6));
+      localStorage.setItem('routeStartLat_'+driver+'_'+todayStr(), routeStartLat);
+      localStorage.setItem('routeStartLng_'+driver+'_'+todayStr(), routeStartLng);
+    }
+  } catch(e) {
+    // GPS unavailable — proceed without location
+    routeStartLat = null; routeStartLng = null;
+  }
+
+  routeStarted = true;
+  routeStartTime = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
   localStorage.setItem('routeStart_'+driver+'_'+todayStr(), routeStartTime);
-  // Save to sheet
-  await apiPost({action:'saveRouteStart', driver, date:todayStr(), startTime:routeStartTime});
+
+  const saveBody = {action:'saveRouteStart', driver, date:todayStr(), startTime:routeStartTime};
+  if (routeStartLat) { saveBody.lat = routeStartLat; saveBody.lng = routeStartLng; }
+  await apiPost(saveBody);
   buildRouteUI();
 }
 
@@ -272,9 +387,10 @@ async function buildRouteUI() {
   const mapWrap=document.getElementById('mapBtnWrap');
   rmsg.style.display='none'; body.innerHTML='';
 
-  // Show start banner or hide it
-  document.getElementById('startBanner').style.display = routeStarted ? 'none' : 'block';
-  document.getElementById('routeStats').style.display  = routeStarted ? 'flex' : 'none';
+  // Show start banner or summary card
+  document.getElementById('startBanner').style.display    = routeStarted ? 'none' : 'block';
+  document.getElementById('routeSummaryCard').style.display = routeStarted ? 'block' : 'none';
+  document.getElementById('routeStats').style.display       = 'none'; // legacy, hidden
   if(!routeStarted) return;
 
   // Only customers with valid GPS
@@ -305,6 +421,17 @@ async function buildRouteUI() {
   document.getElementById('rs-pending').textContent=pending.length;
   document.getElementById('rs-km').textContent=totalKm;
   document.getElementById('rs-time').textContent=estH+'h '+estM+'m';
+  // Progress bar
+  var total=done.length+pending.length;
+  var pct=total>0?Math.round(done.length/total*100):0;
+  var pb=document.getElementById('rs-progress-bar');
+  var pl=document.getElementById('rs-progress-label');
+  var si=document.getElementById('rs-start-info');
+  if(pb) pb.style.width=pct+'%';
+  if(pl) pl.textContent=done.length+' / '+total+' '+(lang==='mr'?'दुकाने':'Shops')+' ('+pct+'%)';
+  if(si){
+    si.textContent=(lang==='mr'?'सुरुवात':'Started')+': '+routeStartTime+(routeStartLat?' 📍':'');
+  }
 
   // Map button — start from CURRENT location, skip done customers
   const pendingCoords=route.map(s=>s.lat+','+s.lng);
@@ -355,7 +482,7 @@ async function buildRouteUI() {
 async function markDelivered(shopId, shopName) {
   const time=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
   deliveries[shopId]={shop_id:shopId,time};
-  await apiPost({action:'markDelivered',driver,shop_id:shopId,shop_name:shopName,date:todayStr(),time});
+  await apiPost({action:'markDelivered',driver,shop_id:shopId,shop_name:shopName,date:selectedDate||todayStr(),time});
   buildRouteUI();
   renderOrdersList();
 }

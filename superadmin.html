@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Baked — Admin Access</title>
+<script src="config.js"></script>
+<script src="api.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#1a1008;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
+.logo{font-size:52px;margin-bottom:6px;text-align:center;filter:drop-shadow(0 2px 8px rgba(200,160,32,.4))}
+h1{font-size:22px;font-weight:900;color:#f5ede0;text-align:center;margin-bottom:4px}
+.sub{font-size:11px;color:#5a4a3a;font-family:monospace;text-align:center;margin-bottom:28px;margin-top:2px}
+.card{background:#2a1a0a;border:1.5px solid #3a2a14;border-radius:20px;padding:24px;width:100%;max-width:340px}
+.lbl{font-size:10px;letter-spacing:2px;color:#7a6a5a;font-family:monospace;font-weight:700;margin-bottom:8px;text-transform:uppercase}
+select,input[type=password]{width:100%;padding:13px;border:1.5px solid #3a2a14;border-radius:12px;font-size:15px;font-weight:600;color:#f5ede0;background:#120c04;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:12px}
+.btn{width:100%;padding:15px;border:none;border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;background:linear-gradient(135deg,#c8a020,#a07010);color:#1a1008;letter-spacing:.5px;margin-bottom:0}
+.btn:active{opacity:.85}
+.err{color:#ff8a7a;font-size:12px;font-family:monospace;text-align:center;margin-top:10px;display:none}
+.notice{font-size:11px;color:#3a2a14;font-family:monospace;text-align:center;margin-top:24px;line-height:1.7}
+.badge-crown{display:inline-block;background:#c8a020;color:#1a1008;border-radius:8px;font-size:10px;font-weight:800;padding:3px 10px;font-family:monospace;letter-spacing:1px;margin-bottom:20px}
+</style>
+</head>
+<body>
+<div class="logo">👑</div>
+<h1>Baked GPS</h1>
+<div class="badge-crown">SUPER ADMIN ACCESS</div>
+
+<div class="card">
+  <div class="lbl">Admin Name</div>
+  <select id="adminName">
+    <option value="">Loading…</option>
+  </select>
+  <div class="lbl">Password</div>
+  <input type="password" id="adminPass" placeholder="Enter password" autocomplete="current-password">
+  <button class="btn" onclick="doLogin()">🔓 Access Control Panel</button>
+  <div class="err" id="err">❌ Invalid credentials.</div>
+</div>
+
+<div class="notice">This page is not publicly linked.<br>Bookmark it for private access.</div>
+
+<script>
+var staffMap = {};
+
+(function checkAlreadyLoggedIn(){
+  var r = sessionStorage.getItem('role');
+  if(r === 'super_admin') { window.location.href = 'admin.html'; return; }
+})();
+
+api({action:'getStaff'}).then(function(data){
+  var list = Array.isArray(data) ? data.filter(function(s){ return s.active && s.role === 'super_admin'; }) : [];
+  staffMap = {};
+  list.forEach(function(s){ staffMap[s.name] = s; });
+  var sel = document.getElementById('adminName');
+  if(!list.length){
+    sel.innerHTML = '<option value="">No super admin accounts found</option>';
+  } else {
+    sel.innerHTML = '<option value="">Select name…</option>' +
+      list.map(function(s){ return '<option value="'+s.name+'">👑 '+s.name+'</option>'; }).join('');
+  }
+}).catch(function(){
+  document.getElementById('adminName').innerHTML = '<option value="">Connection error</option>';
+});
+
+function doLogin(){
+  var name = document.getElementById('adminName').value;
+  var pass = document.getElementById('adminPass').value;
+  var err  = document.getElementById('err');
+  err.style.display = 'none';
+  if(!name){ alert('Select your name'); return; }
+  var s = staffMap[name];
+  if(!s || pass !== s.password){ err.style.display = 'block'; return; }
+  sessionStorage.setItem('role', s.role);
+  sessionStorage.setItem('tabs', s.tabs || '[]');
+  sessionStorage.setItem('staffName', s.name);
+  window.location.href = 'admin.html';
+}
+
+document.getElementById('adminPass').addEventListener('keydown', function(e){
+  if(e.key === 'Enter') doLogin();
+});
+</script>
+</body>
+</html>

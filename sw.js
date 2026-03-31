@@ -1,10 +1,12 @@
-var CACHE = 'baked-gps-v1';
+var CACHE = 'baked-gps-v2';
 var STATIC = [
   '/bakery-gps/',
   '/bakery-gps/index.html',
   '/bakery-gps/driver.html',
   '/bakery-gps/admin.html',
-  '/bakery-gps/shops.html',
+  '/bakery-gps/customers.html',
+  '/bakery-gps/config.js',
+  '/bakery-gps/api.js',
   '/bakery-gps/icon-192.png',
   '/bakery-gps/icon-512.png'
 ];
@@ -37,8 +39,10 @@ self.addEventListener('fetch', function(e) {
   // Skip non-GET and external requests (Google Sheets API etc)
   if(e.request.method !== 'GET') return;
   var url = e.request.url;
+  if(url.startsWith('chrome-extension://')) return;
   if(url.indexOf('script.google.com') >= 0) return;
   if(url.indexOf('generativelanguage.googleapis.com') >= 0) return;
+  if(url.indexOf('supabase.co') >= 0) return;
 
   e.respondWith(
     fetch(e.request)

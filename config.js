@@ -1,12 +1,36 @@
 // ─────────────────────────────────────────────
 // BAKED GPS — Central Config
-// After deploying Apps Script, paste the URL below
+// 1. Create project at https://supabase.com
+// 2. Go to Project Settings → API
+// 3. Paste your Project URL and anon/public key below
 // ─────────────────────────────────────────────
 
 const CONFIG = {
-  API_URL: 'https://script.google.com/macros/s/AKfycbyi-IJ6NLR28hRTeesy52THTbdcYCSnz3lp7NtEaJsxBOiNOm-9emMu0xOHT6hvWSE-/exec', // ← paste after deploy
-  BAKERY: { lat: 18.607176075062227, lng: 73.9273947804779, name: 'Baked HQ · Lohegaon' },
-  DRIVERS: ['Bharat','Anand','Vikas','Yuvraj','Rama'],
-  ADMIN_PASS: 'baked@admin',
-  VERSION: '1.0'
+  SUPABASE_URL:      'https://lprcdmwlrrukuhqdekah.supabase.co', // ← paste Project URL
+  SUPABASE_ANON_KEY: 'sb_publishable_Tkemd93FwHu4Cg6BcgjLNA_w4cTxqea',                // ← paste anon/public key
+
+  // Bakery HQ location (used for route optimisation in driver app)
+  HQ: { lat: 18.5734, lng: 73.9197, name: "It's Baked · Lohegaon" },
+
+  DRIVERS: ['Bharat', 'Anand', 'Vikas', 'Yuvraj', 'Rama'],
+
+  // Driver app translations
+  LANG: {
+    en: {
+      myRoute: 'My Route', myOrders: 'My Orders',
+      startRoute: '🚀 Start Route', markDelivered: '✅ Mark Delivered',
+      delivered: 'Delivered', pending: 'Pending', loading: 'Loading…',
+      captureLocation: 'Capture My Location', confirmSave: 'Confirm & Save',
+      noOrders: 'No orders for today.', routeStart: 'Open Route in Google Maps'
+    },
+    mr: {
+      myRoute: 'माझा मार्ग', myOrders: 'माझे ऑर्डर',
+      startRoute: '🚀 मार्ग सुरू करा', markDelivered: '✅ डिलिव्हरी केली',
+      delivered: 'डिलिव्हर झाले', pending: 'बाकी आहे', loading: 'लोड होत आहे…',
+      captureLocation: 'माझे स्थान घ्या', confirmSave: 'जतन करा',
+      noOrders: 'आजचे ऑर्डर नाहीत.', routeStart: 'Google Maps मध्ये मार्ग उघडा'
+    }
+  },
+
+  VERSION: '2.0'
 };
