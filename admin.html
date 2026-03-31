@@ -418,7 +418,10 @@ function loadCustomerMaster(){
 
 function loadProductMaster(){
   return api({action:'getProducts'}).then(function(d){
-    allProducts=Array.isArray(d)?d:[];
+    // If script not yet redeployed, d may be {error:'Unknown action'} — treat as empty
+    allProducts = Array.isArray(d) ? d : [];
+  }).catch(function(){
+    allProducts = [];
   });
 }
 
@@ -515,11 +518,11 @@ function processXlsFile(file){
 /* ── STEP 2: PREVIEW & VALIDATE ── */
 function doPreview(){
   if(!rawChallans.length) return;
-  var needCust=!allCustomers.length, needProd=!allProducts.length;
-  if(needCust||needProd){
+  // Only block if customers not loaded — products are optional (may not exist yet)
+  if(!allCustomers.length){
     var btn=document.getElementById('previewBtn');
-    btn.textContent='Loading data…';btn.disabled=true;
-    Promise.all([needCust?loadCustomerMaster():Promise.resolve(), needProd?loadProductMaster():Promise.resolve()])
+    btn.textContent='Loading customers…';btn.disabled=true;
+    Promise.all([loadCustomerMaster(), loadProductMaster()])
     .then(function(){btn.textContent='🔍 Preview & Validate Orders';btn.disabled=false;doPreview();});
     return;
   }
@@ -1202,7 +1205,11 @@ function exportGPSCSV(){dlCSV([['Customer ID','Name','Area','Driver','Lat','Lng'
 function dlCSV(rows,fn){var csv=rows.map(function(r){return r.map(function(c){return'"'+String(c||'').replace(/"/g,'""')+'"';}).join(',');}).join('\n');var a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download=fn;document.body.appendChild(a);a.click();document.body.removeChild(a);}
 
 /* ── INIT ── */
-Promise.all([loadCustomerMaster(), loadProductMaster()]).then(function(){loadOrders();});
+// Load customers first (required), products optional — failure treated as empty
+loadCustomerMaster().then(function(){
+  loadProductMaster(); // fire and forget — failure = empty products list
+  loadOrders();
+});
 </script>
 </body>
 </html>
