@@ -113,8 +113,8 @@ input[type=text]{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-
 <!-- ── GPS ── -->
 <div class="page" id="pg-gps">
   <div class="card">
-    <div class="lbl" id="t-searchLbl">Search Shop</div>
-    <input type="text" id="srch" oninput="filterShops()">
+    <div class="lbl" id="t-searchLbl">Search Customer</div>
+    <input type="text" id="srch" oninput="filterCustomers()">
   </div>
   <div id="gps-msg" style="display:none" class="msg ok"></div>
   <div id="selBox" style="display:none" class="card">
@@ -126,8 +126,8 @@ input[type=text]{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-
   <button class="btn btn-gps" id="gpsBtn" onclick="doGPS()">📍 <span id="t-captureBtn">Capture My Location</span></button>
   <button class="btn btn-save" id="saveBtn" onclick="doSave()" style="display:none">✅ <span id="t-saveBtn">Confirm & Save</span></button>
   <div class="card">
-    <div class="lbl" id="t-myShops">My Shops</div>
-    <div class="shop-list" id="shopList"><div style="padding:10px;font-size:12px;color:#8a7a6a;font-family:monospace" id="t-loadingShops">Loading…</div></div>
+    <div class="lbl" id="t-myCustomers">My Customers</div>
+    <div class="shop-list" id="customerList"><div style="padding:10px;font-size:12px;color:#8a7a6a;font-family:monospace" id="t-loadingCustomers">Loading…</div></div>
   </div>
 </div>
 
@@ -163,11 +163,11 @@ function applyLang() {
   document.getElementById('startBtn').textContent     = t('startRoute');
   document.getElementById('t-done').textContent    = lang==='mr' ? 'झाले' : 'Done';
   document.getElementById('t-pending').textContent = lang==='mr' ? 'बाकी' : 'Pending';
-  document.getElementById('t-searchLbl').textContent  = lang==='mr' ? 'दुकान शोधा' : 'Search Shop';
+  document.getElementById('t-searchLbl').textContent  = lang==='mr' ? 'ग्राहक शोधा' : 'Search Customer';
   document.getElementById('srch').placeholder         = lang==='mr' ? 'नाव किंवा क्षेत्र…' : 'Search by name or area…';
   document.getElementById('t-captureBtn').textContent = lang==='mr' ? 'माझे स्थान घ्या' : 'Capture My Location';
   document.getElementById('t-saveBtn').textContent    = lang==='mr' ? 'जतन करा' : 'Confirm & Save';
-  document.getElementById('t-myShops').textContent    = lang==='mr' ? 'माझी दुकाने' : 'My Shops';
+  document.getElementById('t-myCustomers').textContent    = lang==='mr' ? 'माझे ग्राहक' : 'My Customers';
 }
 
 function toggleLang() {
@@ -198,7 +198,7 @@ function showTab(tab) {
 }
 
 // ── STATE ──
-let allShops=[], selShop=null, captured=null;
+let allCustomers=[], selCustomer=null, captured=null;
 let orders=[], deliveries={}, routeStarted=false, routeStartTime=null;
 
 // ── LOAD ──
@@ -209,7 +209,7 @@ async function init() {
     api({action:'getOrders', driver, date:todayStr()}),
     api({action:'getDeliveries', driver, date:todayStr()})
   ]);
-  allShops = Array.isArray(shopsData) ? shopsData.filter(s=>s.assigned_driver===driver) : [];
+  allCustomers = Array.isArray(shopsData) ? shopsData.filter(s=>s.assigned_driver===driver) : [];
   orders   = Array.isArray(ordersData) ? ordersData : [];
   // deliveries: keyed by shop_id
   if(Array.isArray(delivData)) delivData.forEach(d=>{ deliveries[d.shop_id]=d; });
@@ -217,7 +217,7 @@ async function init() {
   const savedStart = localStorage.getItem('routeStart_'+driver+'_'+todayStr());
   if(savedStart){ routeStarted=true; routeStartTime=savedStart; }
   renderOrdersList();
-  renderShopList(allShops);
+  renderCustomerList(allCustomers);
 }
 
 // ── ORDERS ──
@@ -277,9 +277,9 @@ async function buildRouteUI() {
   document.getElementById('routeStats').style.display  = routeStarted ? 'flex' : 'none';
   if(!routeStarted) return;
 
-  // Only shops with valid GPS
-  const withGPS = allShops.filter(s=>s.lat&&s.lng).map(s=>({...s,lat:parseFloat(s.lat),lng:parseFloat(s.lng)}));
-  const noGPS   = allShops.filter(s=>!s.lat||!s.lng);
+  // Only customers with valid GPS
+  const withGPS = allCustomers.filter(s=>s.lat&&s.lng).map(s=>({...s,lat:parseFloat(s.lat),lng:parseFloat(s.lng)}));
+  const noGPS   = allCustomers.filter(s=>!s.lat||!s.lng);
 
   if(!withGPS.length){
     rmsg.textContent=lang==='mr'?'GPS डेटा नाही. GPS टॅबमध्ये जा.':'No GPS saved yet. Go to GPS tab to capture locations.';
@@ -306,7 +306,7 @@ async function buildRouteUI() {
   document.getElementById('rs-km').textContent=totalKm;
   document.getElementById('rs-time').textContent=estH+'h '+estM+'m';
 
-  // Map button — start from CURRENT location, skip done shops
+  // Map button — start from CURRENT location, skip done customers
   const pendingCoords=route.map(s=>s.lat+','+s.lng);
   const mapsUrl=pendingCoords.length
     ? 'https://www.google.com/maps/dir/My+Location/'+pendingCoords.join('/')
@@ -342,7 +342,7 @@ async function buildRouteUI() {
 
   if(noGPS.length){
     html+=`<div style="margin-top:12px;padding:12px 14px;background:#fff8e1;border:1.5px solid #ffe082;border-radius:14px">
-      <div style="font-size:11px;font-weight:800;color:#7a4800;margin-bottom:6px">⚠ ${noGPS.length} ${lang==='mr'?'दुकानांचे GPS नाही':'shops without GPS — not in route'}</div>
+      <div style="font-size:11px;font-weight:800;color:#7a4800;margin-bottom:6px">⚠ ${noGPS.length} ${lang==='mr'?'ग्राहकांचे GPS नाही':'customers without GPS — not in route'}</div>
       ${noGPS.map(s=>`<div style="font-size:12px;font-family:monospace;color:#7a4800;padding:2px 0">• ${s.name}</div>`).join('')}
     </div>`;
   }
@@ -361,34 +361,34 @@ async function markDelivered(shopId, shopName) {
 }
 
 // ── GPS CAPTURE ──
-function filterShops(){ renderShopList(allShops.filter(s=>(s.name+' '+(s.area||'')).toLowerCase().includes(document.getElementById('srch').value.toLowerCase()))); }
+function filterCustomers(){ renderCustomerList(allCustomers.filter(s=>(s.name+' '+(s.area||'')).toLowerCase().includes(document.getElementById('srch').value.toLowerCase()))); }
 
-function renderShopList(list) {
-  const el=document.getElementById('shopList');
-  if(!list.length){ el.innerHTML=`<div style="padding:10px;font-size:12px;color:#8a7a6a;font-family:monospace">${lang==='mr'?'दुकान सापडले नाही':'No shops found.'}</div>`; return; }
+function renderCustomerList(list) {
+  const el=document.getElementById('customerList');
+  if(!list.length){ el.innerHTML=`<div style="padding:10px;font-size:12px;color:#8a7a6a;font-family:monospace">${lang==='mr'?'ग्राहक सापडला नाही':'No customers found.'}</div>`; return; }
   el.innerHTML=list.map(s=>`
-    <div class="si ${selShop?.shop_id==s.shop_id?'on':''} ${s.lat?'gps-saved':''}" onclick="pickShop('${s.shop_id}')">
+    <div class="si ${selCustomer?.shop_id==s.shop_id?'on':''} ${s.lat?'gps-saved':''}" onclick="pickShop('${s.shop_id}')">
       <div style="flex:1"><div class="si-n">${s.name}</div><div class="si-a">${s.area||''}</div></div>
       <div style="font-size:11px;font-weight:700;color:${s.lat?'#2d7a4f':'#c8382a'}">${s.lat?'✅':'⚠'}</div>
     </div>`).join('');
 }
 
 function pickShop(id){
-  selShop=allShops.find(s=>s.shop_id==id); captured=null;
+  selCustomer=allCustomers.find(s=>s.shop_id==id); captured=null;
   document.getElementById('saveBtn').style.display='none';
   document.getElementById('gps-msg').style.display='none';
-  document.getElementById('selName').textContent=selShop.name;
-  document.getElementById('selArea').textContent='📍 '+(selShop.area||'');
-  document.getElementById('selStatus').textContent=selShop.lat?`GPS: ${selShop.lat}, ${selShop.lng}`:(lang==='mr'?'GPS नाही — खाली घ्या':'No GPS — capture below');
+  document.getElementById('selName').textContent=selCustomer.name;
+  document.getElementById('selArea').textContent='📍 '+(selCustomer.area||'');
+  document.getElementById('selStatus').textContent=selCustomer.lat?`GPS: ${selCustomer.lat}, ${selCustomer.lng}`:(lang==='mr'?'GPS नाही — खाली घ्या':'No GPS — capture below');
   document.getElementById('selBox').style.display='block';
-  renderShopList(allShops);
+  renderCustomerList(allCustomers);
   document.getElementById('selBox').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
 function gMsg(txt,type){ const el=document.getElementById('gps-msg'); el.textContent=txt; el.className='msg '+type; el.style.display='block'; }
 
 function doGPS(){
-  if(!selShop){ gMsg(lang==='mr'?'प्रथम दुकान निवडा':'Select a shop first','er'); return; }
+  if(!selCustomer){ gMsg(lang==='mr'?'प्रथम ग्राहक निवडा':'Select a customer first','er'); return; }
   if(!navigator.geolocation){ gMsg('GPS not available.','er'); return; }
   const btn=document.getElementById('gpsBtn'); btn.disabled=true;
   btn.innerHTML=`⏳ ${lang==='mr'?'स्थान मिळत आहे…':'Getting location…'}`;
@@ -407,14 +407,14 @@ function doGPS(){
 }
 
 async function doSave(){
-  if(!captured||!selShop) return;
+  if(!captured||!selCustomer) return;
   const btn=document.getElementById('saveBtn'); btn.textContent=lang==='mr'?'जतन होत आहे…':'Saving…'; btn.disabled=true;
-  const res=await apiPost({action:'saveGPS',shop_id:selShop.shop_id,lat:captured.lat,lng:captured.lng,driver});
+  const res=await apiPost({action:'saveGPS',shop_id:selCustomer?.shop_id,lat:captured.lat,lng:captured.lng,driver});
   if(res.ok){
-    selShop.lat=captured.lat; selShop.lng=captured.lng;
-    gMsg(`✅ ${lang==='mr'?'जतन झाले':'Saved'}!\n${selShop.name}\n${captured.lat}, ${captured.lng}`,'ok');
+    selCustomer.lat=captured.lat; selCustomer.lng=captured.lng;
+    gMsg(`✅ ${lang==='mr'?'जतन झाले':'Saved'}!\n${selCustomer.name}\n${captured.lat}, ${captured.lng}`,'ok');
     document.getElementById('selStatus').textContent=`✅ ${captured.lat}, ${captured.lng}`;
-    captured=null; renderShopList(allShops);
+    captured=null; renderCustomerList(allCustomers);
   } else {
     gMsg('❌ Save failed: '+(res.error||'unknown'),'er');
   }
