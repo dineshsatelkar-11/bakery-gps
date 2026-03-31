@@ -26,8 +26,8 @@
     }).join('&');
   }
 
-  function sbGet(table, where, order) {
-    var url = BASE + '/' + table + '?select=*';
+  function sbGet(table, where, order, select) {
+    var url = BASE + '/' + table + '?select=' + (select || '*');
     if (where && Object.keys(where).length) url += '&' + filters(where);
     if (order) url += '&order=' + order;
     return fetch(url, { headers: hdrs() })
@@ -37,12 +37,12 @@
 
   // Fetches ALL rows by paginating in batches of 1000.
   // Needed for large tables (Supabase default max is 1000 rows per request).
-  function fetchAll(table, where, order) {
+  function fetchAll(table, where, order, select) {
     var PAGE = 1000;
     var results = [];
 
     function nextPage(offset) {
-      var url = BASE + '/' + table + '?select=*';
+      var url = BASE + '/' + table + '?select=' + (select || '*');
       if (where && Object.keys(where).length) url += '&' + filters(where);
       if (order) url += '&order=' + order;
       url += '&limit=' + PAGE + '&offset=' + offset;
@@ -116,11 +116,15 @@
   window.api = function (p) {
     switch (p.action) {
 
-      case 'getShops':
-        // Driver passes their name → single filtered request (~50–200 rows).
-        // Admin passes nothing → paginated fetch of all shops.
-        if (p.driver) return sbGet('shops', { assigned_driver: p.driver }, 'name');
-        return fetchAll('shops', {}, 'name');
+      case 'getShops': {
+        // Embed driver name via FK join so callers get c.driver.name
+        var shopSel = '*,driver:drivers!assigned_driver_id(id,name)';
+        // Driver app passes driverId (preferred) or falls back to name string
+        if (p.driverId) return sbGet('shops', { assigned_driver_id: p.driverId }, 'name', shopSel);
+        if (p.driver)   return sbGet('shops', { assigned_driver: p.driver }, 'name', shopSel);
+        // Admin: paginated fetch of all shops
+        return fetchAll('shops', {}, 'name', shopSel);
+      }
 
       case 'getOrders': {
         var where = { date: p.date };
