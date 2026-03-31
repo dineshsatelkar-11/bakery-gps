@@ -130,16 +130,17 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
 
     <!-- Upload zone — file input scoped ONLY to this div -->
     <div class="upload-zone" id="uploadZone" onclick="document.getElementById('xlsFile').click()">
-      <input type="file" id="xlsFile" accept=".xls,.xlsx" onchange="handleFileSelect(this)" style="display:none">
+      <input type="file" id="xlsFile" accept=".xls,.xlsx,.csv" onchange="handleFileSelect(this)" style="display:none">
       <div style="font-size:28px;margin-bottom:6px" id="uploadIcon">📋</div>
       <div style="font-size:13px;font-weight:700;color:#4a2f14;margin-bottom:3px" id="uploadLabel">Tap to upload Delivery Challan</div>
-      <div style="font-size:11px;color:#8a7a6a;font-family:monospace">.xls / .xlsx · Zoho Books export</div>
+      <div style="font-size:11px;color:#8a7a6a;font-family:monospace">.xls / .xlsx / .csv · Zoho Books export</div>
     </div>
 
     <div id="xlsMsg" style="display:none" class="msg ok"></div>
 
     <!-- Step 1: Preview parsed data -->
     <button class="btn btn-green" id="previewBtn" style="display:none" onclick="doPreview()">🔍 Preview &amp; Validate Orders</button>
+    <button class="btn btn-grey" id="clearUploadBtn" style="display:none" onclick="clearUpload()">✕ Clear / Upload New File</button>
   </div>
 
   <!-- VALIDATION PREVIEW (shown before save) -->
@@ -210,7 +211,15 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
 
 <!-- SUMMARY -->
 <div class="page" id="pg-summary">
-  <div class="filter-row"><input type="date" id="f-sum-date" onchange="loadSummary()" style="margin-bottom:0"></div>
+  <div class="filter-row">
+    <input type="date" id="f-sum-date" onchange="loadSummary()" style="margin-bottom:0">
+    <select id="f-sum-driver" onchange="loadSummary()" style="margin-bottom:0">
+      <option value="">All Drivers</option>
+    </select>
+  </div>
+  <div class="filter-row">
+    <input type="text" id="f-sum-filter2" placeholder="Filter shops (e.g. Tea Post)…" oninput="loadSummary()" style="margin-bottom:0">
+  </div>
   <button class="btn btn-grey" onclick="loadSummary()">Refresh</button>
   <div id="summaryBody"></div>
 </div>
@@ -612,10 +621,16 @@ function handleFileSelect(inp){ if(inp.files&&inp.files[0]) processXlsFile(inp.f
 function processXlsFile(file){
   var msg=document.getElementById('xlsMsg');
   msg.textContent='Reading file…';msg.className='msg in';msg.style.display='block';
+  var isCsv=file.name.toLowerCase().endsWith('.csv');
   var reader=new FileReader();
   reader.onload=function(e){
     try{
-      var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true});
+      var wb;
+      if(isCsv){
+        wb=XLSX.read(e.target.result,{type:'string',cellDates:true,dateNF:'YYYY-MM-DD'});
+      } else {
+        wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true});
+      }
       var rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,dateNF:'YYYY-MM-DD'});
       if(!rows||rows.length<2){msg.textContent='No data found.';msg.className='msg er';return;}
       var H=rows[0].map(function(h){return(h||'').toString().trim();});
@@ -659,12 +674,26 @@ function processXlsFile(file){
       document.getElementById('uploadLabel').textContent=file.name+' · '+rawChallans.length+' challans';
       zone.classList.add('has-file');
       document.getElementById('previewBtn').style.display='block';
+      document.getElementById('clearUploadBtn').style.display='block';
       msg.textContent='✅ File loaded: '+rawChallans.length+' challans, '+
         order.reduce(function(n,k){return n+map[k].items.length;},0)+' line items.\nTap "Preview & Validate" to review before saving.';
       msg.className='msg ok';
     }catch(err){msg.textContent='Error reading file: '+err.message;msg.className='msg er';}
   };
-  reader.readAsArrayBuffer(file);
+  if(isCsv) reader.readAsText(file);
+  else reader.readAsArrayBuffer(file);
+}
+
+function clearUpload(){
+  rawChallans=[];parsedOrders=[];
+  document.getElementById('uploadIcon').textContent='📋';
+  document.getElementById('uploadLabel').textContent='Tap to upload Delivery Challan';
+  zone.classList.remove('has-file');
+  document.getElementById('xlsFile').value='';
+  document.getElementById('previewBtn').style.display='none';
+  document.getElementById('clearUploadBtn').style.display='none';
+  document.getElementById('previewSection').style.display='none';
+  document.getElementById('xlsMsg').style.display='none';
 }
 
 /* ── STEP 2: PREVIEW & VALIDATE ── */
@@ -694,7 +723,7 @@ function doPreview(){
       items:       itemsStr,
       qty:         qtyStr,
       raw_items:   c.items,
-      date:        nextDay(c.dc_date||todayStr()),
+      date:        c.dc_date||todayStr(),
       dc_num:      c.dc_num,
       is_new:      !cust,
       matched:     !!cust
@@ -812,6 +841,7 @@ function doSave(){
       document.getElementById('uploadLabel').textContent='Tap to upload Delivery Challan';
       document.getElementById('xlsFile').value='';
       document.getElementById('previewBtn').style.display='none';
+      document.getElementById('clearUploadBtn').style.display='none';
       var xlsMsg=document.getElementById('xlsMsg');
       xlsMsg.textContent='⏭ All '+parsedOrders.length+' orders already imported — nothing new to save.';
       xlsMsg.className='msg warn'; xlsMsg.style.display='block';
@@ -853,6 +883,7 @@ function doSave(){
       document.getElementById('uploadLabel').textContent='Tap to upload Delivery Challan';
       document.getElementById('xlsFile').value='';
       document.getElementById('previewBtn').style.display='none';
+      document.getElementById('clearUploadBtn').style.display='none';
       document.getElementById('previewSection').style.display='none';
       var msg=document.getElementById('xlsMsg');
       var saved=res.ok?toSave.length:0;
@@ -1071,6 +1102,8 @@ function bulkAssignQueue(){
 function loadSummary(){
   var el=document.getElementById('summaryBody');
   el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
+  var driverFilter=document.getElementById('f-sum-driver')?document.getElementById('f-sum-driver').value:'';
+  var shopFilter=(document.getElementById('f-sum-filter2')?document.getElementById('f-sum-filter2').value:'').toLowerCase().trim();
   api({action:'getOrders',date:document.getElementById('f-sum-date').value||todayStr()}).then(function(data){
     if(!Array.isArray(data)||!data.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders for this date.</div>';return;}
 
@@ -1083,47 +1116,71 @@ function loadSummary(){
       return r;
     }
 
-    /* Grand totals */
-    var grand={};
-    data.forEach(function(o){Object.entries(parseIQ(o)).forEach(function(e){grand[e[0]]=(grand[e[0]]||0)+e[1];});});
-
-    /* Group by driver */
-    var byD={};
-    data.forEach(function(o){var d=o.driver||o.assigned_driver||'Unknown';if(!byD[d])byD[d]=[];byD[d].push(o);});
-    var sorted=Object.keys(byD).sort(function(a,b){
-      var ai=DRIVERS.indexOf(a),bi=DRIVERS.indexOf(b);
-      return (ai<0?99:ai)-(bi<0?99:bi);
-    });
-
-    var h='<div class="card" style="margin-bottom:10px"><div class="lbl">Grand Total</div>'+
-      '<div style="font-size:13px;font-weight:800;color:#4a2f14;margin-bottom:8px">'+data.length+' orders · '+sorted.length+' drivers</div>'+
-      Object.entries(grand).sort(function(a,b){return b[1]-a[1];}).map(function(e){
-        return '<div class="summary-row"><span>'+esc(e[0])+'</span><b>× '+e[1]+'</b></div>';
-      }).join('')+'</div>';
-
-    sorted.forEach(function(drv){
-      var ords=byD[drv],dItems={};
-      ords.forEach(function(o){Object.entries(parseIQ(o)).forEach(function(e){dItems[e[0]]=(dItems[e[0]]||0)+e[1];});});
-      var dc=DRIVERS.indexOf(drv)>=0?'DC-'+drv:'DC-Logistics';
-      h+='<div class="summary-card">'+
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
-          '<span class="badge '+dc+'" style="font-size:12px;padding:5px 12px">'+esc(drv)+'</span>'+
-          '<span style="font-size:12px;font-weight:700;color:#4a2f14">'+ords.length+' shops</span>'+
-        '</div>'+
-        '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px">'+
-          Object.entries(dItems).sort(function(a,b){return b[1]-a[1];}).map(function(e){
-            return '<span style="background:#f5ede0;border:1px solid #e8dfd2;border-radius:6px;padding:3px 9px;font-size:11px;font-family:monospace"><b>'+e[1]+'×</b> '+esc(e[0])+'</span>';
-          }).join('')+
-        '</div>'+
-        '<div style="border-top:1px solid #f0e8dc;padding-top:6px">'+
-          ords.map(function(o){
-            var iq=parseIQ(o);
-            var s=Object.entries(iq).map(function(e){return e[1]+'× '+e[0];}).join(', ');
-            return '<div class="summary-row"><span style="font-size:12px;font-weight:700;flex:1">'+esc(o.shop_name)+'</span><span style="font-size:11px;font-family:monospace;color:#4a2f14;text-align:right">'+esc(s)+'</span></div>';
-          }).join('')+
-        '</div>'+
+    function buildSummaryHTML(orders, title, badge){
+      if(!orders.length) return '<div class="card" style="margin-bottom:10px"><div class="lbl">'+esc(title)+'</div><div style="font-size:12px;color:#8a7a6a;font-family:monospace">No orders.</div></div>';
+      var grand={};
+      orders.forEach(function(o){Object.entries(parseIQ(o)).forEach(function(e){grand[e[0]]=(grand[e[0]]||0)+e[1];});});
+      var byD={};
+      orders.forEach(function(o){var d=o.driver||o.assigned_driver||'Unknown';if(!byD[d])byD[d]=[];byD[d].push(o);});
+      var sorted=Object.keys(byD).sort(function(a,b){
+        var ai=DRIVERS.indexOf(a),bi=DRIVERS.indexOf(b);
+        return (ai<0?99:ai)-(bi<0?99:bi);
+      });
+      var h='<div style="font-size:13px;font-weight:900;color:#4a2f14;margin:12px 0 8px;display:flex;align-items:center;gap:8px">'+
+        '<span>'+esc(title)+'</span>'+
+        (badge?'<span class="badge b-logistics">'+esc(badge)+'</span>':'')+
       '</div>';
-    });
+      h+='<div class="card" style="margin-bottom:10px"><div class="lbl">Grand Total</div>'+
+        '<div style="font-size:13px;font-weight:800;color:#4a2f14;margin-bottom:8px">'+orders.length+' orders · '+sorted.length+' drivers</div>'+
+        Object.entries(grand).sort(function(a,b){return b[1]-a[1];}).map(function(e){
+          return '<div class="summary-row"><span>'+esc(e[0])+'</span><b>× '+e[1]+'</b></div>';
+        }).join('')+'</div>';
+      sorted.forEach(function(drv){
+        var ords=byD[drv],dItems={};
+        ords.forEach(function(o){Object.entries(parseIQ(o)).forEach(function(e){dItems[e[0]]=(dItems[e[0]]||0)+e[1];});});
+        var dc=DRIVERS.indexOf(drv)>=0?'DC-'+drv:'DC-Logistics';
+        h+='<div class="summary-card">'+
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
+            '<span class="badge '+dc+'" style="font-size:12px;padding:5px 12px">'+esc(drv)+'</span>'+
+            '<span style="font-size:12px;font-weight:700;color:#4a2f14">'+ords.length+' shops</span>'+
+          '</div>'+
+          '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px">'+
+            Object.entries(dItems).sort(function(a,b){return b[1]-a[1];}).map(function(e){
+              return '<span style="background:#f5ede0;border:1px solid #e8dfd2;border-radius:6px;padding:3px 9px;font-size:11px;font-family:monospace"><b>'+e[1]+'×</b> '+esc(e[0])+'</span>';
+            }).join('')+
+          '</div>'+
+          '<div style="border-top:1px solid #f0e8dc;padding-top:6px">'+
+            ords.map(function(o){
+              var iq=parseIQ(o);
+              var s=Object.entries(iq).map(function(e){return e[1]+'× '+e[0];}).join(', ');
+              return '<div class="summary-row"><span style="font-size:12px;font-weight:700;flex:1">'+esc(o.shop_name)+'</span><span style="font-size:11px;font-family:monospace;color:#4a2f14;text-align:right">'+esc(s)+'</span></div>';
+            }).join('')+
+          '</div>'+
+        '</div>';
+      });
+      return h;
+    }
+
+    // Apply driver filter
+    var mainData = driverFilter ? data.filter(function(o){return (o.driver||o.assigned_driver||'')=== driverFilter;}) : data;
+
+    // Summary 1: All (or driver-filtered)
+    var h = buildSummaryHTML(mainData, driverFilter ? 'Summary · '+driverFilter : 'Summary 1 · All Shops', '');
+
+    // Summary 2: Shop filter (e.g. Tea Post)
+    if(shopFilter){
+      var filtered = mainData.filter(function(o){ return (o.shop_name||'').toLowerCase().indexOf(shopFilter)>=0; });
+      h += '<div style="border-top:2px dashed #e8dfd2;margin:12px 0"></div>';
+      h += buildSummaryHTML(filtered, 'Summary 2 · "'+shopFilter+'" Shops', filtered.length+' shops');
+    } else {
+      // Default: show Tea Post as Summary 2 if any
+      var tpData = mainData.filter(function(o){ return (o.shop_name||'').toLowerCase().indexOf('tea post')>=0; });
+      if(tpData.length){
+        h += '<div style="border-top:2px dashed #e8dfd2;margin:12px 0"></div>';
+        h += buildSummaryHTML(tpData, 'Summary 2 · Tea Post Shops', tpData.length+' shops');
+      }
+    }
+
     el.innerHTML=h;
   });
 }
@@ -1462,7 +1519,7 @@ function populateDriverSelects(list){
   var active=list.filter(function(d){return d.active;});
   var allOpt=active.map(function(d){return '<option value="'+esc(d.name)+'">'+esc(d.name)+'</option>';}).join('');
   // Filter selects — preserve first "All" option
-  ['f-ord-driver','f-del-driver','f-rt-driver','f-gps-driver'].forEach(function(id){
+  ['f-ord-driver','f-del-driver','f-rt-driver','f-gps-driver','f-sum-driver'].forEach(function(id){
     var sel=document.getElementById(id);if(!sel)return;
     var first=sel.options[0].outerHTML;
     sel.innerHTML=first+allOpt;

@@ -3,9 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>Baked — Driver</title>
+<title>Its Baked Driver</title>
 <script src="config.js"></script>
 <script src="api.js"></script>
+<link rel="manifest" href="manifest-driver.json">
+<meta name="theme-color" content="#2d7a4f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Its Baked Driver">
+<link rel="apple-touch-icon" href="icon-driver-192.png">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:440px;margin:0 auto;min-height:100vh}
@@ -133,6 +139,10 @@ input[type=text],input[type=date]{width:100%;padding:11px 14px;border:1.5px soli
       <div class="stat"><div class="stat-n" id="rs-km">0</div><div class="stat-l">KM</div></div>
       <div class="stat"><div class="stat-n" id="rs-time">—</div><div class="stat-l">Est.</div></div>
     </div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button onclick="shuffleRoute()" style="flex:1;padding:9px;border:none;border-radius:10px;background:#1a5fa8;color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif">🔀 Shuffle Stops</button>
+      <button onclick="resetRoute()" id="resetRouteBtn" style="flex:0 0 90px;padding:9px;border:none;border-radius:10px;background:#e8dfd2;color:#4a2f14;font-size:12px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;display:none">↩ Reset</button>
+    </div>
   </div>
   <div id="routeStats" style="display:none"></div>
 
@@ -222,6 +232,7 @@ let allCustomers=[], selCustomer=null, captured=null;
 let orders=[], deliveries={}, routeStarted=false, routeStartTime=null;
 let routeStartLat=null, routeStartLng=null;
 let selectedDate = '';
+let customRoute = null; // null = auto-optimized, array = custom shuffled order
 
 // ── LOAD ──
 async function init() {
@@ -381,6 +392,27 @@ async function startRoute() {
   buildRouteUI();
 }
 
+function shuffleRoute() {
+  const withGPS = allCustomers.filter(s=>s.lat&&s.lng).map(s=>({...s,lat:parseFloat(s.lat),lng:parseFloat(s.lng)}));
+  const pending = withGPS.filter(s=>!deliveries[s.shop_id]);
+  // Fisher-Yates shuffle
+  for(let i=pending.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [pending[i],pending[j]]=[pending[j],pending[i]];
+  }
+  customRoute = pending;
+  const btn=document.getElementById('resetRouteBtn');
+  if(btn) btn.style.display='';
+  buildRouteUI();
+}
+
+function resetRoute() {
+  customRoute = null;
+  const btn=document.getElementById('resetRouteBtn');
+  if(btn) btn.style.display='none';
+  buildRouteUI();
+}
+
 async function buildRouteUI() {
   const rmsg=document.getElementById('route-msg');
   const body=document.getElementById('routeBody');
@@ -406,8 +438,8 @@ async function buildRouteUI() {
   const pending = withGPS.filter(s=>!deliveries[s.shop_id]);
   const done    = withGPS.filter(s=>!!deliveries[s.shop_id]);
 
-  // Build optimised route from pending only
-  const route = nearestNeighbour(HQ, pending);
+  // Build optimised route from pending only (or use custom shuffled order)
+  const route = customRoute ? customRoute.filter(s=>!deliveries[s.shop_id]) : nearestNeighbour(HQ, pending);
   const fullRoute = [...route, ...done]; // pending first then done
 
   // Calc km & time from pending only

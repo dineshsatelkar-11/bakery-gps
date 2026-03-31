@@ -163,14 +163,14 @@
     switch (b.action) {
 
       case 'addShop':
-        return sbPost('shops', {
+        return sbUpsert('shops', {
           shop_id: b.shop_id, customer_id: b.customer_id || b.shop_id,
           name: b.name, address: b.address || '', area: b.area || '',
           assigned_driver: b.assigned_driver || '', mobile: b.mobile || '', flag: b.flag || '',
           lat: b.lat !== '' && b.lat != null ? parseFloat(b.lat) : null,
           lng: b.lng !== '' && b.lng != null ? parseFloat(b.lng) : null,
           last_updated_by: b.last_updated_by || '', last_updated_at: b.last_updated_at || ''
-        });
+        }, 'shop_id');
 
       case 'updateShop':
         return sbPatch('shops', { shop_id: b.shop_id }, {
