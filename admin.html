@@ -425,23 +425,15 @@ function loadProductMaster(){
   });
 }
 
-/* Match by customer_id first (exact Zoho ID), then fuzzy name */
+/* Match by customer_id ONLY (exact Zoho ID — string comparison)
+   No name fallback — if ID not found, it's treated as a new customer */
 function matchCustomer(customer_id, name){
-  if(customer_id){
-    var byId=allCustomers.find(function(c){return (c.customer_id||c.shop_id)===customer_id;});
-    if(byId) return byId;
-  }
-  var q=nrm(name);
-  var exact=allCustomers.filter(function(c){return nrm(c.name)===q;});
-  if(exact.length) return exact[0];
-  var qw=q.split(' ').filter(function(w){return w.length>2;});
-  var best=null,bs=0;
-  allCustomers.forEach(function(c){
-    var sn=nrm(c.name),sc=0;
-    qw.forEach(function(w){if(sn.indexOf(w)>=0)sc+=w.length*2;});
-    if(sc>bs){bs=sc;best=c;}
-  });
-  return bs>=6?best:null;
+  if(!customer_id) return null;
+  // Strict string match — handles cases where sheet returns numeric IDs
+  var sid = String(customer_id).trim();
+  return allCustomers.find(function(c){
+    return String(c.customer_id||c.shop_id||'').trim() === sid;
+  }) || null;
 }
 
 /* ── XLS UPLOAD ── */
@@ -555,8 +547,9 @@ function doPreview(){
     // Collect new products (shown in preview, auto-saved on confirm)
     c.items.forEach(function(it){
       if(!it.product_id||seenNewProd[it.product_id])return;
-      var exists=allProducts.find(function(p){return p.product_id===it.product_id;});
-      if(!exists){seenNewProd[it.product_id]=true;autoNewProducts.push({product_id:it.product_id,name:it.name,desc:it.desc||''});}
+      var sid=String(it.product_id).trim();
+      var exists=allProducts.find(function(p){return String(p.product_id||'').trim()===sid;});
+      if(!exists){seenNewProd[sid]=true;autoNewProducts.push({product_id:sid,name:it.name,desc:it.desc||''});}
     });
   });
 
@@ -631,20 +624,33 @@ function doSave(){
   var btn=document.getElementById('confirmSaveBtn');
   btn.textContent='Saving…';btn.disabled=true;
 
-  // Auto-save any new products first (fire and forget)
+  // Collect new products across all orders (deduplicated by product_id)
   var seenNewProd={};
+  var newProdsToSave=[];
   parsedOrders.forEach(function(o){
     (o.raw_items||[]).forEach(function(it){
-      if(!it.product_id||seenNewProd[it.product_id])return;
-      var exists=allProducts.find(function(p){return p.product_id===it.product_id;});
+      if(!it.product_id||seenNewProd[it.product_id]) return;
+      var sid=String(it.product_id).trim();
+      var exists=allProducts.find(function(p){return String(p.product_id||'').trim()===sid;});
       if(!exists){
-        seenNewProd[it.product_id]=true;
-        apiPost({action:'addProduct',product_id:it.product_id,name:it.name,category:'',price:'',unit:'Pieces',description:it.desc||''});
-        allProducts.push({product_id:it.product_id,name:it.name,category:'',price:'',unit:'Pieces',description:it.desc||''});
+        seenNewProd[sid]=true;
+        newProdsToSave.push({product_id:sid,name:it.name,category:'',price:'',unit:'Pieces',description:it.desc||''});
+        // Add to local cache immediately so duplicates don't re-queue
+        allProducts.push({product_id:sid,name:it.name,category:'',price:'',unit:'Pieces',description:it.desc||''});
       }
     });
   });
 
+  // Fire product saves (don't wait — if script not redeployed yet, orders still save)
+  newProdsToSave.forEach(function(p){
+    apiPost({action:'addProduct',product_id:p.product_id,name:p.name,
+      category:p.category,price:p.price,unit:p.unit,description:p.description})
+    .then(function(res){
+      if(res&&res.error) console.warn('addProduct failed for',p.product_id,':',res.error);
+    });
+  });
+
+  // Save orders sequentially
   var ok=0,fail=0,chain=Promise.resolve();
   parsedOrders.forEach(function(o){
     chain=chain.then(function(){
@@ -664,18 +670,16 @@ function doSave(){
 
   chain.then(function(){
     btn.textContent='✅ Confirm & Save All';btn.disabled=false;
-    // Reset upload UI
     zone.classList.remove('has-file');
     document.getElementById('uploadIcon').textContent='📋';
     document.getElementById('uploadLabel').textContent='Tap to upload Delivery Challan';
     document.getElementById('xlsFile').value='';
     document.getElementById('previewBtn').style.display='none';
     document.getElementById('previewSection').style.display='none';
-    var newProds=Object.keys(seenNewProd).length;
     var msg=document.getElementById('xlsMsg');
     msg.textContent='✅ '+ok+' orders saved'+(fail?' ('+fail+' failed)':'')+'.'
       +(newCustQueue.length?'\n🆕 '+newCustQueue.length+' new customers → tap "⏳ New" tab':'')
-      +(newProds?'\n📦 '+newProds+' new products auto-added':'');
+      +(newProdsToSave.length?'\n📦 '+newProdsToSave.length+' new products added to Products sheet':'');
     msg.className='msg ok';msg.style.display='block';
     rawChallans=[];parsedOrders=[];
     if(newCustQueue.length) document.getElementById('tb-approve').textContent='⏳ New ('+newCustQueue.length+')';
