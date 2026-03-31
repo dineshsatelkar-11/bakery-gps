@@ -60,10 +60,19 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
 .summary-row{font-size:12px;font-family:monospace;padding:5px 0;border-bottom:1px solid #f5ede0;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .filter-row{display:flex;gap:8px;margin-bottom:8px}
 .filter-row select,.filter-row input{margin-bottom:0}
-.upload-zone{border:2px dashed #c8a87a;border-radius:14px;padding:22px 16px;text-align:center;background:#fffaf4;cursor:pointer;transition:border-color .2s;margin-bottom:10px;position:relative}
+.upload-zone{border:2px dashed #c8a87a;border-radius:14px;padding:22px 16px;text-align:center;background:#fffaf4;cursor:pointer;transition:border-color .2s;margin-bottom:10px}
 .upload-zone:hover,.upload-zone.drag{border-color:#4a2f14;background:#f5ede0}
-.upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
 .upload-zone.has-file{border-color:#2d7a4f;background:#f0faf4}
+/* Preview section */
+.preview-row{background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:11px 14px;margin-bottom:8px}
+.preview-row.new-cust{border-color:#ffc87a;background:#fffaf4}
+.preview-row.no-driver{border-color:#f0b0b0;background:#fff8f8}
+.pr-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px}
+.pr-name{font-size:13px;font-weight:800;color:#4a2f14}
+.pr-meta{font-size:10px;color:#8a7a6a;font-family:monospace;margin-bottom:6px}
+.pr-items{font-size:11px;font-family:monospace;background:#f5ede0;padding:6px 10px;border-radius:8px;line-height:1.8}
+.pr-driver-row{display:flex;align-items:center;gap:8px;margin-top:8px}
+.pr-driver-row select{flex:1;padding:7px 10px;font-size:12px;margin-bottom:0;border:1.5px solid #e8dfd2;border-radius:8px;background:#f5ede0;outline:none}
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:flex;align-items:flex-end;justify-content:center}
 .modal{background:#f5ede0;border-radius:20px 20px 0 0;padding:20px 16px 40px;width:100%;max-width:520px;max-height:92vh;overflow-y:auto}
 .modal-title{font-size:17px;font-weight:900;color:#4a2f14;margin-bottom:4px}
@@ -95,18 +104,42 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
 <div class="page on" id="pg-orders">
   <div class="card">
     <div class="lbl">Import Delivery Challan</div>
-    <div class="upload-zone" id="uploadZone">
-      <input type="file" id="xlsFile" accept=".xls,.xlsx" onchange="handleFileSelect(this)">
+
+    <!-- Upload zone — file input scoped ONLY to this div -->
+    <div class="upload-zone" id="uploadZone" onclick="document.getElementById('xlsFile').click()">
+      <input type="file" id="xlsFile" accept=".xls,.xlsx" onchange="handleFileSelect(this)" style="display:none">
       <div style="font-size:28px;margin-bottom:6px" id="uploadIcon">📋</div>
       <div style="font-size:13px;font-weight:700;color:#4a2f14;margin-bottom:3px" id="uploadLabel">Tap to upload Delivery Challan</div>
       <div style="font-size:11px;color:#8a7a6a;font-family:monospace">.xls / .xlsx · Zoho Books export</div>
     </div>
+
     <div id="xlsMsg" style="display:none" class="msg ok"></div>
+
     <div class="lbl" style="margin-bottom:4px">Delivery Date</div>
     <input type="date" id="ord-date">
-    <button class="btn btn-green" id="parseBtn" style="display:none" onclick="doParse()">⚡ Import &amp; Save Orders</button>
+
+    <!-- Step 1: Preview parsed data -->
+    <button class="btn btn-green" id="previewBtn" style="display:none" onclick="doPreview()">🔍 Preview &amp; Validate Orders</button>
   </div>
-  <div style="display:flex;align-items:center;justify-content:space-between;margin:4px 0 8px">
+
+  <!-- VALIDATION PREVIEW (shown before save) -->
+  <div id="previewSection" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-size:13px;font-weight:800;color:#4a2f14">📋 Order Preview</div>
+      <div style="display:flex;gap:6px">
+        <div id="previewCountBadge" class="badge b-ok"></div>
+        <div id="previewNewBadge" class="badge b-logistics" style="display:none"></div>
+      </div>
+    </div>
+    <div id="previewMsg" style="display:none" class="msg warn"></div>
+    <div id="previewList"></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="btn btn-green" id="confirmSaveBtn" onclick="doSave()" style="margin-bottom:0;flex:1">✅ Confirm &amp; Save All</button>
+      <button class="btn btn-grey" onclick="cancelPreview()" style="margin-bottom:0;flex:0 0 90px">✕ Cancel</button>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;margin:12px 0 8px">
     <div style="font-size:13px;font-weight:800;color:#4a2f14">Saved Orders</div>
     <button class="btn-sm btn-grey" onclick="loadOrders()">Refresh</button>
   </div>
@@ -409,16 +442,21 @@ function matchCustomer(customer_id, name){
 }
 
 /* ── XLS UPLOAD ── */
-var rawChallans=[];
-var zone=document.getElementById('uploadZone');
-zone.addEventListener('dragover',function(e){e.preventDefault();zone.classList.add('drag');});
-zone.addEventListener('dragleave',function(){zone.classList.remove('drag');});
-zone.addEventListener('drop',function(e){e.preventDefault();zone.classList.remove('drag');if(e.dataTransfer.files[0])processXlsFile(e.dataTransfer.files[0]);});
-function handleFileSelect(inp){if(inp.files&&inp.files[0])processXlsFile(inp.files[0]);}
+var rawChallans = [];
+var parsedOrders = []; // holds validated orders ready for save
+var zone = document.getElementById('uploadZone');
+zone.addEventListener('dragover', function(e){ e.preventDefault(); zone.classList.add('drag'); });
+zone.addEventListener('dragleave', function(){ zone.classList.remove('drag'); });
+zone.addEventListener('drop', function(e){
+  e.preventDefault(); zone.classList.remove('drag');
+  if(e.dataTransfer.files[0]) processXlsFile(e.dataTransfer.files[0]);
+});
+function handleFileSelect(inp){ if(inp.files&&inp.files[0]) processXlsFile(inp.files[0]); }
 
+/* ── STEP 1: READ FILE ── */
 function processXlsFile(file){
   var msg=document.getElementById('xlsMsg');
-  msg.textContent='Reading…';msg.className='msg in';msg.style.display='block';
+  msg.textContent='Reading file…';msg.className='msg in';msg.style.display='block';
   var reader=new FileReader();
   reader.onload=function(e){
     try{
@@ -426,88 +464,186 @@ function processXlsFile(file){
       var rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,dateNF:'YYYY-MM-DD'});
       if(!rows||rows.length<2){msg.textContent='No data found.';msg.className='msg er';return;}
       var H=rows[0].map(function(h){return(h||'').toString().trim();});
-      var C={dc_num:H.indexOf('Delivery Challan Number'),dc_date:H.indexOf('Challan Date'),
-             cust_id:H.indexOf('Customer ID'),cust_name:H.indexOf('Customer Name'),
-             item_name:H.indexOf('Item Name'),prod_id:H.indexOf('Product ID'),
-             item_desc:H.indexOf('Item Desc'),qty:H.indexOf('QuantityOrdered')};
+      var C={
+        dc_num:   H.indexOf('Delivery Challan Number'),
+        dc_date:  H.indexOf('Challan Date'),
+        cust_id:  H.indexOf('Customer ID'),
+        cust_name:H.indexOf('Customer Name'),
+        item_name:H.indexOf('Item Name'),
+        prod_id:  H.indexOf('Product ID'),
+        item_desc:H.indexOf('Item Desc'),
+        qty:      H.indexOf('QuantityOrdered')
+      };
       var miss=Object.keys(C).filter(function(k){return C[k]===-1;});
-      if(miss.length){msg.textContent='Missing columns: '+miss.join(', ');msg.className='msg er';return;}
+      if(miss.length){msg.textContent='Missing columns:\n'+miss.join(', ');msg.className='msg er';return;}
       var map={},order=[];
       for(var i=1;i<rows.length;i++){
-        var r=rows[i];if(!r||r.length<5)continue;
-        var dc=(r[C.dc_num]||'').toString().trim();if(!dc)continue;
-        if(!map[dc]){map[dc]={dc_num:dc,dc_date:r[C.dc_date]?r[C.dc_date].toString().substring(0,10):todayStr(),customer_id:(r[C.cust_id]||'').toString().trim(),customer_name:(r[C.cust_name]||'').toString().trim(),items:[]};order.push(dc);}
+        var r=rows[i]; if(!r||r.length<5) continue;
+        var dc=(r[C.dc_num]||'').toString().trim(); if(!dc) continue;
+        if(!map[dc]){
+          map[dc]={
+            dc_num:dc,
+            dc_date:r[C.dc_date]?r[C.dc_date].toString().substring(0,10):todayStr(),
+            customer_id:(r[C.cust_id]||'').toString().trim(),
+            customer_name:(r[C.cust_name]||'').toString().trim(),
+            items:[]
+          };
+          order.push(dc);
+        }
         var qty=parseInt(r[C.qty])||0;
-        if(qty>0)map[dc].items.push({name:(r[C.item_name]||'').toString().trim(),product_id:(r[C.prod_id]||'').toString().trim(),desc:(r[C.item_desc]||'').toString().trim(),qty:qty});
+        if(qty>0) map[dc].items.push({
+          name:(r[C.item_name]||'').toString().trim(),
+          product_id:(r[C.prod_id]||'').toString().trim(),
+          desc:(r[C.item_desc]||'').toString().trim(),
+          qty:qty
+        });
       }
       rawChallans=order.map(function(k){return map[k];}).filter(function(c){return c.items.length>0;});
-      if(!rawChallans.length){msg.textContent='No valid challan rows.';msg.className='msg er';return;}
+      if(!rawChallans.length){msg.textContent='No valid challan rows found.';msg.className='msg er';return;}
       document.getElementById('uploadIcon').textContent='✅';
       document.getElementById('uploadLabel').textContent=file.name+' · '+rawChallans.length+' challans';
       zone.classList.add('has-file');
-      document.getElementById('parseBtn').style.display='block';
-      msg.textContent='Loaded '+rawChallans.length+' challans. Tap Import to save.';
+      document.getElementById('previewBtn').style.display='block';
+      msg.textContent='✅ File loaded: '+rawChallans.length+' challans, '+
+        order.reduce(function(n,k){return n+map[k].items.length;},0)+' line items.\nTap "Preview & Validate" to review before saving.';
       msg.className='msg ok';
-    }catch(err){msg.textContent='Error: '+err.message;msg.className='msg er';}
+    }catch(err){msg.textContent='Error reading file: '+err.message;msg.className='msg er';}
   };
   reader.readAsArrayBuffer(file);
 }
 
-/* ── IMPORT & SAVE ──
-   Flow:
-   1. Match challan customer_id → allCustomers
-   2. Matched: save order with customer's assigned_driver
-   3. Not matched: save order as Logistics, push to newCustQueue for approval
-*/
-function doParse(){
-  if(!rawChallans.length)return;
+/* ── STEP 2: PREVIEW & VALIDATE ── */
+function doPreview(){
+  if(!rawChallans.length) return;
   var needCust=!allCustomers.length, needProd=!allProducts.length;
   if(needCust||needProd){
-    Promise.all([needCust?loadCustomerMaster():Promise.resolve(), needProd?loadProductMaster():Promise.resolve()]).then(doParse);
+    var btn=document.getElementById('previewBtn');
+    btn.textContent='Loading data…';btn.disabled=true;
+    Promise.all([needCust?loadCustomerMaster():Promise.resolve(), needProd?loadProductMaster():Promise.resolve()])
+    .then(function(){btn.textContent='🔍 Preview & Validate Orders';btn.disabled=false;doPreview();});
     return;
   }
   var dateInput=document.getElementById('ord-date').value||todayStr();
-  var toSave=[],seenNewCust={},seenNewProd={};
+  parsedOrders=[];
   newCustQueue=[];
-  var autoSavedProducts=[];
+  var seenNewCust={},seenNewProd={},autoNewProducts=[];
 
   rawChallans.forEach(function(c){
     var cust=matchCustomer(c.customer_id,c.customer_name);
     var driver=cust?(cust.assigned_driver||LOGISTICS):LOGISTICS;
     var itemsStr=c.items.map(function(it){return it.name+(it.desc?' ('+it.desc+')':'');}).join(', ');
     var qtyStr=c.items.map(function(it){return it.qty;}).join(', ');
-    toSave.push({
-      customer_id:cust?(cust.customer_id||cust.shop_id):c.customer_id,
-      shop_name:  cust?cust.name:c.customer_name,
-      driver:driver, items:itemsStr, qty:qtyStr,
-      date:c.dc_date||dateInput, dc_num:c.dc_num, is_new:!cust
+    parsedOrders.push({
+      customer_id: cust?(cust.customer_id||cust.shop_id):c.customer_id,
+      shop_name:   cust?cust.name:c.customer_name,
+      driver:      driver,
+      items:       itemsStr,
+      qty:         qtyStr,
+      raw_items:   c.items,
+      date:        c.dc_date||dateInput,
+      dc_num:      c.dc_num,
+      is_new:      !cust,
+      matched:     !!cust
     });
     if(!cust&&!seenNewCust[c.customer_id]){
       seenNewCust[c.customer_id]=true;
       newCustQueue.push({customer_id:c.customer_id,customer_name:c.customer_name,dc_num:c.dc_num,dc_date:c.dc_date||dateInput});
     }
-    // Auto-save new products directly to DB (no approval queue)
+    // Collect new products (shown in preview, auto-saved on confirm)
     c.items.forEach(function(it){
+      if(!it.product_id||seenNewProd[it.product_id])return;
+      var exists=allProducts.find(function(p){return p.product_id===it.product_id;});
+      if(!exists){seenNewProd[it.product_id]=true;autoNewProducts.push({product_id:it.product_id,name:it.name,desc:it.desc||''});}
+    });
+  });
+
+  // Show preview section
+  document.getElementById('previewSection').style.display='block';
+  document.getElementById('previewSection').scrollIntoView({behavior:'smooth',block:'start'});
+
+  // Badges
+  var matched=parsedOrders.filter(function(o){return o.matched;}).length;
+  var unmatched=parsedOrders.length-matched;
+  document.getElementById('previewCountBadge').textContent=parsedOrders.length+' orders · '+matched+' matched';
+  document.getElementById('previewCountBadge').className='badge b-ok';
+  var nb=document.getElementById('previewNewBadge');
+  if(unmatched>0){nb.textContent=unmatched+' new customers';nb.style.display='inline-block';}
+  else nb.style.display='none';
+
+  // Warnings
+  var pwarn=document.getElementById('previewMsg');
+  var warns=[];
+  if(unmatched>0) warns.push('⚠️ '+unmatched+' customers not in your list → will go to Logistics queue');
+  if(autoNewProducts.length>0) warns.push('📦 '+autoNewProducts.length+' new products will be auto-added: '+autoNewProducts.map(function(p){return p.name;}).join(', '));
+  if(warns.length){pwarn.textContent=warns.join('\n');pwarn.style.display='block';}
+  else pwarn.style.display='none';
+
+  // Render preview rows — each row shows items and driver (editable for unmatched)
+  document.getElementById('previewList').innerHTML=parsedOrders.map(function(o,i){
+    var itemLines=o.raw_items.map(function(it){
+      return '<span style="display:inline-flex;align-items:center;gap:4px;background:#f5ede0;border:1px solid #e8dfd2;border-radius:6px;padding:2px 8px;font-size:11px;margin:2px">'
+        +'<b>'+it.qty+'×</b> '+esc(it.name)+(it.desc?'<span style="color:#8a7a6a"> ('+esc(it.desc)+')</span>':'')+'</span>';
+    }).join('');
+    var rowClass=o.is_new?'preview-row new-cust':'preview-row';
+    var drvBadge=DRIVERS.indexOf(o.driver)>=0?'DC-'+o.driver:'DC-Logistics';
+    return '<div class="'+rowClass+'" id="pr-'+i+'">'+
+      '<div class="pr-head">'+
+        '<div>'+
+          '<div class="pr-name">'+esc(o.shop_name)+'</div>'+
+          '<div class="pr-meta">'+
+            esc(o.dc_num)+' · '+esc(o.date)+
+            (o.is_new?' · <span style="color:#c8864a;font-weight:800">NEW CUSTOMER</span>':'')+
+          '</div>'+
+        '</div>'+
+        '<span class="badge '+drvBadge+'" id="pr-drv-badge-'+i+'">'+esc(o.driver)+'</span>'+
+      '</div>'+
+      '<div class="pr-items">'+itemLines+'</div>'+
+      // Editable driver for unmatched or any order
+      '<div class="pr-driver-row">'+
+        '<span style="font-size:11px;color:#8a7a6a;white-space:nowrap">Driver:</span>'+
+        '<select onchange="updatePreviewDriver('+i+',this.value)">'+
+          (o.driver===LOGISTICS?'<option value="Logistics" selected>Logistics (unassigned)</option>':'')+
+          DRIVERS.map(function(d){return '<option value="'+d+'"'+(o.driver===d?' selected':'')+'>'+d+'</option>';}).join('')+
+          (o.driver===LOGISTICS?'':'<option value="Logistics">Logistics (unassigned)</option>')+
+        '</select>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+function updatePreviewDriver(i,drv){
+  parsedOrders[i].driver=drv;
+  var badge=document.getElementById('pr-drv-badge-'+i);
+  if(badge){badge.className='badge '+(DRIVERS.indexOf(drv)>=0?'DC-'+drv:'DC-Logistics');badge.textContent=drv;}
+}
+
+function cancelPreview(){
+  document.getElementById('previewSection').style.display='none';
+  parsedOrders=[];
+}
+
+/* ── STEP 3: SAVE ── */
+function doSave(){
+  if(!parsedOrders.length) return;
+  var btn=document.getElementById('confirmSaveBtn');
+  btn.textContent='Saving…';btn.disabled=true;
+
+  // Auto-save any new products first (fire and forget)
+  var seenNewProd={};
+  parsedOrders.forEach(function(o){
+    (o.raw_items||[]).forEach(function(it){
       if(!it.product_id||seenNewProd[it.product_id])return;
       var exists=allProducts.find(function(p){return p.product_id===it.product_id;});
       if(!exists){
         seenNewProd[it.product_id]=true;
-        autoSavedProducts.push({product_id:it.product_id,name:it.name,description:it.desc||''});
-        // Save immediately to DB
-        apiPost({action:'addProduct',product_id:it.product_id,name:it.name,
-          category:'',price:'',unit:'Pieces',description:it.desc||''});
-        // Add to local cache so it's not re-added
+        apiPost({action:'addProduct',product_id:it.product_id,name:it.name,category:'',price:'',unit:'Pieces',description:it.desc||''});
         allProducts.push({product_id:it.product_id,name:it.name,category:'',price:'',unit:'Pieces',description:it.desc||''});
       }
     });
   });
 
-  var pmsg=document.getElementById('xlsMsg');
-  pmsg.textContent='Saving '+toSave.length+' orders…';pmsg.className='msg in';pmsg.style.display='block';
-  var btn=document.getElementById('parseBtn');btn.disabled=true;btn.textContent='Saving…';
-
   var ok=0,fail=0,chain=Promise.resolve();
-  toSave.forEach(function(o){
+  parsedOrders.forEach(function(o){
     chain=chain.then(function(){
       return apiPost({
         action:'addOrder',
@@ -524,16 +660,21 @@ function doParse(){
   });
 
   chain.then(function(){
-    btn.textContent='⚡ Import & Save Orders';btn.disabled=false;
+    btn.textContent='✅ Confirm & Save All';btn.disabled=false;
+    // Reset upload UI
     zone.classList.remove('has-file');
     document.getElementById('uploadIcon').textContent='📋';
     document.getElementById('uploadLabel').textContent='Tap to upload Delivery Challan';
     document.getElementById('xlsFile').value='';
-    btn.style.display='none';rawChallans=[];
-    pmsg.textContent='✅ '+ok+' orders saved'+(fail?' ('+fail+' failed)':'')+'.'
+    document.getElementById('previewBtn').style.display='none';
+    document.getElementById('previewSection').style.display='none';
+    var newProds=Object.keys(seenNewProd).length;
+    var msg=document.getElementById('xlsMsg');
+    msg.textContent='✅ '+ok+' orders saved'+(fail?' ('+fail+' failed)':'')+'.'
       +(newCustQueue.length?'\n🆕 '+newCustQueue.length+' new customers → tap "⏳ New" tab':'')
-      +(autoSavedProducts.length?'\n📦 '+autoSavedProducts.length+' new products auto-added to Products':'');
-    pmsg.className='msg ok';
+      +(newProds?'\n📦 '+newProds+' new products auto-added':'');
+    msg.className='msg ok';msg.style.display='block';
+    rawChallans=[];parsedOrders=[];
     if(newCustQueue.length) document.getElementById('tb-approve').textContent='⏳ New ('+newCustQueue.length+')';
     showTab('summary');
   });
