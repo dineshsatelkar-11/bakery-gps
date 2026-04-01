@@ -130,6 +130,15 @@
         return sbGet('orders', where, 'shop_name');
       }
 
+      case 'checkDcNums': {
+        // Returns existing dc_num values from the given list so caller can skip duplicates
+        var inList = p.dc_nums.map(function(n){ return encodeURIComponent(n); }).join(',');
+        var url = BASE + '/orders?select=dc_num&dc_num=in.(' + inList + ')';
+        return fetch(url, { headers: hdrs() })
+          .then(function(r){ return r.ok ? r.json() : []; })
+          .catch(function(){ return []; });
+      }
+
       case 'getDeliveries': {
         var where = { date: p.date };
         if (p.driver) where.driver = p.driver;
@@ -194,7 +203,8 @@
         return sbPost('orders', {
           customer_id: b.customer_id || b.shop_id, shop_id: b.shop_id || b.customer_id,
           shop_name: b.shop_name, driver: b.driver || 'Logistics',
-          items: b.items, qty: b.qty, note: b.note || '', date: b.date
+          items: b.items, qty: b.qty, note: b.note || '', date: b.date,
+          dc_num: b.dc_num || ''
         });
 
       // Batch insert — single request for any number of orders
@@ -203,7 +213,8 @@
           return {
             customer_id: o.customer_id || o.shop_id, shop_id: o.shop_id || o.customer_id,
             shop_name: o.shop_name, driver: o.driver || 'Logistics',
-            items: o.items, qty: o.qty, note: o.note || '', date: o.date
+            items: o.items, qty: o.qty, note: o.note || '', date: o.date,
+            dc_num: o.dc_num || ''
           };
         }));
 
@@ -306,6 +317,15 @@
 
       case 'deleteStaff':
         return sbDelete('staff', { id: b.id });
+
+      case 'cleanOldData':
+        return fetch(BASE.replace('/rest/v1', '') + '/rest/v1/rpc/cleanup_old_data', {
+          method: 'POST',
+          headers: hdrs({ 'Prefer': 'return=representation' }),
+          body: JSON.stringify({})
+        })
+        .then(function(r){ return r.ok ? r.json() : r.json().then(function(e){ return { ok: false, error: e.message || 'Failed' }; }); })
+        .catch(function(){ return { ok: false, error: 'Network error' }; });
 
       default:
         return Promise.resolve({ ok: false, error: 'Unknown action: ' + b.action });
