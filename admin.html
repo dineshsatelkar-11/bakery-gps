@@ -1112,15 +1112,38 @@ function bulkAssignQueue(){
 }
 
 /* ── SUMMARY ── */
+
+// Map a product name to its category using product master first, then keyword fallback
+function getCat(name, prodMap){
+  if(prodMap){var p=prodMap[(name||'').toLowerCase()];if(p&&p.category)return p.category;}
+  var n=(name||'').toLowerCase();
+  if(/puff/.test(n))             return 'Puff';
+  if(/sweet[\s-]?bun/.test(n))  return 'Sweet Bun';
+  if(/white[\s-]?bun/.test(n))  return 'White Bun';
+  if(/bun/.test(n))              return 'Bun';
+  if(/bread/.test(n))            return 'Bread';
+  if(/cake/.test(n))             return 'Cake';
+  if(/toast/.test(n))            return 'Toast';
+  if(/rusk/.test(n))             return 'Rusk';
+  if(/cookie|biscuit/.test(n))  return 'Cookie';
+  return 'Other';
+}
+
 function loadSummary(){
   var el=document.getElementById('summaryBody');
   el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
   var driverFilter=document.getElementById('f-sum-driver')?document.getElementById('f-sum-driver').value:'';
   var shopFilter=(document.getElementById('f-sum-filter2')?document.getElementById('f-sum-filter2').value:'').toLowerCase().trim();
-  api({action:'getOrders',date:document.getElementById('f-sum-date').value||todayStr()}).then(function(data){
+  Promise.all([
+    api({action:'getOrders',date:document.getElementById('f-sum-date').value||todayStr()}),
+    loadProductMaster()
+  ]).then(function(res){
+    var data=res[0];
+    var prodMap={};
+    allProducts.forEach(function(p){if(p.name)prodMap[p.name.toLowerCase()]=p;});
     if(!Array.isArray(data)||!data.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders for this date.</div>';return;}
 
-    /* Parse items+qty into {itemName:totalQty} */
+    /* Parse items+qty string into {itemName:qty} */
     function parseIQ(o){
       var r={};
       var its=(o.items||'').split(',').map(function(s){return s.replace(/\s*\(.*?\)/g,'').trim();}).filter(Boolean);
@@ -1129,62 +1152,112 @@ function loadSummary(){
       return r;
     }
 
-    function buildSummaryHTML(orders, title, badge){
+    /* Group {itemName:qty} into category buckets → {cat:{total,items:[{name,qty}]}} */
+    function groupByCat(itemMap){
+      var cats={};
+      Object.entries(itemMap).forEach(function(e){
+        var cat=getCat(e[0],prodMap);
+        if(!cats[cat])cats[cat]={total:0,items:[]};
+        cats[cat].total+=e[1];
+        cats[cat].items.push({name:e[0],qty:e[1]});
+      });
+      Object.values(cats).forEach(function(c){c.items.sort(function(a,b){return b.qty-a.qty;});});
+      return cats;
+    }
+
+    function buildSummaryHTML(orders,title,badge){
       if(!orders.length) return '<div class="card" style="margin-bottom:10px"><div class="lbl">'+esc(title)+'</div><div style="font-size:12px;color:#8a7a6a;font-family:monospace">No orders.</div></div>';
+
+      // Grand totals across all orders
       var grand={};
       orders.forEach(function(o){Object.entries(parseIQ(o)).forEach(function(e){grand[e[0]]=(grand[e[0]]||0)+e[1];});});
+      var grandCats=groupByCat(grand);
+      var grandCatEntries=Object.entries(grandCats).sort(function(a,b){return b[1].total-a[1].total;});
+      var grandTotal=Object.values(grand).reduce(function(s,v){return s+v;},0);
+
+      // Group by driver
       var byD={};
       orders.forEach(function(o){var d=o.driver||o.assigned_driver||'Unknown';if(!byD[d])byD[d]=[];byD[d].push(o);});
-      var sorted=Object.keys(byD).sort(function(a,b){
-        var ai=DRIVERS.indexOf(a),bi=DRIVERS.indexOf(b);
-        return (ai<0?99:ai)-(bi<0?99:bi);
-      });
+      var sorted=Object.keys(byD).sort(function(a,b){var ai=DRIVERS.indexOf(a),bi=DRIVERS.indexOf(b);return(ai<0?99:ai)-(bi<0?99:bi);});
+
       var h='<div style="font-size:13px;font-weight:900;color:#4a2f14;margin:12px 0 8px;display:flex;align-items:center;gap:8px">'+
-        '<span>'+esc(title)+'</span>'+
-        (badge?'<span class="badge b-logistics">'+esc(badge)+'</span>':'')+
+        '<span>'+esc(title)+'</span>'+(badge?'<span class="badge b-logistics">'+esc(badge)+'</span>':'')+
       '</div>';
-      // Grand total chips — sorted by qty desc
-      var grandEntries=Object.entries(grand).sort(function(a,b){return b[1]-a[1];});
-      h+='<div class="card" style="margin-bottom:10px"><div class="lbl">Grand Total</div>'+
-        '<div style="font-size:13px;font-weight:800;color:#4a2f14;margin-bottom:8px">'+orders.length+' orders · '+sorted.length+' drivers</div>'+
-        '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px">'+
-          grandEntries.map(function(e){
-            return '<span style="background:#4a2f14;color:#fff;border-radius:8px;padding:4px 11px;font-size:12px;font-family:monospace;font-weight:700">'+esc(e[0])+' <span style="opacity:.75">×'+e[1]+'</span></span>';
-          }).join('')+
+
+      // Grand total card — category grouped
+      h+='<div class="card" style="margin-bottom:12px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'+
+          '<div class="lbl" style="margin:0">Grand Total</div>'+
+          '<span style="font-size:12px;font-weight:700;color:#4a2f14">'+orders.length+' shops · '+sorted.length+' drivers · '+grandTotal+' items</span>'+
         '</div>'+
-        '<div style="font-size:11px;font-family:monospace;color:#8a7a6a;padding-top:4px;border-top:1px solid #f0e8dc">'+
-          grandEntries.map(function(e){return e[0]+': '+e[1];}).join(' · ')+
-        '</div>'+
+        grandCatEntries.map(function(ce){
+          var cat=ce[0],info=ce[1];
+          return '<div style="display:flex;align-items:baseline;justify-content:space-between;padding:5px 0;border-top:1px solid #f0e8dc">'+
+            '<div>'+
+              '<span style="font-size:12px;font-weight:800;color:#4a2f14;text-transform:uppercase;letter-spacing:.5px">'+esc(cat)+'</span>'+
+              '<span style="font-size:10px;font-family:monospace;color:#8a7a6a;margin-left:8px">'+
+                info.items.map(function(it){return it.qty+'× '+esc(it.name);}).join(' · ')+
+              '</span>'+
+            '</div>'+
+            '<span style="background:#4a2f14;color:#fff;border-radius:20px;padding:2px 12px;font-size:13px;font-weight:900;font-family:monospace;white-space:nowrap;margin-left:8px">'+info.total+'</span>'+
+          '</div>';
+        }).join('')+
       '</div>';
+
+      // Per-driver cards
       sorted.forEach(function(drv){
         var ords=byD[drv],dItems={};
         ords.forEach(function(o){Object.entries(parseIQ(o)).forEach(function(e){dItems[e[0]]=(dItems[e[0]]||0)+e[1];});});
-        var dEntries=Object.entries(dItems).sort(function(a,b){return b[1]-a[1];});
+        var dCats=groupByCat(dItems);
+        var dCatEntries=Object.entries(dCats).sort(function(a,b){return b[1].total-a[1].total;});
+        var dTotal=Object.values(dItems).reduce(function(s,v){return s+v;},0);
         var dc=DRIVERS.indexOf(drv)>=0?'DC-'+drv:'DC-Logistics';
-        h+='<div class="summary-card">'+
-          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+
-            '<span class="badge '+dc+'" style="font-size:12px;padding:5px 12px">'+esc(drv)+'</span>'+
-            '<span style="font-size:12px;font-weight:700;color:#4a2f14">'+ords.length+' shops</span>'+
+
+        h+='<div class="summary-card" style="margin-bottom:10px">'+
+          // Driver name
+          '<div style="margin-bottom:8px"><span class="badge '+dc+'" style="font-size:13px;padding:6px 14px">'+esc(drv)+'</span></div>'+
+          // Stats row: shops / total items / types
+          '<div style="display:flex;gap:6px;margin-bottom:12px">'+
+            '<div style="flex:1;background:#fff8f0;border:1.5px solid #e8c87a;border-radius:10px;padding:7px 4px;text-align:center">'+
+              '<div style="font-size:24px;font-weight:900;color:#4a2f14;line-height:1">'+ords.length+'</div>'+
+              '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px">shops</div>'+
+            '</div>'+
+            '<div style="flex:1;background:#f0f8f0;border:1.5px solid #8ac87a;border-radius:10px;padding:7px 4px;text-align:center">'+
+              '<div style="font-size:24px;font-weight:900;color:#2d7a4f;line-height:1">'+dTotal+'</div>'+
+              '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px">items</div>'+
+            '</div>'+
+            '<div style="flex:1;background:#f5f0fa;border:1.5px solid #b07ac8;border-radius:10px;padding:7px 4px;text-align:center">'+
+              '<div style="font-size:24px;font-weight:900;color:#6e3da8;line-height:1">'+dCatEntries.length+'</div>'+
+              '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px">types</div>'+
+            '</div>'+
           '</div>'+
-          // Driver-level item totals as chips
-          '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px">'+
-            dEntries.map(function(e){
-              return '<span style="background:#f5ede0;border:1px solid #c8a87a;border-radius:6px;padding:3px 9px;font-size:11px;font-family:monospace"><b>'+e[1]+'×</b> '+esc(e[0])+'</span>';
-            }).join('')+
-          '</div>'+
-          // Plain text line: "Bread: 4 · Puff: 2 · Sweetbun: 6"
-          '<div style="font-size:10px;font-family:monospace;color:#8a7a6a;margin-bottom:8px">'+
-            dEntries.map(function(e){return e[0]+': '+e[1];}).join(' · ')+
-          '</div>'+
-          '<div style="border-top:1px solid #f0e8dc;padding-top:6px">'+
+          // Category sections with sub-items
+          dCatEntries.map(function(ce){
+            var cat=ce[0],info=ce[1];
+            return '<div style="background:#fffaf4;border:1.5px solid #e8dfd2;border-radius:8px;padding:8px 10px;margin-bottom:6px">'+
+              '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'+
+                '<span style="font-size:12px;font-weight:900;color:#4a2f14;text-transform:uppercase;letter-spacing:.5px">'+esc(cat)+'</span>'+
+                '<span style="background:#c8a87a;color:#fff;border-radius:20px;padding:2px 12px;font-size:14px;font-weight:900;font-family:monospace">'+info.total+'</span>'+
+              '</div>'+
+              info.items.map(function(it){
+                return '<div style="font-size:11px;font-family:monospace;color:#6a5040;padding:1px 0 1px 4px">'+
+                  '<span style="font-weight:800;color:#4a2f14">'+it.qty+'×</span> '+esc(it.name)+'</div>';
+              }).join('')+
+            '</div>';
+          }).join('')+
+          // Per-shop list with category chips
+          '<div style="border-top:2px solid #f0e8dc;padding-top:8px;margin-top:2px">'+
+            '<div style="font-size:10px;font-weight:700;color:#8a7a6a;font-family:monospace;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Per Shop</div>'+
             ords.map(function(o){
               var iq=parseIQ(o);
-              var chips=Object.entries(iq).sort(function(a,b){return b[1]-a[1];}).map(function(e){
-                return '<span style="display:inline-block;background:#fff;border:1px solid #e8dfd2;border-radius:5px;padding:1px 7px;font-size:10px;font-family:monospace;margin:1px"><b>'+e[1]+'×</b> '+esc(e[0])+'</span>';
+              var shopCats=groupByCat(iq);
+              var catChips=Object.entries(shopCats).sort(function(a,b){return b[1].total-a[1].total;}).map(function(ce){
+                return '<span style="background:#f5ede0;border:1px solid #c8a87a;border-radius:5px;padding:1px 8px;font-size:10px;font-family:monospace;white-space:nowrap">'+
+                  esc(ce[0])+' <b>×'+ce[1].total+'</b></span>';
               }).join('');
-              return '<div class="summary-row" style="align-items:flex-start;flex-wrap:wrap;gap:4px">'+
-                '<span style="font-size:12px;font-weight:700;min-width:120px;flex:1">'+esc(o.shop_name)+'</span>'+
-                '<span style="display:flex;flex-wrap:wrap;gap:2px">'+chips+'</span>'+
+              return '<div class="summary-row" style="align-items:center;flex-wrap:wrap;gap:4px;padding:4px 0">'+
+                '<span style="font-size:12px;font-weight:700;flex:1;min-width:100px">'+esc(o.shop_name)+'</span>'+
+                '<span style="display:flex;flex-wrap:wrap;gap:3px">'+catChips+'</span>'+
               '</div>';
             }).join('')+
           '</div>'+
@@ -1194,22 +1267,17 @@ function loadSummary(){
     }
 
     // Apply driver filter
-    var mainData = driverFilter ? data.filter(function(o){return (o.driver||o.assigned_driver||'')=== driverFilter;}) : data;
-
-    // Summary 1: All (or driver-filtered)
-    var h = buildSummaryHTML(mainData, driverFilter ? 'Summary · '+driverFilter : 'Summary 1 · All Shops', '');
-
-    // Summary 2: Shop filter (e.g. Tea Post)
+    var mainData=driverFilter?data.filter(function(o){return(o.driver||o.assigned_driver||'')===driverFilter;}):data;
+    var h=buildSummaryHTML(mainData,driverFilter?'Summary · '+driverFilter:'Summary 1 · All Shops','');
     if(shopFilter){
-      var filtered = mainData.filter(function(o){ return (o.shop_name||'').toLowerCase().indexOf(shopFilter)>=0; });
-      h += '<div style="border-top:2px dashed #e8dfd2;margin:12px 0"></div>';
-      h += buildSummaryHTML(filtered, 'Summary 2 · "'+shopFilter+'" Shops', filtered.length+' shops');
+      var filtered=mainData.filter(function(o){return(o.shop_name||'').toLowerCase().indexOf(shopFilter)>=0;});
+      h+='<div style="border-top:2px dashed #e8dfd2;margin:12px 0"></div>';
+      h+=buildSummaryHTML(filtered,'Summary 2 · "'+shopFilter+'" Shops',filtered.length+' shops');
     } else {
-      // Default: show Tea Post as Summary 2 if any
-      var tpData = mainData.filter(function(o){ return (o.shop_name||'').toLowerCase().indexOf('tea post')>=0; });
+      var tpData=mainData.filter(function(o){return(o.shop_name||'').toLowerCase().indexOf('tea post')>=0;});
       if(tpData.length){
-        h += '<div style="border-top:2px dashed #e8dfd2;margin:12px 0"></div>';
-        h += buildSummaryHTML(tpData, 'Summary 2 · Tea Post Shops', tpData.length+' shops');
+        h+='<div style="border-top:2px dashed #e8dfd2;margin:12px 0"></div>';
+        h+=buildSummaryHTML(tpData,'Summary 2 · Tea Post Shops',tpData.length+' shops');
       }
     }
 
