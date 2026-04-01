@@ -358,7 +358,62 @@ function renderOrdersList() {
           ).join('<span style="color:#d0c0b0;margin:0 4px">·</span>')+
         `</div>
       </div>`
-    ).join('');
+    ).join('')+
+    // ── Tea Post summary ──
+    (()=>{
+      const tpOrders=orders.filter(o=>(o.shop_name||'').toLowerCase().includes('tea post'));
+      if(!tpOrders.length) return '';
+      const tpTotals={};
+      tpOrders.forEach(o=>{
+        const its=(o.items||'').split(',').map(s=>s.replace(/\s*\(.*?\)/g,'').trim()).filter(Boolean);
+        const qs=(o.qty||'').split(',').map(s=>parseInt(s)||0);
+        its.forEach((it,i)=>{ tpTotals[it]=(tpTotals[it]||0)+(qs[i]||0); });
+      });
+      const tpCats={};
+      Object.entries(tpTotals).forEach(([name,qty])=>{
+        const cat=drvGetCat(name);
+        if(!tpCats[cat]) tpCats[cat]={total:0,items:[]};
+        tpCats[cat].total+=qty;
+        tpCats[cat].items.push({name,qty});
+      });
+      const tpCatEntries=Object.entries(tpCats).sort((a,b)=>b[1].total-a[1].total);
+      const tpTotal=Object.values(tpTotals).reduce((s,v)=>s+v,0);
+      return `<div style="border-top:2px dashed #e8dfd2;margin:10px 0 8px"></div>`+
+        `<div style="font-size:12px;font-weight:900;color:#4a2f14;margin-bottom:6px">☕ Tea Post Summary`+
+        `<span style="font-size:11px;font-weight:700;color:#8a7a6a;font-family:monospace;margin-left:8px">${tpOrders.length} shops · ${tpTotal} items</span></div>`+
+        tpCatEntries.map(([cat,info])=>
+          `<div style="background:#fff8f0;border:1.5px solid #e8c87a;border-radius:8px;padding:7px 10px;margin-bottom:5px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+              <span style="font-size:12px;font-weight:900;color:#4a2f14;text-transform:uppercase;letter-spacing:.5px">${cat}</span>
+              <span style="background:#c8a87a;color:#fff;border-radius:20px;padding:1px 11px;font-size:14px;font-weight:900;font-family:monospace">${info.total}</span>
+            </div>
+            <div style="padding-left:4px">`+
+              info.items.sort((a,b)=>b.qty-a.qty).map(it=>
+                `<span style="font-size:11px;font-family:monospace;color:#6a5040"><b style="color:#4a2f14">${it.qty}×</b> ${it.name}</span>`
+              ).join('<span style="color:#d0c0b0;margin:0 4px">·</span>')+
+            `</div>
+          </div>`
+        ).join('')+
+        tpOrders.map(o=>{
+          const iq={};
+          const its=(o.items||'').split(',').map(s=>s.replace(/\s*\(.*?\)/g,'').trim()).filter(Boolean);
+          const qs=(o.qty||'').split(',').map(s=>parseInt(s)||0);
+          its.forEach((it,i)=>{ iq[it]=(iq[it]||0)+(qs[i]||0); });
+          const shopCats={};
+          Object.entries(iq).forEach(([name,qty])=>{
+            const cat=drvGetCat(name);
+            if(!shopCats[cat]) shopCats[cat]=0;
+            shopCats[cat]+=qty;
+          });
+          const chips=Object.entries(shopCats).sort((a,b)=>b[1]-a[1])
+            .map(([cat,qty])=>`<span style="background:#f5ede0;border:1px solid #c8a87a;border-radius:5px;padding:1px 7px;font-size:10px;font-family:monospace">${cat} <b>×${qty}</b></span>`)
+            .join('');
+          return `<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;padding:3px 0;border-top:1px solid #f5ede0">
+            <span style="font-size:12px;font-weight:700;flex:1;min-width:90px">${o.shop_name}</span>
+            <span style="display:flex;flex-wrap:wrap;gap:3px">${chips}</span>
+          </div>`;
+        }).join('');
+    })();
   document.getElementById('orderSummaryCard').style.display='block';
 
   // ── Order cards by shop ──

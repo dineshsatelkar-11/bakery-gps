@@ -1269,16 +1269,17 @@ function loadSummary(){
     // Apply driver filter
     var mainData=driverFilter?data.filter(function(o){return(o.driver||o.assigned_driver||'')===driverFilter;}):data;
     var h=buildSummaryHTML(mainData,driverFilter?'Summary · '+driverFilter:'Summary 1 · All Shops','');
+    // Summary 2: custom shop filter (if typed)
     if(shopFilter){
       var filtered=mainData.filter(function(o){return(o.shop_name||'').toLowerCase().indexOf(shopFilter)>=0;});
       h+='<div style="border-top:2px dashed #e8dfd2;margin:12px 0"></div>';
       h+=buildSummaryHTML(filtered,'Summary 2 · "'+shopFilter+'" Shops',filtered.length+' shops');
-    } else {
-      var tpData=mainData.filter(function(o){return(o.shop_name||'').toLowerCase().indexOf('tea post')>=0;});
-      if(tpData.length){
-        h+='<div style="border-top:2px dashed #e8dfd2;margin:12px 0"></div>';
-        h+=buildSummaryHTML(tpData,'Summary 2 · Tea Post Shops',tpData.length+' shops');
-      }
+    }
+    // Summary 3: Tea Post — always shown
+    var tpData=mainData.filter(function(o){return(o.shop_name||'').toLowerCase().indexOf('tea post')>=0;});
+    if(tpData.length){
+      h+='<div style="border-top:2px dashed #e8dfd2;margin:12px 0"></div>';
+      h+=buildSummaryHTML(tpData,'Tea Post Summary',tpData.length+' shops');
     }
 
     el.innerHTML=h;
