@@ -117,13 +117,11 @@
     switch (p.action) {
 
       case 'getShops': {
-        // Embed driver name via FK join so callers get c.driver.name
-        var shopSel = '*,driver:drivers!assigned_driver_id(id,name)';
         // Driver app passes driverId (preferred) or falls back to name string
-        if (p.driverId) return sbGet('shops', { assigned_driver_id: p.driverId }, 'name', shopSel);
-        if (p.driver)   return sbGet('shops', { assigned_driver: p.driver }, 'name', shopSel);
+        if (p.driverId) return sbGet('shops', { assigned_driver_id: p.driverId }, 'name');
+        if (p.driver)   return sbGet('shops', { assigned_driver: p.driver }, 'name');
         // Admin: paginated fetch of all shops
-        return fetchAll('shops', {}, 'name', shopSel);
+        return fetchAll('shops', {}, 'name');
       }
 
       case 'getOrders': {
@@ -219,11 +217,11 @@
       case 'updateOrderDriverByCustomer':
         return sbPatch('orders', { customer_id: b.customer_id }, { driver: b.driver });
 
-      case 'markDelivered':
-        return sbUpsert('deliveries', {
-          driver: b.driver, shop_id: b.shop_id, shop_name: b.shop_name,
-          date: b.date, time: b.time
-        }, 'driver,shop_id,date');
+      case 'markDelivered': {
+        var delRow = { driver: b.driver, shop_id: b.shop_id, shop_name: b.shop_name, date: b.date, time: b.time };
+        if (b.lat != null) { delRow.lat = b.lat; delRow.lng = b.lng; }
+        return sbUpsert('deliveries', delRow, 'driver,shop_id,date');
+      }
 
       case 'saveRouteStart': {
         var rData = { driver: b.driver, date: b.date, start_time: b.startTime };

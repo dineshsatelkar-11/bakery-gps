@@ -634,28 +634,37 @@ function processXlsFile(file){
       var rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,dateNF:'YYYY-MM-DD'});
       if(!rows||rows.length<2){msg.textContent='No data found.';msg.className='msg er';return;}
       var H=rows[0].map(function(h){return(h||'').toString().trim();});
+      // Auto-detect: Invoice file has 'Invoice Number' but no 'Delivery Challan Number'
+      var isInvoice=H.indexOf('Invoice Number')>=0&&H.indexOf('Delivery Challan Number')===-1;
       var C={
-        dc_num:   H.indexOf('Delivery Challan Number'),
-        dc_date:  H.indexOf('Challan Date'),
+        dc_num:   isInvoice ? H.indexOf('Invoice Number')  : H.indexOf('Delivery Challan Number'),
+        dc_date:  isInvoice ? H.indexOf('Invoice Date')    : H.indexOf('Challan Date'),
+        inv_date: H.indexOf('Invoice Date'),
         cust_id:  H.indexOf('Customer ID'),
         cust_name:H.indexOf('Customer Name'),
         item_name:H.indexOf('Item Name'),
         prod_id:  H.indexOf('Product ID'),
         item_desc:H.indexOf('Item Desc'),
-        qty:      H.indexOf('QuantityOrdered')
+        qty:      H.indexOf('QuantityOrdered')>=0 ? H.indexOf('QuantityOrdered') : H.indexOf('Quantity'),
+        mobile:   H.indexOf('Primary Contact Mobile')
       };
-      var miss=Object.keys(C).filter(function(k){return C[k]===-1;});
+      // inv_date/mobile are optional — only check required columns
+      var required=['dc_num','dc_date','cust_id','cust_name','item_name','prod_id','item_desc','qty'];
+      var miss=required.filter(function(k){return C[k]===-1;});
       if(miss.length){msg.textContent='Missing columns:\n'+miss.join(', ');msg.className='msg er';return;}
       var map={},order=[];
       for(var i=1;i<rows.length;i++){
         var r=rows[i]; if(!r||r.length<5) continue;
         var dc=(r[C.dc_num]||'').toString().trim(); if(!dc) continue;
         if(!map[dc]){
+          var challanDate=r[C.dc_date]?r[C.dc_date].toString().substring(0,10):'';
+          var invoiceDate=(C.inv_date>=0&&r[C.inv_date])?r[C.inv_date].toString().substring(0,10):'';
           map[dc]={
             dc_num:dc,
-            dc_date:r[C.dc_date]?r[C.dc_date].toString().substring(0,10):todayStr(),
+            dc_date:challanDate||invoiceDate||todayStr(),
             customer_id:(r[C.cust_id]||'').toString().trim(),
             customer_name:(r[C.cust_name]||'').toString().trim(),
+            mobile:C.mobile>=0?(r[C.mobile]||'').toString().trim():'',
             items:[]
           };
           order.push(dc);
@@ -730,7 +739,7 @@ function doPreview(){
     });
     if(!cust&&!seenNewCust[c.customer_id]){
       seenNewCust[c.customer_id]=true;
-      newCustQueue.push({customer_id:c.customer_id,customer_name:c.customer_name,dc_num:c.dc_num,dc_date:c.dc_date||dateInput});
+      newCustQueue.push({customer_id:c.customer_id,customer_name:c.customer_name,dc_num:c.dc_num,dc_date:c.dc_date||dateInput,mobile:c.mobile||''});
     }
     // Collect new products (shown in preview, auto-saved on confirm)
     c.items.forEach(function(it){
@@ -963,7 +972,7 @@ function openApproveModal(i){
   document.getElementById('apm-name').value=c.customer_name;
   document.getElementById('apm-address').value='';
   document.getElementById('apm-area').value='';
-  document.getElementById('apm-mobile').value='';
+  document.getElementById('apm-mobile').value=c.mobile||'';
   document.getElementById('apm-flag').value='';
   document.getElementById('apm-driver').value='';
   document.getElementById('apm-msg').style.display='none';

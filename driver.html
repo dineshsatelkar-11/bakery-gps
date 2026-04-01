@@ -514,7 +514,18 @@ async function buildRouteUI() {
 async function markDelivered(shopId, shopName) {
   const time=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
   deliveries[shopId]={shop_id:shopId,time};
-  await apiPost({action:'markDelivered',driver,shop_id:shopId,shop_name:shopName,date:selectedDate||todayStr(),time});
+  const body={action:'markDelivered',driver,shop_id:shopId,shop_name:shopName,date:selectedDate||todayStr(),time};
+  // Silently capture delivery location
+  try {
+    if(navigator.geolocation){
+      const pos=await new Promise(function(resolve,reject){
+        navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:8000,maximumAge:30000});
+      });
+      body.lat=parseFloat(pos.coords.latitude.toFixed(6));
+      body.lng=parseFloat(pos.coords.longitude.toFixed(6));
+    }
+  } catch(e){ /* GPS unavailable — save without location */ }
+  await apiPost(body);
   buildRouteUI();
   renderOrdersList();
 }
