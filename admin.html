@@ -455,6 +455,13 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
       <option value="true">✅ Active</option>
       <option value="false">❌ Inactive</option>
     </select>
+    <div class="lbl" style="margin-top:6px">Live Tracking Link <span style="font-weight:400;color:#8a7a6a">(Ajjas / GPS URL)</span></div>
+    <input type="url" id="dm-tracking-url" placeholder="https://community.ajjas.com/tlshared/?tkn=…" autocomplete="off">
+    <div class="lbl">Show Live Tracking to Customers</div>
+    <select id="dm-tracking-enabled">
+      <option value="false">🔴 Disabled — hide from customers</option>
+      <option value="true">🟢 Enabled — show on tracking page</option>
+    </select>
     <div id="dm-msg" style="display:none" class="msg ok"></div>
     <button class="btn btn-brown" onclick="saveDriver()">💾 Save Driver</button>
     <button class="btn btn-grey" style="margin-bottom:0" onclick="closeDriverModal()">Cancel</button>
@@ -1287,40 +1294,62 @@ function loadSummary(){
 }
 
 /* ── DELIVERY ── */
+var _delivOrds=[], _delivMap={}, _delivFilter='all';
+function setDelivFilter(f){
+  _delivFilter=f;
+  renderDeliveries();
+}
 function loadDeliveries(){
   var el=document.getElementById('deliveryList');
   el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
   var drv=document.getElementById('f-del-driver').value,dt=document.getElementById('f-del-date').value||todayStr();
   Promise.all([api({action:'getOrders',driver:drv,date:dt}),api({action:'getDeliveries',driver:drv,date:dt})])
   .then(function(res){
-    var ords=Array.isArray(res[0])?res[0]:[],dels=Array.isArray(res[1])?res[1]:[];
-    var dM={};dels.forEach(function(d){dM[d.shop_id||d.customer_id]=d;});
-    document.getElementById('delivStats').innerHTML=
-      '<div class="stat"><div class="stat-n">'+ords.length+'</div><div class="stat-l">Total</div></div>'+
-      '<div class="stat"><div class="stat-n" style="color:#2d7a4f">'+dels.length+'</div><div class="stat-l">Done</div></div>'+
-      '<div class="stat"><div class="stat-n" style="color:#c8382a">'+(ords.length-dels.length)+'</div><div class="stat-l">Pending</div></div>';
-    if(!ords.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders.</div>';return;}
-    el.innerHTML=ords.map(function(o){
-      var key=o.customer_id||o.shop_id;var dn=!!dM[key];
-      var drD=o.driver||o.assigned_driver||'—';
-      var dc=DRIVERS.indexOf(drD)>=0?'DC-'+drD:'DC-Logistics';
-      var del=dM[key];
-      var locLink='';
-      if(dn&&del&&del.lat&&del.lng){
-        locLink='<a href="https://www.google.com/maps?q='+del.lat+','+del.lng+'" target="_blank" '+
-          'style="font-size:10px;font-family:monospace;color:#1565c0;margin-left:6px">📍 Map ↗</a>';
-      }
-      return '<div class="deliv-row"><div style="flex:1">'+
-        '<div style="font-size:13px;font-weight:800">'+esc(o.shop_name)+'</div>'+
-        '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px"><span class="badge '+dc+'">'+esc(drD)+'</span> · '+esc(o.items)+'</div>'+
-        (dn?'<div style="font-size:10px;font-family:monospace;color:#2d7a4f;margin-top:2px">✅ Done '+(del.time||'')+locLink+'</div>':'')+
-        '</div><span class="badge '+(dn?'b-ok':'b-miss')+'">'+(dn?'Done':'Pending')+'</span></div>';
-    }).join('');
+    _delivOrds=Array.isArray(res[0])?res[0]:[];
+    var dels=Array.isArray(res[1])?res[1]:[];
+    _delivMap={};dels.forEach(function(d){_delivMap[d.shop_id||d.customer_id]=d;});
+    renderDeliveries();
   });
+}
+function renderDeliveries(){
+  var el=document.getElementById('deliveryList');
+  var ords=_delivOrds,dM=_delivMap;
+  var doneCount=ords.filter(function(o){return !!dM[o.customer_id||o.shop_id];}).length;
+  var pendCount=ords.length-doneCount;
+  // Stats with clickable filter
+  document.getElementById('delivStats').innerHTML=
+    '<div class="stat" onclick="setDelivFilter(\'all\')" style="cursor:pointer;'+((_delivFilter==='all')?'background:#e8f5e9;border-color:#2d7a4f':'')+'"><div class="stat-n">'+ords.length+'</div><div class="stat-l">All</div></div>'+
+    '<div class="stat" onclick="setDelivFilter(\'done\')" style="cursor:pointer;'+((_delivFilter==='done')?'background:#e8f5e9;border-color:#2d7a4f':'')+'"><div class="stat-n" style="color:#2d7a4f">'+doneCount+'</div><div class="stat-l">Done</div></div>'+
+    '<div class="stat" onclick="setDelivFilter(\'pending\')" style="cursor:pointer;'+((_delivFilter==='pending')?'background:#fde8e8;border-color:#e87a7a':'')+'"><div class="stat-n" style="color:#c8382a">'+pendCount+'</div><div class="stat-l">Pending</div></div>';
+  if(!ords.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders.</div>';return;}
+  var filtered=ords.filter(function(o){
+    var dn=!!dM[o.customer_id||o.shop_id];
+    if(_delivFilter==='done') return dn;
+    if(_delivFilter==='pending') return !dn;
+    return true;
+  });
+  if(!filtered.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No '+_delivFilter+' orders.</div>';return;}
+  el.innerHTML=filtered.map(function(o){
+    var key=o.customer_id||o.shop_id;var dn=!!dM[key];
+    var drD=o.driver||o.assigned_driver||'—';
+    var dc=DRIVERS.indexOf(drD)>=0?'DC-'+drD:'DC-Logistics';
+    var del=dM[key];
+    var locLink='';
+    if(dn&&del&&del.lat&&del.lng){
+      locLink='<a href="https://www.google.com/maps?q='+del.lat+','+del.lng+'" target="_blank" '+
+        'style="font-size:10px;font-family:monospace;color:#1565c0;margin-left:6px">📍 Map ↗</a>';
+    }
+    return '<div class="deliv-row"><div style="flex:1">'+
+      '<div style="font-size:13px;font-weight:800">'+esc(o.shop_name)+'</div>'+
+      '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px"><span class="badge '+dc+'">'+esc(drD)+'</span> · '+esc(o.items)+'</div>'+
+      (dn?'<div style="font-size:10px;font-family:monospace;color:#2d7a4f;margin-top:2px">✅ Done '+(del.time||'')+locLink+'</div>':'')+
+      '</div><span class="badge '+(dn?'b-ok':'b-miss')+'">'+(dn?'Done':'Pending')+'</span></div>';
+  }).join('');
 }
 
 /* ── ROUTES ── */
-var routesData=[];
+var routesData=[], _routeDelivMap={}, _routeOrdersByDriver={}, _routeLastDeliv={}, _routeFilter='all';
+function setRouteFilter(f){ _routeFilter=f; renderRoutes(); }
 function loadRoutes(){
   var el=document.getElementById('routesList');
   el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
@@ -1328,67 +1357,149 @@ function loadRoutes(){
   var driverFilter=document.getElementById('f-rt-driver').value;
   Promise.all([
     api({action:'getRoutes',date:date,driver:driverFilter}),
-    api({action:'getDeliveries',date:date,driver:driverFilter})
+    api({action:'getDeliveries',date:date,driver:driverFilter}),
+    api({action:'getOrders',date:date,driver:driverFilter})
   ]).then(function(res){
     routesData=Array.isArray(res[0])?res[0]:[];
     var deliveries=Array.isArray(res[1])?res[1]:[];
-    // Build delivery map: driver → { shop_name: delivery_record }
-    var delivMap={};
+    var orders=Array.isArray(res[2])?res[2]:[];
+
+    // delivMap: driver → { shop_id: record, shop_name: record }
+    _routeDelivMap={};
     deliveries.forEach(function(d){
-      if(!delivMap[d.driver]) delivMap[d.driver]={};
-      delivMap[d.driver][d.shop_name]=d;
+      if(!_routeDelivMap[d.driver]) _routeDelivMap[d.driver]={};
+      _routeDelivMap[d.driver][d.shop_id]=d;
+      _routeDelivMap[d.driver][d.shop_name]=d;
     });
-    // Last delivery per driver (most recently timed)
-    var lastDelivMap={};
+    // Last delivery per driver
+    _routeLastDeliv={};
     deliveries.forEach(function(d){
-      if(!lastDelivMap[d.driver]||((d.time||'')>(lastDelivMap[d.driver].time||''))){
-        lastDelivMap[d.driver]=d;
-      }
+      if(!_routeLastDeliv[d.driver]||((d.time||'')>(_routeLastDeliv[d.driver].time||'')))
+        _routeLastDeliv[d.driver]=d;
+    });
+    // Orders by driver
+    _routeOrdersByDriver={};
+    orders.forEach(function(o){
+      var d=o.driver||'Unassigned';
+      if(!_routeOrdersByDriver[d]) _routeOrdersByDriver[d]=[];
+      _routeOrdersByDriver[d].push(o);
     });
 
-    var ts=routesData.reduce(function(s,r){return s+(parseInt(r.total_shops)||0);},0);
-    var tk=routesData.reduce(function(s,r){return s+(parseInt(r.total_km)||0);},0);
-    var totalDone=deliveries.length;
-    document.getElementById('routeStats').innerHTML=
-      '<div class="stat"><div class="stat-n">'+routesData.length+'</div><div class="stat-l">Drivers</div></div>'+
-      '<div class="stat"><div class="stat-n" style="color:#2d7a4f">'+totalDone+'</div><div class="stat-l">Done</div></div>'+
-      '<div class="stat"><div class="stat-n" style="color:#c8382a">'+(ts-totalDone)+'</div><div class="stat-l">Pending</div></div>';
-    if(!routesData.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No routes for this date.</div>';return;}
-    el.innerHTML=routesData.map(function(r){
-      var sh=[];try{sh=JSON.parse(r.shop_order||'[]');}catch(e){}
-      var dDelivs=delivMap[r.driver]||{};
-      var doneCount=sh.filter(function(s){return dDelivs[s];}).length;
-      var pendingCount=sh.length-doneCount;
-      var pct=sh.length>0?Math.round(doneCount/sh.length*100):0;
-      var last=lastDelivMap[r.driver];
-
-      return '<div class="driver-card">'+
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+
-          '<div style="font-size:15px;font-weight:800">'+esc(r.driver)+'</div>'+
-          '<div style="display:flex;gap:4px;flex-wrap:wrap">'+
-            '<span class="badge b-ok">✅ '+doneCount+'</span>'+
-            (pendingCount>0?'<span class="badge b-warn">⚠ '+pendingCount+'</span>':'')+
-            '<span class="badge b-blue">'+r.total_km+' km</span>'+
-          '</div>'+
-        '</div>'+
-        '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-bottom:6px">'+
-          '🕐 Started: '+(r.start_time||'not started')+
-          (r.start_lat?'&nbsp; <a href="https://www.google.com/maps?q='+r.start_lat+','+r.start_lng+'" target="_blank" style="color:#1565c0;font-weight:700">📍 Start Loc</a>':'')+
-          (last?'&nbsp;&nbsp;|&nbsp;&nbsp;📦 Last: <b style="color:#4a2f14">'+esc(last.shop_name)+'</b> @ '+esc(last.time||''):'') +
-        '</div>'+
-        // Progress bar
-        '<div class="progress-wrap"><div class="progress-fill" style="width:'+pct+'%"></div></div>'+
-        '<div style="font-size:10px;font-family:monospace;color:#8a7a6a;margin-bottom:6px">'+doneCount+' of '+sh.length+' stops completed ('+pct+'%)</div>'+
-        sh.map(function(s,j){
-          var d=dDelivs[s];
-          return '<div class="route-mini" style="display:flex;justify-content:space-between;color:'+(d?'#2d7a4f':'#7a4800')+';border-color:'+(d?'#c8e6c9':'#ffe082')+'">'+
-            '<span>'+(d?'✅':'⚠️')+' '+(j+1)+'. '+esc(s)+'</span>'+
-            (d?'<span style="font-size:10px;color:#2d7a4f;font-family:monospace">'+esc(d.time||'')+'</span>':'<span style="font-size:10px;color:#c8864a;font-family:monospace">Pending</span>')+
-          '</div>';
-        }).join('')+
-      '</div>';
-    }).join('');
+    renderRoutes();
   });
+}
+function renderRoutes(){
+  var el=document.getElementById('routesList');
+  if(!routesData.length){
+    document.getElementById('routeStats').innerHTML='<div class="stat"><div class="stat-n">0</div><div class="stat-l">Drivers</div></div>';
+    el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No routes for this date.</div>';
+    return;
+  }
+
+  // Helper: deduplicate orders by shop_id, keep first occurrence
+  function uniqueShops(orders){
+    var seen=new Set(), result=[];
+    orders.forEach(function(o){ if(!seen.has(o.shop_id)){seen.add(o.shop_id);result.push(o);} });
+    return result;
+  }
+
+  // Compute overall totals across all drivers
+  var totalDone=0, totalPending=0;
+  routesData.forEach(function(r){
+    var sh=[];try{sh=JSON.parse(r.shop_order||'[]');}catch(e){}
+    var dDelivs=_routeDelivMap[r.driver]||{};
+    var dOrders=uniqueShops(_routeOrdersByDriver[r.driver]||[]);
+    // Use orders as authority: only GPS shops that also have an order today
+    var orderedNames=new Set(dOrders.map(function(o){return o.shop_name;}));
+    var shopOrderSet=new Set(sh);
+    var gpsOrdered=sh.filter(function(s){return orderedNames.has(s);});
+    var noGPSOrders=dOrders.filter(function(o){return !shopOrderSet.has(o.shop_name);});
+    var done=gpsOrdered.filter(function(s){return dDelivs[s];}).length
+            +noGPSOrders.filter(function(o){return dDelivs[o.shop_id]||dDelivs[o.shop_name];}).length;
+    var total=gpsOrdered.length+noGPSOrders.length;
+    totalDone+=done; totalPending+=(total-done);
+  });
+  var totalAll=totalDone+totalPending;
+
+  document.getElementById('routeStats').innerHTML=
+    '<div class="stat" onclick="setRouteFilter(\'all\')" style="cursor:pointer;'+(_routeFilter==='all'?'background:#e8f5e9;border-color:#2d7a4f':'')+'"><div class="stat-n">'+routesData.length+'</div><div class="stat-l">Drivers</div></div>'+
+    '<div class="stat" onclick="setRouteFilter(\'all\')" style="cursor:pointer;'+(_routeFilter==='all'?'background:#e8f5e9;border-color:#2d7a4f':'')+'"><div class="stat-n">'+totalAll+'</div><div class="stat-l">All Shops</div></div>'+
+    '<div class="stat" onclick="setRouteFilter(\'done\')" style="cursor:pointer;'+(_routeFilter==='done'?'background:#e8f5e9;border-color:#2d7a4f':'')+'"><div class="stat-n" style="color:#2d7a4f">'+totalDone+'</div><div class="stat-l">Done</div></div>'+
+    '<div class="stat" onclick="setRouteFilter(\'pending\')" style="cursor:pointer;'+(_routeFilter==='pending'?'background:#fde8e8;border-color:#e87a7a':'')+'"><div class="stat-n" style="color:#c8382a">'+totalPending+'</div><div class="stat-l">Pending</div></div>';
+
+  el.innerHTML=routesData.map(function(r){
+    var sh=[];try{sh=JSON.parse(r.shop_order||'[]');}catch(e){}
+    var dDelivs=_routeDelivMap[r.driver]||{};
+    var dOrders=uniqueShops(_routeOrdersByDriver[r.driver]||[]);
+    var last=_routeLastDeliv[r.driver];
+
+    // Use orders as authority — filter shop_order to only shops that have orders today
+    var orderedNames=new Set(dOrders.map(function(o){return o.shop_name;}));
+    var shopOrderSet=new Set(sh);
+    var gpsOrdered=sh.filter(function(s){return orderedNames.has(s);});
+    var noGPSOrders=dOrders.filter(function(o){return !shopOrderSet.has(o.shop_name);});
+
+    var doneCount=gpsOrdered.filter(function(s){return dDelivs[s];}).length
+                 +noGPSOrders.filter(function(o){return dDelivs[o.shop_id]||dDelivs[o.shop_name];}).length;
+    var totalShops=gpsOrdered.length+noGPSOrders.length;
+    var pendingCount=totalShops-doneCount;
+    var pct=totalShops>0?Math.round(doneCount/totalShops*100):0;
+
+    // Filter shop rows — use gpsOrdered (orders-filtered) not raw sh
+    var filteredGPS=gpsOrdered.filter(function(s){
+      var done=!!dDelivs[s];
+      if(_routeFilter==='done') return done;
+      if(_routeFilter==='pending') return !done;
+      return true;
+    });
+    var filteredNoGPS=noGPSOrders.filter(function(o){
+      var done=!!(dDelivs[o.shop_id]||dDelivs[o.shop_name]);
+      if(_routeFilter==='done') return done;
+      if(_routeFilter==='pending') return !done;
+      return true;
+    });
+
+    var shopRows='';
+    var stopNum=0;
+    filteredGPS.forEach(function(s,j){
+      var d=dDelivs[s];
+      if(!d) stopNum++;
+      shopRows+='<div class="route-mini" style="display:flex;justify-content:space-between;color:'+(d?'#2d7a4f':'#7a4800')+';border-color:'+(d?'#c8e6c9':'#ffe082')+'">'+
+        '<span>'+(d?'✅':'⚠️')+' '+(d?'✓':stopNum)+'. '+esc(s)+'</span>'+
+        (d?'<span style="font-size:10px;color:#2d7a4f;font-family:monospace">'+esc(d.time||'')+'</span>':'<span style="font-size:10px;color:#c8864a;font-family:monospace">Pending</span>')+
+      '</div>';
+    });
+    filteredNoGPS.forEach(function(o){
+      var d=dDelivs[o.shop_id]||dDelivs[o.shop_name];
+      if(!d) stopNum++;
+      shopRows+='<div class="route-mini" style="display:flex;justify-content:space-between;color:'+(d?'#2d7a4f':'#7a4800')+';border-color:'+(d?'#c8e6c9':'#ffe082')+';background:'+(d?'':'#fffbf0')+'">'+
+        '<span>'+(d?'✅':'⚠')+' '+(d?'✓':stopNum)+'. '+esc(o.shop_name)+' <span style="font-size:9px;color:#c8864a;font-family:monospace">[No GPS]</span></span>'+
+        (d?'<span style="font-size:10px;color:#2d7a4f;font-family:monospace">'+esc(d.time||'')+'</span>':'<span style="font-size:10px;color:#c8864a;font-family:monospace">Pending</span>')+
+      '</div>';
+    });
+    if(!shopRows && (filteredGPS.length+filteredNoGPS.length===0)){
+      shopRows='<div style="text-align:center;padding:8px;font-size:11px;color:#8a7a6a;font-family:monospace">No '+_routeFilter+' shops.</div>';
+    }
+
+    return '<div class="driver-card">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'+
+        '<div style="font-size:15px;font-weight:800">'+esc(r.driver)+'</div>'+
+        '<div style="display:flex;gap:4px;flex-wrap:wrap">'+
+          '<span class="badge b-ok" style="cursor:pointer" onclick="setRouteFilter(\'done\')">✅ '+doneCount+'</span>'+
+          (pendingCount>0?'<span class="badge b-warn" style="cursor:pointer" onclick="setRouteFilter(\'pending\')">⚠ '+pendingCount+'</span>':'')+
+          '<span class="badge b-blue">'+r.total_km+' km</span>'+
+        '</div>'+
+      '</div>'+
+      '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-bottom:6px">'+
+        '🕐 Started: '+(r.start_time||'not started')+
+        (r.start_lat?'&nbsp; <a href="https://www.google.com/maps?q='+r.start_lat+','+r.start_lng+'" target="_blank" style="color:#1565c0;font-weight:700">📍 Start Loc</a>':'')+
+        (last?'&nbsp;&nbsp;|&nbsp;&nbsp;📦 Last: <b style="color:#4a2f14">'+esc(last.shop_name)+'</b> @ '+esc(last.time||''):'')+
+      '</div>'+
+      '<div class="progress-wrap"><div class="progress-fill" style="width:'+pct+'%"></div></div>'+
+      '<div style="font-size:10px;font-family:monospace;color:#8a7a6a;margin-bottom:6px">'+doneCount+' of '+totalShops+' stops completed ('+pct+'%)'+(noGPSOrders.length?' · <span style="color:#c8864a">'+noGPSOrders.length+' no GPS</span>':'')+'</div>'+
+      shopRows+
+    '</div>';
+  }).join('');
 }
 
 /* ── CUSTOMERS TAB ── */
@@ -1675,6 +1786,11 @@ function renderDrivers(){
         (d.mobile?'<div>📞 <a href="tel:'+esc(d.mobile)+'" style="color:#1565c0;font-weight:700">'+esc(d.mobile)+'</a></div>':
           '<div style="color:#c8382a">📞 No mobile saved</div>')+
         '<div>🎨 Color: '+esc(d.color||'blue')+'</div>'+
+        '<div>📍 Live Track: '+(d.tracking_url
+          ? (d.tracking_enabled
+              ? '<a href="'+esc(d.tracking_url)+'" target="_blank" style="color:#2d7a4f;font-weight:700">🟢 Enabled ↗</a>'
+              : '<span style="color:#c8382a">🔴 Disabled</span> <a href="'+esc(d.tracking_url)+'" target="_blank" style="color:#8a7a6a;font-size:10px">test ↗</a>')
+          : '<span style="color:#8a7a6a">Not set</span>')+'</div>'+
       '</div>'+
       '<div style="display:flex;gap:8px">'+
         '<button class="btn-sm btn-edit" onclick=\'openEditDriver('+esc(JSON.stringify(d))+')\'>✏️ Edit</button>'+
@@ -1704,6 +1820,8 @@ function openAddDriver(){
   document.getElementById('dm-password').placeholder='Enter password';
   document.getElementById('dm-color').value='blue';
   document.getElementById('dm-active').value='true';
+  document.getElementById('dm-tracking-url').value='';
+  document.getElementById('dm-tracking-enabled').value='false';
   document.getElementById('dm-msg').style.display='none';
   document.getElementById('driverModal').style.display='flex';
 }
@@ -1721,6 +1839,8 @@ function openEditDriver(d){
   document.getElementById('dm-password').placeholder='New password (optional)';
   document.getElementById('dm-color').value=d.color||'blue';
   document.getElementById('dm-active').value=String(d.active!==false);
+  document.getElementById('dm-tracking-url').value=d.tracking_url||'';
+  document.getElementById('dm-tracking-enabled').value=String(d.tracking_enabled===true);
   document.getElementById('dm-msg').style.display='none';
   document.getElementById('driverModal').style.display='flex';
 }
@@ -1740,7 +1860,9 @@ function saveDriver(){
     name:name,
     mobile:document.getElementById('dm-mobile').value.trim(),
     color:document.getElementById('dm-color').value,
-    active:document.getElementById('dm-active').value==='true'
+    active:document.getElementById('dm-active').value==='true',
+    tracking_url:document.getElementById('dm-tracking-url').value.trim(),
+    tracking_enabled:document.getElementById('dm-tracking-enabled').value==='true'
   };
   if(id) body.id=id;
   if(pw) body.password=pw;

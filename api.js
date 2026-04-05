@@ -160,6 +160,15 @@
       case 'getStaff':
         return sbGet('staff', {}, 'name');
 
+      case 'getShopByMobile': {
+        // p.variants = array of possible mobile formats for the same number
+        var inList = p.variants.map(function(v){ return encodeURIComponent(v); }).join(',');
+        var url = BASE + '/shops?mobile=in.(' + inList + ')&limit=5';
+        return fetch(url, { headers: hdrs() })
+          .then(function(r){ return r.ok ? r.json() : []; })
+          .catch(function(){ return []; });
+      }
+
       default:
         return Promise.resolve([]);
     }
@@ -275,11 +284,18 @@
         return sbDelete('products', { product_id: b.product_id });
 
       case 'addDriver':
-        return sbPost('drivers', { name: b.name, password: b.password, mobile: b.mobile || '', color: b.color || 'blue', active: true });
+        return sbPost('drivers', {
+          name: b.name, password: b.password, mobile: b.mobile || '',
+          color: b.color || 'blue', active: true,
+          tracking_url: b.tracking_url || '', tracking_enabled: b.tracking_enabled || false
+        });
 
       case 'updateDriver': {
-        var upd = { name: b.name, mobile: b.mobile || '', color: b.color, active: b.active };
-        if (b.password) upd.password = b.password; // only update password if provided
+        var upd = {
+          name: b.name, mobile: b.mobile || '', color: b.color, active: b.active,
+          tracking_url: b.tracking_url || '', tracking_enabled: b.tracking_enabled || false
+        };
+        if (b.password) upd.password = b.password;
         return sbPatch('drivers', { id: b.id }, upd);
       }
 

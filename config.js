@@ -14,6 +14,18 @@ const CONFIG = {
 
   DRIVERS: ['Bharat', 'Anand', 'Vikas', 'Yuvraj', 'Rama'],
 
+  // Customer tracking page contacts
+  LOGISTICS_NAME:             "Satelkar's Logistics",
+  LOGISTICS_DELIVERY_MGR_NAME:   'Yuvraj Koli',
+  LOGISTICS_DELIVERY_MGR_MOBILE: '8262900425',
+  LOGISTICS_OWNER1_NAME:      'Dinesh Satelkar',
+  LOGISTICS_OWNER1_MOBILE:    '8956276855',
+  LOGISTICS_OWNER2_NAME:      'Siddhesh Satelkar',
+  LOGISTICS_OWNER2_MOBILE:    '9886527036',
+
+  // Ajjas live tracking token
+  AJJAS_TOKEN: '054b93d4279604a1387cfe6b7452e583',
+
   // Driver app translations
   LANG: {
     en: {

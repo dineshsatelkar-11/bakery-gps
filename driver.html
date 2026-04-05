@@ -134,10 +134,10 @@ input[type=text],input[type=date]{width:100%;padding:11px 14px;border:1.5px soli
     </div>
     <div class="progress-wrap"><div class="progress-fill" id="rs-progress-bar" style="width:0%"></div></div>
     <div class="stat-row">
-      <div class="stat"><div class="stat-n" id="rs-done">0</div><div class="stat-l" id="t-done">Done</div></div>
-      <div class="stat"><div class="stat-n" id="rs-pending">0</div><div class="stat-l" id="t-pending">Left</div></div>
+      <div class="stat" id="rs-all-stat" onclick="setRouteFilter('all')" style="cursor:pointer"><div class="stat-n" id="rs-all">0</div><div class="stat-l">All</div></div>
+      <div class="stat" id="rs-done-stat" onclick="setRouteFilter('done')" style="cursor:pointer"><div class="stat-n" id="rs-done">0</div><div class="stat-l" id="t-done">Done</div></div>
+      <div class="stat" id="rs-pending-stat" onclick="setRouteFilter('pending')" style="cursor:pointer"><div class="stat-n" id="rs-pending">0</div><div class="stat-l" id="t-pending">Pending</div></div>
       <div class="stat"><div class="stat-n" id="rs-km">0</div><div class="stat-l">KM</div></div>
-      <div class="stat"><div class="stat-n" id="rs-time">—</div><div class="stat-l">Est.</div></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:10px">
       <button onclick="shuffleRoute()" style="flex:1;padding:9px;border:none;border-radius:10px;background:#1a5fa8;color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif">🔀 Shuffle Stops</button>
@@ -233,6 +233,7 @@ let orders=[], deliveries={}, routeStarted=false, routeStartTime=null;
 let routeStartLat=null, routeStartLng=null;
 let selectedDate = '';
 let customRoute = null; // null = auto-optimized, array = custom shuffled order
+let routeFilter = 'all'; // 'all' | 'done' | 'pending'
 
 // ── LOAD ──
 async function init() {
@@ -433,20 +434,11 @@ function renderOrdersList() {
       <div style="margin-top:8px">
         ${isDone
           ? `<span style="font-size:12px;font-family:monospace;color:#2d7a4f">✅ ${lang==='mr'?'डिलिव्हर झाले':'Delivered'} ${doneTime}</span>`
-          : `<button class="btn btn-deliver" style="margin-bottom:0;padding:10px;font-size:13px" onclick="markDeliveredFromOrders('${sid}','${shopName.replace(/'/g,"\\'")}')">
-               ✅ ${t('markDelivered')}
-             </button>`
+          : `<span style="font-size:12px;font-family:monospace;color:#8a7a6a">⏳ ${lang==='mr'?'प्रतीक्षा — मार्ग टॅब वापरा':'Pending — use Route tab to mark'}</span>`
         }
       </div>
     </div>`;
   }).join('');
-}
-
-async function markDeliveredFromOrders(shopId, shopName) {
-  const btn = document.querySelector(`#oc-${shopId} .btn-deliver`);
-  if(btn){ btn.disabled=true; btn.textContent=lang==='mr'?'⏳ जतन होत आहे…':'⏳ Saving…'; }
-  await markDelivered(shopId, shopName);
-  renderOrdersList();
 }
 
 // ── ROUTE ──
@@ -494,8 +486,12 @@ async function startRoute() {
   buildRouteUI();
 }
 
+function setRouteFilter(f) { routeFilter=f; buildRouteUI(); }
+
 function shuffleRoute() {
-  const withGPS = allCustomers.filter(s=>s.lat&&s.lng).map(s=>({...s,lat:parseFloat(s.lat),lng:parseFloat(s.lng)}));
+  const orderedShopIds = new Set(orders.map(o=>o.shop_id));
+  const orderedCustomers = allCustomers.filter(s=>orderedShopIds.has(s.shop_id));
+  const withGPS = orderedCustomers.filter(s=>s.lat&&s.lng).map(s=>({...s,lat:parseFloat(s.lat),lng:parseFloat(s.lng)}));
   const pending = withGPS.filter(s=>!deliveries[s.shop_id]);
   // Fisher-Yates shuffle
   for(let i=pending.length-1;i>0;i--){
@@ -524,50 +520,65 @@ async function buildRouteUI() {
   // Show start banner or summary card
   document.getElementById('startBanner').style.display    = routeStarted ? 'none' : 'block';
   document.getElementById('routeSummaryCard').style.display = routeStarted ? 'block' : 'none';
-  document.getElementById('routeStats').style.display       = 'none'; // legacy, hidden
+  document.getElementById('routeStats').style.display       = 'none';
   if(!routeStarted) return;
 
-  // Only customers with valid GPS
-  const withGPS = allCustomers.filter(s=>s.lat&&s.lng).map(s=>({...s,lat:parseFloat(s.lat),lng:parseFloat(s.lng)}));
-  const noGPS   = allCustomers.filter(s=>!s.lat||!s.lng);
+  // Only customers who have orders for today AND are assigned to this driver
+  const orderedShopIds = new Set(orders.map(o=>o.shop_id));
+  const orderedCustomers = allCustomers.filter(s=>orderedShopIds.has(s.shop_id));
 
-  if(!withGPS.length){
-    rmsg.textContent=lang==='mr'?'GPS डेटा नाही. GPS टॅबमध्ये जा.':'No GPS saved yet. Go to GPS tab to capture locations.';
+  const withGPS = orderedCustomers.filter(s=>s.lat&&s.lng).map(s=>({...s,lat:parseFloat(s.lat),lng:parseFloat(s.lng)}));
+  const noGPS   = orderedCustomers.filter(s=>!s.lat||!s.lng);
+
+  if(!orderedCustomers.length){
+    rmsg.textContent=lang==='mr'?'आजचे ऑर्डर नाहीत.':'No orders for today.';
     rmsg.className='msg er'; rmsg.style.display='block'; return;
   }
 
-  // Separate done vs pending
-  const pending = withGPS.filter(s=>!deliveries[s.shop_id]);
-  const done    = withGPS.filter(s=>!!deliveries[s.shop_id]);
+  // Separate done vs pending (GPS shops)
+  const pending    = withGPS.filter(s=>!deliveries[s.shop_id]);
+  const done       = withGPS.filter(s=>!!deliveries[s.shop_id]);
+  const noGPSpend  = noGPS.filter(s=>!deliveries[s.shop_id]);
+  const noGPSdone  = noGPS.filter(s=>!!deliveries[s.shop_id]);
+  const totalDone    = done.length + noGPSdone.length;
+  const totalPending = pending.length + noGPSpend.length;
+  const totalAll     = totalDone + totalPending;
 
-  // Build optimised route from pending only (or use custom shuffled order)
-  const route = customRoute ? customRoute.filter(s=>!deliveries[s.shop_id]) : nearestNeighbour(HQ, pending);
-  const fullRoute = [...route, ...done]; // pending first then done
+  // Build optimised route from pending GPS shops (or custom shuffled order)
+  // Always restrict to ordered shops — customRoute may have stale shops from previous days
+  const route = customRoute
+    ? customRoute.filter(s=>!deliveries[s.shop_id] && orderedShopIds.has(s.shop_id))
+    : nearestNeighbour(HQ, pending);
 
-  // Calc km & time from pending only
+  // Calc km from pending GPS route
   let totalKm=0,prev=HQ;
   route.forEach(s=>{totalKm+=distKm(prev,s);prev=s;});
   totalKm=Math.round(totalKm);
   const mins=Math.round(totalKm/25*60+route.length*5);
   const estH=Math.floor(mins/60),estM=mins%60;
 
-  document.getElementById('rs-done').textContent=done.length;
-  document.getElementById('rs-pending').textContent=pending.length;
+  // Update stats
+  document.getElementById('rs-all').textContent=totalAll;
+  document.getElementById('rs-done').textContent=totalDone;
+  document.getElementById('rs-pending').textContent=totalPending;
   document.getElementById('rs-km').textContent=totalKm;
-  document.getElementById('rs-time').textContent=estH+'h '+estM+'m';
+
+  // Highlight active filter
+  ['all','done','pending'].forEach(f=>{
+    var el=document.getElementById('rs-'+f+'-stat');
+    if(el){el.style.background=routeFilter===f?'#e8f5e9':'rgba(255,255,255,.7)';el.style.borderColor=routeFilter===f?'#2d7a4f':'#e8dfd2';}
+  });
+
   // Progress bar
-  var total=done.length+pending.length;
-  var pct=total>0?Math.round(done.length/total*100):0;
+  var pct=totalAll>0?Math.round(totalDone/totalAll*100):0;
   var pb=document.getElementById('rs-progress-bar');
   var pl=document.getElementById('rs-progress-label');
   var si=document.getElementById('rs-start-info');
   if(pb) pb.style.width=pct+'%';
-  if(pl) pl.textContent=done.length+' / '+total+' '+(lang==='mr'?'दुकाने':'Shops')+' ('+pct+'%)';
-  if(si){
-    si.textContent=(lang==='mr'?'सुरुवात':'Started')+': '+routeStartTime+(routeStartLat?' 📍':'');
-  }
+  if(pl) pl.textContent=totalDone+' / '+totalAll+' '+(lang==='mr'?'दुकाने':'Shops')+' ('+pct+'%)';
+  if(si) si.textContent=(lang==='mr'?'सुरुवात':'Started')+': '+routeStartTime+(routeStartLat?' 📍':'')+' · '+estH+'h '+estM+'m';
 
-  // Map button — start from CURRENT location, skip done customers
+  // Map button — pending GPS stops only
   const pendingCoords=route.map(s=>s.lat+','+s.lng);
   const mapsUrl=pendingCoords.length
     ? 'https://www.google.com/maps/dir/My+Location/'+pendingCoords.join('/')
@@ -575,42 +586,70 @@ async function buildRouteUI() {
   mapWrap.style.display=mapsUrl?'block':'none';
   if(mapsUrl) mapWrap.innerHTML=`<a href="${mapsUrl}" target="_blank" style="display:block;background:#2d7a4f;color:#fff;padding:13px;border-radius:14px;text-align:center;font-weight:800;font-size:14px;text-decoration:none">${t('routeStart')} (${pending.length} ${lang==='mr'?'दुकाने':'stops'})</a>`;
 
-  // Route list
+  // ── Determine what to display based on filter ──
+  let displayGPS;
+  if(routeFilter==='done')    displayGPS = done;
+  else if(routeFilter==='pending') displayGPS = route;
+  else                         displayGPS = [...route, ...done]; // pending first, done after
+
+  let displayNoGPS;
+  if(routeFilter==='done')    displayNoGPS = noGPSdone;
+  else if(routeFilter==='pending') displayNoGPS = noGPSpend;
+  else                         displayNoGPS = [...noGPSpend, ...noGPSdone];
+
+  // ── Route list ──
   let html='';
-  // HQ start
   html+=`<div class="route-stop"><div class="rnum" style="background:#4a2f14;font-size:10px">HQ</div><div class="rinfo"><div class="rname">🥖 ${HQ.name}</div><div class="rmeta">${lang==='mr'?'सुरुवात':'START'} · ${routeStartTime}</div></div></div>`;
 
-  fullRoute.forEach((s,i)=>{
+  let stopNum=0;
+  displayGPS.forEach(s=>{
     const isDone=!!deliveries[s.shop_id];
+    if(!isDone) stopNum++;
     const shopOrders=orders.filter(o=>o.shop_id===s.shop_id);
     html+=`<div class="rline"></div>
     <div class="route-stop">
-      <div class="rnum ${isDone?'done':''}">${isDone?'✓':(i+1-done.length<1?'✓':i-done.length+1)}</div>
+      <div class="rnum ${isDone?'done':''}">${isDone?'✓':stopNum}</div>
       <div class="rinfo ${isDone?'done':''}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
           <div class="rname">${s.name}</div>
-          <span class="badge ${isDone?'b-done':'b-warn'}">${isDone?t('delivered'):t('pending')}</span>
+          <span class="badge ${isDone?'b-done':'b-warn'}">${isDone?('✅ '+deliveries[s.shop_id]?.time):t('pending')}</span>
         </div>
         <div class="rmeta">${s.area||''}</div>
         ${shopOrders.length?`<div style="font-size:11px;font-family:monospace;color:#4a2f14;margin-top:4px">${shopOrders.map(o=>o.items+' · '+o.qty).join('<br>')}</div>`:''}
         <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
           <a href="https://www.google.com/maps?q=${s.lat},${s.lng}" target="_blank" class="btn-sm btn-map" style="text-decoration:none;padding:7px 12px;background:#e3f2fd;color:#1565c0;border-radius:10px;font-size:11px;font-weight:700">🗺 Map</a>
-          ${!isDone?`<button class="btn-sm btn-deliver" onclick="markDelivered('${s.shop_id}','${s.name}')">${t('markDelivered')}</button>`:`<span style="font-size:11px;color:#2d7a4f;font-family:monospace;padding:7px 4px">✅ ${deliveries[s.shop_id]?.time||''}</span>`}
+          ${!isDone?`<button class="btn-sm btn-deliver" onclick="markDelivered('${s.shop_id}','${s.name.replace(/'/g,"\\'")}')">${t('markDelivered')}</button>`:''}
         </div>
       </div>
     </div>`;
   });
 
-  if(noGPS.length){
-    html+=`<div style="margin-top:12px;padding:12px 14px;background:#fff8e1;border:1.5px solid #ffe082;border-radius:14px">
-      <div style="font-size:11px;font-weight:800;color:#7a4800;margin-bottom:6px">⚠ ${noGPS.length} ${lang==='mr'?'ग्राहकांचे GPS नाही':'customers without GPS — not in route'}</div>
-      ${noGPS.map(s=>`<div style="font-size:12px;font-family:monospace;color:#7a4800;padding:2px 0">• ${s.name}</div>`).join('')}
+  // noGPS shops — shown with warning style, still mark-deliverable
+  displayNoGPS.forEach(s=>{
+    const isDone=!!deliveries[s.shop_id];
+    if(!isDone) stopNum++;
+    const shopOrders=orders.filter(o=>o.shop_id===s.shop_id);
+    html+=`<div class="rline"></div>
+    <div class="route-stop">
+      <div class="rnum" style="background:${isDone?'#8a7a6a':'#e67e22'};font-size:10px">${isDone?'✓':'⚠'}</div>
+      <div class="rinfo" style="border-color:${isDone?'#e8dfd2':'#ffe082'};background:${isDone?'#f5f5f5':'#fffbf0'};${isDone?'opacity:.6':''}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div class="rname">${s.name}</div>
+          <span class="badge ${isDone?'b-done':'b-warn'}">${isDone?('✅ '+deliveries[s.shop_id]?.time):t('pending')}</span>
+        </div>
+        <div class="rmeta">${s.area||''}</div>
+        ${shopOrders.length?`<div style="font-size:11px;font-family:monospace;color:#4a2f14;margin-top:4px">${shopOrders.map(o=>o.items+' · '+o.qty).join('<br>')}</div>`:''}
+        ${!isDone?`<div style="font-size:10px;color:#7a4800;font-family:monospace;margin-top:4px">⚠ ${lang==='mr'?'GPS नाही — GPS टॅबमध्ये स्थान जोडा':'No GPS location — add via GPS tab'}</div>`:''}
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+          ${!isDone?`<button class="btn-sm btn-deliver" onclick="markDelivered('${s.shop_id}','${s.name.replace(/'/g,"\\'")}')">${t('markDelivered')}</button>`:''}
+        </div>
+      </div>
     </div>`;
-  }
+  });
 
   body.innerHTML=html;
-  // Save route to sheet
-  apiPost({action:'saveRoute',date:todayStr(),driver,shop_order:JSON.stringify(route.map(s=>s.name)),total_shops:withGPS.length,total_km:totalKm,est_time:estH+'h '+estM+'m'});
+  // Save route stats
+  apiPost({action:'saveRoute',date:todayStr(),driver,shop_order:JSON.stringify(route.map(s=>s.name)),total_shops:totalAll,total_km:totalKm,est_time:estH+'h '+estM+'m'});
 }
 
 async function markDelivered(shopId, shopName) {
