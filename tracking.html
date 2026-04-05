@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Track My Delivery — Satelkar's Logistics</title>
+<script src="config.js"></script>
+<script src="api.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:440px;margin:0 auto;min-height:100vh}
+
+/* ── TOP BAR ── */
+.topbar{background:linear-gradient(135deg,#2d7a4f 0%,#1a5a38 100%);padding:16px 14px 14px;text-align:center;position:relative}
+.topbar-logo{color:#fff;font-size:22px;font-weight:900;letter-spacing:.5px}
+.topbar-sub{color:#a8d5b8;font-size:11px;font-family:monospace;margin-top:3px}
+
+/* ── CARDS ── */
+.card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:16px;margin:12px 14px 0}
+.lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:8px;text-transform:uppercase}
+input[type=tel]{width:100%;padding:13px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:16px;color:#1e1611;background:#f5ede0;outline:none;font-family:-apple-system,sans-serif;-webkit-appearance:none;letter-spacing:2px}
+input[type=tel]:focus{border-color:#2d7a4f;background:#fff}
+.btn-track{width:100%;padding:14px;border:none;border-radius:12px;background:#2d7a4f;color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-top:10px}
+.btn-track:active{background:#1a5a38}
+.msg{padding:11px 14px;border-radius:10px;font-size:12px;font-weight:600;font-family:monospace;margin-top:10px;line-height:1.6}
+.er{background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0}
+.ok{background:#e8f5e9;color:#2d7a4f;border:1px solid #a5d6a7}
+.in{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9}
+
+/* ── TRACKING RESULT ── */
+#trackingResult{display:none}
+.section-title{font-size:11px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;text-transform:uppercase;margin-bottom:8px}
+.customer-name{font-size:19px;font-weight:900;color:#2d7a4f;margin-bottom:2px}
+.customer-area{font-size:12px;color:#8a7a6a;font-family:monospace}
+
+/* Contact rows */
+.contact-row{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #f5ede0}
+.contact-row:last-child{border-bottom:none}
+.contact-icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.contact-info{flex:1}
+.contact-name{font-size:13px;font-weight:700;color:#1e1611}
+.contact-role{font-size:10px;color:#8a7a6a;font-family:monospace}
+.contact-call{background:#e8f5e9;color:#2d7a4f;border:1.5px solid #a5d6a7;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:700;text-decoration:none;display:inline-block;font-family:-apple-system,sans-serif}
+
+/* Last delivery */
+.deliv-box{background:#f5ede0;border-radius:10px;padding:10px 12px;margin-top:6px}
+.deliv-shop{font-size:14px;font-weight:800;color:#4a2f14}
+.deliv-time{font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:2px}
+
+/* Live tracking button */
+.btn-live{display:block;background:linear-gradient(135deg,#e53935,#b71c1c);color:#fff;padding:14px 16px;border-radius:14px;text-align:center;text-decoration:none;font-weight:800;font-size:14px;margin:0 14px;margin-top:12px}
+.btn-live-sub{font-size:10px;opacity:.85;font-weight:500;margin-top:2px;font-family:monospace}
+
+/* Marketing banner */
+.marketing{background:linear-gradient(135deg,#4a2f14 0%,#7a4f24 100%);border-radius:16px;padding:18px 16px;margin:12px 14px;color:#fff;text-align:center}
+.mkt-title{font-size:18px;font-weight:900;letter-spacing:.5px;margin-bottom:4px}
+.mkt-tagline{font-size:12px;opacity:.85;font-family:monospace;margin-bottom:12px}
+.mkt-features{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:12px}
+.mkt-chip{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700}
+.mkt-cta{background:#2d7a4f;color:#fff;border:none;border-radius:10px;padding:11px 24px;font-size:13px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif}
+
+/* Footer */
+.footer{text-align:center;padding:20px 14px;font-size:11px;color:#8a7a6a;font-family:monospace}
+
+/* No-delivery placeholder */
+.no-deliv{text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace;background:#f9f6f1;border-radius:10px;margin-top:6px}
+
+.loading-spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-logo">🚚 Satelkar's Logistics</div>
+  <div class="topbar-sub">Delivery Tracker</div>
+</div>
+
+<!-- LOGIN SECTION -->
+<div id="loginSection">
+  <div class="card">
+    <div class="lbl">Track Your Order</div>
+    <div style="font-size:13px;color:#4a2f14;margin-bottom:12px;line-height:1.5">Enter your registered mobile number to see live delivery status.</div>
+    <input type="tel" id="phoneInput" placeholder="Enter 10-digit mobile number" maxlength="15">
+    <button class="btn-track" onclick="trackDelivery()" id="trackBtn">🔍 Track My Delivery</button>
+    <div id="loginMsg" style="display:none" class="msg er"></div>
+  </div>
+</div>
+
+<!-- TRACKING RESULT -->
+<div id="trackingResult">
+
+  <!-- Customer greeting -->
+  <div class="card">
+    <div class="section-title">Your Delivery</div>
+    <div class="customer-name" id="tr-name"></div>
+    <div class="customer-area" id="tr-area"></div>
+  </div>
+
+  <!-- Contacts -->
+  <div class="card">
+    <div class="section-title">Contact Us</div>
+    <!-- Driver -->
+    <div class="contact-row">
+      <div class="contact-icon" style="background:#e8f5e9">🚗</div>
+      <div class="contact-info">
+        <div class="contact-name" id="tr-driver-name">—</div>
+        <div class="contact-role">Your Delivery Driver</div>
+      </div>
+      <a id="tr-driver-call" href="#" class="contact-call">📞 Call</a>
+    </div>
+    <!-- Delivery Manager -->
+    <div class="contact-row">
+      <div class="contact-icon" style="background:#e3f2fd">📦</div>
+      <div class="contact-info">
+        <div class="contact-name" id="tr-dmgr-name"></div>
+        <div class="contact-role">Delivery Manager · <span id="tr-dmgr-num" style="font-family:monospace"></span></div>
+      </div>
+      <a id="tr-dmgr-call" href="#" class="contact-call">📞 Call</a>
+    </div>
+    <!-- Owner 1 -->
+    <div class="contact-row">
+      <div class="contact-icon" style="background:#fff3e0">👑</div>
+      <div class="contact-info">
+        <div class="contact-name" id="tr-owner1-name"></div>
+        <div class="contact-role">Owner · <span id="tr-owner1-num" style="font-family:monospace"></span></div>
+      </div>
+      <a id="tr-owner1-call" href="#" class="contact-call">📞 Call</a>
+    </div>
+    <!-- Owner 2 -->
+    <div class="contact-row">
+      <div class="contact-icon" style="background:#fce4ec">👑</div>
+      <div class="contact-info">
+        <div class="contact-name" id="tr-owner2-name"></div>
+        <div class="contact-role">Owner · <span id="tr-owner2-num" style="font-family:monospace"></span></div>
+      </div>
+      <a id="tr-owner2-call" href="#" class="contact-call">📞 Call</a>
+    </div>
+  </div>
+
+  <!-- Last delivery by driver today -->
+  <div class="card">
+    <div class="section-title">Driver's Last Delivery Today</div>
+    <div id="tr-last-deliv">
+      <div class="no-deliv">⏳ No deliveries recorded yet today.</div>
+    </div>
+  </div>
+
+  <!-- Live Ajjas tracking -->
+  <a id="tr-ajjas" href="#" target="_blank" class="btn-live">
+    🔴 Track Tempo Live Location
+    <div class="btn-live-sub">Powered by Ajjas GPS · Tap to open</div>
+  </a>
+
+  <!-- Back button -->
+  <div style="margin:12px 14px 0;text-align:center">
+    <button onclick="resetTracking()" style="background:none;border:1.5px solid #e8dfd2;border-radius:10px;padding:9px 20px;font-size:12px;font-weight:700;color:#8a7a6a;cursor:pointer;font-family:-apple-system,sans-serif">← Check Another Number</button>
+  </div>
+
+</div>
+
+<!-- MARKETING SECTION (always visible) -->
+<div class="marketing">
+  <div class="mkt-title">🚚 Satelkar's Logistics</div>
+  <div class="mkt-tagline">Premium Bakery Delivery · Pune & Surroundings</div>
+  <div class="mkt-features">
+    <div class="mkt-chip">⏰ Daily Routes</div>
+    <div class="mkt-chip">📍 GPS Tracked</div>
+    <div class="mkt-chip">✅ Reliable</div>
+    <div class="mkt-chip">🥖 Fresh Delivery</div>
+  </div>
+  <div style="font-size:12px;opacity:.8;margin-bottom:12px;line-height:1.5">
+    We deliver fresh bakery products to your shop every morning. Fast, tracked, and dependable.
+  </div>
+  <button class="mkt-cta" onclick="window.open('tel:'+CONFIG.LOGISTICS_OWNER_MOBILE)">📞 Contact Us</button>
+</div>
+
+<div class="footer">Satelkar's Logistics · Pune<br>Yuvraj: 8262900425 &nbsp;|&nbsp; Dinesh: 8956276855 &nbsp;|&nbsp; Siddhesh: 9886527036</div>
+
+<script>
+function todayStr(){
+  var d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+// Normalize any mobile format to last 10 digits
+function normalizeMobile(raw) {
+  return raw.replace(/\D/g, '').slice(-10);
+}
+
+// Generate all DB format variants for a 10-digit number
+function mobileVariants(digits) {
+  return [
+    digits,                // 9876543210
+    '+91' + digits,        // +919876543210
+    '+91-' + digits,       // +91-9876543210
+    '91' + digits,         // 919876543210
+    "'" + digits,          // '9876543210
+    "'" + '91' + digits,   // '919876543210
+    "'" + '91-' + digits,  // '91-9876543210
+    '+' + digits,          // +9876543210
+  ];
+}
+
+async function trackDelivery() {
+  var raw = document.getElementById('phoneInput').value.trim();
+  var digits = normalizeMobile(raw);
+  if(digits.length !== 10){ showLoginMsg('Please enter a valid 10-digit mobile number.'); return; }
+
+  var btn = document.getElementById('trackBtn');
+  btn.innerHTML = '<span class="loading-spinner"></span>Tracking…';
+  btn.disabled = true;
+  document.getElementById('loginMsg').style.display = 'none';
+
+  try {
+    // 1. Look up shop by mobile — try all stored format variants
+    var shops = await api({ action: 'getShopByMobile', variants: mobileVariants(digits) });
+    if (!shops || !shops.length) {
+      showLoginMsg('Mobile number not found. Please check the number or contact us.');
+      btn.innerHTML = '🔍 Track My Delivery'; btn.disabled = false;
+      return;
+    }
+
+    var shop = shops[0];
+    var driverName = shop.assigned_driver || '';
+
+    // 2. Get driver details
+    var driverInfo = null;
+    if (driverName) {
+      var drivers = await api({ action: 'getDrivers' });
+      driverInfo = (drivers || []).find(function(d){ return d.name === driverName; }) || null;
+    }
+
+    // 3. Get today's deliveries for this driver
+    var deliveries = [];
+    if (driverName) {
+      deliveries = await api({ action: 'getDeliveries', driver: driverName, date: todayStr() });
+      if (!Array.isArray(deliveries)) deliveries = [];
+    }
+
+    // 4. Find last delivery (most recent time)
+    var lastDeliv = null;
+    if (deliveries.length) {
+      deliveries.sort(function(a,b){ return (b.time||'') > (a.time||'') ? 1 : -1; });
+      lastDeliv = deliveries[0];
+    }
+
+    // ── Render result ──
+    document.getElementById('tr-name').textContent = shop.name || 'Your Shop';
+    document.getElementById('tr-area').textContent = (shop.area ? '📍 ' + shop.area : '') + (shop.address ? ' · ' + shop.address : '');
+
+    // Driver contact
+    var driverMobile = (driverInfo && driverInfo.mobile) ? driverInfo.mobile : '';
+    document.getElementById('tr-driver-name').textContent = driverName || 'Not assigned';
+    if (driverMobile) {
+      document.getElementById('tr-driver-call').href = 'tel:' + driverMobile;
+      document.getElementById('tr-driver-call').style.display = '';
+    } else {
+      document.getElementById('tr-driver-call').style.display = 'none';
+    }
+
+    // Delivery Manager, Owner 1, Owner 2
+    document.getElementById('tr-dmgr-name').textContent = CONFIG.LOGISTICS_DELIVERY_MGR_NAME || 'Delivery Manager';
+    document.getElementById('tr-dmgr-num').textContent  = CONFIG.LOGISTICS_DELIVERY_MGR_MOBILE || '';
+    document.getElementById('tr-dmgr-call').href = 'tel:' + (CONFIG.LOGISTICS_DELIVERY_MGR_MOBILE || '');
+
+    document.getElementById('tr-owner1-name').textContent = CONFIG.LOGISTICS_OWNER1_NAME || 'Owner';
+    document.getElementById('tr-owner1-num').textContent  = CONFIG.LOGISTICS_OWNER1_MOBILE || '';
+    document.getElementById('tr-owner1-call').href = 'tel:' + (CONFIG.LOGISTICS_OWNER1_MOBILE || '');
+
+    document.getElementById('tr-owner2-name').textContent = CONFIG.LOGISTICS_OWNER2_NAME || 'Owner';
+    document.getElementById('tr-owner2-num').textContent  = CONFIG.LOGISTICS_OWNER2_MOBILE || '';
+    document.getElementById('tr-owner2-call').href = 'tel:' + (CONFIG.LOGISTICS_OWNER2_MOBILE || '');
+
+    // Last delivery box
+    var ldEl = document.getElementById('tr-last-deliv');
+    if (lastDeliv) {
+      var mapLink = (lastDeliv.lat && lastDeliv.lng)
+        ? '<a href="https://www.google.com/maps?q='+lastDeliv.lat+','+lastDeliv.lng+'" target="_blank" style="font-size:11px;color:#1565c0;font-family:monospace;font-weight:700;margin-top:4px;display:inline-block">📍 View on Map ↗</a>'
+        : '';
+      ldEl.innerHTML = '<div class="deliv-box">'
+        + '<div class="deliv-shop">📦 ' + esc(lastDeliv.shop_name || '—') + '</div>'
+        + '<div class="deliv-time">🕐 Delivered at ' + (lastDeliv.time || '—') + '</div>'
+        + mapLink
+        + '</div>'
+        + '<div style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-top:6px">Total deliveries today: <b>' + deliveries.length + '</b></div>';
+    } else {
+      ldEl.innerHTML = '<div class="no-deliv">⏳ No deliveries recorded yet today. The driver may be on their way.</div>';
+    }
+
+    // Live tracking link — from driver record (enable/disable per driver)
+    var trackingUrl    = (driverInfo && driverInfo.tracking_url)     ? driverInfo.tracking_url     : '';
+    var trackingOn     = (driverInfo && driverInfo.tracking_enabled)  ? driverInfo.tracking_enabled : false;
+    var ajjasEl = document.getElementById('tr-ajjas');
+    if (trackingUrl && trackingOn) {
+      ajjasEl.href = trackingUrl;
+      ajjasEl.style.display = 'block';
+    } else {
+      ajjasEl.style.display = 'none';
+    }
+
+    // Show result, hide login
+    document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('trackingResult').style.display = 'block';
+
+  } catch(e) {
+    showLoginMsg('Something went wrong. Please try again.');
+  }
+
+  btn.innerHTML = '🔍 Track My Delivery'; btn.disabled = false;
+}
+
+function showLoginMsg(msg) {
+  var el = document.getElementById('loginMsg');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+function resetTracking() {
+  document.getElementById('loginSection').style.display = 'block';
+  document.getElementById('trackingResult').style.display = 'none';
+  document.getElementById('loginMsg').style.display = 'none';
+  document.getElementById('phoneInput').value = '';
+}
+
+function esc(s){
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>
