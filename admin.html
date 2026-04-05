@@ -1388,6 +1388,15 @@ function loadRoutes(){
     renderRoutes();
   });
 }
+function routeTimeToMins(t){
+  if(!t) return 9999;
+  var m=t.match(/(\d+):(\d+)\s*(AM|PM|am|pm)?/);
+  if(!m) return 9999;
+  var h=parseInt(m[1]),mn=parseInt(m[2]),p=(m[3]||'').toUpperCase();
+  if(p==='PM'&&h!==12) h+=12;
+  if(p==='AM'&&h===12) h=0;
+  return h*60+mn;
+}
 function renderRoutes(){
   var el=document.getElementById('routesList');
   if(!routesData.length){
@@ -1445,35 +1454,45 @@ function renderRoutes(){
     var pendingCount=totalShops-doneCount;
     var pct=totalShops>0?Math.round(doneCount/totalShops*100):0;
 
-    // Filter shop rows — use gpsOrdered (orders-filtered) not raw sh
-    var filteredGPS=gpsOrdered.filter(function(s){
-      var done=!!dDelivs[s];
-      if(_routeFilter==='done') return done;
-      if(_routeFilter==='pending') return !done;
-      return true;
+    // Split GPS shops into done (sort by time asc) and pending (keep route order)
+    var gpsDone=gpsOrdered.filter(function(s){return !!dDelivs[s];});
+    var gpsPending=gpsOrdered.filter(function(s){return !dDelivs[s];});
+    gpsDone.sort(function(a,b){return routeTimeToMins((dDelivs[a]||{}).time)-routeTimeToMins((dDelivs[b]||{}).time);});
+
+    var noGPSDone=noGPSOrders.filter(function(o){return !!(dDelivs[o.shop_id]||dDelivs[o.shop_name]);});
+    var noGPSPend=noGPSOrders.filter(function(o){return !(dDelivs[o.shop_id]||dDelivs[o.shop_name]);});
+    noGPSDone.sort(function(a,b){
+      var da=dDelivs[a.shop_id]||dDelivs[a.shop_name]||{};
+      var db=dDelivs[b.shop_id]||dDelivs[b.shop_name]||{};
+      return routeTimeToMins(da.time)-routeTimeToMins(db.time);
     });
-    var filteredNoGPS=noGPSOrders.filter(function(o){
-      var done=!!(dDelivs[o.shop_id]||dDelivs[o.shop_name]);
-      if(_routeFilter==='done') return done;
-      if(_routeFilter==='pending') return !done;
-      return true;
-    });
+
+    // Apply filter — done (time-sorted) first, then pending
+    var filteredGPS;
+    if(_routeFilter==='done')         filteredGPS=gpsDone;
+    else if(_routeFilter==='pending') filteredGPS=gpsPending;
+    else                              filteredGPS=[].concat(gpsDone, gpsPending);
+
+    var filteredNoGPS;
+    if(_routeFilter==='done')         filteredNoGPS=noGPSDone;
+    else if(_routeFilter==='pending') filteredNoGPS=noGPSPend;
+    else                              filteredNoGPS=[].concat(noGPSDone, noGPSPend);
 
     var shopRows='';
     var stopNum=0;
     filteredGPS.forEach(function(s,j){
       var d=dDelivs[s];
-      if(!d) stopNum++;
+      var label=d?(j+1):(++stopNum); // done: 1,2,3... by time asc; pending: continues after done
       shopRows+='<div class="route-mini" style="display:flex;justify-content:space-between;color:'+(d?'#2d7a4f':'#7a4800')+';border-color:'+(d?'#c8e6c9':'#ffe082')+'">'+
-        '<span>'+(d?'✅':'⚠️')+' '+(d?'✓':stopNum)+'. '+esc(s)+'</span>'+
+        '<span>'+(d?'✅':'⚠️')+' '+label+'. '+esc(s)+'</span>'+
         (d?'<span style="font-size:10px;color:#2d7a4f;font-family:monospace">'+esc(d.time||'')+'</span>':'<span style="font-size:10px;color:#c8864a;font-family:monospace">Pending</span>')+
       '</div>';
     });
-    filteredNoGPS.forEach(function(o){
+    filteredNoGPS.forEach(function(o,j){
       var d=dDelivs[o.shop_id]||dDelivs[o.shop_name];
-      if(!d) stopNum++;
+      var label=d?(filteredGPS.length+j+1):(++stopNum);
       shopRows+='<div class="route-mini" style="display:flex;justify-content:space-between;color:'+(d?'#2d7a4f':'#7a4800')+';border-color:'+(d?'#c8e6c9':'#ffe082')+';background:'+(d?'':'#fffbf0')+'">'+
-        '<span>'+(d?'✅':'⚠')+' '+(d?'✓':stopNum)+'. '+esc(o.shop_name)+' <span style="font-size:9px;color:#c8864a;font-family:monospace">[No GPS]</span></span>'+
+        '<span>'+(d?'✅':'⚠')+' '+label+'. '+esc(o.shop_name)+' <span style="font-size:9px;color:#c8864a;font-family:monospace">[No GPS]</span></span>'+
         (d?'<span style="font-size:10px;color:#2d7a4f;font-family:monospace">'+esc(d.time||'')+'</span>':'<span style="font-size:10px;color:#c8864a;font-family:monospace">Pending</span>')+
       '</div>';
     });

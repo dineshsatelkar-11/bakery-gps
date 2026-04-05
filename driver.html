@@ -586,29 +586,45 @@ async function buildRouteUI() {
   mapWrap.style.display=mapsUrl?'block':'none';
   if(mapsUrl) mapWrap.innerHTML=`<a href="${mapsUrl}" target="_blank" style="display:block;background:#2d7a4f;color:#fff;padding:13px;border-radius:14px;text-align:center;font-weight:800;font-size:14px;text-decoration:none">${t('routeStart')} (${pending.length} ${lang==='mr'?'दुकाने':'stops'})</a>`;
 
+  // Helper: convert "HH:MM AM/PM" to minutes for sorting
+  function timeToMins(t){
+    if(!t) return 9999;
+    const m=t.match(/(\d+):(\d+)\s*(AM|PM|am|pm)?/);
+    if(!m) return 9999;
+    let h=parseInt(m[1]),mn=parseInt(m[2]),p=(m[3]||'').toUpperCase();
+    if(p==='PM'&&h!==12) h+=12;
+    if(p==='AM'&&h===12) h=0;
+    return h*60+mn;
+  }
+
+  // Sort done shops by delivery time ascending (first delivered = first in list)
+  const doneSorted=[...done].sort((a,b)=>timeToMins(deliveries[a.shop_id]?.time)-timeToMins(deliveries[b.shop_id]?.time));
+  const noGPSdoneSorted=[...noGPSdone].sort((a,b)=>timeToMins(deliveries[a.shop_id]?.time)-timeToMins(deliveries[b.shop_id]?.time));
+
   // ── Determine what to display based on filter ──
+  // Done (asc by time) shown first so you can read delivery sequence top-to-bottom
   let displayGPS;
-  if(routeFilter==='done')    displayGPS = done;
+  if(routeFilter==='done')         displayGPS = doneSorted;
   else if(routeFilter==='pending') displayGPS = route;
-  else                         displayGPS = [...route, ...done]; // pending first, done after
+  else                             displayGPS = [...doneSorted, ...route];
 
   let displayNoGPS;
-  if(routeFilter==='done')    displayNoGPS = noGPSdone;
+  if(routeFilter==='done')         displayNoGPS = noGPSdoneSorted;
   else if(routeFilter==='pending') displayNoGPS = noGPSpend;
-  else                         displayNoGPS = [...noGPSpend, ...noGPSdone];
+  else                             displayNoGPS = [...noGPSdoneSorted, ...noGPSpend];
 
   // ── Route list ──
   let html='';
   html+=`<div class="route-stop"><div class="rnum" style="background:#4a2f14;font-size:10px">HQ</div><div class="rinfo"><div class="rname">🥖 ${HQ.name}</div><div class="rmeta">${lang==='mr'?'सुरुवात':'START'} · ${routeStartTime}</div></div></div>`;
 
   let stopNum=0;
-  displayGPS.forEach(s=>{
+  displayGPS.forEach((s,i)=>{
     const isDone=!!deliveries[s.shop_id];
-    if(!isDone) stopNum++;
+    const stopLabel=isDone?(i+1):(++stopNum); // done: position in time order; pending: upcoming stop number
     const shopOrders=orders.filter(o=>o.shop_id===s.shop_id);
     html+=`<div class="rline"></div>
     <div class="route-stop">
-      <div class="rnum ${isDone?'done':''}">${isDone?'✓':stopNum}</div>
+      <div class="rnum ${isDone?'done':''}">${isDone?stopLabel:stopLabel}</div>
       <div class="rinfo ${isDone?'done':''}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
           <div class="rname">${s.name}</div>
@@ -625,13 +641,13 @@ async function buildRouteUI() {
   });
 
   // noGPS shops — shown with warning style, still mark-deliverable
-  displayNoGPS.forEach(s=>{
+  displayNoGPS.forEach((s,i)=>{
     const isDone=!!deliveries[s.shop_id];
-    if(!isDone) stopNum++;
+    const noGpsLabel=isDone?(doneSorted.length+i+1):(++stopNum);
     const shopOrders=orders.filter(o=>o.shop_id===s.shop_id);
     html+=`<div class="rline"></div>
     <div class="route-stop">
-      <div class="rnum" style="background:${isDone?'#8a7a6a':'#e67e22'};font-size:10px">${isDone?'✓':'⚠'}</div>
+      <div class="rnum" style="background:${isDone?'#8a7a6a':'#e67e22'};font-size:10px">${isDone?noGpsLabel:'⚠'}</div>
       <div class="rinfo" style="border-color:${isDone?'#e8dfd2':'#ffe082'};background:${isDone?'#f5f5f5':'#fffbf0'};${isDone?'opacity:.6':''}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
           <div class="rname">${s.name}</div>
