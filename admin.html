@@ -308,6 +308,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   <div class="stats-grid" id="staffStats"></div>
   <button class="btn btn-brown" onclick="openAddStaff()">➕ Add Staff User</button>
   <div id="staffList"></div>
+
 </div>
 
 <!-- GPS -->
@@ -564,7 +565,11 @@ function nrm(s){return(s||'').toLowerCase().replace(/[^a-z0-9]/g,' ').replace(/\
 
 document.getElementById('topDate').textContent=new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'});
 ['f-ord-date','f-rt-date','f-sum-date','f-del-date'].forEach(function(id){document.getElementById(id).value=todayStr();});
-document.getElementById('logoutBtn').onclick=function(){sessionStorage.clear();window.location.href='/';};
+document.getElementById('logoutBtn').onclick=function(){
+  var r=sessionStorage.getItem('role');
+  sessionStorage.clear();
+  window.location.href=(r==='super_admin')?'/superadmin':'/';
+};
 // Show maintenance card only for super_admin
 if(_staffRole==='super_admin') document.getElementById('maintenanceCard').style.display='block';
 
@@ -1969,7 +1974,7 @@ function renderGPS(){
 
 /* ── MAINTENANCE ── */
 function runCleanup(){
-  var btn=document.querySelector('#pg-gps .btn[onclick="runCleanup()"]');
+  var btn=document.querySelector('.btn[onclick="runCleanup()"]');
   var msg=document.getElementById('cleanupMsg');
   if(!confirm('Delete orders, deliveries, routes and notifications older than 7 days?\nShops and products are NOT affected.\nThis cannot be undone.'))return;
   btn.disabled=true; btn.textContent='⏳ Deleting…';
