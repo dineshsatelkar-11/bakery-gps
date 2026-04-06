@@ -533,7 +533,7 @@ var _staffRole = sessionStorage.getItem('role') || 'admin';
 var _staffName = sessionStorage.getItem('staffName') || 'Admin';
 var _allowedTabs = _staffRole === 'super_admin' ? null : JSON.parse(sessionStorage.getItem('tabs') || '[]');
 
-(function(){var r=sessionStorage.getItem('role');if(['super_admin','admin','assistant','chef','packer'].indexOf(r)<0)window.location.href='index.html';})();
+(function(){var r=sessionStorage.getItem('role');if(['super_admin','admin','assistant','chef','packer'].indexOf(r)<0)window.location.href='/';})();
 
 function initTabVisibility(){
   var allTabKeys = ['orders','approve','queue','summary','delivery','routes','customers','products','drivers','gps','users'];
@@ -564,7 +564,7 @@ function nrm(s){return(s||'').toLowerCase().replace(/[^a-z0-9]/g,' ').replace(/\
 
 document.getElementById('topDate').textContent=new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'});
 ['f-ord-date','f-rt-date','f-sum-date','f-del-date'].forEach(function(id){document.getElementById(id).value=todayStr();});
-document.getElementById('logoutBtn').onclick=function(){sessionStorage.clear();window.location.href='index.html';};
+document.getElementById('logoutBtn').onclick=function(){sessionStorage.clear();window.location.href='/';};
 
 /* ── TAB SWITCHER ── */
 function showTab(t){
@@ -1348,7 +1348,7 @@ function renderDeliveries(){
 }
 
 /* ── ROUTES ── */
-var routesData=[], _routeDelivMap={}, _routeOrdersByDriver={}, _routeLastDeliv={}, _routeFilter='all';
+var routesData=[], _routeDelivMap={}, _routeOrdersByDriver={}, _routeLastDeliv={}, _routeFilter='all', _routeShopGPS={};
 function setRouteFilter(f){ _routeFilter=f; renderRoutes(); }
 function loadRoutes(){
   var el=document.getElementById('routesList');
@@ -1358,11 +1358,17 @@ function loadRoutes(){
   Promise.all([
     api({action:'getRoutes',date:date,driver:driverFilter}),
     api({action:'getDeliveries',date:date,driver:driverFilter}),
-    api({action:'getOrders',date:date,driver:driverFilter})
+    api({action:'getOrders',date:date,driver:driverFilter}),
+    api({action:'getShops'})
   ]).then(function(res){
     routesData=Array.isArray(res[0])?res[0]:[];
     var deliveries=Array.isArray(res[1])?res[1]:[];
     var orders=Array.isArray(res[2])?res[2]:[];
+    // Build real GPS map: shop_name → has GPS
+    _routeShopGPS={};
+    (Array.isArray(res[3])?res[3]:[]).forEach(function(s){
+      _routeShopGPS[s.name]= !!(s.lat && s.lng);
+    });
 
     // delivMap: driver → { shop_id: record, shop_name: record }
     _routeDelivMap={};
@@ -1492,7 +1498,7 @@ function renderRoutes(){
       var d=dDelivs[o.shop_id]||dDelivs[o.shop_name];
       var label=d?(filteredGPS.length+j+1):(++stopNum);
       shopRows+='<div class="route-mini" style="display:flex;justify-content:space-between;color:'+(d?'#2d7a4f':'#7a4800')+';border-color:'+(d?'#c8e6c9':'#ffe082')+';background:'+(d?'':'#fffbf0')+'">'+
-        '<span>'+(d?'✅':'⚠')+' '+label+'. '+esc(o.shop_name)+' <span style="font-size:9px;color:#c8864a;font-family:monospace">[No GPS]</span></span>'+
+        '<span>'+(d?'✅':'⚠')+' '+label+'. '+esc(o.shop_name)+(_routeShopGPS[o.shop_name]?'':' <span style="font-size:9px;color:#c8864a;font-family:monospace">[No GPS]</span>')+'</span>'+
         (d?'<span style="font-size:10px;color:#2d7a4f;font-family:monospace">'+esc(d.time||'')+'</span>':'<span style="font-size:10px;color:#c8864a;font-family:monospace">Pending</span>')+
       '</div>';
     });

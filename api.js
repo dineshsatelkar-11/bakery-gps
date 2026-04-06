@@ -161,9 +161,8 @@
         return sbGet('staff', {}, 'name');
 
       case 'getShopByMobile': {
-        // p.variants = array of possible mobile formats for the same number
-        var inList = p.variants.map(function(v){ return encodeURIComponent(v); }).join(',');
-        var url = BASE + '/shops?mobile=in.(' + inList + ')&limit=5';
+        // Use LIKE *digits to match any stored format (+91, 91, ', etc.)
+        var url = BASE + '/shops?mobile=like.*' + encodeURIComponent(p.digits) + '&limit=5';
         return fetch(url, { headers: hdrs() })
           .then(function(r){ return r.ok ? r.json() : []; })
           .catch(function(){ return []; });

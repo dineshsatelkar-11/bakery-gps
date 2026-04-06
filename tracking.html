@@ -41,6 +41,10 @@ input[type=tel]:focus{border-color:#2d7a4f;background:#fff}
 .contact-name{font-size:13px;font-weight:700;color:#1e1611}
 .contact-role{font-size:10px;color:#8a7a6a;font-family:monospace}
 .contact-call{background:#e8f5e9;color:#2d7a4f;border:1.5px solid #a5d6a7;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:700;text-decoration:none;display:inline-block;font-family:-apple-system,sans-serif}
+/* Escalation */
+.escalate-btn{width:100%;background:#fff3e0;border:1.5px dashed #e67e22;border-radius:12px;padding:11px;font-size:13px;font-weight:700;color:#7a4800;cursor:pointer;font-family:-apple-system,sans-serif;margin-top:8px;text-align:center}
+.escalate-section{display:none;margin-top:4px;border-top:1.5px dashed #e8dfd2;padding-top:6px}
+.escalate-label{font-size:10px;font-family:monospace;color:#c8382a;font-weight:700;letter-spacing:1px;margin-bottom:6px;text-transform:uppercase}
 
 /* Last delivery */
 .deliv-box{background:#f5ede0;border-radius:10px;padding:10px 12px;margin-top:6px}
@@ -110,32 +114,41 @@ input[type=tel]:focus{border-color:#2d7a4f;background:#fff}
       </div>
       <a id="tr-driver-call" href="#" class="contact-call">📞 Call</a>
     </div>
-    <!-- Delivery Manager -->
-    <div class="contact-row">
-      <div class="contact-icon" style="background:#e3f2fd">📦</div>
-      <div class="contact-info">
-        <div class="contact-name" id="tr-dmgr-name"></div>
-        <div class="contact-role">Delivery Manager · <span id="tr-dmgr-num" style="font-family:monospace"></span></div>
+    <!-- Level 1 escalation button -->
+    <button class="escalate-btn" id="esc-btn1" onclick="toggleEscalation(1)">⚠️ Issue not resolved? Escalate →</button>
+    <!-- Level 1: Delivery Manager (Yuvraj) -->
+    <div class="escalate-section" id="escalateSection1">
+      <div class="escalate-label">📋 Level 1 — Delivery Manager</div>
+      <div class="contact-row">
+        <div class="contact-icon" style="background:#e3f2fd">📦</div>
+        <div class="contact-info">
+          <div class="contact-name" id="tr-esc1-name"></div>
+          <div class="contact-role">Delivery Manager · <span id="tr-esc1-num" style="font-family:monospace"></span></div>
+        </div>
+        <a id="tr-esc1-call" href="#" class="contact-call">📞 Call</a>
       </div>
-      <a id="tr-dmgr-call" href="#" class="contact-call">📞 Call</a>
-    </div>
-    <!-- Owner 1 -->
-    <div class="contact-row">
-      <div class="contact-icon" style="background:#fff3e0">👑</div>
-      <div class="contact-info">
-        <div class="contact-name" id="tr-owner1-name"></div>
-        <div class="contact-role">Owner · <span id="tr-owner1-num" style="font-family:monospace"></span></div>
+      <!-- Level 2 escalation button -->
+      <button class="escalate-btn" id="esc-btn2" onclick="toggleEscalation(2)" style="margin-top:6px;font-size:12px">🔴 Still not resolved? Escalate to Owner →</button>
+      <!-- Level 2: Owners -->
+      <div class="escalate-section" id="escalateSection2">
+        <div class="escalate-label" style="color:#c8382a">🚨 Level 2 — Company Owners</div>
+        <div class="contact-row">
+          <div class="contact-icon" style="background:#fff3e0">👑</div>
+          <div class="contact-info">
+            <div class="contact-name" id="tr-owner1-name"></div>
+            <div class="contact-role">Owner · <span id="tr-owner1-num" style="font-family:monospace"></span></div>
+          </div>
+          <a id="tr-owner1-call" href="#" class="contact-call">📞 Call</a>
+        </div>
+        <div class="contact-row">
+          <div class="contact-icon" style="background:#fce4ec">👑</div>
+          <div class="contact-info">
+            <div class="contact-name" id="tr-owner2-name"></div>
+            <div class="contact-role">Owner · <span id="tr-owner2-num" style="font-family:monospace"></span></div>
+          </div>
+          <a id="tr-owner2-call" href="#" class="contact-call">📞 Call</a>
+        </div>
       </div>
-      <a id="tr-owner1-call" href="#" class="contact-call">📞 Call</a>
-    </div>
-    <!-- Owner 2 -->
-    <div class="contact-row">
-      <div class="contact-icon" style="background:#fce4ec">👑</div>
-      <div class="contact-info">
-        <div class="contact-name" id="tr-owner2-name"></div>
-        <div class="contact-role">Owner · <span id="tr-owner2-num" style="font-family:monospace"></span></div>
-      </div>
-      <a id="tr-owner2-call" href="#" class="contact-call">📞 Call</a>
     </div>
   </div>
 
@@ -176,7 +189,7 @@ input[type=tel]:focus{border-color:#2d7a4f;background:#fff}
   <button class="mkt-cta" onclick="window.open('tel:'+CONFIG.LOGISTICS_OWNER_MOBILE)">📞 Contact Us</button>
 </div>
 
-<div class="footer">Satelkar's Logistics · Pune<br>Yuvraj: 8262900425 &nbsp;|&nbsp; Dinesh: 8956276855 &nbsp;|&nbsp; Siddhesh: 9886527036</div>
+<div class="footer">Satelkar's Logistics · Pune<br>Dinesh: 8956276855 &nbsp;|&nbsp; Siddhesh: 9886527036</div>
 
 <script>
 function todayStr(){
@@ -214,8 +227,8 @@ async function trackDelivery() {
   document.getElementById('loginMsg').style.display = 'none';
 
   try {
-    // 1. Look up shop by mobile — try all stored format variants
-    var shops = await api({ action: 'getShopByMobile', variants: mobileVariants(digits) });
+    // 1. Look up shop by mobile — match any stored format using LIKE
+    var shops = await api({ action: 'getShopByMobile', digits: digits });
     if (!shops || !shops.length) {
       showLoginMsg('Mobile number not found. Please check the number or contact us.');
       btn.innerHTML = '🔍 Track My Delivery'; btn.disabled = false;
@@ -260,18 +273,20 @@ async function trackDelivery() {
       document.getElementById('tr-driver-call').style.display = 'none';
     }
 
-    // Delivery Manager, Owner 1, Owner 2
-    document.getElementById('tr-dmgr-name').textContent = CONFIG.LOGISTICS_DELIVERY_MGR_NAME || 'Delivery Manager';
-    document.getElementById('tr-dmgr-num').textContent  = CONFIG.LOGISTICS_DELIVERY_MGR_MOBILE || '';
-    document.getElementById('tr-dmgr-call').href = 'tel:' + (CONFIG.LOGISTICS_DELIVERY_MGR_MOBILE || '');
-
+    // Level 1: Delivery Manager (Yuvraj)
+    document.getElementById('tr-esc1-name').textContent = CONFIG.LOGISTICS_DELIVERY_MGR_NAME || 'Delivery Manager';
+    document.getElementById('tr-esc1-num').textContent  = CONFIG.LOGISTICS_DELIVERY_MGR_MOBILE || '';
+    document.getElementById('tr-esc1-call').href = 'tel:' + (CONFIG.LOGISTICS_DELIVERY_MGR_MOBILE || '');
+    // Level 2: Owners
     document.getElementById('tr-owner1-name').textContent = CONFIG.LOGISTICS_OWNER1_NAME || 'Owner';
     document.getElementById('tr-owner1-num').textContent  = CONFIG.LOGISTICS_OWNER1_MOBILE || '';
     document.getElementById('tr-owner1-call').href = 'tel:' + (CONFIG.LOGISTICS_OWNER1_MOBILE || '');
-
     document.getElementById('tr-owner2-name').textContent = CONFIG.LOGISTICS_OWNER2_NAME || 'Owner';
     document.getElementById('tr-owner2-num').textContent  = CONFIG.LOGISTICS_OWNER2_MOBILE || '';
     document.getElementById('tr-owner2-call').href = 'tel:' + (CONFIG.LOGISTICS_OWNER2_MOBILE || '');
+    // Reset escalation sections on each login
+    document.getElementById('escalateSection1').style.display = 'none';
+    document.getElementById('escalateSection2').style.display = 'none';
 
     // Last delivery box
     var ldEl = document.getElementById('tr-last-deliv');
@@ -290,8 +305,12 @@ async function trackDelivery() {
     }
 
     // Live tracking link — from driver record (enable/disable per driver)
-    var trackingUrl    = (driverInfo && driverInfo.tracking_url)     ? driverInfo.tracking_url     : '';
+    // tracking_url may be a full Ajjas share text like: See "..." live location in Ajjas  https://...
+    // Extract just the https:// URL from it if present
+    var trackingRaw    = (driverInfo && driverInfo.tracking_url)     ? driverInfo.tracking_url     : '';
     var trackingOn     = (driverInfo && driverInfo.tracking_enabled)  ? driverInfo.tracking_enabled : false;
+    var urlMatch       = trackingRaw.match(/https?:\/\/\S+/);
+    var trackingUrl    = urlMatch ? urlMatch[0] : trackingRaw;
     var ajjasEl = document.getElementById('tr-ajjas');
     if (trackingUrl && trackingOn) {
       ajjasEl.href = trackingUrl;
@@ -321,6 +340,25 @@ function resetTracking() {
   document.getElementById('trackingResult').style.display = 'none';
   document.getElementById('loginMsg').style.display = 'none';
   document.getElementById('phoneInput').value = '';
+}
+
+function toggleEscalation(level){
+  var secId = 'escalateSection' + level;
+  var btnId = 'esc-btn' + level;
+  var sec = document.getElementById(secId);
+  var btn = document.getElementById(btnId);
+  var isOpen = sec.style.display === 'block';
+  if(!isOpen){
+    sec.style.display = 'block';
+    btn.style.background = '#fde8e8'; btn.style.borderColor = '#c8382a'; btn.style.color = '#c8382a';
+    btn.textContent = level===1 ? '✖ Hide level 1 contacts' : '✖ Hide owner contacts';
+  } else {
+    sec.style.display = 'none';
+    // also collapse inner level if closing level 1
+    if(level===1){ document.getElementById('escalateSection2').style.display='none'; document.getElementById('esc-btn2').style.cssText=''; }
+    btn.style.cssText = '';
+    btn.textContent = level===1 ? '⚠️ Issue not resolved? Escalate →' : '🔴 Still not resolved? Escalate to Owner →';
+  }
 }
 
 function esc(s){

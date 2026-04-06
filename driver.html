@@ -174,7 +174,7 @@ input[type=text],input[type=date]{width:100%;padding:11px 14px;border:1.5px soli
 
 <script>
 const driver = sessionStorage.getItem('driver');
-if (!sessionStorage.getItem('role') || !driver) window.location.href='index.html';
+if (!sessionStorage.getItem('role') || !driver) window.location.href='/';
 
 const HQ = CONFIG.HQ;
 const L  = CONFIG.LANG;
@@ -211,7 +211,7 @@ function toggleLang() {
   if (routeStarted) buildRouteUI();
 }
 
-function logout() { sessionStorage.clear(); window.location.href='index.html'; }
+function logout() { sessionStorage.clear(); window.location.href='/'; }
 
 document.getElementById('topDriver').textContent = driver;
 document.getElementById('topDate').textContent = todayStr();
@@ -685,6 +685,15 @@ async function markDelivered(shopId, shopName) {
   await apiPost(body);
   buildRouteUI();
   renderOrdersList();
+  // Check if ALL shops for today are now done → open WhatsApp group
+  const orderedIds = new Set(orders.map(o=>o.shop_id));
+  const allDone = [...orderedIds].every(id=>!!deliveries[id]);
+  if(allDone && orderedIds.size > 0 && CONFIG.WHATSAPP_GROUP){
+    const msg = `✅ All deliveries done!\nDriver: ${driver}\nDate: ${selectedDate||todayStr()}\nTotal shops: ${orderedIds.size}\nTime: ${new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}`;
+    if(confirm(`🎉 All ${orderedIds.size} deliveries complete!\n\nOpen WhatsApp group to send update?`)){
+      window.open(CONFIG.WHATSAPP_GROUP + '?text=' + encodeURIComponent(msg));
+    }
+  }
 }
 
 // ── GPS CAPTURE ──

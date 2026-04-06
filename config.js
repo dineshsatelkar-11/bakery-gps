@@ -23,8 +23,8 @@ const CONFIG = {
   LOGISTICS_OWNER2_NAME:      'Siddhesh Satelkar',
   LOGISTICS_OWNER2_MOBILE:    '9886527036',
 
-  // Ajjas live tracking token
-  AJJAS_TOKEN: '054b93d4279604a1387cfe6b7452e583',
+  // WhatsApp group link — opened when driver completes all deliveries
+  WHATSAPP_GROUP: 'https://chat.whatsapp.com/Bjta1D8WDKe38qPCJGVigp',
 
   // Driver app translations
   LANG: {
