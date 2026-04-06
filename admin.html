@@ -324,12 +324,12 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   <button class="btn-csv" onclick="exportGPSCSV()">⬇ Export GPS CSV</button>
   <div id="gpsList"></div>
 
-  <!-- Maintenance -->
-  <div class="card" style="margin-top:16px;border-color:#f5c6c6">
+  <!-- Maintenance — super_admin only -->
+  <div class="card" id="maintenanceCard" style="margin-top:16px;border-color:#f5c6c6;display:none">
     <div class="lbl" style="color:#c8382a">🗑 Data Maintenance</div>
     <div style="font-size:12px;font-family:monospace;color:#8a7a6a;margin-bottom:10px;line-height:1.6">
-      Auto-cleanup runs every night at 1:00 AM and deletes orders, deliveries and routes older than 7 days.<br>
-      Use the button below to run it manually right now.
+      Deletes orders, deliveries, routes and notifications older than 7 days.<br>
+      Shops and products are <strong>not</strong> affected.
     </div>
     <button class="btn" style="background:#c8382a;color:#fff;padding:11px" onclick="runCleanup()">🗑 Delete Data Older Than 7 Days</button>
     <div id="cleanupMsg" style="display:none;margin-top:8px" class="msg ok"></div>
@@ -565,6 +565,8 @@ function nrm(s){return(s||'').toLowerCase().replace(/[^a-z0-9]/g,' ').replace(/\
 document.getElementById('topDate').textContent=new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'});
 ['f-ord-date','f-rt-date','f-sum-date','f-del-date'].forEach(function(id){document.getElementById(id).value=todayStr();});
 document.getElementById('logoutBtn').onclick=function(){sessionStorage.clear();window.location.href='/';};
+// Show maintenance card only for super_admin
+if(_staffRole==='super_admin') document.getElementById('maintenanceCard').style.display='block';
 
 /* ── TAB SWITCHER ── */
 function showTab(t){
@@ -897,6 +899,20 @@ function doSave(){
         dc_num:o.dc_num
       };
     })}).then(function(res){
+      // Send notifications to each driver with orders
+      if(res&&res.ok&&toSave.length){
+        var byDriver={};
+        toSave.forEach(function(o){
+          if(!o.driver||o.driver==='Logistics')return;
+          byDriver[o.driver]=(byDriver[o.driver]||0)+1;
+        });
+        var notifs=Object.entries(byDriver).map(function(kv){
+          return{driver_name:kv[0],type:'new_orders',
+            message:kv[1]+' new order'+(kv[1]>1?'s':'')+' uploaded for '+toSave[0].date,
+            date:toSave[0].date};
+        });
+        if(notifs.length) apiPost({action:'addNotifications',notifications:notifs});
+      }
       btn.textContent='✅ Confirm & Save All'; btn.disabled=false;
       zone.classList.remove('has-file');
       document.getElementById('uploadIcon').textContent='📋';
@@ -1631,14 +1647,25 @@ function saveCustomer(){
   var existing=document.getElementById('cm-id').value;
   var now=new Date().toLocaleString('en-IN');
   msg.textContent='Saving…';msg.className='msg in';msg.style.display='block';
+  var assignedDriver=document.getElementById('cm-driver').value||'';
   apiPost({action:existing?'updateShop':'addShop',shop_id:cid,customer_id:cid,name:name,
     address:document.getElementById('cm-address').value.trim(),area:document.getElementById('cm-area').value.trim(),
-    assigned_driver:document.getElementById('cm-driver').value||'',
+    assigned_driver:assignedDriver,
     mobile:document.getElementById('cm-mobile').value.trim(),flag:document.getElementById('cm-flag').value.trim(),
     lat:document.getElementById('cm-lat').value,lng:document.getElementById('cm-lng').value,
     last_updated_by:'Admin',last_updated_at:now
   }).then(function(res){
-    if(res&&res.ok){msg.textContent='✅ Saved!';msg.className='msg ok';setTimeout(function(){closeCustModal();loadCustomers();},700);}
+    if(res&&res.ok){
+      msg.textContent='✅ Saved!';msg.className='msg ok';
+      // Notify driver when shop is added or reassigned
+      if(assignedDriver){
+        apiPost({action:'addNotification',driver_name:assignedDriver,
+          type:existing?'shop_reassigned':'new_shop',
+          message:existing?'Shop "'+name+'" has been assigned to your route':'New shop "'+name+'" added to your route'
+        });
+      }
+      setTimeout(function(){closeCustModal();loadCustomers();},700);
+    }
     else{msg.textContent='❌ '+(res.error||'Failed');msg.className='msg er';}
   });
 }
@@ -1663,6 +1690,10 @@ function bulkReassign(){
     if(res&&res.ok){
       targets.forEach(function(c){c.assigned_driver=to;});
       bmsg.textContent='✅ Moved '+targets.length+' → '+to;bmsg.className='msg ok';
+      // Notify destination driver
+      apiPost({action:'addNotification',driver_name:to,type:'shop_reassigned',
+        message:targets.length+' shop'+(targets.length>1?'s have':' has')+' been reassigned to your route'+(from?' from '+from:'')
+      });
       renderCustomers();
     }else{
       bmsg.textContent='❌ Failed: '+(res.error||'unknown');bmsg.className='msg er';
@@ -1940,13 +1971,13 @@ function renderGPS(){
 function runCleanup(){
   var btn=document.querySelector('#pg-gps .btn[onclick="runCleanup()"]');
   var msg=document.getElementById('cleanupMsg');
-  if(!confirm('Delete all orders, deliveries and routes older than 7 days?\nThis cannot be undone.'))return;
+  if(!confirm('Delete orders, deliveries, routes and notifications older than 7 days?\nShops and products are NOT affected.\nThis cannot be undone.'))return;
   btn.disabled=true; btn.textContent='⏳ Deleting…';
   msg.style.display='none';
   apiPost({action:'cleanOldData'}).then(function(res){
     btn.disabled=false; btn.textContent='🗑 Delete Data Older Than 7 Days';
     if(res&&res.ok){
-      msg.textContent='✅ Deleted: '+res.orders+' orders, '+res.deliveries+' deliveries, '+res.routes+' routes (before '+res.cutoff+')';
+      msg.textContent='✅ Deleted (before '+res.cutoff+'):\n'+res.orders+' orders · '+res.deliveries+' deliveries · '+res.routes+' routes · '+res.notifications+' notifications';
       msg.className='msg ok';
     } else {
       msg.textContent='❌ '+(res.error||'Failed');

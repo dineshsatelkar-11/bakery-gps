@@ -168,6 +168,14 @@
           .catch(function(){ return []; });
       }
 
+      case 'getNotifications': {
+        var url = BASE + '/notifications?driver_name=eq.' + encodeURIComponent(p.driver) +
+                  '&is_read=eq.false&order=created_at.desc&limit=50';
+        return fetch(url, { headers: hdrs() })
+          .then(function(r){ return r.ok ? r.json() : []; })
+          .catch(function(){ return []; });
+      }
+
       default:
         return Promise.resolve([]);
     }
@@ -333,14 +341,63 @@
       case 'deleteStaff':
         return sbDelete('staff', { id: b.id });
 
-      case 'cleanOldData':
-        return fetch(BASE.replace('/rest/v1', '') + '/rest/v1/rpc/cleanup_old_data', {
-          method: 'POST',
-          headers: hdrs({ 'Prefer': 'return=representation' }),
-          body: JSON.stringify({})
+      case 'addNotification':
+        return sbPost('notifications', {
+          driver_name: b.driver_name, type: b.type, message: b.message, date: b.date || ''
+        });
+
+      case 'addNotifications':
+        return sbPost('notifications', b.notifications.map(function(n){
+          return { driver_name: n.driver_name, type: n.type, message: n.message, date: n.date || '' };
+        }));
+
+      case 'markNotificationsRead':
+        return fetch(BASE + '/notifications?driver_name=eq.' + encodeURIComponent(b.driver) + '&is_read=eq.false', {
+          method: 'PATCH',
+          headers: hdrs({ 'Prefer': 'return=minimal' }),
+          body: JSON.stringify({ is_read: true })
         })
-        .then(function(r){ return r.ok ? r.json() : r.json().then(function(e){ return { ok: false, error: e.message || 'Failed' }; }); })
-        .catch(function(){ return { ok: false, error: 'Network error' }; });
+        .then(function(r){ return r.ok ? { ok: true } : { ok: false }; })
+        .catch(function(){ return { ok: false }; });
+
+      case 'cleanOldData': {
+        // Delete data older than 7 days from orders, deliveries, routes, notifications
+        var cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - 7);
+        var cutoffDate = cutoff.toISOString().slice(0, 10); // 'YYYY-MM-DD'
+        var cutoffTs   = cutoff.toISOString();              // for timestamptz columns
+
+        function countHeader(r) {
+          // Supabase returns deleted row count in Content-Range: */N
+          var cr = r.headers.get('Content-Range') || '';
+          var m  = cr.match(/\*\/(\d+)/);
+          return m ? parseInt(m[1]) : 0;
+        }
+
+        function delTable(table, filter) {
+          return fetch(BASE + '/' + table + '?' + filter, {
+            method: 'DELETE',
+            headers: hdrs({ 'Prefer': 'count=exact,return=minimal' })
+          }).then(function(r){ return r.ok ? countHeader(r) : 0; })
+            .catch(function(){ return 0; });
+        }
+
+        return Promise.all([
+          delTable('orders',        'date=lt.' + encodeURIComponent(cutoffDate)),
+          delTable('deliveries',    'date=lt.' + encodeURIComponent(cutoffDate)),
+          delTable('routes',        'date=lt.' + encodeURIComponent(cutoffDate)),
+          delTable('notifications', 'created_at=lt.' + encodeURIComponent(cutoffTs))
+        ]).then(function(counts) {
+          return {
+            ok: true,
+            orders:        counts[0],
+            deliveries:    counts[1],
+            routes:        counts[2],
+            notifications: counts[3],
+            cutoff:        cutoffDate
+          };
+        }).catch(function(){ return { ok: false, error: 'Network error' }; });
+      }
 
       default:
         return Promise.resolve({ ok: false, error: 'Unknown action: ' + b.action });

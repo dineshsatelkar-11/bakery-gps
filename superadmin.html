@@ -45,7 +45,7 @@ var staffMap = {};
 
 (function checkAlreadyLoggedIn(){
   var r = sessionStorage.getItem('role');
-  if(r === 'super_admin') { window.location.href = 'admin.html'; return; }
+  if(r === 'super_admin') { window.location.href = '/admin'; return; }
 })();
 
 api({action:'getStaff'}).then(function(data){
@@ -74,7 +74,7 @@ function doLogin(){
   sessionStorage.setItem('role', s.role);
   sessionStorage.setItem('tabs', s.tabs || '[]');
   sessionStorage.setItem('staffName', s.name);
-  window.location.href = 'admin.html';
+  window.location.href = '/admin';
 }
 
 document.getElementById('adminPass').addEventListener('keydown', function(e){
