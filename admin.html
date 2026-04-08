@@ -28,7 +28,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;
 .page{display:none;padding:12px 14px 80px}.page.on{display:block}
 .card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:14px;margin-bottom:10px}
 .lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:8px;text-transform:uppercase}
-select,input[type=text],input[type=date],input[type=tel],textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:8px}
+select,input[type=text],input[type=date],input[type=tel],input[type=url],textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:8px}
 textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
 .btn{width:100%;padding:13px;border:none;border-radius:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:8px}
 .btn-green{background:#2d7a4f;color:#fff}
@@ -121,6 +121,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   <button class="tab"    id="tb-drivers"   onclick="showTab('drivers')">🚗 Drivers</button>
   <button class="tab"    id="tb-users"     onclick="showTab('users')">👥 Users</button>
   <button class="tab"    id="tb-gps"       onclick="showTab('gps')">📍 GPS</button>
+  <button class="tab"    id="tb-notify"    onclick="showTab('notify')">🔔 Notify</button>
 </div>
 
 <!-- ORDERS -->
@@ -337,6 +338,47 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   </div>
 </div>
 
+<!-- NOTIFY (super_admin only) -->
+<div class="page" id="pg-notify">
+
+  <!-- Summary sticker -->
+  <div style="background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:14px;margin-bottom:12px">
+    <div style="font-size:15px;font-weight:900;color:#4a2f14;margin-bottom:4px">🔔 Send Push Notification</div>
+    <div style="font-size:12px;font-family:monospace;color:#8a7a6a;line-height:1.6">Send instant notification to one or more drivers.<br>Notification appears on their phone even if the app is closed.</div>
+  </div>
+
+  <!-- Driver selection -->
+  <div class="card" style="margin-bottom:10px">
+    <div class="lbl">Select Drivers</div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <button class="btn-sm" style="background:#2d7a4f;color:#fff;padding:7px 14px" onclick="notifSelectAll()">✅ Select All</button>
+      <button class="btn-sm" style="background:#e8dfd2;color:#4a2f14;padding:7px 14px" onclick="notifSelectNone()">✖ Clear</button>
+    </div>
+    <div id="notif-driver-list" style="display:flex;flex-direction:column;gap:6px"></div>
+  </div>
+
+  <!-- Message -->
+  <div class="card" style="margin-bottom:10px">
+    <div class="lbl">Message</div>
+    <textarea id="notif-message" rows="3" placeholder="Type your message here… e.g. Route changed today, check your orders." style="resize:vertical"></textarea>
+    <div style="font-size:10px;font-family:monospace;color:#8a7a6a;margin-top:4px">Keep it short and clear — best under 100 characters.</div>
+  </div>
+
+  <!-- Quick message templates -->
+  <div class="card" style="margin-bottom:12px">
+    <div class="lbl">Quick Templates</div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <button class="btn-sm" style="background:#f5ede0;color:#4a2f14;border:1.5px solid #e8dfd2;text-align:left;padding:9px 12px" onclick="notifTemplate('Orders uploaded for today. Please check your route.')">📋 Orders uploaded for today. Please check your route.</button>
+      <button class="btn-sm" style="background:#f5ede0;color:#4a2f14;border:1.5px solid #e8dfd2;text-align:left;padding:9px 12px" onclick="notifTemplate('Route has been updated. Please refresh your app.')">🗺 Route has been updated. Please refresh your app.</button>
+      <button class="btn-sm" style="background:#f5ede0;color:#4a2f14;border:1.5px solid #e8dfd2;text-align:left;padding:9px 12px" onclick="notifTemplate('New shop added to your route today.')">🏪 New shop added to your route today.</button>
+      <button class="btn-sm" style="background:#f5ede0;color:#4a2f14;border:1.5px solid #e8dfd2;text-align:left;padding:9px 12px" onclick="notifTemplate('Urgent: Please call the office immediately.')">🚨 Urgent: Please call the office immediately.</button>
+    </div>
+  </div>
+
+  <button class="btn btn-brown" onclick="sendManualNotif()">🔔 Send Notification</button>
+  <div id="notif-send-msg" style="display:none;margin-top:8px" class="msg ok"></div>
+</div>
+
 <!-- APPROVE CUSTOMER MODAL -->
 <div class="modal-bg" id="approveModal" style="display:none" onclick="if(event.target===this)closeApproveModal()">
   <div class="modal">
@@ -426,46 +468,83 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
 <!-- DRIVER MODAL -->
 <div class="modal-bg" id="driverModal" style="display:none" onclick="if(event.target===this)closeDriverModal()">
   <div class="modal">
-    <div class="modal-title" id="driverModalTitle">Add Driver</div>
+
+    <!-- Summary sticker -->
+    <div id="dm-sticker" style="display:flex;align-items:center;gap:12px;background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;padding:12px 14px;margin-bottom:16px">
+      <div id="dm-sticker-avatar" style="width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900;flex-shrink:0;background:#e3f2fd;color:#1a5fa8">?</div>
+      <div style="flex:1;min-width:0">
+        <div id="dm-sticker-name" style="font-size:15px;font-weight:900;color:#4a2f14;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">New Driver</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">
+          <span id="dm-sticker-status" style="font-size:10px;font-family:monospace;padding:2px 8px;border-radius:20px;font-weight:700;background:#e8f5e9;color:#2d7a4f">✅ Active</span>
+          <span id="dm-sticker-track" style="font-size:10px;font-family:monospace;padding:2px 8px;border-radius:20px;font-weight:700;background:#fde8e8;color:#c8382a">🔴 No Tracking</span>
+        </div>
+      </div>
+    </div>
+
     <input type="hidden" id="dm-id">
-    <div class="lbl">Driver Name *</div>
-    <input type="text" id="dm-name" placeholder="e.g. Rahul" autocomplete="off">
-    <div class="lbl">Mobile Number</div>
-    <input type="tel" id="dm-mobile" placeholder="e.g. 9876543210" autocomplete="off">
-    <div class="lbl" id="dm-pw-lbl">Password *</div>
+
+    <!-- Section: Basic Info -->
+    <div style="font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;text-transform:uppercase;margin-bottom:8px;margin-top:2px">👤 Basic Info</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:2px">
+      <div>
+        <div class="lbl" style="margin-bottom:4px">Name *</div>
+        <input type="text" id="dm-name" placeholder="e.g. Rahul" autocomplete="off" oninput="updateDmSticker()">
+      </div>
+      <div>
+        <div class="lbl" style="margin-bottom:4px">Mobile</div>
+        <input type="tel" id="dm-mobile" placeholder="9876543210" autocomplete="off">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <div>
+        <div class="lbl" style="margin-bottom:4px">Badge Color</div>
+        <select id="dm-color" onchange="updateDmSticker()">
+          <option value="orange">🟠 Orange</option>
+          <option value="blue" selected>🔵 Blue</option>
+          <option value="green">🟢 Green</option>
+          <option value="purple">🟣 Purple</option>
+          <option value="red">🔴 Red</option>
+          <option value="pink">🩷 Pink</option>
+          <option value="teal">🩵 Teal</option>
+          <option value="brown">🟤 Brown</option>
+        </select>
+      </div>
+      <div>
+        <div class="lbl" style="margin-bottom:4px">Status</div>
+        <select id="dm-active" onchange="updateDmSticker()">
+          <option value="true">✅ Active</option>
+          <option value="false">❌ Inactive</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Section: Password -->
+    <div style="font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;text-transform:uppercase;margin-bottom:8px">🔒 Password</div>
     <div id="dm-pw-hint" style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:6px;display:none">Leave blank to keep existing password</div>
-    <div style="position:relative;margin-bottom:10px">
+    <div style="position:relative;margin-bottom:14px">
       <input type="password" id="dm-password" placeholder="Enter password" autocomplete="new-password"
-        style="width:100%;padding:11px 44px 11px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;color:#1e1611;background:#f5ede0;outline:none;font-family:-apple-system,sans-serif">
+        style="width:100%;padding:11px 44px 11px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;color:#1e1611;background:#f5ede0;outline:none;font-family:-apple-system,sans-serif;margin-bottom:0">
       <button type="button" onclick="toggleDmPw()" id="dm-pw-eye"
         style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:#8a7a6a;padding:4px">👁</button>
     </div>
-    <div class="lbl">Badge Color</div>
-    <select id="dm-color">
-      <option value="orange">🟠 Orange</option>
-      <option value="blue" selected>🔵 Blue</option>
-      <option value="green">🟢 Green</option>
-      <option value="purple">🟣 Purple</option>
-      <option value="red">🔴 Red</option>
-      <option value="pink">🩷 Pink</option>
-      <option value="teal">🩵 Teal</option>
-      <option value="brown">🟤 Brown</option>
-    </select>
-    <div class="lbl">Status</div>
-    <select id="dm-active">
-      <option value="true">✅ Active</option>
-      <option value="false">❌ Inactive</option>
-    </select>
-    <div class="lbl" style="margin-top:6px">Live Tracking Link <span style="font-weight:400;color:#8a7a6a">(Ajjas / GPS URL)</span></div>
-    <input type="url" id="dm-tracking-url" placeholder="https://community.ajjas.com/tlshared/?tkn=…" autocomplete="off">
-    <div class="lbl">Show Live Tracking to Customers</div>
-    <select id="dm-tracking-enabled">
-      <option value="false">🔴 Disabled — hide from customers</option>
-      <option value="true">🟢 Enabled — show on tracking page</option>
-    </select>
+
+    <!-- Section: Live Tracking -->
+    <div style="font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;text-transform:uppercase;margin-bottom:8px">📍 Live Tracking</div>
+    <div style="background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:12px;margin-bottom:14px">
+      <div class="lbl" style="margin-bottom:4px">Ajjas / GPS Link</div>
+      <input type="url" id="dm-tracking-url" placeholder="https://community.ajjas.com/tlshared/?tkn=…" autocomplete="off" oninput="updateDmSticker()" style="margin-bottom:10px">
+      <div class="lbl" style="margin-bottom:4px">Show to Customers</div>
+      <select id="dm-tracking-enabled" onchange="updateDmSticker()">
+        <option value="false">🔴 Disabled — hide from customers</option>
+        <option value="true">🟢 Enabled — show on tracking page</option>
+      </select>
+    </div>
+
     <div id="dm-msg" style="display:none" class="msg ok"></div>
-    <button class="btn btn-brown" onclick="saveDriver()">💾 Save Driver</button>
-    <button class="btn btn-grey" style="margin-bottom:0" onclick="closeDriverModal()">Cancel</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <button class="btn btn-grey" style="margin-bottom:0" onclick="closeDriverModal()">Cancel</button>
+      <button class="btn btn-brown" style="margin-bottom:0" onclick="saveDriver()">💾 Save</button>
+    </div>
   </div>
 </div>
 
@@ -534,15 +613,15 @@ var _staffRole = sessionStorage.getItem('role') || 'admin';
 var _staffName = sessionStorage.getItem('staffName') || 'Admin';
 var _allowedTabs = _staffRole === 'super_admin' ? null : JSON.parse(sessionStorage.getItem('tabs') || '[]');
 
-(function(){var r=sessionStorage.getItem('role');if(['super_admin','admin','assistant','chef','packer'].indexOf(r)<0)window.location.href='/';})();
+(function(){var r=sessionStorage.getItem('role');if(['super_admin','admin','assistant','chef','packer'].indexOf(r)<0)goto('');})();
 
 function initTabVisibility(){
-  var allTabKeys = ['orders','approve','queue','summary','delivery','routes','customers','products','drivers','gps','users'];
+  var allTabKeys = ['orders','approve','queue','summary','delivery','routes','customers','products','drivers','gps','users','notify'];
   allTabKeys.forEach(function(t){
     var btn = document.getElementById('tb-'+t);
     if(!btn) return;
     var show;
-    if(t === 'users') {
+    if(t === 'users' || t === 'notify') {
       show = (_staffRole === 'super_admin');
     } else if(_allowedTabs === null) {
       show = true; // super_admin sees all
@@ -568,14 +647,14 @@ document.getElementById('topDate').textContent=new Date().toLocaleDateString('en
 document.getElementById('logoutBtn').onclick=function(){
   var r=sessionStorage.getItem('role');
   sessionStorage.clear();
-  window.location.href=(r==='super_admin')?'/superadmin':'/';
+  goto(r==='super_admin'?'superadmin':'');
 };
 // Show maintenance card only for super_admin
 if(_staffRole==='super_admin') document.getElementById('maintenanceCard').style.display='block';
 
 /* ── TAB SWITCHER ── */
 function showTab(t){
-  ['orders','approve','queue','summary','delivery','routes','customers','products','drivers','gps','users'].forEach(function(x){
+  ['orders','approve','queue','summary','delivery','routes','customers','products','drivers','gps','users','notify'].forEach(function(x){
     document.getElementById('pg-'+x).classList.toggle('on',x===t);
     document.getElementById('tb-'+x).classList.toggle('on',x===t);
   });
@@ -589,6 +668,7 @@ function showTab(t){
   if(t==='products')  loadProducts();
   if(t==='drivers')   loadDrivers().then(renderDrivers);
   if(t==='users')     loadStaff().then(renderStaff);
+  if(t==='notify')    loadNotifyDriverList();
 }
 
 /* ── CUSTOMER MASTER (replaces allShops) ──
@@ -916,7 +996,10 @@ function doSave(){
             message:kv[1]+' new order'+(kv[1]>1?'s':'')+' uploaded for '+toSave[0].date,
             date:toSave[0].date};
         });
-        if(notifs.length) apiPost({action:'addNotifications',notifications:notifs});
+        if(notifs.length){
+          apiPost({action:'addNotifications',notifications:notifs});
+          notifs.forEach(function(n){ sendPush(n.driver_name, n.message); });
+        }
       }
       btn.textContent='✅ Confirm & Save All'; btn.disabled=false;
       zone.classList.remove('has-file');
@@ -1664,10 +1747,9 @@ function saveCustomer(){
       msg.textContent='✅ Saved!';msg.className='msg ok';
       // Notify driver when shop is added or reassigned
       if(assignedDriver){
-        apiPost({action:'addNotification',driver_name:assignedDriver,
-          type:existing?'shop_reassigned':'new_shop',
-          message:existing?'Shop "'+name+'" has been assigned to your route':'New shop "'+name+'" added to your route'
-        });
+        var shopMsg=existing?'Shop "'+name+'" has been assigned to your route':'New shop "'+name+'" added to your route';
+        apiPost({action:'addNotification',driver_name:assignedDriver,type:existing?'shop_reassigned':'new_shop',message:shopMsg});
+        sendPush(assignedDriver, shopMsg);
       }
       setTimeout(function(){closeCustModal();loadCustomers();},700);
     }
@@ -1696,9 +1778,9 @@ function bulkReassign(){
       targets.forEach(function(c){c.assigned_driver=to;});
       bmsg.textContent='✅ Moved '+targets.length+' → '+to;bmsg.className='msg ok';
       // Notify destination driver
-      apiPost({action:'addNotification',driver_name:to,type:'shop_reassigned',
-        message:targets.length+' shop'+(targets.length>1?'s have':' has')+' been reassigned to your route'+(from?' from '+from:'')
-      });
+      var bulkMsg=targets.length+' shop'+(targets.length>1?'s have':' has')+' been reassigned to your route'+(from?' from '+from:'');
+      apiPost({action:'addNotification',driver_name:to,type:'shop_reassigned',message:bulkMsg});
+      sendPush(to, bulkMsg);
       renderCustomers();
     }else{
       bmsg.textContent='❌ Failed: '+(res.error||'unknown');bmsg.className='msg er';
@@ -1868,15 +1950,40 @@ function toggleDmPw(){
   else{inp.type='password';eye.textContent='👁';}
 }
 
+function updateDmSticker(){
+  var name    = document.getElementById('dm-name').value.trim()||'New Driver';
+  var color   = document.getElementById('dm-color').value||'blue';
+  var active  = document.getElementById('dm-active').value==='true';
+  var trackOn = document.getElementById('dm-tracking-enabled').value==='true';
+  var trackUrl= document.getElementById('dm-tracking-url').value.trim();
+  var c       = DRIVER_COLORS[color]||DRIVER_COLORS.blue;
+  var initials= name.split(' ').map(function(w){return w[0]||'';}).join('').toUpperCase().slice(0,2)||'?';
+  var av      = document.getElementById('dm-sticker-avatar');
+  av.textContent = initials;
+  av.style.background = c.bg;
+  av.style.color      = c.fg;
+  document.getElementById('dm-sticker-name').textContent = name;
+  var st = document.getElementById('dm-sticker-status');
+  st.textContent  = active ? '✅ Active' : '❌ Inactive';
+  st.style.background = active ? '#e8f5e9' : '#fde8e8';
+  st.style.color      = active ? '#2d7a4f' : '#c8382a';
+  var tr = document.getElementById('dm-sticker-track');
+  if(trackUrl && trackOn){
+    tr.textContent='🟢 Tracking ON'; tr.style.background='#e8f5e9'; tr.style.color='#2d7a4f';
+  } else if(trackUrl && !trackOn){
+    tr.textContent='⏸ Link set, disabled'; tr.style.background='#fff3e0'; tr.style.color='#c8864a';
+  } else {
+    tr.textContent='🔴 No Tracking'; tr.style.background='#fde8e8'; tr.style.color='#c8382a';
+  }
+}
+
 function openAddDriver(){
-  document.getElementById('driverModalTitle').textContent='Add Driver';
   document.getElementById('dm-id').value='';
   document.getElementById('dm-name').value='';
   document.getElementById('dm-mobile').value='';
   document.getElementById('dm-password').value='';
   document.getElementById('dm-password').type='password';
   document.getElementById('dm-pw-eye').textContent='👁';
-  document.getElementById('dm-pw-lbl').textContent='Password *';
   document.getElementById('dm-pw-hint').style.display='none';
   document.getElementById('dm-password').placeholder='Enter password';
   document.getElementById('dm-color').value='blue';
@@ -1884,18 +1991,17 @@ function openAddDriver(){
   document.getElementById('dm-tracking-url').value='';
   document.getElementById('dm-tracking-enabled').value='false';
   document.getElementById('dm-msg').style.display='none';
+  updateDmSticker();
   document.getElementById('driverModal').style.display='flex';
 }
 
 function openEditDriver(d){
-  document.getElementById('driverModalTitle').textContent='Edit Driver: '+esc(d.name);
   document.getElementById('dm-id').value=d.id;
   document.getElementById('dm-name').value=d.name||'';
   document.getElementById('dm-mobile').value=d.mobile||'';
   document.getElementById('dm-password').value='';
   document.getElementById('dm-password').type='password';
   document.getElementById('dm-pw-eye').textContent='👁';
-  document.getElementById('dm-pw-lbl').textContent='Change Password';
   document.getElementById('dm-pw-hint').style.display='block';
   document.getElementById('dm-password').placeholder='New password (optional)';
   document.getElementById('dm-color').value=d.color||'blue';
@@ -1903,6 +2009,7 @@ function openEditDriver(d){
   document.getElementById('dm-tracking-url').value=d.tracking_url||'';
   document.getElementById('dm-tracking-enabled').value=String(d.tracking_enabled===true);
   document.getElementById('dm-msg').style.display='none';
+  updateDmSticker();
   document.getElementById('driverModal').style.display='flex';
 }
 
@@ -1970,6 +2077,90 @@ function renderGPS(){
         '<button class="btn-sm" style="background:#e3f2fd;color:#1565c0" onclick="window.open(\'https://www.google.com/maps?q='+c.lat+','+c.lng+'\',\'_blank\')">🗺 Map</button>':'')+
     '</div>';
   }).join('');
+}
+
+/* ── MANUAL NOTIFY TAB ── */
+function loadNotifyDriverList(){
+  loadDrivers().then(function(drivers){
+    var list = document.getElementById('notif-driver-list');
+    var active = drivers.filter(function(d){ return d.active !== false; });
+    list.innerHTML = active.map(function(d){
+      var c = DRIVER_COLORS[d.color] || DRIVER_COLORS.blue;
+      return '<label style="display:flex;align-items:center;gap:10px;background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:11px 14px;cursor:pointer">' +
+        '<input type="checkbox" class="notif-driver-chk" value="'+esc(d.name)+'" style="width:18px;height:18px;accent-color:#2d7a4f;flex-shrink:0">' +
+        '<span style="width:34px;height:34px;border-radius:50%;background:'+c.bg+';color:'+c.fg+';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;flex-shrink:0">' +
+          d.name.slice(0,2).toUpperCase() +
+        '</span>' +
+        '<span style="flex:1;font-size:14px;font-weight:700;color:#1e1611">'+esc(d.name)+'</span>' +
+        '<span style="font-size:10px;font-family:monospace;padding:2px 8px;border-radius:20px;background:'+(d.tracking_enabled?'#e8f5e9':'#f5ede0')+';color:'+(d.tracking_enabled?'#2d7a4f':'#8a7a6a')+'">'+
+          (d.tracking_enabled ? '🟢 Push ON' : '⚪ Push OFF') +
+        '</span>' +
+      '</label>';
+    }).join('');
+  });
+}
+
+function notifSelectAll(){
+  document.querySelectorAll('.notif-driver-chk').forEach(function(c){ c.checked=true; });
+}
+function notifSelectNone(){
+  document.querySelectorAll('.notif-driver-chk').forEach(function(c){ c.checked=false; });
+}
+function notifTemplate(msg){
+  document.getElementById('notif-message').value = msg;
+}
+
+function sendManualNotif(){
+  var selected = Array.from(document.querySelectorAll('.notif-driver-chk:checked')).map(function(c){ return c.value; });
+  var message  = document.getElementById('notif-message').value.trim();
+  var resultMsg = document.getElementById('notif-send-msg');
+
+  if(!selected.length){ resultMsg.textContent='❌ Select at least one driver.'; resultMsg.className='msg er'; resultMsg.style.display='block'; return; }
+  if(!message){ resultMsg.textContent='❌ Type a message first.'; resultMsg.className='msg er'; resultMsg.style.display='block'; return; }
+
+  var btn = document.querySelector('#pg-notify .btn-brown');
+  btn.disabled=true; btn.textContent='⏳ Sending…';
+  resultMsg.style.display='none';
+
+  // Save to DB notifications table
+  var notifs = selected.map(function(name){
+    return { driver_name: name, type: 'manual', message: message };
+  });
+  apiPost({ action: 'addNotifications', notifications: notifs });
+
+  // Send OneSignal push to each selected driver
+  sendPush(selected, message);
+
+  setTimeout(function(){
+    btn.disabled=false; btn.textContent='🔔 Send Notification';
+    resultMsg.textContent='✅ Notification sent to: ' + selected.join(', ');
+    resultMsg.className='msg ok'; resultMsg.style.display='block';
+    document.getElementById('notif-message').value='';
+    notifSelectNone();
+  }, 1000);
+}
+
+/* ── ONESIGNAL PUSH ── */
+function sendPush(driverNames, message) {
+  var appId = CONFIG.ONESIGNAL_APP_ID;
+  var key   = CONFIG.ONESIGNAL_REST_API_KEY;
+  if (!appId || appId === 'YOUR_APP_ID_HERE') return; // not configured yet
+  var names = Array.isArray(driverNames) ? driverNames : [driverNames];
+  names.forEach(function(name) {
+    if (!name || name === 'Logistics') return;
+    fetch('https://onesignal.com/api/v1/notifications', {
+      method: 'POST',
+      headers: { 'Authorization': 'Basic ' + key, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        app_id: appId,
+        include_aliases: { external_id: [name] },
+        target_channel: 'push',
+        headings: { en: '🥖 Baked GPS — Satelkar\'s Logistics' },
+        contents: { en: message },
+        url: 'https://bakery-gps.vercel.app/driver'
+      })
+    }).catch(function() {});
+  });
 }
 
 /* ── MAINTENANCE ── */

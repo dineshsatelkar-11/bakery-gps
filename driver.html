@@ -6,6 +6,7 @@
 <title>Its Baked Driver</title>
 <script src="config.js"></script>
 <script src="api.js"></script>
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <link rel="manifest" href="manifest-driver.json">
 <meta name="theme-color" content="#2d7a4f">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -201,7 +202,7 @@ input[type=text],input[type=date]{width:100%;padding:11px 14px;border:1.5px soli
 
 <script>
 const driver = sessionStorage.getItem('driver');
-if (!sessionStorage.getItem('role') || !driver) window.location.href='/';
+if (!sessionStorage.getItem('role') || !driver) goto('');
 
 const HQ = CONFIG.HQ;
 const L  = CONFIG.LANG;
@@ -238,7 +239,24 @@ function toggleLang() {
   if (routeStarted) buildRouteUI();
 }
 
-function logout() { sessionStorage.clear(); window.location.href='/'; }
+function logout() { sessionStorage.clear(); goto(''); }
+
+// ── ONESIGNAL PUSH ───────────────────────────────────────────────────────────
+window.OneSignalDeferred = window.OneSignalDeferred || [];
+if (CONFIG.ONESIGNAL_APP_ID && CONFIG.ONESIGNAL_APP_ID !== 'YOUR_APP_ID_HERE') {
+  OneSignalDeferred.push(function(OneSignal) {
+    OneSignal.init({ appId: CONFIG.ONESIGNAL_APP_ID, serviceWorkerPath: '/OneSignalSDKWorker.js' })
+      .then(function() {
+        // Link this device to the logged-in driver's name
+        return OneSignal.login(driver);
+      })
+      .then(function() {
+        // Request push permission (shows browser prompt)
+        return OneSignal.Notifications.requestPermission();
+      })
+      .catch(function() {});
+  });
+}
 
 // ── NOTIFICATIONS ────────────────────────────────────────────────────────────
 var _notifs = [];

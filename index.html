@@ -134,7 +134,7 @@ function staffLogin(){
   sessionStorage.setItem('role', s.role);
   sessionStorage.setItem('tabs', s.tabs || '[]');
   sessionStorage.setItem('staffName', s.name);
-  window.location.href = '/admin';
+  goto('admin');
 }
 
 // apply saved lang on load
@@ -152,7 +152,7 @@ function driverLogin(){
   sessionStorage.setItem('role', 'driver');
   sessionStorage.setItem('driver', name);
   sessionStorage.setItem('lang', lang);
-  window.location.href = '/driver';
+  goto('driver');
 }
 
 document.getElementById('driverPass').addEventListener('keydown', function(e){ if(e.key==='Enter') driverLogin(); });
@@ -160,8 +160,8 @@ document.getElementById('staffPass').addEventListener('keydown', function(e){ if
 
 // redirect if already logged in
 var _r = sessionStorage.getItem('role');
-if(_r==='driver') window.location.href='/driver';
-if(_r==='super_admin'||_r==='admin'||_r==='assistant'||_r==='chef'||_r==='packer') window.location.href='/admin';
+if(_r==='driver') goto('driver');
+if(_r==='super_admin'||_r==='admin'||_r==='assistant'||_r==='chef'||_r==='packer') goto('admin');
 </script>
 </body>
 </html>
