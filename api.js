@@ -155,10 +155,28 @@
         return sbGet('products', {}, 'name');
 
       case 'getDrivers':
-        return sbGet('drivers', {}, 'name');
+        // Uses RPC so password column is never sent over the wire
+        return fetch(BASE.replace('/rest/v1','') + '/rest/v1/rpc/get_drivers_public', {
+          method: 'POST', headers: hdrs(), body: JSON.stringify({})
+        }).then(function(r){ return r.ok ? r.json() : []; }).catch(function(){ return []; });
 
       case 'getStaff':
-        return sbGet('staff', {}, 'name');
+        // Uses RPC so password column is never sent over the wire
+        return fetch(BASE.replace('/rest/v1','') + '/rest/v1/rpc/get_staff_public', {
+          method: 'POST', headers: hdrs(), body: JSON.stringify({})
+        }).then(function(r){ return r.ok ? r.json() : []; }).catch(function(){ return []; });
+
+      case 'driverLogin':
+        return fetch(BASE.replace('/rest/v1','') + '/rest/v1/rpc/driver_login', {
+          method: 'POST', headers: hdrs(),
+          body: JSON.stringify({ p_name: p.name, p_password: p.password })
+        }).then(function(r){ return r.ok ? r.json() : []; }).catch(function(){ return []; });
+
+      case 'staffLogin':
+        return fetch(BASE.replace('/rest/v1','') + '/rest/v1/rpc/staff_login', {
+          method: 'POST', headers: hdrs(),
+          body: JSON.stringify({ p_name: p.name, p_password: p.password })
+        }).then(function(r){ return r.ok ? r.json() : []; }).catch(function(){ return []; });
 
       case 'getShopByMobile': {
         // Use LIKE *digits to match any stored format (+91, 91, ', etc.)

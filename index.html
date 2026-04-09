@@ -74,21 +74,15 @@ if('serviceWorker' in navigator) {
   });
 }
 
-var driverPassMap = {};  // name → password (loaded from DB)
-var staffPassMap = {};   // name → {password, role, tabs}
 var lang = localStorage.getItem('lang') || 'en';
 
 function loadDriversForLogin(){
   var sel = document.getElementById('driverName');
   api({action:'getDrivers'}).then(function(data){
     var list = Array.isArray(data) ? data.filter(function(d){return d.active;}) : [];
-    driverPassMap = {};
-    list.forEach(function(d){ driverPassMap[d.name] = d.password; });
     sel.innerHTML = '<option value="">Select your name…</option>' +
       list.map(function(d){ return '<option value="'+d.name+'">'+d.name+'</option>'; }).join('');
-  }).catch(function(){
-    sel.innerHTML = '<option value="">Select your name…</option>';
-  });
+  }).catch(function(){ sel.innerHTML = '<option value="">Select your name…</option>'; });
 }
 
 function setLang(l) {
@@ -97,13 +91,13 @@ function setLang(l) {
   document.getElementById('btn-en').className = 'lang-btn' + (l==='en'?' on':'');
   document.getElementById('btn-mr').className = 'lang-btn' + (l==='mr'?' on':'');
   if (l==='mr') {
-    document.getElementById('lbl-driver').textContent    = 'ड्रायव्हर लॉगिन';
-    document.getElementById('btn-dlogin').textContent    = '🚗 लॉगिन करा';
-    document.getElementById('driverPass').placeholder    = 'पासवर्ड';
+    document.getElementById('lbl-driver').textContent = 'ड्रायव्हर लॉगिन';
+    document.getElementById('btn-dlogin').textContent = '🚗 लॉगिन करा';
+    document.getElementById('driverPass').placeholder = 'पासवर्ड';
   } else {
-    document.getElementById('lbl-driver').textContent    = 'Driver Login';
-    document.getElementById('btn-dlogin').textContent    = '🚗 Driver Login';
-    document.getElementById('driverPass').placeholder    = 'Password';
+    document.getElementById('lbl-driver').textContent = 'Driver Login';
+    document.getElementById('btn-dlogin').textContent = '🚗 Driver Login';
+    document.getElementById('driverPass').placeholder = 'Password';
   }
 }
 
@@ -111,30 +105,33 @@ function loadStaffForLogin(){
   var sel = document.getElementById('staffName');
   api({action:'getStaff'}).then(function(data){
     var list = Array.isArray(data) ? data.filter(function(s){return s.active && s.role !== 'super_admin';}) : [];
-    staffPassMap = {};
-    list.forEach(function(s){ staffPassMap[s.name] = s; });
     sel.innerHTML = '<option value="">Select name…</option>' +
       list.map(function(s){
-        var icon = s.role==='super_admin'?'👑':s.role==='chef'?'👨‍🍳':s.role==='packer'?'📦':'👤';
+        var icon = s.role==='chef'?'👨‍🍳':s.role==='packer'?'📦':'👤';
         return '<option value="'+s.name+'">'+icon+' '+s.name+'</option>';
       }).join('');
-  }).catch(function(){
-    sel.innerHTML = '<option value="">Select name…</option>';
-  });
+  }).catch(function(){ sel.innerHTML = '<option value="">Select name…</option>'; });
 }
 
 function staffLogin(){
   var name = document.getElementById('staffName').value;
   var pass = document.getElementById('staffPass').value;
   var err  = document.getElementById('a-err');
+  var btn  = document.querySelector('.btn-admin');
   err.style.display = 'none';
   if(!name){ alert('Select your name'); return; }
-  var s = staffPassMap[name];
-  if(!s || pass !== s.password){ err.style.display='block'; return; }
-  sessionStorage.setItem('role', s.role);
-  sessionStorage.setItem('tabs', s.tabs || '[]');
-  sessionStorage.setItem('staffName', s.name);
-  goto('admin');
+  if(!pass){ err.style.display='block'; return; }
+  btn.disabled=true; btn.textContent='⏳ Logging in…';
+  // Password checked server-side via RPC — never exposed to browser
+  api({action:'staffLogin', name:name, password:pass}).then(function(data){
+    btn.disabled=false; btn.textContent='📊 Staff Login';
+    var s = Array.isArray(data) && data.length ? data[0] : null;
+    if(!s){ err.style.display='block'; return; }
+    sessionStorage.setItem('role', s.role);
+    sessionStorage.setItem('tabs', s.tabs || '[]');
+    sessionStorage.setItem('staffName', s.name);
+    goto('admin');
+  });
 }
 
 // apply saved lang on load
@@ -145,14 +142,23 @@ loadStaffForLogin();
 function driverLogin(){
   var name = document.getElementById('driverName').value;
   var pass = document.getElementById('driverPass').value;
+  var btn  = document.getElementById('btn-dlogin');
   if (!name) { alert(lang==='mr' ? 'नाव निवडा' : 'Select your name'); return; }
-  if (!driverPassMap[name] || pass !== driverPassMap[name]) {
-    document.getElementById('d-err').style.display = 'block'; return;
-  }
-  sessionStorage.setItem('role', 'driver');
-  sessionStorage.setItem('driver', name);
-  sessionStorage.setItem('lang', lang);
-  goto('driver');
+  if (!pass) { document.getElementById('d-err').style.display='block'; return; }
+  btn.disabled=true; btn.textContent = lang==='mr' ? '⏳ थांबा…' : '⏳ Checking…';
+  // Password checked server-side via RPC — never exposed to browser
+  api({action:'driverLogin', name:name, password:pass}).then(function(data){
+    btn.disabled=false; btn.textContent = lang==='mr' ? '🚗 लॉगिन करा' : '🚗 Driver Login';
+    var d = Array.isArray(data) && data.length ? data[0] : null;
+    if(!d){ document.getElementById('d-err').style.display='block'; return; }
+    sessionStorage.setItem('role', 'driver');
+    sessionStorage.setItem('driver', d.name);
+    sessionStorage.setItem('lang', lang);
+    // Persist driver session so app stays logged in after closing
+    localStorage.setItem('driverRole', 'driver');
+    localStorage.setItem('driverName', d.name);
+    goto('driver');
+  });
 }
 
 document.getElementById('driverPass').addEventListener('keydown', function(e){ if(e.key==='Enter') driverLogin(); });
@@ -160,6 +166,12 @@ document.getElementById('staffPass').addEventListener('keydown', function(e){ if
 
 // redirect if already logged in
 var _r = sessionStorage.getItem('role');
+// Restore persistent driver session from localStorage if sessionStorage was cleared
+if(!_r && localStorage.getItem('driverRole')==='driver'){
+  sessionStorage.setItem('role','driver');
+  sessionStorage.setItem('driver', localStorage.getItem('driverName'));
+  _r = 'driver';
+}
 if(_r==='driver') goto('driver');
 if(_r==='super_admin'||_r==='admin'||_r==='assistant'||_r==='chef'||_r==='packer') goto('admin');
 </script>

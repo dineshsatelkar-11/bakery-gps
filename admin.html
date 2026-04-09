@@ -2081,22 +2081,28 @@ function renderGPS(){
 
 /* ── MANUAL NOTIFY TAB ── */
 function loadNotifyDriverList(){
-  loadDrivers().then(function(drivers){
-    var list = document.getElementById('notif-driver-list');
-    var active = drivers.filter(function(d){ return d.active !== false; });
+  var list = document.getElementById('notif-driver-list');
+  list.innerHTML = '<div style="font-size:12px;font-family:monospace;color:#8a7a6a;padding:10px">Loading drivers…</div>';
+  api({action:'getDrivers'}).then(function(data){
+    var active = (Array.isArray(data) ? data : []).filter(function(d){ return d.active !== false; });
+    if(!active.length){
+      list.innerHTML = '<div style="font-size:12px;font-family:monospace;color:#c8382a;padding:10px">No active drivers found.</div>';
+      return;
+    }
     list.innerHTML = active.map(function(d){
       var c = DRIVER_COLORS[d.color] || DRIVER_COLORS.blue;
-      return '<label style="display:flex;align-items:center;gap:10px;background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:11px 14px;cursor:pointer">' +
+      var initials = d.name.slice(0,2).toUpperCase();
+      return '<label style="display:flex;align-items:center;gap:10px;background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:11px 14px;cursor:pointer;margin-bottom:2px">' +
         '<input type="checkbox" class="notif-driver-chk" value="'+esc(d.name)+'" style="width:18px;height:18px;accent-color:#2d7a4f;flex-shrink:0">' +
-        '<span style="width:34px;height:34px;border-radius:50%;background:'+c.bg+';color:'+c.fg+';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;flex-shrink:0">' +
-          d.name.slice(0,2).toUpperCase() +
-        '</span>' +
+        '<span style="width:34px;height:34px;border-radius:50%;background:'+c.bg+';color:'+c.fg+';display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;flex-shrink:0">'+initials+'</span>' +
         '<span style="flex:1;font-size:14px;font-weight:700;color:#1e1611">'+esc(d.name)+'</span>' +
         '<span style="font-size:10px;font-family:monospace;padding:2px 8px;border-radius:20px;background:'+(d.tracking_enabled?'#e8f5e9':'#f5ede0')+';color:'+(d.tracking_enabled?'#2d7a4f':'#8a7a6a')+'">'+
-          (d.tracking_enabled ? '🟢 Push ON' : '⚪ Push OFF') +
+          (d.tracking_enabled ? '🟢 Push ON' : '⚪ Push OFF')+
         '</span>' +
       '</label>';
     }).join('');
+  }).catch(function(){
+    list.innerHTML = '<div style="font-size:12px;font-family:monospace;color:#c8382a;padding:10px">Failed to load drivers. Check connection.</div>';
   });
 }
 

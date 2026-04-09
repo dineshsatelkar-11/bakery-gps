@@ -41,17 +41,14 @@ select,input[type=password]{width:100%;padding:13px;border:1.5px solid #3a2a14;b
 <div class="notice">This page is not publicly linked.<br>Bookmark it for private access.</div>
 
 <script>
-var staffMap = {};
-
 (function checkAlreadyLoggedIn(){
   var r = sessionStorage.getItem('role');
   if(r === 'super_admin') { goto('admin'); return; }
 })();
 
+// Load only super_admin names for the dropdown (no passwords)
 api({action:'getStaff'}).then(function(data){
   var list = Array.isArray(data) ? data.filter(function(s){ return s.active && s.role === 'super_admin'; }) : [];
-  staffMap = {};
-  list.forEach(function(s){ staffMap[s.name] = s; });
   var sel = document.getElementById('adminName');
   if(!list.length){
     sel.innerHTML = '<option value="">No super admin accounts found</option>';
@@ -67,14 +64,20 @@ function doLogin(){
   var name = document.getElementById('adminName').value;
   var pass = document.getElementById('adminPass').value;
   var err  = document.getElementById('err');
+  var btn  = document.querySelector('.btn');
   err.style.display = 'none';
   if(!name){ alert('Select your name'); return; }
-  var s = staffMap[name];
-  if(!s || pass !== s.password){ err.style.display = 'block'; return; }
-  sessionStorage.setItem('role', s.role);
-  sessionStorage.setItem('tabs', s.tabs || '[]');
-  sessionStorage.setItem('staffName', s.name);
-  goto('admin');
+  btn.disabled=true; btn.textContent='⏳ Verifying…';
+  // Password verified server-side — never sent back to browser
+  api({action:'staffLogin', name:name, password:pass}).then(function(data){
+    btn.disabled=false; btn.textContent='🔓 Access Control Panel';
+    var s = Array.isArray(data) && data.length ? data[0] : null;
+    if(!s || s.role !== 'super_admin'){ err.style.display='block'; return; }
+    sessionStorage.setItem('role', s.role);
+    sessionStorage.setItem('tabs', s.tabs || '[]');
+    sessionStorage.setItem('staffName', s.name);
+    goto('admin');
+  });
 }
 
 document.getElementById('adminPass').addEventListener('keydown', function(e){

@@ -201,6 +201,11 @@ input[type=text],input[type=date]{width:100%;padding:11px 14px;border:1.5px soli
 </div>
 
 <script>
+// Restore persistent driver session if sessionStorage was cleared (app closed & reopened)
+if(!sessionStorage.getItem('role') && localStorage.getItem('driverRole')==='driver'){
+  sessionStorage.setItem('role','driver');
+  sessionStorage.setItem('driver', localStorage.getItem('driverName'));
+}
 const driver = sessionStorage.getItem('driver');
 if (!sessionStorage.getItem('role') || !driver) goto('');
 
@@ -239,7 +244,12 @@ function toggleLang() {
   if (routeStarted) buildRouteUI();
 }
 
-function logout() { sessionStorage.clear(); goto(''); }
+function logout() {
+  sessionStorage.clear();
+  localStorage.removeItem('driverRole');
+  localStorage.removeItem('driverName');
+  goto('');
+}
 
 // ── ONESIGNAL PUSH ───────────────────────────────────────────────────────────
 window.OneSignalDeferred = window.OneSignalDeferred || [];
