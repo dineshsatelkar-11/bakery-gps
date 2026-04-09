@@ -243,6 +243,19 @@
           .catch(function(){ return []; });
       }
 
+      case 'getOrdersHistory': {
+        // Last N days orders (excluding today) for spike detection
+        var days = p.days || 7;
+        var since = new Date();
+        since.setDate(since.getDate() - days);
+        var sinceDate = since.toISOString().slice(0, 10);
+        var url = BASE + '/orders?select=shop_id,qty,date&date=gte.' + encodeURIComponent(sinceDate) +
+                  '&order=date.desc&limit=5000';
+        return fetch(url, { headers: hdrs() })
+          .then(function(r){ return r.ok ? r.json() : []; })
+          .catch(function(){ return []; });
+      }
+
       default:
         return Promise.resolve([]);
     }
@@ -306,6 +319,10 @@
 
       case 'updateOrderDriver':
         return sbPatch('orders', { order_id: b.order_id }, { driver: b.driver });
+
+      case 'substituteDriver':
+        // Reassign all orders for a driver on a specific date to another driver (today only)
+        return sbPatch('orders', { driver: b.from, date: b.date }, { driver: b.to });
 
       // Updates all orders belonging to a customer (used after approving a new customer)
       case 'updateOrderDriverByCustomer':

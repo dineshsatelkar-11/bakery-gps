@@ -251,6 +251,29 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   </div>
   <button class="btn btn-grey" onclick="loadRoutes()">Refresh</button>
   <button class="btn-csv" onclick="exportRouteCSV()">⬇ Export CSV</button>
+
+  <!-- Substitute Driver — driver absent for the day -->
+  <div class="card" style="margin-bottom:10px;border-color:#e8c87a">
+    <div class="lbl" style="margin-bottom:8px">🔄 Substitute Driver (Today Only)</div>
+    <div style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-bottom:10px;line-height:1.5">
+      Reassigns all orders for an absent driver to another driver — for today only.<br>
+      Permanent shop assignment is <strong>not</strong> changed.
+    </div>
+    <div class="filter-row" style="margin-bottom:8px">
+      <select id="sub-from" style="margin-bottom:0;flex:1">
+        <option value="">Absent Driver…</option>
+      </select>
+      <select id="sub-to" style="margin-bottom:0;flex:1">
+        <option value="">Substitute…</option>
+      </select>
+    </div>
+    <input type="date" id="sub-date" style="margin-bottom:8px">
+    <button class="btn btn-grey" style="margin-bottom:6px" onclick="previewSubstitute()">🔍 Preview</button>
+    <div id="sub-preview" style="display:none;font-size:12px;font-family:monospace;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:8px 10px;margin-bottom:8px"></div>
+    <button class="btn" id="sub-btn" style="background:#c8864a;color:#fff;display:none" onclick="confirmSubstitute()">🔄 Reassign Orders</button>
+    <div id="sub-msg" style="display:none;margin-top:6px" class="msg ok"></div>
+  </div>
+
   <div id="routesList"></div>
 </div>
 
@@ -705,7 +728,7 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function nrm(s){return(s||'').toLowerCase().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ').trim();}
 
 document.getElementById('topDate').textContent=new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'});
-['f-ord-date','f-rt-date','f-sum-date','f-del-date'].forEach(function(id){document.getElementById(id).value=todayStr();});
+['f-ord-date','f-rt-date','f-sum-date','f-del-date','sub-date'].forEach(function(id){var el=document.getElementById(id);if(el)el.value=todayStr();});
 document.getElementById('logoutBtn').onclick=function(){
   var r=sessionStorage.getItem('role');
   sessionStorage.clear();
@@ -1095,20 +1118,53 @@ function doSave(){
 }
 
 /* ── ORDERS LIST ── */
+function _sumQty(qtyStr){
+  return (qtyStr||'').split(',').map(function(s){return parseInt(s.trim())||0;}).reduce(function(a,b){return a+b;},0);
+}
 function loadOrders(){
   var el=document.getElementById('ordersList');
   el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
-  api({action:'getOrders',driver:document.getElementById('f-ord-driver').value,date:document.getElementById('f-ord-date').value||todayStr()})
-  .then(function(data){
-    if(!Array.isArray(data)||!data.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders.</div>';return;}
+  var drvFilter=document.getElementById('f-ord-driver').value;
+  var dateVal=document.getElementById('f-ord-date').value||todayStr();
+  Promise.all([
+    api({action:'getOrders', driver:drvFilter, date:dateVal}),
+    api({action:'getOrdersHistory', days:7})
+  ]).then(function(res){
+    var data=Array.isArray(res[0])?res[0]:[];
+    var history=Array.isArray(res[1])?res[1]:[];
+    if(!data.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders.</div>';return;}
+    // Build per-shop avg qty from history (excluding today)
+    var shopHist={};
+    history.forEach(function(o){
+      if(o.date===dateVal) return;
+      var sid=o.shop_id||o.customer_id;
+      if(!shopHist[sid]) shopHist[sid]={total:0,days:{}};
+      shopHist[sid].total+=_sumQty(o.qty);
+      shopHist[sid].days[o.date]=1;
+    });
+    var shopAvg={};
+    Object.keys(shopHist).forEach(function(sid){
+      var h=shopHist[sid];
+      var numDays=Object.keys(h.days).length;
+      shopAvg[sid]=numDays>0?h.total/numDays:0;
+    });
+    var spikeCount=0;
     el.innerHTML=data.map(function(o){
       var drv=o.driver||o.assigned_driver||'—';
       var dc=DRIVERS.indexOf(drv)>=0?'DC-'+drv:'DC-Logistics';
-      return '<div class="item-card">'+
+      var sid=o.shop_id||o.customer_id;
+      var todayQty=_sumQty(o.qty);
+      var avg=shopAvg[sid]||0;
+      var isSpike=avg>0&&todayQty>=avg*1.5;
+      if(isSpike) spikeCount++;
+      return '<div class="item-card"'+(isSpike?' style="border-color:#f0b0b0;background:#fff8f8"':'')+'>'+
         '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
-          '<div style="font-size:14px;font-weight:800;color:#4a2f14;flex:1;margin-right:6px">'+esc(o.shop_name)+'</div>'+
+          '<div style="font-size:14px;font-weight:800;color:#4a2f14;flex:1;margin-right:6px">'+esc(o.shop_name)+
+            (isSpike?'&nbsp;<span style="font-size:10px;background:#fde8e8;color:#c8382a;border-radius:4px;padding:1px 6px;font-family:monospace;font-weight:700">🔺 SPIKE</span>':'')+
+          '</div>'+
           '<span class="badge '+dc+'">'+esc(drv)+'</span>'+
         '</div>'+
+        (isSpike?'<div style="font-size:10px;font-family:monospace;color:#c8382a;margin:2px 0 4px">Today: '+todayQty+' items · 7-day avg: '+Math.round(avg)+' · '+(Math.round((todayQty/avg-1)*100))+'% higher</div>':'')+
         '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin:3px 0 6px">'+esc(o.date)+' · '+esc(o.order_id||'')+(o.customer_id?' · '+esc(o.customer_id):'')+'</div>'+
         '<div style="font-size:12px;font-family:monospace;background:#f5ede0;padding:7px 10px;border-radius:8px;margin-bottom:7px;line-height:1.8">'+
           '<b>Items:</b> '+esc(o.items)+'<br><b>Qty:</b> '+esc(o.qty)+(o.note&&o.note!='—'?'<br><span style="color:#8a7a6a;font-size:10px">'+esc(o.note)+'</span>':'')+
@@ -1116,6 +1172,10 @@ function loadOrders(){
         '<button class="btn-sm btn-del" onclick="delOrder(\''+esc(o.order_id)+'\')">Delete</button>'+
       '</div>';
     }).join('');
+    // Show spike banner at top if any found
+    if(spikeCount>0){
+      el.insertAdjacentHTML('afterbegin','<div style="background:#fde8e8;border:1.5px solid #f0b0b0;border-radius:12px;padding:10px 14px;margin-bottom:10px;font-size:12px;font-family:monospace;color:#c8382a;font-weight:700">🔺 '+spikeCount+' shop'+(spikeCount>1?'s have':'  has')+' unusually high orders today — verify before dispatch.</div>');
+    }
   });
 }
 function delOrder(id){if(!confirm('Delete?'))return;apiPost({action:'deleteOrder',order_id:id}).then(loadOrders);}
@@ -1832,7 +1892,21 @@ function openEditCustomer(c){
         histBody.innerHTML = '<span style="color:#8a7a6a">No deliveries in last 7 days</span>';
         return;
       }
-      histBody.innerHTML = rows.map(function(r){
+      // Compute avg delivery time
+      var mins = rows.filter(function(r){return r.time;}).map(function(r){
+        var m=r.time.match(/(\d+):(\d+)\s*(AM|PM|am|pm)?/);
+        if(!m) return null;
+        var h=parseInt(m[1]),mn=parseInt(m[2]),ap=(m[3]||'').toUpperCase();
+        if(ap==='PM'&&h!==12)h+=12; if(ap==='AM'&&h===12)h=0;
+        return h*60+mn;
+      }).filter(function(v){return v!==null;});
+      var avgStr='';
+      if(mins.length){
+        var avg=Math.round(mins.reduce(function(s,v){return s+v;},0)/mins.length);
+        var ah=Math.floor(avg/60),am=avg%60,aap=ah>=12?'PM':'AM',ah12=ah>12?ah-12:(ah===0?12:ah);
+        avgStr='<div style="background:#e8f5e9;border-radius:8px;padding:6px 10px;margin-bottom:8px;font-size:12px;font-weight:700;color:#2d7a4f">⏰ Avg delivery time: '+String(ah12).padStart(2,'0')+':'+String(am).padStart(2,'0')+' '+aap+' <span style="font-size:10px;font-weight:400;color:#2d7a4f">(last '+mins.length+' days)</span></div>';
+      }
+      histBody.innerHTML = avgStr + rows.map(function(r){
         return '<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #e8dfd2">'
           + '<span>📅 '+r.date+'</span>'
           + '<span style="color:#2d7a4f;font-weight:700">🕐 '+(r.time||'—')+'</span>'
@@ -1917,6 +1991,57 @@ function bulkReassign(){
       renderCustomers();
     }else{
       bmsg.textContent='❌ Failed: '+(res.error||'unknown');bmsg.className='msg er';
+    }
+  });
+}
+
+/* ── SUBSTITUTE DRIVER ── */
+function previewSubstitute(){
+  var from=document.getElementById('sub-from').value;
+  var to=document.getElementById('sub-to').value;
+  var date=document.getElementById('sub-date').value||todayStr();
+  var preview=document.getElementById('sub-preview');
+  var btn=document.getElementById('sub-btn');
+  var msg=document.getElementById('sub-msg');
+  msg.style.display='none'; btn.style.display='none';
+  if(!from){preview.textContent='Select absent driver.';preview.style.display='block';return;}
+  if(!to){preview.textContent='Select substitute driver.';preview.style.display='block';return;}
+  if(from===to){preview.textContent='From and To cannot be the same driver.';preview.style.display='block';return;}
+  preview.textContent='⏳ Checking orders…'; preview.style.display='block';
+  api({action:'getOrders', driver:from, date:date}).then(function(orders){
+    if(!orders||!orders.length){
+      preview.innerHTML='<span style="color:#2d7a4f">✅ No orders for <b>'+esc(from)+'</b> on '+esc(date)+'</span>';
+      btn.style.display='none';
+      return;
+    }
+    preview.innerHTML='<b>'+orders.length+' orders</b> will move from <b>'+esc(from)+'</b> → <b>'+esc(to)+'</b> on '+esc(date)+':<br>'+
+      orders.map(function(o){return '• '+esc(o.shop_name);}).join('<br>');
+    btn.style.display='block';
+    btn.textContent='🔄 Reassign '+orders.length+' Orders to '+to;
+  });
+}
+function confirmSubstitute(){
+  var from=document.getElementById('sub-from').value;
+  var to=document.getElementById('sub-to').value;
+  var date=document.getElementById('sub-date').value||todayStr();
+  var btn=document.getElementById('sub-btn');
+  var msg=document.getElementById('sub-msg');
+  if(!confirm('Reassign all orders from '+from+' → '+to+' on '+date+'?\nPermanent assignments are NOT changed.'))return;
+  btn.disabled=true; btn.textContent='⏳ Reassigning…';
+  apiPost({action:'substituteDriver', from:from, to:to, date:date}).then(function(res){
+    btn.disabled=false;
+    if(res&&res.ok){
+      btn.style.display='none';
+      document.getElementById('sub-preview').style.display='none';
+      msg.textContent='✅ Done! All orders for '+from+' on '+date+' reassigned to '+to+'.';
+      msg.className='msg ok'; msg.style.display='block';
+      // Notify substitute driver
+      apiPost({action:'addNotification', driver_name:to, type:'shop_reassigned',
+        message:from+'\'s deliveries for '+date+' have been reassigned to you.'});
+      sendPush(to, from+'\'s deliveries for '+date+' are now assigned to you.');
+    } else {
+      btn.textContent='🔄 Retry';
+      msg.textContent='❌ Failed: '+(res.error||'unknown'); msg.className='msg er'; msg.style.display='block';
     }
   });
 }
@@ -2032,6 +2157,10 @@ function populateDriverSelects(list){
   if(cm)cm.innerHTML='<option value="">Unassigned</option>'+allOpt;
   var bqd=document.getElementById('bulk-queue-driver');
   if(bqd)bqd.innerHTML='<option value="">— Select Driver —</option>'+allOpt;
+  var sf=document.getElementById('sub-from');
+  if(sf)sf.innerHTML='<option value="">Absent Driver…</option>'+allOpt;
+  var st=document.getElementById('sub-to');
+  if(st)st.innerHTML='<option value="">Substitute…</option>'+allOpt;
 }
 
 function loadDrivers(){
