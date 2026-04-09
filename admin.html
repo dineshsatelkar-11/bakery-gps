@@ -670,6 +670,10 @@ document.getElementById('topDate').textContent=new Date().toLocaleDateString('en
 document.getElementById('logoutBtn').onclick=function(){
   var r=sessionStorage.getItem('role');
   sessionStorage.clear();
+  // Clear persistent staff session
+  localStorage.removeItem('staffRole');
+  localStorage.removeItem('staffTabs');
+  localStorage.removeItem('staffNamePersist');
   goto(r==='super_admin'?'superadmin':'');
 };
 // Show maintenance card only for super_admin

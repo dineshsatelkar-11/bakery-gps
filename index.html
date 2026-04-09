@@ -130,6 +130,10 @@ function staffLogin(){
     sessionStorage.setItem('role', s.role);
     sessionStorage.setItem('tabs', s.tabs || '[]');
     sessionStorage.setItem('staffName', s.name);
+    // Persist staff session so app stays logged in after closing
+    localStorage.setItem('staffRole', s.role);
+    localStorage.setItem('staffTabs', s.tabs || '[]');
+    localStorage.setItem('staffNamePersist', s.name);
     goto('admin');
   });
 }
@@ -171,6 +175,14 @@ if(!_r && localStorage.getItem('driverRole')==='driver'){
   sessionStorage.setItem('role','driver');
   sessionStorage.setItem('driver', localStorage.getItem('driverName'));
   _r = 'driver';
+}
+// Restore persistent staff/admin session from localStorage if sessionStorage was cleared
+if(!_r && localStorage.getItem('staffRole')){
+  var _sr = localStorage.getItem('staffRole');
+  sessionStorage.setItem('role', _sr);
+  sessionStorage.setItem('tabs', localStorage.getItem('staffTabs') || '[]');
+  sessionStorage.setItem('staffName', localStorage.getItem('staffNamePersist') || '');
+  _r = _sr;
 }
 if(_r==='driver') goto('driver');
 if(_r==='super_admin'||_r==='admin'||_r==='assistant'||_r==='chef'||_r==='packer') goto('admin');
