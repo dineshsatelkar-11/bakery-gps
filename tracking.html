@@ -63,6 +63,10 @@ input[type=tel]:focus{border-color:#2d7a4f;background:#fff}
 .mkt-chip{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700}
 .mkt-cta{background:#2d7a4f;color:#fff;border:none;border-radius:10px;padding:11px 24px;font-size:13px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif}
 
+/* Status card states */
+.status-delivered{background:linear-gradient(135deg,#e8f5e9,#c8e6c9)!important;border-color:#a5d6a7!important}
+.status-pending{background:linear-gradient(135deg,#fff8e1,#ffecb3)!important;border-color:#ffe082!important}
+
 /* Footer */
 .footer{text-align:center;padding:20px 14px;font-size:11px;color:#8a7a6a;font-family:monospace}
 
@@ -71,6 +75,9 @@ input[type=tel]:focus{border-color:#2d7a4f;background:#fff}
 
 .loading-spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:6px}
 @keyframes spin{to{transform:rotate(360deg)}}
+.shop-opt{width:100%;padding:11px 12px;border:1.5px solid #e8dfd2;border-radius:10px;background:#f9f6f1;font-size:14px;font-weight:700;color:#1e1611;cursor:pointer;font-family:-apple-system,sans-serif;text-align:left;margin-bottom:6px;display:block}
+.shop-opt.selected{border-color:#2d7a4f;background:#e8f5e9;color:#1a5a38}
+.shop-opt:active{opacity:.8}
 </style>
 </head>
 <body>
@@ -92,6 +99,11 @@ input[type=tel]:focus{border-color:#2d7a4f;background:#fff}
       <div id="shopPreviewName" style="font-size:15px;font-weight:800;color:#1a5a38"></div>
       <div id="shopPreviewArea" style="font-size:11px;color:#2d7a4f;font-family:monospace;margin-top:2px"></div>
     </div>
+    <!-- Multi-shop selector — shown when number is linked to more than 1 shop -->
+    <div id="shopSelector" style="display:none;margin-top:10px">
+      <div style="font-size:11px;color:#7a4800;font-family:monospace;font-weight:700;letter-spacing:1px;margin-bottom:8px">MULTIPLE SHOPS FOUND — SELECT YOURS</div>
+      <div id="shopSelectorList"></div>
+    </div>
     <button class="btn-track" onclick="trackDelivery()" id="trackBtn">🔍 Track My Delivery</button>
     <div id="loginMsg" style="display:none" class="msg er"></div>
   </div>
@@ -100,9 +112,17 @@ input[type=tel]:focus{border-color:#2d7a4f;background:#fff}
 <!-- TRACKING RESULT -->
 <div id="trackingResult">
 
+  <!-- My delivery status -->
+  <div id="tr-status-card" class="card" style="text-align:center;padding:20px 16px">
+    <div id="tr-status-icon" style="font-size:40px;margin-bottom:8px">⏳</div>
+    <div id="tr-status-text" style="font-size:16px;font-weight:900;color:#4a2f14;margin-bottom:4px">Checking…</div>
+    <div id="tr-status-sub" style="font-size:12px;color:#8a7a6a;font-family:monospace;margin-bottom:14px"></div>
+    <button onclick="refreshStatus()" id="tr-refresh-btn" style="padding:9px 22px;border:1.5px solid #e8dfd2;border-radius:20px;background:#fff;color:#4a2f14;font-size:12px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif">🔄 Refresh Status</button>
+  </div>
+
   <!-- Customer greeting -->
   <div class="card">
-    <div class="section-title">Your Delivery</div>
+    <div class="section-title">Your Shop</div>
     <div class="customer-name" id="tr-name"></div>
     <div class="customer-area" id="tr-area"></div>
   </div>
@@ -207,6 +227,52 @@ function normalizeMobile(raw) {
   return raw.replace(/\D/g, '').slice(-10);
 }
 
+// Module-level state for refresh
+var _trackingShop = null, _trackingDriver = '';
+var _allFoundShops = [], _selectedShopIdx = -1;
+
+function selectShop(idx) {
+  _selectedShopIdx = idx;
+  document.querySelectorAll('.shop-opt').forEach(function(b, i) {
+    b.classList.toggle('selected', i === idx);
+  });
+  document.getElementById('loginMsg').style.display = 'none';
+}
+
+function renderStatus(deliveries, shopId) {
+  var myDelivery = deliveries.find(function(d){ return d.shop_id === shopId; });
+  var card = document.getElementById('tr-status-card');
+  var icon = document.getElementById('tr-status-icon');
+  var text = document.getElementById('tr-status-text');
+  var sub  = document.getElementById('tr-status-sub');
+  if (myDelivery) {
+    card.className = 'card status-delivered';
+    icon.textContent = '✅';
+    text.textContent = 'Delivered Today!';
+    text.style.color = '#2d7a4f';
+    sub.textContent  = 'Your order was delivered at ' + (myDelivery.time || '—');
+  } else {
+    card.className = 'card status-pending';
+    icon.textContent = '⏳';
+    text.textContent = 'Not Yet Delivered';
+    text.style.color = '#7a4800';
+    var done = deliveries.length;
+    sub.textContent = done > 0
+      ? 'Driver has completed ' + done + ' stop' + (done===1?'':'s') + ' so far today'
+      : 'Driver has not started deliveries yet';
+  }
+}
+
+async function refreshStatus() {
+  if (!_trackingShop || !_trackingDriver) return;
+  var btn = document.getElementById('tr-refresh-btn');
+  btn.textContent = '⏳ Checking…'; btn.disabled = true;
+  var deliveries = await api({ action: 'getDeliveries', driver: _trackingDriver, date: todayStr() });
+  if (!Array.isArray(deliveries)) deliveries = [];
+  renderStatus(deliveries, _trackingShop.shop_id);
+  btn.textContent = '🔄 Refresh Status'; btn.disabled = false;
+}
+
 // Generate all DB format variants for a 10-digit number
 function mobileVariants(digits) {
   return [
@@ -233,15 +299,25 @@ async function trackDelivery() {
 
   try {
     // 1. Look up shop by mobile — match any stored format using LIKE
-    var shops = await api({ action: 'getShopByMobile', digits: digits });
+    // Use already-fetched shops if available (from onPhoneInput), else fetch now
+    var shops = _allFoundShops.length ? _allFoundShops : await api({ action: 'getShopByMobile', digits: digits });
     if (!shops || !shops.length) {
       showLoginMsg('Mobile number not found. Please check the number or contact us.');
       btn.innerHTML = '🔍 Track My Delivery'; btn.disabled = false;
       return;
     }
 
-    var shop = shops[0];
-    var driverName = shop.assigned_driver || '';
+    // If multiple shops and none selected, ask user to pick
+    if (shops.length > 1 && _selectedShopIdx < 0) {
+      showLoginMsg('Please select your shop from the list above.');
+      btn.innerHTML = '🔍 Track My Delivery'; btn.disabled = false;
+      return;
+    }
+
+    var shop = shops[_selectedShopIdx >= 0 ? _selectedShopIdx : 0];
+    _trackingShop   = shop;
+    var driverName  = shop.assigned_driver || '';
+    _trackingDriver = driverName;
 
     // 2. Get driver details
     var driverInfo = null;
@@ -265,6 +341,7 @@ async function trackDelivery() {
     }
 
     // ── Render result ──
+    renderStatus(deliveries, shop.shop_id);
     document.getElementById('tr-name').textContent = shop.name || 'Your Shop';
     document.getElementById('tr-area').textContent = (shop.area ? '📍 ' + shop.area : '') + (shop.address ? ' · ' + shop.address : '');
 
@@ -338,20 +415,41 @@ async function trackDelivery() {
 var _phoneTimer = null;
 function onPhoneInput(val) {
   var digits = normalizeMobile(val);
-  var preview = document.getElementById('shopPreview');
-  if (digits.length !== 10) { preview.style.display = 'none'; return; }
+  var preview  = document.getElementById('shopPreview');
+  var selector = document.getElementById('shopSelector');
+  if (digits.length !== 10) {
+    preview.style.display = 'none';
+    selector.style.display = 'none';
+    _allFoundShops = []; _selectedShopIdx = -1;
+    return;
+  }
   clearTimeout(_phoneTimer);
   _phoneTimer = setTimeout(function() {
     api({ action: 'getShopByMobile', digits: digits }).then(function(shops) {
-      if (shops && shops.length) {
-        var shop = shops[0];
-        document.getElementById('shopPreviewName').textContent = shop.name || '';
-        document.getElementById('shopPreviewArea').textContent = shop.area ? '📍 ' + shop.area : '';
-        preview.style.display = 'block';
-      } else {
+      _allFoundShops = shops || [];
+      _selectedShopIdx = -1;
+      if (!_allFoundShops.length) {
         preview.style.display = 'none';
+        selector.style.display = 'none';
+      } else if (_allFoundShops.length === 1) {
+        // Single shop — show simple preview
+        selector.style.display = 'none';
+        document.getElementById('shopPreviewName').textContent = _allFoundShops[0].name || '';
+        document.getElementById('shopPreviewArea').textContent = _allFoundShops[0].area ? '📍 ' + _allFoundShops[0].area : '';
+        preview.style.display = 'block';
+        _selectedShopIdx = 0;
+      } else {
+        // Multiple shops — show selector
+        preview.style.display = 'none';
+        var list = document.getElementById('shopSelectorList');
+        list.innerHTML = _allFoundShops.map(function(s, i) {
+          return '<button class="shop-opt" onclick="selectShop('+i+')">'
+            + '🏪 ' + (s.name || 'Shop') + (s.area ? ' <span style="font-size:11px;color:#8a7a6a;font-weight:500">· ' + s.area + '</span>' : '')
+            + '</button>';
+        }).join('');
+        selector.style.display = 'block';
       }
-    }).catch(function(){ preview.style.display = 'none'; });
+    }).catch(function(){ preview.style.display = 'none'; selector.style.display = 'none'; });
   }, 400);
 }
 
@@ -365,7 +463,15 @@ function resetTracking() {
   document.getElementById('trackingResult').style.display = 'none';
   document.getElementById('loginMsg').style.display = 'none';
   document.getElementById('shopPreview').style.display = 'none';
+  document.getElementById('shopSelector').style.display = 'none';
   document.getElementById('phoneInput').value = '';
+  _trackingShop = null; _trackingDriver = '';
+  _allFoundShops = []; _selectedShopIdx = -1;
+  var card = document.getElementById('tr-status-card');
+  card.className = 'card';
+  document.getElementById('tr-status-icon').textContent = '⏳';
+  document.getElementById('tr-status-text').textContent = 'Checking…';
+  document.getElementById('tr-status-sub').textContent = '';
 }
 
 function toggleEscalation(level){
