@@ -443,6 +443,11 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
     <button class="btn btn-blue" onclick="pickGPS()">📍 Use My Current Location</button>
     <div id="cm-gps-msg" style="display:none" class="msg in"></div>
     <div id="cm-msg" style="display:none" class="msg ok"></div>
+    <!-- Delivery history — shown only when editing an existing customer -->
+    <div id="cm-hist-wrap" style="display:none;margin-bottom:12px">
+      <div class="lbl" style="margin-bottom:6px">Last 7 Days Delivery History</div>
+      <div id="cm-hist-body" style="background:#f9f6f1;border-radius:10px;padding:10px 12px;font-size:12px;font-family:monospace;color:#4a2f14;min-height:36px"></div>
+    </div>
     <button class="btn btn-brown" onclick="saveCustomer()">💾 Save Customer</button>
     <button class="btn btn-grey" style="margin-bottom:0" onclick="closeCustModal()">Cancel</button>
   </div>
@@ -1720,6 +1725,7 @@ function openAddCustomer(){
   document.getElementById('cm-driver').value='';
   document.getElementById('cm-msg').style.display='none';
   document.getElementById('cm-gps-msg').style.display='none';
+  document.getElementById('cm-hist-wrap').style.display='none';
   document.getElementById('custModal').style.display='flex';
 }
 function openEditCustomer(c){
@@ -1737,6 +1743,29 @@ function openEditCustomer(c){
   document.getElementById('cm-lng').value=c.lng||'';
   document.getElementById('cm-msg').style.display='none';
   document.getElementById('cm-gps-msg').style.display='none';
+  // Load delivery history
+  var histWrap = document.getElementById('cm-hist-wrap');
+  var histBody = document.getElementById('cm-hist-body');
+  var shopId = c.shop_id || c.customer_id;
+  if (shopId) {
+    histWrap.style.display = 'block';
+    histBody.innerHTML = '<span style="color:#8a7a6a">Loading…</span>';
+    api({action:'getShopDeliveryHistory', shop_id:shopId, days:7}).then(function(rows){
+      if (!rows || !rows.length) {
+        histBody.innerHTML = '<span style="color:#8a7a6a">No deliveries in last 7 days</span>';
+        return;
+      }
+      histBody.innerHTML = rows.map(function(r){
+        return '<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #e8dfd2">'
+          + '<span>📅 '+r.date+'</span>'
+          + '<span style="color:#2d7a4f;font-weight:700">🕐 '+(r.time||'—')+'</span>'
+          + '<span style="color:#8a7a6a">'+( r.driver||'')+'</span>'
+          + '</div>';
+      }).join('');
+    });
+  } else {
+    histWrap.style.display = 'none';
+  }
   document.getElementById('custModal').style.display='flex';
 }
 function closeCustModal(){document.getElementById('custModal').style.display='none';}

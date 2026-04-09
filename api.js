@@ -196,6 +196,20 @@
           .catch(function(){ return null; });
       }
 
+      case 'getShopDeliveryHistory': {
+        // Last N days of deliveries for a specific shop (for admin modal)
+        var days = p.days || 7;
+        var since = new Date();
+        since.setDate(since.getDate() - days);
+        var sinceDate = since.toISOString().slice(0, 10);
+        var url = BASE + '/deliveries?shop_id=eq.' + encodeURIComponent(p.shop_id) +
+                  '&date=gte.' + encodeURIComponent(sinceDate) +
+                  '&select=date,time,driver&order=date.desc&limit=14';
+        return fetch(url, { headers: hdrs() })
+          .then(function(r){ return r.ok ? r.json() : []; })
+          .catch(function(){ return []; });
+      }
+
       case 'getDeliveriesHistory': {
         // Fetch last N days of deliveries for historical route analysis
         var days = p.days || 30;
