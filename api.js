@@ -196,6 +196,20 @@
           .catch(function(){ return null; });
       }
 
+      case 'getDeliveriesHistory': {
+        // Fetch last N days of deliveries for historical route analysis
+        var days = p.days || 30;
+        var since = new Date();
+        since.setDate(since.getDate() - days);
+        var sinceDate = since.toISOString().slice(0, 10);
+        var url = BASE + '/deliveries?driver=eq.' + encodeURIComponent(p.driver) +
+                  '&date=gte.' + encodeURIComponent(sinceDate) +
+                  '&select=shop_id,date,time&order=date.desc,time.asc&limit=2000';
+        return fetch(url, { headers: hdrs() })
+          .then(function(r){ return r.ok ? r.json() : []; })
+          .catch(function(){ return []; });
+      }
+
       case 'getNotifications': {
         var url = BASE + '/notifications?driver_name=eq.' + encodeURIComponent(p.driver) +
                   '&is_read=eq.false&order=created_at.desc&limit=50';

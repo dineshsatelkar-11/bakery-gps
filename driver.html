@@ -66,6 +66,8 @@ input[type=text],input[type=date]{width:100%;padding:11px 14px;border:1.5px soli
 .rmeta{font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px}
 .rcoords{font-size:10px;color:#2d7a4f;font-family:monospace;margin-top:3px}
 .rline{width:2px;background:#e8dfd2;height:8px;margin-left:14px}
+.drag-handle{width:24px;height:44px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#c0b0a0;cursor:grab;flex-shrink:0;touch-action:none;user-select:none;-webkit-user-select:none}
+.drag-over{box-shadow:0 0 0 2px #2d7a4f!important;border-color:#2d7a4f!important}
 .badge{display:inline-block;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:700;font-family:monospace}
 .b-ok{background:#e8f5e9;color:#2d7a4f}
 .b-warn{background:#fff8e1;color:#7a4800}
@@ -167,9 +169,10 @@ input[type=text],input[type=date]{width:100%;padding:11px 14px;border:1.5px soli
       <div class="stat" id="rs-pending-stat" onclick="setRouteFilter('pending')" style="cursor:pointer"><div class="stat-n" id="rs-pending">0</div><div class="stat-l" id="t-pending">Pending</div></div>
       <div class="stat"><div class="stat-n" id="rs-km">0</div><div class="stat-l">KM</div></div>
     </div>
-    <div style="display:flex;gap:8px;margin-top:10px">
-      <button onclick="shuffleRoute()" style="flex:1;padding:9px;border:none;border-radius:10px;background:#1a5fa8;color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif">🔀 Shuffle Stops</button>
-      <button onclick="resetRoute()" id="resetRouteBtn" style="flex:0 0 90px;padding:9px;border:none;border-radius:10px;background:#e8dfd2;color:#4a2f14;font-size:12px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;display:none">↩ Reset</button>
+    <div style="display:flex;gap:6px;margin-top:10px">
+      <button onclick="setRouteMode('history')" id="rm-history" style="flex:1;padding:8px 4px;border:1.5px solid #e8dfd2;border-radius:10px;background:#fff;color:#4a2f14;font-size:11px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif">📊 Usual</button>
+      <button onclick="setRouteMode('distance')" id="rm-distance" style="flex:1;padding:8px 4px;border:1.5px solid #2d7a4f;border-radius:10px;background:#2d7a4f;color:#fff;font-size:11px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif">📍 Distance</button>
+      <button onclick="setRouteMode('manual')" id="rm-manual" style="flex:1;padding:8px 4px;border:1.5px solid #e8dfd2;border-radius:10px;background:#fff;color:#4a2f14;font-size:11px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif">✋ Manual</button>
     </div>
   </div>
   <div id="routeStats" style="display:none"></div>
@@ -358,7 +361,8 @@ let allCustomers=[], selCustomer=null, captured=null;
 let orders=[], deliveries={}, routeStarted=false, routeStartTime=null;
 let routeStartLat=null, routeStartLng=null;
 let selectedDate = '';
-let customRoute = null; // null = auto-optimized, array = custom shuffled order
+let customRoute = null; // null = auto-optimized, array = custom/historical order
+let routeMode   = 'distance'; // 'distance' | 'history' | 'manual'
 let routeFilter = 'all'; // 'all' | 'done' | 'pending'
 
 // ── LOAD ──
@@ -390,6 +394,7 @@ async function init() {
     routeStartLat = parseFloat(localStorage.getItem('routeStartLat_'+driver+'_'+selectedDate)) || null;
     routeStartLng = parseFloat(localStorage.getItem('routeStartLng_'+driver+'_'+selectedDate)) || null;
   }
+  _restoreRouteState();
   renderOrdersList();
   renderCustomerList(allCustomers);
 }
@@ -409,6 +414,8 @@ async function loadOrdersForDate(date) {
   deliveries = {};
   if(Array.isArray(delivData)) delivData.forEach(d=>{ deliveries[d.shop_id]=d; });
   // Restore route state for this date
+  routeMode = 'distance'; customRoute = null; // reset before restore
+  _restoreRouteState();
   const savedStart = localStorage.getItem('routeStart_'+driver+'_'+selectedDate);
   routeStarted = !!savedStart;
   routeStartTime = savedStart || null;
@@ -622,26 +629,168 @@ async function startRoute() {
 
 function setRouteFilter(f) { routeFilter=f; buildRouteUI(); }
 
-function shuffleRoute() {
-  const orderedShopIds = new Set(orders.map(o=>o.shop_id));
-  const orderedCustomers = allCustomers.filter(s=>orderedShopIds.has(s.shop_id));
-  const withGPS = orderedCustomers.filter(s=>s.lat&&s.lng).map(s=>({...s,lat:parseFloat(s.lat),lng:parseFloat(s.lng)}));
-  const pending = withGPS.filter(s=>!deliveries[s.shop_id]);
-  // Fisher-Yates shuffle
-  for(let i=pending.length-1;i>0;i--){
-    const j=Math.floor(Math.random()*(i+1));
-    [pending[i],pending[j]]=[pending[j],pending[i]];
-  }
-  customRoute = pending;
-  const btn=document.getElementById('resetRouteBtn');
-  if(btn) btn.style.display='';
-  buildRouteUI();
+// ── ROUTE MODE ──
+async function setRouteMode(mode) {
+  routeMode = mode;
+  if (mode !== 'manual') customRoute = null;
+  _applyRouteModeButtons();
+  _saveRouteState();
+  await buildRouteUI();
 }
 
-function resetRoute() {
-  customRoute = null;
-  const btn=document.getElementById('resetRouteBtn');
-  if(btn) btn.style.display='none';
+function _applyRouteModeButtons() {
+  ['history','distance','manual'].forEach(function(m){
+    var btn = document.getElementById('rm-'+m);
+    if (!btn) return;
+    var on = m === routeMode;
+    btn.style.background = on ? '#2d7a4f' : '#fff';
+    btn.style.color = on ? '#fff' : '#4a2f14';
+    btn.style.borderColor = on ? '#2d7a4f' : '#e8dfd2';
+  });
+}
+
+function _saveRouteState() {
+  var key = driver + '_' + selectedDate;
+  localStorage.setItem('routeMode_' + key, routeMode);
+  if (routeMode === 'manual' && customRoute) {
+    localStorage.setItem('routeOrder_' + key, JSON.stringify(customRoute.map(function(s){ return s.shop_id; })));
+  } else {
+    localStorage.removeItem('routeOrder_' + key);
+  }
+}
+
+function _restoreRouteState() {
+  var key = driver + '_' + selectedDate;
+  var savedMode = localStorage.getItem('routeMode_' + key);
+  if (!savedMode) return;
+  routeMode = savedMode;
+  if (routeMode === 'manual') {
+    var savedOrder = localStorage.getItem('routeOrder_' + key);
+    if (savedOrder) {
+      try {
+        var ids = JSON.parse(savedOrder);
+        // Reconstruct shop objects from allCustomers in saved order
+        var shopMap = {};
+        allCustomers.forEach(function(s){ shopMap[s.shop_id] = s; });
+        var restored = ids.map(function(id){ return shopMap[id]; }).filter(Boolean);
+        if (restored.length) customRoute = restored;
+      } catch(e) {}
+    }
+  }
+  _applyRouteModeButtons();
+}
+
+// ── HISTORICAL ROUTE (analyze past 30-day delivery order) ──
+function timeToMins(t){
+  if(!t) return 9999;
+  const m=t.match(/(\d+):(\d+)\s*(AM|PM|am|pm)?/);
+  if(!m) return 9999;
+  let h=parseInt(m[1]),mn=parseInt(m[2]),p=(m[3]||'').toUpperCase();
+  if(p==='PM'&&h!==12) h+=12;
+  if(p==='AM'&&h===12) h=0;
+  return h*60+mn;
+}
+
+async function historicalRoute(pendingShops) {
+  if (!pendingShops.length) return [];
+  const history = await api({action:'getDeliveriesHistory', driver, days:30});
+  if (!history || !history.length) return nearestNeighbour(HQ, pendingShops);
+
+  // Group deliveries by date, sort each day by time → delivery sequence
+  const dateGroups = {};
+  history.forEach(function(d){
+    if (!dateGroups[d.date]) dateGroups[d.date] = [];
+    dateGroups[d.date].push(d);
+  });
+
+  // Record position of each shop across all days
+  const shopPositions = {}; // shop_id → [pos, pos, ...]
+  Object.keys(dateGroups).forEach(function(date){
+    const day = dateGroups[date].slice().sort((a,b)=>timeToMins(a.time)-timeToMins(b.time));
+    day.forEach(function(d, idx){
+      if (!shopPositions[d.shop_id]) shopPositions[d.shop_id] = [];
+      shopPositions[d.shop_id].push(idx + 1);
+    });
+  });
+
+  // Average position per shop
+  const avgPos = {};
+  Object.keys(shopPositions).forEach(function(id){
+    const arr = shopPositions[id];
+    avgPos[id] = arr.reduce((a,b)=>a+b,0) / arr.length;
+  });
+
+  // Shops with history → sorted by average position
+  const withHist = pendingShops.filter(s=>avgPos[s.shop_id]!=null);
+  const noHist   = pendingShops.filter(s=>avgPos[s.shop_id]==null);
+  withHist.sort((a,b)=>avgPos[a.shop_id]-avgPos[b.shop_id]);
+
+  // New shops without history → appended by nearest-neighbour from last known stop
+  const tail = withHist.length ? withHist[withHist.length-1] : HQ;
+  return [...withHist, ...nearestNeighbour(tail, noHist)];
+}
+
+// ── DRAG (manual reorder) — works with both mouse and touch ──
+var _drag = { on:false, shopId:null, origEl:null, clone:null, lastY:0, targetId:null };
+
+function _getPoint(e) {
+  return e.touches ? e.touches[0] : e; // unified clientX/clientY for touch & mouse
+}
+
+function onDragStart(e, shopId) {
+  if (_drag.on) return;
+  e.preventDefault();
+  _drag.on = true; _drag.shopId = shopId; _drag.targetId = null;
+  const pt = _getPoint(e);
+  _drag.origEl = document.getElementById('rdrag-'+shopId);
+  const rect = _drag.origEl.getBoundingClientRect();
+  _drag.clone = _drag.origEl.cloneNode(true);
+  _drag.clone.removeAttribute('id');
+  _drag.clone.style.cssText = 'position:fixed;left:'+rect.left+'px;top:'+rect.top+'px;width:'+rect.width+'px;z-index:999;opacity:0.93;pointer-events:none;box-shadow:0 8px 28px rgba(0,0,0,.22);border-radius:14px;background:#fff;border:2px solid #2d7a4f';
+  document.body.appendChild(_drag.clone);
+  _drag.origEl.style.opacity = '0.2';
+  _drag.lastY = pt.clientY;
+  document.addEventListener('touchmove', _onDragMove, {passive:false});
+  document.addEventListener('touchend',  _onDragEnd);
+  document.addEventListener('mousemove', _onDragMove);
+  document.addEventListener('mouseup',   _onDragEnd);
+}
+
+function _onDragMove(e) {
+  if (!_drag.on) return;
+  if (e.preventDefault) e.preventDefault();
+  const pt = _getPoint(e);
+  const dy = pt.clientY - _drag.lastY;
+  _drag.clone.style.top = (parseFloat(_drag.clone.style.top)+dy)+'px';
+  _drag.lastY = pt.clientY;
+  // Find drop target
+  _drag.clone.style.pointerEvents = 'none';
+  const el = document.elementFromPoint(pt.clientX, pt.clientY);
+  _drag.clone.style.pointerEvents = '';
+  const target = el && el.closest('[data-rdrag]');
+  document.querySelectorAll('[data-rdrag]').forEach(x=>x.classList.remove('drag-over'));
+  if (target && target.dataset.rdrag !== _drag.shopId) {
+    target.classList.add('drag-over');
+    _drag.targetId = target.dataset.rdrag;
+  } else { _drag.targetId = null; }
+}
+
+function _onDragEnd() {
+  document.removeEventListener('touchmove', _onDragMove);
+  document.removeEventListener('touchend',  _onDragEnd);
+  document.removeEventListener('mousemove', _onDragMove);
+  document.removeEventListener('mouseup',   _onDragEnd);
+  if (_drag.clone)  { _drag.clone.remove(); _drag.clone = null; }
+  if (_drag.origEl) { _drag.origEl.style.opacity = ''; _drag.origEl = null; }
+  document.querySelectorAll('[data-rdrag]').forEach(x=>x.classList.remove('drag-over'));
+  // Reorder customRoute
+  if (_drag.targetId && _drag.targetId !== _drag.shopId && customRoute) {
+    const fi = customRoute.findIndex(s=>s.shop_id===_drag.shopId);
+    const ti = customRoute.findIndex(s=>s.shop_id===_drag.targetId);
+    if (fi>=0 && ti>=0) { const [item]=customRoute.splice(fi,1); customRoute.splice(ti,0,item); }
+  }
+  _drag.on = false; _drag.shopId = null; _drag.targetId = null;
+  _saveRouteState();
   buildRouteUI();
 }
 
@@ -678,11 +827,17 @@ async function buildRouteUI() {
   const totalPending = pending.length + noGPSpend.length;
   const totalAll     = totalDone + totalPending;
 
-  // Build optimised route from pending GPS shops (or custom shuffled order)
-  // Always restrict to ordered shops — customRoute may have stale shops from previous days
-  const route = customRoute
-    ? customRoute.filter(s=>!deliveries[s.shop_id] && orderedShopIds.has(s.shop_id))
-    : nearestNeighbour(HQ, pending);
+  // Build route based on selected mode
+  let route;
+  if (routeMode === 'manual') {
+    if (!customRoute || !customRoute.length) customRoute = nearestNeighbour(HQ, pending).slice();
+    route = customRoute.filter(s=>!deliveries[s.shop_id] && orderedShopIds.has(s.shop_id));
+  } else if (routeMode === 'history') {
+    route = await historicalRoute(pending);
+    customRoute = route.slice(); // save so driver can switch to manual to fine-tune
+  } else {
+    route = nearestNeighbour(HQ, pending);
+  }
 
   // Calc km from pending GPS route
   let totalKm=0,prev=HQ;
@@ -720,17 +875,6 @@ async function buildRouteUI() {
   mapWrap.style.display=mapsUrl?'block':'none';
   if(mapsUrl) mapWrap.innerHTML=`<a href="${mapsUrl}" target="_blank" style="display:block;background:#2d7a4f;color:#fff;padding:13px;border-radius:14px;text-align:center;font-weight:800;font-size:14px;text-decoration:none">${t('routeStart')} (${pending.length} ${lang==='mr'?'दुकाने':'stops'})</a>`;
 
-  // Helper: convert "HH:MM AM/PM" to minutes for sorting
-  function timeToMins(t){
-    if(!t) return 9999;
-    const m=t.match(/(\d+):(\d+)\s*(AM|PM|am|pm)?/);
-    if(!m) return 9999;
-    let h=parseInt(m[1]),mn=parseInt(m[2]),p=(m[3]||'').toUpperCase();
-    if(p==='PM'&&h!==12) h+=12;
-    if(p==='AM'&&h===12) h=0;
-    return h*60+mn;
-  }
-
   // Sort done shops by delivery time ascending (first delivered = first in list)
   const doneSorted=[...done].sort((a,b)=>timeToMins(deliveries[a.shop_id]?.time)-timeToMins(deliveries[b.shop_id]?.time));
   const noGPSdoneSorted=[...noGPSdone].sort((a,b)=>timeToMins(deliveries[a.shop_id]?.time)-timeToMins(deliveries[b.shop_id]?.time));
@@ -754,11 +898,15 @@ async function buildRouteUI() {
   let stopNum=0;
   displayGPS.forEach((s,i)=>{
     const isDone=!!deliveries[s.shop_id];
-    const stopLabel=isDone?(i+1):(++stopNum); // done: position in time order; pending: upcoming stop number
+    const stopLabel=isDone?(i+1):(++stopNum);
     const shopOrders=orders.filter(o=>o.shop_id===s.shop_id);
+    const isDraggable = routeMode==='manual' && !isDone;
+    const dragAttrs = isDraggable ? `id="rdrag-${s.shop_id}" data-rdrag="${s.shop_id}"` : '';
+    const dragHandle = isDraggable ? `<div class="drag-handle" ontouchstart="onDragStart(event,'${s.shop_id}')" onmousedown="onDragStart(event,'${s.shop_id}')">☰</div>` : '';
     html+=`<div class="rline"></div>
-    <div class="route-stop">
-      <div class="rnum ${isDone?'done':''}">${isDone?stopLabel:stopLabel}</div>
+    <div class="route-stop" ${dragAttrs}>
+      ${dragHandle}
+      <div class="rnum ${isDone?'done':''}">${stopLabel}</div>
       <div class="rinfo ${isDone?'done':''}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
           <div class="rname">${s.name}</div>
