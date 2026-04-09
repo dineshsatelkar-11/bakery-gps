@@ -428,9 +428,10 @@
         .catch(function(){ return { ok: false }; });
 
       case 'cleanOldData': {
-        // Delete data older than 7 days from orders, deliveries, routes, notifications
+        // Delete data older than N days from orders, deliveries, routes, notifications
+        var days = parseInt(p.days) || 7;
         var cutoff = new Date();
-        cutoff.setDate(cutoff.getDate() - 7);
+        cutoff.setDate(cutoff.getDate() - days);
         var cutoffDate = cutoff.toISOString().slice(0, 10); // 'YYYY-MM-DD'
         var cutoffTs   = cutoff.toISOString();              // for timestamptz columns
 

@@ -230,6 +230,7 @@ function normalizeMobile(raw) {
 // Module-level state for refresh
 var _trackingShop = null, _trackingDriver = '';
 var _allFoundShops = [], _selectedShopIdx = -1;
+var _hasOrderToday = false;
 
 function selectShop(idx) {
   _selectedShopIdx = idx;
@@ -239,20 +240,32 @@ function selectShop(idx) {
   document.getElementById('loginMsg').style.display = 'none';
 }
 
-function renderStatus(deliveries, shopId) {
+function renderStatus(deliveries, shopId, hasOrderToday) {
   var myDelivery = deliveries.find(function(d){ return d.shop_id === shopId; });
   var card = document.getElementById('tr-status-card');
   var icon = document.getElementById('tr-status-icon');
   var text = document.getElementById('tr-status-text');
   var sub  = document.getElementById('tr-status-sub');
-  if (myDelivery) {
+
+  if (!hasOrderToday) {
+    // No order scheduled for today
+    card.className = 'card';
+    card.style.background = '#f5f5f5';
+    card.style.borderColor = '#e0e0e0';
+    icon.textContent = '📋';
+    text.textContent = 'No Order Today';
+    text.style.color = '#8a7a6a';
+    sub.textContent  = 'No delivery is scheduled for your shop today.';
+  } else if (myDelivery) {
     card.className = 'card status-delivered';
+    card.style.background = ''; card.style.borderColor = '';
     icon.textContent = '✅';
     text.textContent = 'Delivered Today!';
     text.style.color = '#2d7a4f';
     sub.textContent  = 'Your order was delivered at ' + (myDelivery.time || '—');
   } else {
     card.className = 'card status-pending';
+    card.style.background = ''; card.style.borderColor = '';
     icon.textContent = '⏳';
     text.textContent = 'Not Yet Delivered';
     text.style.color = '#7a4800';
@@ -267,9 +280,14 @@ async function refreshStatus() {
   if (!_trackingShop || !_trackingDriver) return;
   var btn = document.getElementById('tr-refresh-btn');
   btn.textContent = '⏳ Checking…'; btn.disabled = true;
-  var deliveries = await api({ action: 'getDeliveries', driver: _trackingDriver, date: todayStr() });
-  if (!Array.isArray(deliveries)) deliveries = [];
-  renderStatus(deliveries, _trackingShop.shop_id);
+  var results = await Promise.all([
+    api({ action: 'getOrders',    driver: _trackingDriver, date: todayStr() }),
+    api({ action: 'getDeliveries', driver: _trackingDriver, date: todayStr() })
+  ]);
+  var orders    = Array.isArray(results[0]) ? results[0] : [];
+  var deliveries = Array.isArray(results[1]) ? results[1] : [];
+  _hasOrderToday = orders.some(function(o){ return o.shop_id === _trackingShop.shop_id; });
+  renderStatus(deliveries, _trackingShop.shop_id, _hasOrderToday);
   btn.textContent = '🔄 Refresh Status'; btn.disabled = false;
 }
 
@@ -319,19 +337,20 @@ async function trackDelivery() {
     var driverName  = shop.assigned_driver || '';
     _trackingDriver = driverName;
 
-    // 2. Get driver details
+    // 2. Get driver details + orders + deliveries in parallel
     var driverInfo = null;
-    if (driverName) {
-      var drivers = await api({ action: 'getDrivers' });
-      driverInfo = (drivers || []).find(function(d){ return d.name === driverName; }) || null;
-    }
+    var results = await Promise.all([
+      driverName ? api({ action: 'getDrivers' }) : Promise.resolve([]),
+      driverName ? api({ action: 'getOrders', driver: driverName, date: todayStr() }) : Promise.resolve([]),
+      driverName ? api({ action: 'getDeliveries', driver: driverName, date: todayStr() }) : Promise.resolve([])
+    ]);
+    var allDrivers = Array.isArray(results[0]) ? results[0] : [];
+    var todayOrders = Array.isArray(results[1]) ? results[1] : [];
+    var deliveries  = Array.isArray(results[2]) ? results[2] : [];
+    driverInfo = allDrivers.find(function(d){ return d.name === driverName; }) || null;
 
-    // 3. Get today's deliveries for this driver
-    var deliveries = [];
-    if (driverName) {
-      deliveries = await api({ action: 'getDeliveries', driver: driverName, date: todayStr() });
-      if (!Array.isArray(deliveries)) deliveries = [];
-    }
+    // Check if this shop has an order today
+    var hasOrderToday = todayOrders.some(function(o){ return o.shop_id === shop.shop_id; });
 
     // 4. Find last delivery (most recent time)
     var lastDeliv = null;
@@ -340,8 +359,10 @@ async function trackDelivery() {
       lastDeliv = deliveries[0];
     }
 
+    _hasOrderToday = hasOrderToday;
+
     // ── Render result ──
-    renderStatus(deliveries, shop.shop_id);
+    renderStatus(deliveries, shop.shop_id, hasOrderToday);
     document.getElementById('tr-name').textContent = shop.name || 'Your Shop';
     document.getElementById('tr-area').textContent = (shop.area ? '📍 ' + shop.area : '') + (shop.address ? ' · ' + shop.address : '');
 

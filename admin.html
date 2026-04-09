@@ -123,6 +123,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   <button class="tab"    id="tb-gps"       onclick="showTab('gps')">📍 GPS</button>
   <button class="tab"    id="tb-notify"    onclick="showTab('notify')">🔔 Notify</button>
   <button class="tab"    id="tb-live"      onclick="showTab('live')">🔴 Live</button>
+  <button class="tab"    id="tb-cleanup"   onclick="showTab('cleanup')">🗑 Cleanup</button>
 </div>
 
 <!-- ORDERS -->
@@ -327,16 +328,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   <button class="btn-csv" onclick="exportGPSCSV()">⬇ Export GPS CSV</button>
   <div id="gpsList"></div>
 
-  <!-- Maintenance — super_admin only -->
-  <div class="card" id="maintenanceCard" style="margin-top:16px;border-color:#f5c6c6;display:none">
-    <div class="lbl" style="color:#c8382a">🗑 Data Maintenance</div>
-    <div style="font-size:12px;font-family:monospace;color:#8a7a6a;margin-bottom:10px;line-height:1.6">
-      Deletes orders, deliveries, routes and notifications older than 7 days.<br>
-      Shops and products are <strong>not</strong> affected.
-    </div>
-    <button class="btn" style="background:#c8382a;color:#fff;padding:11px" onclick="runCleanup()">🗑 Delete Data Older Than 7 Days</button>
-    <div id="cleanupMsg" style="display:none;margin-top:8px" class="msg ok"></div>
-  </div>
+
 </div>
 
 <!-- NOTIFY (super_admin only) -->
@@ -389,6 +381,36 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   <div id="liveBody"><div style="text-align:center;padding:24px;font-size:12px;color:#8a7a6a;font-family:monospace">Tap Refresh to load live data.</div></div>
 </div>
 
+<!-- CLEANUP (super_admin only) -->
+<div class="page" id="pg-cleanup">
+  <div class="card" style="border-color:#f5c6c6;margin-bottom:12px">
+    <div style="font-size:15px;font-weight:900;color:#c8382a;margin-bottom:4px">🗑 Data Cleanup</div>
+    <div style="font-size:12px;font-family:monospace;color:#8a7a6a;line-height:1.7">
+      Permanently deletes old orders, deliveries, routes and notifications.<br>
+      Shops and products are <strong>not</strong> affected.
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:12px">
+    <div class="lbl">Days to Keep</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      <input type="number" id="cleanup-days" min="1" max="365" value="15"
+        style="width:110px;margin-bottom:0;font-size:18px;font-weight:900;text-align:center;flex:none">
+      <div style="font-size:12px;font-family:monospace;color:#8a7a6a;line-height:1.5">
+        days to keep.<br>Everything <strong>older</strong> will be deleted.
+      </div>
+    </div>
+    <button class="btn btn-grey" onclick="previewCleanup()" style="margin-bottom:0">🔍 Preview What Will Be Deleted</button>
+  </div>
+
+  <div id="cleanup-preview" style="display:none;margin-bottom:12px"></div>
+
+  <button class="btn" id="cleanup-btn" style="background:#c8382a;color:#fff;display:none" onclick="runCleanup()">
+    🗑 Delete Old Data
+  </button>
+  <div id="cleanupMsg" style="display:none;margin-top:8px" class="msg ok"></div>
+</div>
+
 <!-- APPROVE CUSTOMER MODAL -->
 <div class="modal-bg" id="approveModal" style="display:none" onclick="if(event.target===this)closeApproveModal()">
   <div class="modal">
@@ -400,7 +422,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
     <div class="lbl">Address</div><input type="text" id="apm-address" placeholder="Full address">
     <div class="lbl">Area</div><input type="text" id="apm-area" placeholder="e.g. Baner, Kharadi">
     <div class="lbl">Mobile</div><input type="tel" id="apm-mobile" placeholder="Contact number">
-    <div class="lbl">Flag / Note</div><input type="text" id="apm-flag" placeholder="e.g. weekend only">
+    <div class="lbl">Driver Note</div><input type="text" id="apm-flag" placeholder="e.g. back gate, opens 7am, ring twice">
     <div class="lbl">Assign Driver *</div>
     <select id="apm-driver">
       <option value="">— Select Driver —</option>
@@ -447,7 +469,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
       <option value="">Unassigned</option>
     </select>
     <div class="lbl">Mobile</div><input type="tel" id="cm-mobile" placeholder="Contact number">
-    <div class="lbl">Flag / Note</div><input type="text" id="cm-flag" placeholder="e.g. weekend only">
+    <div class="lbl">Driver Note</div><input type="text" id="cm-flag" placeholder="e.g. back gate, opens 7am, ring twice">
     <div class="lbl">GPS Latitude</div><input type="text" id="cm-lat" placeholder="18.560123">
     <div class="lbl">GPS Longitude</div><input type="text" id="cm-lng" placeholder="73.920456">
     <button class="btn btn-blue" onclick="pickGPS()">📍 Use My Current Location</button>
@@ -631,12 +653,12 @@ var _allowedTabs = _staffRole === 'super_admin' ? null : JSON.parse(sessionStora
 (function(){var r=sessionStorage.getItem('role');if(['super_admin','admin','assistant','chef','packer'].indexOf(r)<0)goto('');})();
 
 function initTabVisibility(){
-  var allTabKeys = ['orders','approve','queue','summary','delivery','routes','customers','products','drivers','gps','users','notify','live'];
+  var allTabKeys = ['orders','approve','queue','summary','delivery','routes','customers','products','drivers','gps','users','notify','live','cleanup'];
   allTabKeys.forEach(function(t){
     var btn = document.getElementById('tb-'+t);
     if(!btn) return;
     var show;
-    if(t === 'users' || t === 'notify') {
+    if(t === 'users' || t === 'notify' || t === 'cleanup') {
       show = (_staffRole === 'super_admin');
     } else if(t === 'live') {
       show = (_staffRole === 'super_admin' || _allowedTabs === null || (_allowedTabs && _allowedTabs.indexOf('summary') >= 0));
@@ -693,15 +715,13 @@ document.getElementById('logoutBtn').onclick=function(){
   localStorage.removeItem('staffNamePersist');
   goto(r==='super_admin'?'superadmin':'');
 };
-// Show maintenance card only for super_admin
-if(_staffRole==='super_admin') document.getElementById('maintenanceCard').style.display='block';
 
 /* ── TAB SWITCHER ── */
 var _liveInterval = null;
 function showTab(t){
   // Clear live auto-refresh when leaving the live tab
   if(t !== 'live' && _liveInterval) { clearInterval(_liveInterval); _liveInterval = null; }
-  ['orders','approve','queue','summary','delivery','routes','customers','products','drivers','gps','users','notify','live'].forEach(function(x){
+  ['orders','approve','queue','summary','delivery','routes','customers','products','drivers','gps','users','notify','live','cleanup'].forEach(function(x){
     var pg=document.getElementById('pg-'+x); if(pg) pg.classList.toggle('on',x===t);
     var tb=document.getElementById('tb-'+x); if(tb) tb.classList.toggle('on',x===t);
   });
@@ -1301,11 +1321,9 @@ function loadSummary(){
     api({action:'getOrders',date:summaryDate}),
     api({action:'getDeliveries',date:summaryDate}),
     loadProductMaster(),
-    api({action:'getOrdersDateRange',days:30})
   ]).then(function(res){
     var data=res[0];
     var deliveriesForDate=Array.isArray(res[1])?res[1]:[];
-    var dateRangeOrders=Array.isArray(res[3])?res[3]:[];
     var prodMap={};
     allProducts.forEach(function(p){if(p.name)prodMap[p.name.toLowerCase()]=p;});
     if(!Array.isArray(data)||!data.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders for this date.</div>';return;}
@@ -1449,39 +1467,6 @@ function loadSummary(){
       topPrefix='<div style="background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:14px;padding:10px 14px;margin-bottom:12px;font-size:12px;font-weight:700;color:#2d7a4f">✅ All shops delivered!</div>';
     }
 
-    // ── Feature 5: Daily Orders Trend (CSS bar chart) ──
-    var trendHTML='';
-    if(dateRangeOrders.length){
-      var dayCounts={};
-      dateRangeOrders.forEach(function(o){ if(o.date) dayCounts[o.date]=(dayCounts[o.date]||0)+1; });
-      var today2=todayStr();
-      // Build last 30 days list
-      var days30=[];
-      for(var di=29;di>=0;di--){
-        var d=new Date(); d.setDate(d.getDate()-di);
-        var ds=d.getFullYear()+'-'+zp(d.getMonth()+1)+'-'+zp(d.getDate());
-        days30.push(ds);
-      }
-      var maxCount=Math.max.apply(null,days30.map(function(ds){return dayCounts[ds]||0;}));
-      if(maxCount>0){
-        trendHTML='<div class="card" style="margin-bottom:12px">'+
-          '<div style="font-size:11px;font-weight:900;color:#4a2f14;margin-bottom:8px;font-family:monospace;text-transform:uppercase;letter-spacing:1px">📈 Orders Last 30 Days</div>'+
-          '<div style="display:flex;align-items:flex-end;gap:3px;height:60px;overflow-x:auto">'+
-          days30.map(function(ds){
-            var cnt=dayCounts[ds]||0;
-            var barH=cnt>0?Math.max(2,Math.round(cnt/maxCount*54)):2;
-            var isToday=ds===today2;
-            var dayNum=parseInt(ds.slice(8,10));
-            return '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0">'+
-              '<div style="width:8px;height:'+barH+'px;border-radius:2px 2px 0 0;background:'+(isToday?'#2d7a4f':'#a5d6a7')+'"'+(cnt>0?' title="'+ds+': '+cnt+' orders"':'')+'></div>'+
-              '<div style="font-size:7px;color:'+(isToday?'#2d7a4f':'#8a7a6a')+';font-family:monospace;font-weight:'+(isToday?'900':'400')+'">'+dayNum+'</div>'+
-            '</div>';
-          }).join('')+
-          '</div>'+
-        '</div>';
-      }
-    }
-
     // Apply driver filter
     var mainData=driverFilter?data.filter(function(o){return(o.driver||o.assigned_driver||'')===driverFilter;}):data;
     var h=buildSummaryHTML(mainData,driverFilter?'Summary · '+driverFilter:'Summary 1 · All Shops','');
@@ -1498,7 +1483,7 @@ function loadSummary(){
       h+=buildSummaryHTML(tpData,'Tea Post Summary',tpData.length+' shops');
     }
 
-    el.innerHTML=topPrefix+trendHTML+h;
+    el.innerHTML=topPrefix+h;
   });
 }
 
@@ -1651,7 +1636,26 @@ function renderRoutes(){
     '<div class="stat" onclick="setRouteFilter(\'done\')" style="cursor:pointer;'+(_routeFilter==='done'?'background:#e8f5e9;border-color:#2d7a4f':'')+'"><div class="stat-n" style="color:#2d7a4f">'+totalDone+'</div><div class="stat-l">Done</div></div>'+
     '<div class="stat" onclick="setRouteFilter(\'pending\')" style="cursor:pointer;'+(_routeFilter==='pending'?'background:#fde8e8;border-color:#e87a7a':'')+'"><div class="stat-n" style="color:#c8382a">'+totalPending+'</div><div class="stat-l">Pending</div></div>';
 
-  el.innerHTML=routesData.map(function(r){
+  // ── Dispatch card: start time at a glance ──
+  var notStarted=routesData.filter(function(r){return !r.start_time;});
+  var dispatchRows=routesData.map(function(r){
+    var started=!!r.start_time;
+    // Highlight if started late (after 08:00)
+    var late=false;
+    if(started){var m=r.start_time.match(/(\d+):(\d+)\s*(AM|PM|am|pm)?/);if(m){var h=parseInt(m[1]),ap=(m[3]||'').toUpperCase();if(ap==='PM'&&h!==12)h+=12;if(ap==='AM'&&h===12)h=0;late=(h*60+parseInt(m[2]))>8*60;}}
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0e8dc">'+
+      '<span style="font-size:12px;font-weight:700;color:#4a2f14">'+esc(r.driver)+'</span>'+
+      (started
+        ?'<span style="font-size:11px;font-family:monospace;font-weight:700;color:'+(late?'#c8382a':'#2d7a4f')+'">⏰ '+esc(r.start_time)+(late?' ⚠ Late':'')+'</span>'
+        :'<span style="font-size:11px;font-family:monospace;color:#c8382a">🔴 Not started</span>')+
+    '</div>';
+  }).join('');
+  var dispatchCard='<div style="background:#fff;border:1.5px solid '+(notStarted.length?'#f0b0b0':'#a5d6a7')+';border-radius:14px;padding:12px 14px;margin-bottom:10px">'+
+    '<div style="font-size:11px;font-weight:900;color:#4a2f14;font-family:monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">🚦 Dispatch Status'+
+      (notStarted.length?' <span style="color:#c8382a">('+notStarted.length+' not started)</span>':'  <span style="color:#2d7a4f">All dispatched ✅</span>')+
+    '</div>'+dispatchRows+'</div>';
+
+  el.innerHTML=dispatchCard+routesData.map(function(r){
     var sh=[];try{sh=JSON.parse(r.shop_order||'[]');}catch(e){}
     var dDelivs=_routeDelivMap[r.driver]||{};
     var dOrders=uniqueShops(_routeOrdersByDriver[r.driver]||[]);
@@ -2280,11 +2284,16 @@ function loadLive(){
   var date=todayStr();
   Promise.all([
     api({action:'getOrders', date:date}),
-    api({action:'getDeliveries', date:date})
+    api({action:'getDeliveries', date:date}),
+    api({action:'getRoutes', date:date})
   ]).then(function(res){
     var orders=Array.isArray(res[0])?res[0]:[];
     var deliveries=Array.isArray(res[1])?res[1]:[];
+    var routes=Array.isArray(res[2])?res[2]:[];
     if(!orders.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders today.</div>';return;}
+    // Build route map: driver → route record (for start_time)
+    var routeMap={};
+    routes.forEach(function(r){ routeMap[r.driver]=r; });
     // Group by driver
     var byDriver={};
     orders.forEach(function(o){
@@ -2325,11 +2334,21 @@ function loadLive(){
         var mm=String(etaDate.getMinutes()).padStart(2,'0');
         etaStr=hh+':'+mm;
       }
+      var rte=routeMap[drv];
+      var startTime=rte&&rte.start_time?rte.start_time:null;
+      var startLate=false;
+      if(startTime){var sm=startTime.match(/(\d+):(\d+)\s*(AM|PM|am|pm)?/);if(sm){var sh=parseInt(sm[1]),sap=(sm[3]||'').toUpperCase();if(sap==='PM'&&sh!==12)sh+=12;if(sap==='AM'&&sh===12)sh=0;startLate=(sh*60+parseInt(sm[2]))>8*60;}}
       return '<div style="background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;padding:13px;margin-bottom:10px">'+
-        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'+
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'+
           '<span style="width:10px;height:10px;border-radius:50%;background:'+color.fg+';display:inline-block;flex-shrink:0"></span>'+
           '<span style="font-size:14px;font-weight:900;color:#4a2f14">'+esc(drv)+'</span>'+
           '<span style="font-size:10px;font-family:monospace;color:#8a7a6a;margin-left:auto">'+pct+'%</span>'+
+        '</div>'+
+        '<div style="font-size:11px;font-family:monospace;margin-bottom:7px">'+
+          (startTime
+            ?'<span style="color:'+(startLate?'#c8382a':'#2d7a4f')+';font-weight:700">⏰ Started: '+esc(startTime)+'</span>'+(startLate?' <span style="color:#c8382a">⚠ Late</span>':'')
+            :'<span style="color:#c8382a;font-weight:700">🔴 Not started yet</span>')+
+          (rte&&rte.start_lat?'&nbsp; <a href="https://www.google.com/maps?q='+rte.start_lat+','+rte.start_lng+'" target="_blank" style="color:#1565c0;font-weight:700">📍</a>':'')+
         '</div>'+
         '<div style="background:#e8dfd2;border-radius:6px;height:8px;margin-bottom:8px;overflow:hidden">'+
           '<div style="height:8px;border-radius:6px;background:'+color.fg+';width:'+pct+'%"></div>'+
@@ -2368,19 +2387,79 @@ function sendPush(driverNames, message) {
   });
 }
 
-/* ── MAINTENANCE ── */
+/* ── MAINTENANCE / CLEANUP ── */
+function _getCleanupDays(){
+  var v = parseInt(document.getElementById('cleanup-days').value);
+  return (v && v >= 1) ? v : 15;
+}
+
+function previewCleanup(){
+  var days = _getCleanupDays();
+  var cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+  var cutoffDate = cutoff.toISOString().slice(0,10);
+  var preview = document.getElementById('cleanup-preview');
+  var btn = document.getElementById('cleanup-btn');
+  preview.style.display='block';
+  preview.innerHTML='<div class="card" style="border-color:#ffe082"><div style="font-size:12px;font-family:monospace;color:#7a4800;text-align:center;padding:8px">⏳ Counting records older than '+days+' days…</div></div>';
+  btn.style.display='none';
+  // Count rows to be deleted by fetching just the date column with a limit of 1000
+  // We use a HEAD request trick via fetching count only
+  var BASE2 = CONFIG.SUPABASE_URL + '/rest/v1';
+  var KEY2  = CONFIG.SUPABASE_ANON_KEY;
+  function countOld(table, col){
+    return fetch(BASE2+'/'+table+'?'+col+'=lt.'+encodeURIComponent(cutoffDate)+'&select='+col+'&limit=1', {
+      method:'HEAD',
+      headers:{'apikey':KEY2,'Authorization':'Bearer '+KEY2,'Prefer':'count=exact'}
+    }).then(function(r){
+      var cr=r.headers.get('Content-Range')||'';
+      var m=cr.match(/\/(\d+)/);
+      return m?parseInt(m[1]):0;
+    }).catch(function(){return 0;});
+  }
+  Promise.all([
+    countOld('orders','date'),
+    countOld('deliveries','date'),
+    countOld('routes','date'),
+    countOld('notifications','created_at')
+  ]).then(function(counts){
+    var total=counts[0]+counts[1]+counts[2]+counts[3];
+    if(total===0){
+      preview.innerHTML='<div class="card" style="border-color:#a5d6a7"><div style="font-size:13px;font-weight:700;color:#2d7a4f;text-align:center;padding:8px">✅ Nothing to delete — no data older than '+days+' days.</div></div>';
+      btn.style.display='none';
+      return;
+    }
+    preview.innerHTML='<div class="card" style="border-color:#f0b0b0">'+
+      '<div style="font-size:12px;font-weight:900;color:#c8382a;margin-bottom:10px">⚠️ Will permanently delete (before '+cutoffDate+'):</div>'+
+      '<div style="font-size:13px;font-family:monospace;line-height:2">'+
+        '<div>📋 Orders: <strong>'+counts[0]+'</strong></div>'+
+        '<div>🚚 Deliveries: <strong>'+counts[1]+'</strong></div>'+
+        '<div>🗺 Routes: <strong>'+counts[2]+'</strong></div>'+
+        '<div>🔔 Notifications: <strong>'+counts[3]+'</strong></div>'+
+      '</div>'+
+      '<div style="margin-top:10px;font-size:11px;font-family:monospace;color:#8a7a6a">Shops and products are NOT affected.</div>'+
+    '</div>';
+    btn.style.display='block';
+    btn.textContent='🗑 Delete '+total+' Records Older Than '+days+' Days';
+  });
+}
+
 function runCleanup(){
-  var btn=document.querySelector('.btn[onclick="runCleanup()"]');
-  var msg=document.getElementById('cleanupMsg');
-  if(!confirm('Delete orders, deliveries, routes and notifications older than 7 days?\nShops and products are NOT affected.\nThis cannot be undone.'))return;
+  var days = _getCleanupDays();
+  var btn = document.getElementById('cleanup-btn');
+  var msg = document.getElementById('cleanupMsg');
+  if(!confirm('Permanently delete data older than '+days+' days?\nThis CANNOT be undone.'))return;
   btn.disabled=true; btn.textContent='⏳ Deleting…';
   msg.style.display='none';
-  apiPost({action:'cleanOldData'}).then(function(res){
-    btn.disabled=false; btn.textContent='🗑 Delete Data Older Than 7 Days';
+  apiPost({action:'cleanOldData', days:days}).then(function(res){
+    btn.disabled=false;
     if(res&&res.ok){
-      msg.textContent='✅ Deleted (before '+res.cutoff+'):\n'+res.orders+' orders · '+res.deliveries+' deliveries · '+res.routes+' routes · '+res.notifications+' notifications';
+      btn.style.display='none';
+      document.getElementById('cleanup-preview').style.display='none';
+      msg.textContent='✅ Done! Deleted (before '+res.cutoff+'):\n'+res.orders+' orders · '+res.deliveries+' deliveries · '+res.routes+' routes · '+res.notifications+' notifications';
       msg.className='msg ok';
     } else {
+      btn.textContent='🗑 Retry Delete';
       msg.textContent='❌ '+(res.error||'Failed');
       msg.className='msg er';
     }
@@ -2523,7 +2602,7 @@ loadProductMaster(); // cache products for XLS preview
   if(_allowedTabs === null){ first='orders'; }
   else { first = _allowedTabs.length ? _allowedTabs[0] : 'summary'; }
   // Hide all pages, then show the right one
-  ['orders','approve','queue','summary','delivery','routes','customers','products','drivers','gps','users','live'].forEach(function(t){
+  ['orders','approve','queue','summary','delivery','routes','customers','products','drivers','gps','users','notify','live','cleanup'].forEach(function(t){
     var pg=document.getElementById('pg-'+t);if(pg)pg.classList.remove('on');
     var tb=document.getElementById('tb-'+t);if(tb)tb.classList.remove('on');
   });
