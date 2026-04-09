@@ -122,6 +122,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   <button class="tab"    id="tb-users"     onclick="showTab('users')">👥 Users</button>
   <button class="tab"    id="tb-gps"       onclick="showTab('gps')">📍 GPS</button>
   <button class="tab"    id="tb-notify"    onclick="showTab('notify')">🔔 Notify</button>
+  <button class="tab"    id="tb-live"      onclick="showTab('live')">🔴 Live</button>
 </div>
 
 <!-- ORDERS -->
@@ -379,6 +380,15 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   <div id="notif-send-msg" style="display:none;margin-top:8px" class="msg ok"></div>
 </div>
 
+<!-- LIVE -->
+<div class="page" id="pg-live">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+    <div style="font-size:13px;font-weight:800;color:#4a2f14">🔴 Live Driver Progress</div>
+    <button class="btn-sm" style="background:#4a2f14;color:#fff" onclick="loadLive()">↻ Refresh</button>
+  </div>
+  <div id="liveBody"><div style="text-align:center;padding:24px;font-size:12px;color:#8a7a6a;font-family:monospace">Tap Refresh to load live data.</div></div>
+</div>
+
 <!-- APPROVE CUSTOMER MODAL -->
 <div class="modal-bg" id="approveModal" style="display:none" onclick="if(event.target===this)closeApproveModal()">
   <div class="modal">
@@ -621,13 +631,15 @@ var _allowedTabs = _staffRole === 'super_admin' ? null : JSON.parse(sessionStora
 (function(){var r=sessionStorage.getItem('role');if(['super_admin','admin','assistant','chef','packer'].indexOf(r)<0)goto('');})();
 
 function initTabVisibility(){
-  var allTabKeys = ['orders','approve','queue','summary','delivery','routes','customers','products','drivers','gps','users','notify'];
+  var allTabKeys = ['orders','approve','queue','summary','delivery','routes','customers','products','drivers','gps','users','notify','live'];
   allTabKeys.forEach(function(t){
     var btn = document.getElementById('tb-'+t);
     if(!btn) return;
     var show;
     if(t === 'users' || t === 'notify') {
       show = (_staffRole === 'super_admin');
+    } else if(t === 'live') {
+      show = (_staffRole === 'super_admin' || _allowedTabs === null || (_allowedTabs && _allowedTabs.indexOf('summary') >= 0));
     } else if(_allowedTabs === null) {
       show = true; // super_admin sees all
     } else {
@@ -685,10 +697,13 @@ document.getElementById('logoutBtn').onclick=function(){
 if(_staffRole==='super_admin') document.getElementById('maintenanceCard').style.display='block';
 
 /* ── TAB SWITCHER ── */
+var _liveInterval = null;
 function showTab(t){
-  ['orders','approve','queue','summary','delivery','routes','customers','products','drivers','gps','users','notify'].forEach(function(x){
-    document.getElementById('pg-'+x).classList.toggle('on',x===t);
-    document.getElementById('tb-'+x).classList.toggle('on',x===t);
+  // Clear live auto-refresh when leaving the live tab
+  if(t !== 'live' && _liveInterval) { clearInterval(_liveInterval); _liveInterval = null; }
+  ['orders','approve','queue','summary','delivery','routes','customers','products','drivers','gps','users','notify','live'].forEach(function(x){
+    var pg=document.getElementById('pg-'+x); if(pg) pg.classList.toggle('on',x===t);
+    var tb=document.getElementById('tb-'+x); if(tb) tb.classList.toggle('on',x===t);
   });
   if(t==='summary')   setLatestDate('f-sum-date','orders','',loadSummary);
   if(t==='delivery')  setLatestDate('f-del-date','deliveries',document.getElementById('f-del-driver').value,loadDeliveries);
@@ -701,6 +716,10 @@ function showTab(t){
   if(t==='drivers')   loadDrivers().then(renderDrivers);
   if(t==='users')     loadStaff().then(renderStaff);
   if(t==='notify')    loadNotifyDriverList();
+  if(t==='live') {
+    loadLive();
+    if(!_liveInterval) _liveInterval = setInterval(loadLive, 60000);
+  }
 }
 
 /* ── CUSTOMER MASTER (replaces allShops) ──
@@ -1277,11 +1296,16 @@ function loadSummary(){
   el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
   var driverFilter=document.getElementById('f-sum-driver')?document.getElementById('f-sum-driver').value:'';
   var shopFilter=(document.getElementById('f-sum-filter2')?document.getElementById('f-sum-filter2').value:'').toLowerCase().trim();
+  var summaryDate=document.getElementById('f-sum-date').value||todayStr();
   Promise.all([
-    api({action:'getOrders',date:document.getElementById('f-sum-date').value||todayStr()}),
-    loadProductMaster()
+    api({action:'getOrders',date:summaryDate}),
+    api({action:'getDeliveries',date:summaryDate}),
+    loadProductMaster(),
+    api({action:'getOrdersDateRange',days:30})
   ]).then(function(res){
     var data=res[0];
+    var deliveriesForDate=Array.isArray(res[1])?res[1]:[];
+    var dateRangeOrders=Array.isArray(res[3])?res[3]:[];
     var prodMap={};
     allProducts.forEach(function(p){if(p.name)prodMap[p.name.toLowerCase()]=p;});
     if(!Array.isArray(data)||!data.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders for this date.</div>';return;}
@@ -1409,6 +1433,55 @@ function loadSummary(){
       return h;
     }
 
+    // ── Feature 3: Undelivered Report ──
+    var deliveredShopIds=new Set(deliveriesForDate.map(function(d){return d.shop_id||d.customer_id;}));
+    var undelivered=data.filter(function(o){return !deliveredShopIds.has(o.customer_id||o.shop_id);});
+    var topPrefix='';
+    if(undelivered.length>0){
+      topPrefix='<div style="background:#fde8e8;border:1.5px solid #f0b0b0;border-radius:14px;padding:12px 14px;margin-bottom:12px">'+
+        '<div style="font-size:12px;font-weight:900;color:#c8382a;margin-bottom:8px">⚠️ Not Yet Delivered — '+undelivered.length+' shops</div>'+
+        undelivered.map(function(o){
+          var drv=o.driver||o.assigned_driver||'—';
+          return '<div style="font-size:11px;font-family:monospace;color:#4a2f14;padding:2px 0;border-bottom:1px solid #f5c0c0">'+esc(o.shop_name)+' · <span style="color:#8a7a6a">'+esc(drv)+'</span></div>';
+        }).join('')+
+      '</div>';
+    } else if(deliveriesForDate.length>0){
+      topPrefix='<div style="background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:14px;padding:10px 14px;margin-bottom:12px;font-size:12px;font-weight:700;color:#2d7a4f">✅ All shops delivered!</div>';
+    }
+
+    // ── Feature 5: Daily Orders Trend (CSS bar chart) ──
+    var trendHTML='';
+    if(dateRangeOrders.length){
+      var dayCounts={};
+      dateRangeOrders.forEach(function(o){ if(o.date) dayCounts[o.date]=(dayCounts[o.date]||0)+1; });
+      var today2=todayStr();
+      // Build last 30 days list
+      var days30=[];
+      for(var di=29;di>=0;di--){
+        var d=new Date(); d.setDate(d.getDate()-di);
+        var ds=d.getFullYear()+'-'+zp(d.getMonth()+1)+'-'+zp(d.getDate());
+        days30.push(ds);
+      }
+      var maxCount=Math.max.apply(null,days30.map(function(ds){return dayCounts[ds]||0;}));
+      if(maxCount>0){
+        trendHTML='<div class="card" style="margin-bottom:12px">'+
+          '<div style="font-size:11px;font-weight:900;color:#4a2f14;margin-bottom:8px;font-family:monospace;text-transform:uppercase;letter-spacing:1px">📈 Orders Last 30 Days</div>'+
+          '<div style="display:flex;align-items:flex-end;gap:3px;height:60px;overflow-x:auto">'+
+          days30.map(function(ds){
+            var cnt=dayCounts[ds]||0;
+            var barH=cnt>0?Math.max(2,Math.round(cnt/maxCount*54)):2;
+            var isToday=ds===today2;
+            var dayNum=parseInt(ds.slice(8,10));
+            return '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0">'+
+              '<div style="width:8px;height:'+barH+'px;border-radius:2px 2px 0 0;background:'+(isToday?'#2d7a4f':'#a5d6a7')+'"'+(cnt>0?' title="'+ds+': '+cnt+' orders"':'')+'></div>'+
+              '<div style="font-size:7px;color:'+(isToday?'#2d7a4f':'#8a7a6a')+';font-family:monospace;font-weight:'+(isToday?'900':'400')+'">'+dayNum+'</div>'+
+            '</div>';
+          }).join('')+
+          '</div>'+
+        '</div>';
+      }
+    }
+
     // Apply driver filter
     var mainData=driverFilter?data.filter(function(o){return(o.driver||o.assigned_driver||'')===driverFilter;}):data;
     var h=buildSummaryHTML(mainData,driverFilter?'Summary · '+driverFilter:'Summary 1 · All Shops','');
@@ -1425,7 +1498,7 @@ function loadSummary(){
       h+=buildSummaryHTML(tpData,'Tea Post Summary',tpData.length+' shops');
     }
 
-    el.innerHTML=h;
+    el.innerHTML=topPrefix+trendHTML+h;
   });
 }
 
@@ -1750,18 +1823,45 @@ function openEditCustomer(c){
   if (shopId) {
     histWrap.style.display = 'block';
     histBody.innerHTML = '<span style="color:#8a7a6a">Loading…</span>';
-    api({action:'getShopDeliveryHistory', shop_id:shopId, days:7}).then(function(rows){
+    api({action:'getShopDeliveryHistory', shop_id:shopId, days:30}).then(function(rows){
       if (!rows || !rows.length) {
-        histBody.innerHTML = '<span style="color:#8a7a6a">No deliveries in last 7 days</span>';
+        histBody.innerHTML = '<span style="color:#8a7a6a">No deliveries in last 30 days</span>';
         return;
       }
-      histBody.innerHTML = rows.map(function(r){
+      // Show only last 7 days in table rows
+      var displayRows = rows.slice(0, 7);
+      // Calculate min/max from all 30 days (ignore '—' and missing)
+      var times = rows.map(function(r){ return r.time||''; }).filter(function(t){ return t && t !== '—'; });
+      function timeToMinutes(t){
+        var m=t.match(/(\d+):(\d+)\s*(AM|PM|am|pm)?/);
+        if(!m) return null;
+        var h=parseInt(m[1]),mn=parseInt(m[2]),p=(m[3]||'').toUpperCase();
+        if(p==='PM'&&h!==12) h+=12;
+        if(p==='AM'&&h===12) h=0;
+        return h*60+mn;
+      }
+      function minsToTime(mins){
+        var h=Math.floor(mins/60),m=mins%60;
+        return zp(h)+':'+zp(m);
+      }
+      var patternLine='';
+      if(times.length===1){
+        patternLine='<div style="font-size:12px;font-family:monospace;color:#1a5fa8;padding:4px 0;border-top:1px solid #e8dfd2;margin-top:4px">📊 Usually: '+esc(times[0])+'</div>';
+      } else if(times.length>1){
+        var mins=times.map(timeToMinutes).filter(function(v){return v!==null;});
+        if(mins.length>=1){
+          var minT=Math.min.apply(null,mins);
+          var maxT=Math.max.apply(null,mins);
+          patternLine='<div style="font-size:12px;font-family:monospace;color:#1a5fa8;padding:4px 0;border-top:1px solid #e8dfd2;margin-top:4px">📊 Usual: '+minsToTime(minT)+' – '+minsToTime(maxT)+'</div>';
+        }
+      }
+      histBody.innerHTML = displayRows.map(function(r){
         return '<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #e8dfd2">'
           + '<span>📅 '+r.date+'</span>'
           + '<span style="color:#2d7a4f;font-weight:700">🕐 '+(r.time||'—')+'</span>'
           + '<span style="color:#8a7a6a">'+( r.driver||'')+'</span>'
           + '</div>';
-      }).join('');
+      }).join('') + patternLine;
     });
   } else {
     histWrap.style.display = 'none';
@@ -2200,6 +2300,78 @@ function sendManualNotif(){
   }, 1000);
 }
 
+/* ── LIVE TAB ── */
+function loadLive(){
+  var el=document.getElementById('liveBody');
+  el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
+  var date=todayStr();
+  Promise.all([
+    api({action:'getOrders', date:date}),
+    api({action:'getDeliveries', date:date})
+  ]).then(function(res){
+    var orders=Array.isArray(res[0])?res[0]:[];
+    var deliveries=Array.isArray(res[1])?res[1]:[];
+    if(!orders.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders today.</div>';return;}
+    // Group by driver
+    var byDriver={};
+    orders.forEach(function(o){
+      var d=o.driver||o.assigned_driver||'Unknown';
+      if(!byDriver[d]) byDriver[d]={orders:[]};
+      byDriver[d].orders.push(o);
+    });
+    // Build delivery map: driver → {shop_id: delivery}
+    var delivMap={};
+    deliveries.forEach(function(d){
+      var drv=d.driver||'Unknown';
+      if(!delivMap[drv]) delivMap[drv]={};
+      delivMap[drv][d.shop_id]=d;
+    });
+    var sorted=Object.keys(byDriver).sort();
+    var now=new Date();
+    el.innerHTML=sorted.map(function(drv){
+      var dObj=driverMap[drv];
+      var color=dObj?(DRIVER_COLORS[dObj.color||'blue']||DRIVER_COLORS.blue):DRIVER_COLORS.blue;
+      var dOrders=byDriver[drv].orders;
+      var dDelivs=delivMap[drv]||{};
+      var total=dOrders.length;
+      var done=dOrders.filter(function(o){return !!dDelivs[o.customer_id||o.shop_id];}).length;
+      var left=total-done;
+      var pct=total>0?Math.round(done/total*100):0;
+      // Find last delivery (most recent time)
+      var dDelivList=Object.values(dDelivs);
+      var lastDeliv=null;
+      dDelivList.forEach(function(d){
+        if(!lastDeliv||((d.time||'')>(lastDeliv.time||''))) lastDeliv=d;
+      });
+      // ETA: remaining × 7 min from now
+      var etaStr='';
+      if(left>0){
+        var etaMs=now.getTime()+left*7*60000;
+        var etaDate=new Date(etaMs);
+        var hh=String(etaDate.getHours()).padStart(2,'0');
+        var mm=String(etaDate.getMinutes()).padStart(2,'0');
+        etaStr=hh+':'+mm;
+      }
+      return '<div style="background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;padding:13px;margin-bottom:10px">'+
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'+
+          '<span style="width:10px;height:10px;border-radius:50%;background:'+color.fg+';display:inline-block;flex-shrink:0"></span>'+
+          '<span style="font-size:14px;font-weight:900;color:#4a2f14">'+esc(drv)+'</span>'+
+          '<span style="font-size:10px;font-family:monospace;color:#8a7a6a;margin-left:auto">'+pct+'%</span>'+
+        '</div>'+
+        '<div style="background:#e8dfd2;border-radius:6px;height:8px;margin-bottom:8px;overflow:hidden">'+
+          '<div style="height:8px;border-radius:6px;background:'+color.fg+';width:'+pct+'%"></div>'+
+        '</div>'+
+        '<div style="font-size:12px;font-family:monospace;color:#4a2f14;margin-bottom:4px">'+
+          '✅ Done: '+done+'&nbsp;&nbsp;⏳ Left: '+left+' / '+total+
+        '</div>'+
+        (lastDeliv?'<div style="font-size:11px;font-family:monospace;color:#2d7a4f;margin-bottom:4px">Last: '+esc(lastDeliv.shop_name||lastDeliv.shop_id||'')+(lastDeliv.time?' @ '+esc(lastDeliv.time):'')+'</div>':'')+
+        (left>0?'<div style="font-size:11px;font-family:monospace;color:#8a7a6a">ETA: ~'+etaStr+' ('+left+' stops × 7 min)</div>':
+          '<div style="font-size:11px;font-family:monospace;color:#2d7a4f">✅ All delivered!</div>')+
+      '</div>';
+    }).join('');
+  });
+}
+
 /* ── ONESIGNAL PUSH ── */
 function sendPush(driverNames, message) {
   var appId = CONFIG.ONESIGNAL_APP_ID;
@@ -2378,7 +2550,7 @@ loadProductMaster(); // cache products for XLS preview
   if(_allowedTabs === null){ first='orders'; }
   else { first = _allowedTabs.length ? _allowedTabs[0] : 'summary'; }
   // Hide all pages, then show the right one
-  ['orders','approve','queue','summary','delivery','routes','customers','products','drivers','gps','users'].forEach(function(t){
+  ['orders','approve','queue','summary','delivery','routes','customers','products','drivers','gps','users','live'].forEach(function(t){
     var pg=document.getElementById('pg-'+t);if(pg)pg.classList.remove('on');
     var tb=document.getElementById('tb-'+t);if(tb)tb.classList.remove('on');
   });

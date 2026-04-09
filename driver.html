@@ -100,6 +100,10 @@ input[type=text],input[type=date]{width:100%;padding:11px 14px;border:1.5px soli
 </head>
 <body>
 
+<div id="offlineBanner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:500;background:#c8382a;color:#fff;text-align:center;padding:6px;font-size:12px;font-weight:700;font-family:monospace">
+  📵 Offline — deliveries will sync when connected
+</div>
+
 <div class="topbar">
   <div><div class="topbar-title">🥖 <span id="topDriver"></span></div><div class="topbar-sub" id="topDate"></div></div>
   <div class="topbar-right">
@@ -432,6 +436,18 @@ async function init() {
   orders = Array.isArray(ordersData) ? ordersData : [];
   deliveries = {};
   if(Array.isArray(delivData)) delivData.forEach(d=>{ deliveries[d.shop_id]=d; });
+  // Cache data for offline use
+  if (allCustomers.length) localStorage.setItem('offlineShops_'+driver, JSON.stringify(allCustomers));
+  if (orders.length) localStorage.setItem('offlineOrders_'+driver+'_'+selectedDate, JSON.stringify(orders));
+  // Restore from cache if offline and data is empty
+  if (!allCustomers.length && !navigator.onLine) {
+    var cached = localStorage.getItem('offlineShops_'+driver);
+    if (cached) allCustomers = JSON.parse(cached);
+  }
+  if (!orders.length && !navigator.onLine) {
+    var cachedOrders = localStorage.getItem('offlineOrders_'+driver+'_'+selectedDate);
+    if (cachedOrders) orders = JSON.parse(cachedOrders);
+  }
   // check if route already started today
   const savedStart = localStorage.getItem('routeStart_'+driver+'_'+selectedDate);
   if(savedStart){
@@ -458,6 +474,13 @@ async function loadOrdersForDate(date) {
   orders = Array.isArray(ordersData) ? ordersData : [];
   deliveries = {};
   if(Array.isArray(delivData)) delivData.forEach(d=>{ deliveries[d.shop_id]=d; });
+  // Cache for offline use
+  if (orders.length) localStorage.setItem('offlineOrders_'+driver+'_'+selectedDate, JSON.stringify(orders));
+  // Restore from cache if offline and data is empty
+  if (!orders.length && !navigator.onLine) {
+    var cachedOrd = localStorage.getItem('offlineOrders_'+driver+'_'+selectedDate);
+    if (cachedOrd) orders = JSON.parse(cachedOrd);
+  }
   // Restore route state for this date
   routeMode = 'distance'; customRoute = null; // reset before restore
   _restoreRouteState();
@@ -1011,7 +1034,14 @@ async function markDelivered(shopId, shopName) {
       body.lng=parseFloat(pos.coords.longitude.toFixed(6));
     }
   } catch(e){ /* GPS unavailable — save without location */ }
-  await apiPost(body);
+  var result = await apiPost(body);
+  if (!result.ok && !navigator.onLine) {
+    var qKey = 'delivQueue_' + driver;
+    var q = JSON.parse(localStorage.getItem(qKey) || '[]');
+    q.push(body);
+    localStorage.setItem(qKey, JSON.stringify(q));
+    // keep local deliveries state so UI shows it as done (already set above)
+  }
   buildRouteUI();
   renderOrdersList();
   // Check if ALL shops for today are now done → show celebration
@@ -1225,6 +1255,32 @@ async function doSave(){
     gMsg('❌ Save failed: '+(res.error||'unknown'),'er');
   }
   btn.innerHTML=`✅ ${t('confirmSave')}`; btn.disabled=false; btn.style.display='none';
+}
+
+// ── OFFLINE DETECTION ──
+window.addEventListener('offline', function() {
+  document.getElementById('offlineBanner').style.display = 'block';
+});
+window.addEventListener('online', function() {
+  document.getElementById('offlineBanner').style.display = 'none';
+  syncOfflineQueue();
+});
+if (!navigator.onLine) document.getElementById('offlineBanner').style.display = 'block';
+
+// ── SYNC QUEUE ON RECONNECT ──
+async function syncOfflineQueue() {
+  var qKey = 'delivQueue_' + driver;
+  var q = JSON.parse(localStorage.getItem(qKey) || '[]');
+  if (!q.length) return;
+  var remaining = [];
+  for (var i = 0; i < q.length; i++) {
+    var r = await apiPost(q[i]);
+    if (!r.ok) remaining.push(q[i]);
+  }
+  localStorage.setItem(qKey, JSON.stringify(remaining));
+  if (remaining.length < q.length) {
+    await loadOrdersForDate(selectedDate);
+  }
 }
 
 init();
