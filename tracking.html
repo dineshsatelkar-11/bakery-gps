@@ -86,7 +86,12 @@ input[type=tel]:focus{border-color:#2d7a4f;background:#fff}
   <div class="card">
     <div class="lbl">Track Your Order</div>
     <div style="font-size:13px;color:#4a2f14;margin-bottom:12px;line-height:1.5">Enter your registered mobile number to see live delivery status.</div>
-    <input type="tel" id="phoneInput" placeholder="Enter 10-digit mobile number" maxlength="15">
+    <input type="tel" id="phoneInput" placeholder="Enter 10-digit mobile number" maxlength="15" oninput="onPhoneInput(this.value)">
+    <div id="shopPreview" style="display:none;margin-top:8px;padding:10px 12px;background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:10px">
+      <div style="font-size:11px;color:#2d7a4f;font-family:monospace;font-weight:700;letter-spacing:1px;margin-bottom:2px">SHOP FOUND</div>
+      <div id="shopPreviewName" style="font-size:15px;font-weight:800;color:#1a5a38"></div>
+      <div id="shopPreviewArea" style="font-size:11px;color:#2d7a4f;font-family:monospace;margin-top:2px"></div>
+    </div>
     <button class="btn-track" onclick="trackDelivery()" id="trackBtn">🔍 Track My Delivery</button>
     <div id="loginMsg" style="display:none" class="msg er"></div>
   </div>
@@ -186,7 +191,7 @@ input[type=tel]:focus{border-color:#2d7a4f;background:#fff}
   <div style="font-size:12px;opacity:.8;margin-bottom:12px;line-height:1.5">
     We deliver fresh bakery products to your shop every morning. Fast, tracked, and dependable.
   </div>
-  <button class="mkt-cta" onclick="window.open('tel:'+CONFIG.LOGISTICS_OWNER2_MOBILE)">📞 Contact Siddhesh</button>
+  <button class="mkt-cta" onclick="window.open('tel:'+CONFIG.LOGISTICS_OWNER2_MOBILE)">📞 Contact</button>
 </div>
 
 <div class="footer">Satelkar's Logistics · Pune<br>Dinesh: 8956276855 &nbsp;|&nbsp; Siddhesh: 9886527036</div>
@@ -330,6 +335,26 @@ async function trackDelivery() {
   btn.innerHTML = '🔍 Track My Delivery'; btn.disabled = false;
 }
 
+var _phoneTimer = null;
+function onPhoneInput(val) {
+  var digits = normalizeMobile(val);
+  var preview = document.getElementById('shopPreview');
+  if (digits.length !== 10) { preview.style.display = 'none'; return; }
+  clearTimeout(_phoneTimer);
+  _phoneTimer = setTimeout(function() {
+    api({ action: 'getShopByMobile', digits: digits }).then(function(shops) {
+      if (shops && shops.length) {
+        var shop = shops[0];
+        document.getElementById('shopPreviewName').textContent = shop.name || '';
+        document.getElementById('shopPreviewArea').textContent = shop.area ? '📍 ' + shop.area : '';
+        preview.style.display = 'block';
+      } else {
+        preview.style.display = 'none';
+      }
+    }).catch(function(){ preview.style.display = 'none'; });
+  }, 400);
+}
+
 function showLoginMsg(msg) {
   var el = document.getElementById('loginMsg');
   el.textContent = msg; el.style.display = 'block';
@@ -339,6 +364,7 @@ function resetTracking() {
   document.getElementById('loginSection').style.display = 'block';
   document.getElementById('trackingResult').style.display = 'none';
   document.getElementById('loginMsg').style.display = 'none';
+  document.getElementById('shopPreview').style.display = 'none';
   document.getElementById('phoneInput').value = '';
 }
 

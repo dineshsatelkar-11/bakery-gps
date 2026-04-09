@@ -186,6 +186,16 @@
           .catch(function(){ return []; });
       }
 
+      case 'getLatestDate': {
+        // Returns the most recent date that has data in a given table
+        var url = BASE + '/' + p.table + '?select=date&order=date.desc&limit=1';
+        if (p.driver) url += '&driver=eq.' + encodeURIComponent(p.driver);
+        return fetch(url, { headers: hdrs() })
+          .then(function(r){ return r.ok ? r.json() : []; })
+          .then(function(rows){ return (rows && rows.length && rows[0].date) ? rows[0].date : null; })
+          .catch(function(){ return null; });
+      }
+
       case 'getNotifications': {
         var url = BASE + '/notifications?driver_name=eq.' + encodeURIComponent(p.driver) +
                   '&is_read=eq.false&order=created_at.desc&limit=50';

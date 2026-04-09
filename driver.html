@@ -364,11 +364,19 @@ let routeFilter = 'all'; // 'all' | 'done' | 'pending'
 // ── LOAD ──
 async function init() {
   applyLang();
-  selectedDate = todayStr();
+  const today = todayStr();
+  // Use today if it has orders, otherwise find the latest date with orders for this driver
+  const todayOrders = await api({action:'getOrders', driver, date:today});
+  if(Array.isArray(todayOrders) && todayOrders.length > 0){
+    selectedDate = today;
+  } else {
+    const latestDate = await api({action:'getLatestDate', table:'orders', driver});
+    selectedDate = latestDate || today;
+  }
   document.getElementById('orderDate').value = selectedDate;
   const [shopsData, ordersData, delivData] = await Promise.all([
     api({action:'getShops', driver}),
-    api({action:'getOrders', driver, date:selectedDate}),
+    selectedDate === today ? Promise.resolve(todayOrders) : api({action:'getOrders', driver, date:selectedDate}),
     api({action:'getDeliveries', driver, date:selectedDate})
   ]);
   allCustomers = Array.isArray(shopsData) ? shopsData : [];
