@@ -1379,11 +1379,9 @@ function loadSummary(){
   var summaryDate=document.getElementById('f-sum-date').value||todayStr();
   Promise.all([
     api({action:'getOrders',date:summaryDate}),
-    api({action:'getDeliveries',date:summaryDate}),
     loadProductMaster(),
   ]).then(function(res){
     var data=res[0];
-    var deliveriesForDate=Array.isArray(res[1])?res[1]:[];
     var prodMap={};
     allProducts.forEach(function(p){if(p.name)prodMap[p.name.toLowerCase()]=p;});
     if(!Array.isArray(data)||!data.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders for this date.</div>';return;}
@@ -1511,22 +1509,6 @@ function loadSummary(){
       return h;
     }
 
-    // ── Feature 3: Undelivered Report ──
-    var deliveredShopIds=new Set(deliveriesForDate.map(function(d){return d.shop_id||d.customer_id;}));
-    var undelivered=data.filter(function(o){return !deliveredShopIds.has(o.customer_id||o.shop_id);});
-    var topPrefix='';
-    if(undelivered.length>0){
-      topPrefix='<div style="background:#fde8e8;border:1.5px solid #f0b0b0;border-radius:14px;padding:12px 14px;margin-bottom:12px">'+
-        '<div style="font-size:12px;font-weight:900;color:#c8382a;margin-bottom:8px">⚠️ Not Yet Delivered — '+undelivered.length+' shops</div>'+
-        undelivered.map(function(o){
-          var drv=o.driver||o.assigned_driver||'—';
-          return '<div style="font-size:11px;font-family:monospace;color:#4a2f14;padding:2px 0;border-bottom:1px solid #f5c0c0">'+esc(o.shop_name)+' · <span style="color:#8a7a6a">'+esc(drv)+'</span></div>';
-        }).join('')+
-      '</div>';
-    } else if(deliveriesForDate.length>0){
-      topPrefix='<div style="background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:14px;padding:10px 14px;margin-bottom:12px;font-size:12px;font-weight:700;color:#2d7a4f">✅ All shops delivered!</div>';
-    }
-
     // Apply driver filter
     var mainData=driverFilter?data.filter(function(o){return(o.driver||o.assigned_driver||'')===driverFilter;}):data;
     var h=buildSummaryHTML(mainData,driverFilter?'Summary · '+driverFilter:'Summary 1 · All Shops','');
@@ -1543,7 +1525,7 @@ function loadSummary(){
       h+=buildSummaryHTML(tpData,'Tea Post Summary',tpData.length+' shops');
     }
 
-    el.innerHTML=topPrefix+h;
+    el.innerHTML=h;
   });
 }
 
