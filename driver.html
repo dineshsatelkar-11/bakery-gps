@@ -209,6 +209,19 @@ input[type=text],input[type=date]{width:100%;padding:11px 14px;border:1.5px soli
   </div>
 </div>
 
+<!-- ── DELIVERY TOAST ── -->
+<div id="delivToast" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:290;width:calc(100% - 28px);max-width:400px">
+  <div style="background:#1a5a38;border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 6px 20px rgba(0,0,0,.25)">
+    <div style="font-size:28px;flex-shrink:0">✅</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="dt-name"></div>
+      <div style="font-size:11px;color:#a8d5b8;font-family:monospace;margin-top:1px" id="dt-time"></div>
+    </div>
+    <button onclick="shareDelivery()" style="background:#25d366;border:none;border-radius:10px;padding:8px 12px;color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;flex-shrink:0">📲 Share</button>
+    <button onclick="hideDelivToast()" style="background:rgba(255,255,255,.15);border:none;border-radius:8px;padding:8px 10px;color:#fff;font-size:12px;cursor:pointer;font-family:-apple-system,sans-serif;flex-shrink:0">✕</button>
+  </div>
+</div>
+
 <!-- ── GPS ── -->
 <div class="page" id="pg-gps">
   <div class="card">
@@ -999,7 +1012,12 @@ async function markDelivered(shopId, shopName) {
   // Check if ALL shops for today are now done → show celebration
   const orderedIds = new Set(orders.map(o=>o.shop_id));
   const allDone = [...orderedIds].every(id=>!!deliveries[id]);
-  if(allDone && orderedIds.size > 0) showCelebration(orderedIds.size);
+  if(allDone && orderedIds.size > 0) {
+    hideDelivToast();
+    showCelebration(orderedIds.size);
+  } else {
+    showDelivToast(shopName, time);
+  }
 }
 
 // ── CELEBRATION ──
@@ -1019,29 +1037,86 @@ function showCelebration(totalShops) {
   document.getElementById('cel-shops').textContent = totalShops;
   document.getElementById('cel-time').textContent  = durationStr;
   document.getElementById('cel-km').textContent    = lastRouteKm || '—';
-  var waBtn = document.getElementById('cel-wa-btn');
-  waBtn.style.display = CONFIG.WHATSAPP_GROUP ? 'block' : 'none';
+  document.getElementById('cel-wa-btn').style.display = 'block';
   document.getElementById('celebModal').style.display = 'flex';
 }
 
 function celebWhatsApp() {
   var now = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
-  var shops = document.getElementById('cel-shops').textContent;
-  var dur   = document.getElementById('cel-time').textContent;
-  var km    = document.getElementById('cel-km').textContent;
-  var msg = '✅ All deliveries done!\nDriver: '+driver+'\nDate: '+(selectedDate||todayStr())+'\nShops: '+shops+'\nDuration: '+dur+'\nDistance: '+km+' km\nFinished at: '+now;
-  // navigator.share() opens native share sheet → user picks WhatsApp group
+  var dur  = document.getElementById('cel-time').textContent;
+  var km   = document.getElementById('cel-km').textContent;
+
+  // Build per-shop delivery list sorted by time
+  var delivered = [];
+  orders.forEach(function(o){
+    var d = deliveries[o.shop_id];
+    if (d) {
+      // avoid duplicates (multiple orders for same shop)
+      if (!delivered.find(function(x){ return x.shop_id === o.shop_id; })) {
+        delivered.push({ shop_id: o.shop_id, name: o.shop_name || d.shop_name || o.shop_id, time: d.time || '—' });
+      }
+    }
+  });
+  delivered.sort(function(a,b){ return timeToMins(a.time) - timeToMins(b.time); });
+
+  var lines = delivered.map(function(d, i){
+    return (i+1) + '. ' + d.name + ' — ' + d.time;
+  }).join('\n');
+
+  var msg = '🥖 Delivery Complete — ' + (selectedDate||todayStr())
+    + '\nDriver: ' + driver
+    + '\n\n' + lines
+    + '\n\n✅ Total: ' + delivered.length + ' shops'
+    + '\n⏱ Duration: ' + dur
+    + '\n📍 Distance: ' + km + ' km'
+    + '\n🕐 Finished: ' + now;
+
   if (navigator.share) {
     navigator.share({ text: msg }).catch(function(){});
+  } else if (navigator.clipboard) {
+    navigator.clipboard.writeText(msg).then(function(){
+      alert('Message copied! Open your WhatsApp group and paste.');
+    });
   } else {
-    // Fallback: copy to clipboard and show instruction
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(msg).then(function(){
-        alert('Message copied! Open your WhatsApp group and paste.');
-      });
-    } else {
-      window.open('https://wa.me/?text='+encodeURIComponent(msg));
-    }
+    window.open('https://wa.me/?text='+encodeURIComponent(msg));
+  }
+}
+
+// ── DELIVERY TOAST ──
+var _toastTimer = null;
+var _lastDelivName = '', _lastDelivTime = '';
+
+function showDelivToast(shopName, time) {
+  _lastDelivName = shopName;
+  _lastDelivTime = time;
+  document.getElementById('dt-name').textContent = shopName;
+  document.getElementById('dt-time').textContent = '✅ Delivered at ' + time;
+  var toast = document.getElementById('delivToast');
+  toast.style.display = 'block';
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(hideDelivToast, 8000); // auto-hide after 8s
+}
+
+function hideDelivToast() {
+  clearTimeout(_toastTimer);
+  document.getElementById('delivToast').style.display = 'none';
+}
+
+function shareDelivery() {
+  var pending = orders.length - Object.keys(deliveries).length;
+  var msg = '✅ Delivered: ' + _lastDelivName
+    + '\nDriver: ' + driver
+    + '\nTime: ' + _lastDelivTime
+    + '\nDate: ' + (selectedDate||todayStr())
+    + '\nRemaining stops: ' + Math.max(0, pending);
+  if (navigator.share) {
+    navigator.share({ text: msg }).catch(function(){});
+  } else if (navigator.clipboard) {
+    navigator.clipboard.writeText(msg).then(function(){
+      alert('Copied! Paste in your WhatsApp group.');
+    });
+  } else {
+    window.open('https://wa.me/?text='+encodeURIComponent(msg));
   }
 }
 
