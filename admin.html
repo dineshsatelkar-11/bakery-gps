@@ -1823,45 +1823,18 @@ function openEditCustomer(c){
   if (shopId) {
     histWrap.style.display = 'block';
     histBody.innerHTML = '<span style="color:#8a7a6a">Loading…</span>';
-    api({action:'getShopDeliveryHistory', shop_id:shopId, days:30}).then(function(rows){
+    api({action:'getShopDeliveryHistory', shop_id:shopId, days:7}).then(function(rows){
       if (!rows || !rows.length) {
-        histBody.innerHTML = '<span style="color:#8a7a6a">No deliveries in last 30 days</span>';
+        histBody.innerHTML = '<span style="color:#8a7a6a">No deliveries in last 7 days</span>';
         return;
       }
-      // Show only last 7 days in table rows
-      var displayRows = rows.slice(0, 7);
-      // Calculate min/max from all 30 days (ignore '—' and missing)
-      var times = rows.map(function(r){ return r.time||''; }).filter(function(t){ return t && t !== '—'; });
-      function timeToMinutes(t){
-        var m=t.match(/(\d+):(\d+)\s*(AM|PM|am|pm)?/);
-        if(!m) return null;
-        var h=parseInt(m[1]),mn=parseInt(m[2]),p=(m[3]||'').toUpperCase();
-        if(p==='PM'&&h!==12) h+=12;
-        if(p==='AM'&&h===12) h=0;
-        return h*60+mn;
-      }
-      function minsToTime(mins){
-        var h=Math.floor(mins/60),m=mins%60;
-        return zp(h)+':'+zp(m);
-      }
-      var patternLine='';
-      if(times.length===1){
-        patternLine='<div style="font-size:12px;font-family:monospace;color:#1a5fa8;padding:4px 0;border-top:1px solid #e8dfd2;margin-top:4px">📊 Usually: '+esc(times[0])+'</div>';
-      } else if(times.length>1){
-        var mins=times.map(timeToMinutes).filter(function(v){return v!==null;});
-        if(mins.length>=1){
-          var minT=Math.min.apply(null,mins);
-          var maxT=Math.max.apply(null,mins);
-          patternLine='<div style="font-size:12px;font-family:monospace;color:#1a5fa8;padding:4px 0;border-top:1px solid #e8dfd2;margin-top:4px">📊 Usual: '+minsToTime(minT)+' – '+minsToTime(maxT)+'</div>';
-        }
-      }
-      histBody.innerHTML = displayRows.map(function(r){
+      histBody.innerHTML = rows.map(function(r){
         return '<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #e8dfd2">'
           + '<span>📅 '+r.date+'</span>'
           + '<span style="color:#2d7a4f;font-weight:700">🕐 '+(r.time||'—')+'</span>'
-          + '<span style="color:#8a7a6a">'+( r.driver||'')+'</span>'
+          + '<span style="color:#8a7a6a">'+(r.driver||'')+'</span>'
           + '</div>';
-      }).join('') + patternLine;
+      }).join('');
     });
   } else {
     histWrap.style.display = 'none';
