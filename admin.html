@@ -1669,16 +1669,27 @@ function renderRoutes(){
     '<div class="stat" onclick="setRouteFilter(\'pending\')" style="cursor:pointer;'+(_routeFilter==='pending'?'background:#fde8e8;border-color:#e87a7a':'')+'"><div class="stat-n" style="color:#c8382a">'+totalPending+'</div><div class="stat-l">Pending</div></div>';
 
   // ── Dispatch card: start time at a glance ──
-  var notStarted=routesData.filter(function(r){return !r.start_time;});
+  // fallback: if start_time is null but driver has deliveries, they obviously started
+  var notStarted=routesData.filter(function(r){
+    var hasDeliveries=Object.keys(_routeDelivMap[r.driver]||{}).length>0;
+    return !r.start_time && !hasDeliveries;
+  });
   var dispatchRows=routesData.map(function(r){
-    var started=!!r.start_time;
+    var hasDeliveries=Object.keys(_routeDelivMap[r.driver]||{}).length>0;
+    var started=!!r.start_time||hasDeliveries;
+    var displayTime=r.start_time;
+    if(!displayTime&&hasDeliveries){
+      // find earliest delivery time as approximate start
+      var times=Object.values(_routeDelivMap[r.driver]||{}).map(function(d){return d.time||'';}).filter(Boolean).sort();
+      displayTime=times.length?times[0]+' (approx)':null;
+    }
     // Highlight if started late (after 08:00)
     var late=false;
-    if(started){var m=r.start_time.match(/(\d+):(\d+)\s*(AM|PM|am|pm)?/);if(m){var h=parseInt(m[1]),ap=(m[3]||'').toUpperCase();if(ap==='PM'&&h!==12)h+=12;if(ap==='AM'&&h===12)h=0;late=(h*60+parseInt(m[2]))>8*60;}}
+    if(r.start_time){var m=r.start_time.match(/(\d+):(\d+)\s*(AM|PM|am|pm)?/);if(m){var h=parseInt(m[1]),ap=(m[3]||'').toUpperCase();if(ap==='PM'&&h!==12)h+=12;if(ap==='AM'&&h===12)h=0;late=(h*60+parseInt(m[2]))>8*60;}}
     return '<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0e8dc">'+
       '<span style="font-size:12px;font-weight:700;color:#4a2f14">'+esc(r.driver)+'</span>'+
       (started
-        ?'<span style="font-size:11px;font-family:monospace;font-weight:700;color:'+(late?'#c8382a':'#2d7a4f')+'">⏰ '+esc(r.start_time)+(late?' ⚠ Late':'')+'</span>'
+        ?'<span style="font-size:11px;font-family:monospace;font-weight:700;color:'+(late?'#c8382a':'#2d7a4f')+'">⏰ '+(displayTime?esc(displayTime):'started')+(late?' ⚠ Late':'')+'</span>'
         :'<span style="font-size:11px;font-family:monospace;color:#c8382a">🔴 Not started</span>')+
     '</div>';
   }).join('');

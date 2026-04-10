@@ -664,6 +664,12 @@ function nearestNeighbour(start,pts){
 }
 
 async function startRoute() {
+  // Confirmation before starting
+  var msg = lang==='mr'
+    ? 'आजचा रूट सुरू करायचा का? एकदा सुरू केल्यावर परत बदलता येणार नाही.'
+    : 'Start your route for today? This cannot be undone.';
+  if (!confirm(msg)) return;
+
   const btn = document.getElementById('startBtn');
   btn.disabled = true;
   btn.textContent = lang==='mr' ? '📡 स्थान मिळत आहे…' : '📡 Getting location…';
@@ -867,6 +873,17 @@ async function buildRouteUI() {
   const body=document.getElementById('routeBody');
   const mapWrap=document.getElementById('mapBtnWrap');
   rmsg.style.display='none'; body.innerHTML='';
+
+  // Always re-check localStorage so banner never reappears after route is started
+  // (guards against in-memory variable being lost on tab switch or PWA reload)
+  const _todayKey = 'routeStart_'+driver+'_'+todayStr();
+  const _savedStart = localStorage.getItem(_todayKey);
+  if(_savedStart && !routeStarted) {
+    routeStarted = true;
+    routeStartTime = _savedStart;
+    routeStartLat = parseFloat(localStorage.getItem('routeStartLat_'+driver+'_'+todayStr())) || null;
+    routeStartLng = parseFloat(localStorage.getItem('routeStartLng_'+driver+'_'+todayStr())) || null;
+  }
 
   // Show start banner or summary card
   document.getElementById('startBanner').style.display    = routeStarted ? 'none' : 'block';
