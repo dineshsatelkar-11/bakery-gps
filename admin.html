@@ -1531,6 +1531,13 @@ function loadSummary(){
 
 /* ── DELIVERY ── */
 var _delivOrds=[], _delivMap={}, _delivFilter='all';
+function adminCancelDelivery(driver, shopId, date, shopName){
+  if(!confirm('Undo delivery for "'+shopName+'"?\nThis will mark it as pending again.'))return;
+  apiPost({action:'cancelDelivery', driver:driver, shop_id:shopId, date:date}).then(function(res){
+    if(res&&res.ok){ loadDeliveries(); }
+    else alert('Failed to undo: '+(res.error||'unknown error'));
+  });
+}
 function setDelivFilter(f){
   _delivFilter=f;
   renderDeliveries();
@@ -1575,11 +1582,12 @@ function renderDeliveries(){
       locLink='<a href="https://www.google.com/maps?q='+del.lat+','+del.lng+'" target="_blank" '+
         'style="font-size:10px;font-family:monospace;color:#1565c0;margin-left:6px">📍 Map ↗</a>';
     }
+    var cancelBtn=dn?'<button class="btn-sm" style="background:#fde8e8;color:#c8382a;border:none;cursor:pointer;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;margin-left:6px;flex-shrink:0" onclick="adminCancelDelivery(\''+esc(del.driver||drD)+'\',\''+esc(o.customer_id||o.shop_id)+'\',\''+esc(document.getElementById(\'f-del-date\').value||todayStr())+'\',\''+esc(o.shop_name)+'\')">↩ Undo</button>':'';
     return '<div class="deliv-row"><div style="flex:1">'+
       '<div style="font-size:13px;font-weight:800">'+esc(o.shop_name)+'</div>'+
       '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px"><span class="badge '+dc+'">'+esc(drD)+'</span> · '+esc(o.items)+'</div>'+
       (dn?'<div style="font-size:10px;font-family:monospace;color:#2d7a4f;margin-top:2px">✅ Done '+(del.time||'')+locLink+'</div>':'')+
-      '</div><span class="badge '+(dn?'b-ok':'b-miss')+'">'+(dn?'Done':'Pending')+'</span></div>';
+      '</div><div style="display:flex;align-items:center"><span class="badge '+(dn?'b-ok':'b-miss')+'">'+(dn?'Done':'Pending')+'</span>'+cancelBtn+'</div></div>';
   }).join('');
 }
 

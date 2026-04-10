@@ -324,6 +324,10 @@
         // Reassign all orders for a driver on a specific date to another driver (today only)
         return sbPatch('orders', { driver: b.from, date: b.date }, { driver: b.to });
 
+      case 'cancelDelivery':
+        // Undo a mistaken delivery mark — delete by driver+shop_id+date
+        return sbDelete('deliveries', { driver: b.driver, shop_id: b.shop_id, date: b.date });
+
       // Updates all orders belonging to a customer (used after approving a new customer)
       case 'updateOrderDriverByCustomer':
         return sbPatch('orders', { customer_id: b.customer_id }, { driver: b.driver });
