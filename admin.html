@@ -1563,7 +1563,8 @@ function renderDeliveries(){
       locLink='<a href="https://www.google.com/maps?q='+del.lat+','+del.lng+'" target="_blank" '+
         'style="font-size:10px;font-family:monospace;color:#1565c0;margin-left:6px">📍 Map ↗</a>';
     }
-    var cancelBtn=dn?'<button class="btn-sm" style="background:#fde8e8;color:#c8382a;border:none;cursor:pointer;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;margin-left:6px;flex-shrink:0" onclick="adminCancelDelivery(\''+esc(del.driver||drD)+'\',\''+esc(o.customer_id||o.shop_id)+'\',\''+esc(document.getElementById(\'f-del-date\').value||todayStr())+'\',\''+esc(o.shop_name)+'\')">↩ Undo</button>':'';
+    var _delDate=document.getElementById('f-del-date').value||todayStr();
+    var cancelBtn=dn?'<button class="btn-sm" style="background:#fde8e8;color:#c8382a;border:none;cursor:pointer;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;margin-left:6px;flex-shrink:0" onclick="adminCancelDelivery(\''+esc(del.driver||drD)+'\',\''+esc(o.customer_id||o.shop_id)+'\',\''+esc(_delDate)+'\',\''+esc(o.shop_name)+'\')">↩ Undo</button>':'';
     return '<div class="deliv-row"><div style="flex:1">'+
       '<div style="font-size:13px;font-weight:800">'+esc(o.shop_name)+'</div>'+
       '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px"><span class="badge '+dc+'">'+esc(drD)+'</span> · '+esc(o.items)+'</div>'+
