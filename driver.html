@@ -1021,7 +1021,7 @@ async function buildRouteUI() {
 
   body.innerHTML=html;
   // Save route stats
-  apiPost({action:'saveRoute',date:todayStr(),driver,shop_order:JSON.stringify(route.map(s=>s.name)),total_shops:totalAll,total_km:totalKm,est_time:estH+'h '+estM+'m'});
+  apiPost({action:'saveRoute',date:todayStr(),driver,shop_order:JSON.stringify(route.map(s=>s.name)),total_shops:totalAll,total_km:totalKm,est_time:estH+'h '+estM+'m',start_time:routeStartTime||undefined});
 }
 
 async function markDelivered(shopId, shopName) {

@@ -347,12 +347,16 @@
         return sbUpsert('routes', rData, 'driver,date');
       }
 
-      case 'saveRoute':
-        return sbUpsert('routes', {
+      case 'saveRoute': {
+        var rRow = {
           driver: b.driver, date: b.date,
           shop_order: b.shop_order, total_shops: b.total_shops,
           total_km: b.total_km, est_time: b.est_time
-        }, 'driver,date');
+        };
+        // Always include start_time when available so it isn't lost on re-upsert
+        if (b.start_time) { rRow.start_time = b.start_time; }
+        return sbUpsert('routes', rRow, 'driver,date');
+      }
 
       case 'addProduct':
         return sbPost('products', {
