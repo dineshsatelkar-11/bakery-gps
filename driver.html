@@ -1238,6 +1238,9 @@ function showDelivToast(shopName, time) {
   _lastDelivTime = time;
   document.getElementById('dt-name').textContent = shopName;
   document.getElementById('dt-time').textContent = lang==='mr' ? '✅ '+time+' ला डिलिव्हर केले' : '✅ Delivered at ' + time;
+  // Hide Share button for tea post shops — use Tea Post Done button instead
+  var shareBtn = document.querySelector('#delivToast button[onclick="shareDelivery()"]');
+  if (shareBtn) shareBtn.style.display = isTeaPost(shopName) ? 'none' : '';
   var toast = document.getElementById('delivToast');
   toast.style.display = 'block';
   clearTimeout(_toastTimer);

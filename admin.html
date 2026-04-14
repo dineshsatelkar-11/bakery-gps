@@ -123,6 +123,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   <button class="tab"    id="tb-gps"       onclick="showTab('gps')">📍 GPS</button>
   <button class="tab"    id="tb-notify"    onclick="showTab('notify')">🔔 Notify</button>
   <button class="tab"    id="tb-cleanup"   onclick="showTab('cleanup')">🗑 Cleanup</button>
+  <button class="tab"    id="tb-audit"     onclick="showTab('audit')">🔍 Trip Audit</button>
 </div>
 
 <!-- ORDERS -->
@@ -424,6 +425,21 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   <div id="cleanupMsg" style="display:none;margin-top:8px" class="msg ok"></div>
 </div>
 
+<!-- TRIP AUDIT (super_admin only) -->
+<div class="page" id="pg-audit">
+  <div class="card" style="margin-bottom:10px">
+    <div style="font-size:15px;font-weight:900;color:#4a2f14;margin-bottom:10px">🔍 Driver Trip Audit</div>
+    <div class="lbl">Driver</div>
+    <select id="audit-driver" style="margin-bottom:10px">
+      <option value="">Select driver…</option>
+    </select>
+    <div class="lbl">Date</div>
+    <input type="date" id="audit-date" style="margin-bottom:10px">
+    <button class="btn btn-green" onclick="loadTripAudit()" style="margin-bottom:0">🔍 Load Trip Details</button>
+  </div>
+  <div id="audit-result"></div>
+</div>
+
 <!-- APPROVE CUSTOMER MODAL -->
 <div class="modal-bg" id="approveModal" style="display:none" onclick="if(event.target===this)closeApproveModal()">
   <div class="modal">
@@ -666,12 +682,12 @@ var _allowedTabs = _staffRole === 'super_admin' ? null : JSON.parse(sessionStora
 (function(){var r=sessionStorage.getItem('role');if(['super_admin','admin','assistant','chef','packer'].indexOf(r)<0)goto('');})();
 
 function initTabVisibility(){
-  var allTabKeys = ['orders','approve','queue','summary','delivery','routes','customers','products','drivers','gps','users','notify','cleanup'];
+  var allTabKeys = ['orders','approve','queue','summary','delivery','routes','customers','products','drivers','gps','users','notify','cleanup','audit'];
   allTabKeys.forEach(function(t){
     var btn = document.getElementById('tb-'+t);
     if(!btn) return;
     var show;
-    if(t === 'users' || t === 'notify' || t === 'cleanup') {
+    if(t === 'users' || t === 'notify' || t === 'cleanup' || t === 'audit') {
       show = (_staffRole === 'super_admin');
     } else if(_allowedTabs === null) {
       show = true; // super_admin sees all
@@ -729,7 +745,7 @@ document.getElementById('logoutBtn').onclick=function(){
 
 /* ── TAB SWITCHER ── */
 function showTab(t){
-  ['orders','approve','queue','summary','delivery','routes','customers','products','drivers','gps','users','notify','cleanup'].forEach(function(x){
+  ['orders','approve','queue','summary','delivery','routes','customers','products','drivers','gps','users','notify','cleanup','audit'].forEach(function(x){
     var pg=document.getElementById('pg-'+x); if(pg) pg.classList.toggle('on',x===t);
     var tb=document.getElementById('tb-'+x); if(tb) tb.classList.toggle('on',x===t);
   });
@@ -2144,6 +2160,8 @@ function populateDriverSelects(list){
   if(sf)sf.innerHTML='<option value="">Absent Driver…</option>'+allOpt;
   var st=document.getElementById('sub-to');
   if(st)st.innerHTML='<option value="">Substitute…</option>'+allOpt;
+  var ad=document.getElementById('audit-driver');
+  if(ad)ad.innerHTML='<option value="">Select driver…</option>'+allOpt;
 }
 
 function loadDrivers(){
@@ -2493,6 +2511,184 @@ function runCleanup(){
   });
 }
 
+/* ── TRIP AUDIT ── */
+function _auditTimeToMins(t){
+  if(!t)return null;
+  var m=t.match(/(\d+):(\d+)\s*(AM|PM|am|pm)?/);
+  if(!m)return null;
+  var h=parseInt(m[1]),mn=parseInt(m[2]),ap=(m[3]||'').toUpperCase();
+  if(ap==='PM'&&h!==12)h+=12;
+  if(ap==='AM'&&h===12)h=0;
+  return h*60+mn;
+}
+function _auditMinsDiff(a,b){
+  var ma=_auditTimeToMins(a), mb=_auditTimeToMins(b);
+  if(ma===null||mb===null)return null;
+  var d=mb-ma; return d>=0?d:d+1440; // handle midnight crossover
+}
+function _auditFmtDiff(mins){
+  if(mins===null)return '—';
+  if(mins<60)return mins+'m';
+  return Math.floor(mins/60)+'h '+( mins%60)+'m';
+}
+function _auditHaversine(lat1,lon1,lat2,lon2){
+  var R=6371;
+  var dLat=(lat2-lat1)*Math.PI/180, dLon=(lon2-lon1)*Math.PI/180;
+  var a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
+  return +(R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a))).toFixed(2);
+}
+function _auditMapsLeg(lat1,lon1,lat2,lon2){
+  return 'https://www.google.com/maps/dir/'+lat1+','+lon1+'/'+lat2+','+lon2;
+}
+function _auditMapsFullRoute(stops){
+  // stops = [{lat,lng},...] — max 10 waypoints for Maps URL
+  var pts=stops.filter(function(s){return s.lat&&s.lng;});
+  if(pts.length<2)return null;
+  return 'https://www.google.com/maps/dir/'+pts.map(function(s){return s.lat+','+s.lng;}).join('/');
+}
+
+async function loadTripAudit(){
+  var driver=document.getElementById('audit-driver').value;
+  var date=document.getElementById('audit-date').value;
+  var el=document.getElementById('audit-result');
+  if(!driver){alert('Select a driver');return;}
+  if(!date){alert('Select a date');return;}
+  el.innerHTML='<div style="text-align:center;padding:24px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
+
+  var [routeArr, delivArr, shopsArr] = await Promise.all([
+    api({action:'getRoutes', driver, date}),
+    api({action:'getDeliveries', driver, date}),
+    api({action:'getShops', driver})
+  ]);
+
+  var route = Array.isArray(routeArr)&&routeArr.length ? routeArr[0] : null;
+  var deliveries = {};
+  if(Array.isArray(delivArr)) delivArr.forEach(function(d){ deliveries[d.shop_id]=d; });
+  var shopMap = {};
+  if(Array.isArray(shopsArr)) shopsArr.forEach(function(s){ shopMap[s.shop_id]=s; });
+
+  if(!route){
+    el.innerHTML='<div class="msg er" style="display:block">No route data found for '+esc(driver)+' on '+date+'.</div>';
+    return;
+  }
+
+  var shopOrder=[];
+  try{ shopOrder=JSON.parse(route.shop_order||'[]'); }catch(e){}
+
+  // Build stop list: HQ first, then each shop in route order
+  var HQ_NAME = CONFIG.HQ.name;
+  var stops=[];
+  stops.push({
+    name: HQ_NAME,
+    time: route.start_time||null,
+    lat: route.start_lat||null,
+    lng: route.start_lng||null,
+    isHQ: true
+  });
+
+  shopOrder.forEach(function(shopName){
+    // find shop by name
+    var shop=null;
+    Object.values(shopMap).forEach(function(s){ if(s.name===shopName)shop=s; });
+    // find delivery
+    var deliv=null;
+    Object.values(deliveries).forEach(function(d){ if(d.shop_name===shopName||( shop&&d.shop_id===shop.shop_id))deliv=d; });
+
+    var lat=null,lng=null;
+    if(deliv&&deliv.lat)       { lat=parseFloat(deliv.lat); lng=parseFloat(deliv.lng); }
+    else if(shop&&shop.lat)    { lat=parseFloat(shop.lat);  lng=parseFloat(shop.lng);  }
+
+    stops.push({
+      name: shopName,
+      time: deliv?deliv.time:null,
+      lat: lat,
+      lng: lng,
+      delivered: !!deliv,
+      shop_id: shop?shop.shop_id:null
+    });
+  });
+
+  // Build HTML
+  var rows='';
+  var totalKm=0;
+  var fullRouteStops=[];
+  if(stops[0].lat) fullRouteStops.push(stops[0]);
+
+  for(var i=0;i<stops.length;i++){
+    var s=stops[i];
+    var prev=i>0?stops[i-1]:null;
+
+    var timeDiff=null, km=null, legLink=null;
+    if(prev){
+      timeDiff=_auditMinsDiff(prev.time,s.time);
+      if(prev.lat&&prev.lng&&s.lat&&s.lng){
+        km=_auditHaversine(prev.lat,prev.lng,s.lat,s.lng);
+        totalKm+=km;
+        legLink=_auditMapsLeg(prev.lat,prev.lng,s.lat,s.lng);
+      }
+    }
+    if(s.lat&&s.lng) fullRouteStops.push(s);
+
+    var rowBg=s.isHQ?'#f5ede0':s.delivered?'#f0faf4':'#fff8e1';
+    var statusDot=s.isHQ?'🟫':s.delivered?'🟢':'🔴';
+
+    rows+='<tr style="background:'+rowBg+'">'
+      +'<td style="padding:8px 10px;font-weight:900;text-align:center;font-family:monospace;font-size:13px;color:#8a7a6a">'+i+'</td>'
+      +'<td style="padding:8px 10px;font-weight:700;font-size:13px">'+statusDot+' '+esc(s.name)+'</td>'
+      +'<td style="padding:8px 10px;text-align:center;font-family:monospace;font-size:12px;font-weight:700;color:#4a2f14">'+(s.time||'—')+'</td>'
+      +'<td style="padding:8px 10px;text-align:center;font-family:monospace;font-size:12px;color:#1565c0;font-weight:700">'+(timeDiff!==null?_auditFmtDiff(timeDiff):'—')+'</td>'
+      +'<td style="padding:8px 10px;text-align:center;font-family:monospace;font-size:12px;color:#2d7a4f;font-weight:700">'+(km!==null?km+' km':'—')+'</td>'
+      +'<td style="padding:8px 10px;text-align:center;font-size:12px">'
+        +(legLink?'<a href="'+legLink+'" target="_blank" style="color:#1565c0;font-weight:700;text-decoration:none;background:#e3f2fd;padding:3px 8px;border-radius:6px;font-family:monospace">🗺 Map</a>':'—')
+      +'</td>'
+      +'</tr>';
+  }
+
+  var fullRouteUrl=_auditMapsFullRoute(fullRouteStops);
+  var delivered=stops.filter(function(s){return s.delivered;}).length;
+  var pending=stops.filter(function(s){return !s.isHQ&&!s.delivered;}).length;
+
+  el.innerHTML=
+    '<div class="card" style="margin-bottom:10px;padding:12px 14px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">'
+        +'<div>'
+          +'<div style="font-size:14px;font-weight:900;color:#4a2f14">'+esc(driver)+' — '+date+'</div>'
+          +'<div style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-top:2px">'
+            +'Start: '+(route.start_time||'—')
+            +(route.start_lat?' · <a href="https://www.google.com/maps?q='+route.start_lat+','+route.start_lng+'" target="_blank" style="color:#1565c0">📍 Start location</a>':'')
+          +'</div>'
+        +'</div>'
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+          +'<div style="background:#e8f5e9;border-radius:10px;padding:6px 12px;text-align:center"><div style="font-size:16px;font-weight:900;color:#2d7a4f">'+delivered+'</div><div style="font-size:9px;font-family:monospace;color:#8a7a6a">DELIVERED</div></div>'
+          +(pending?'<div style="background:#fde8e8;border-radius:10px;padding:6px 12px;text-align:center"><div style="font-size:16px;font-weight:900;color:#c8382a">'+pending+'</div><div style="font-size:9px;font-family:monospace;color:#8a7a6a">PENDING</div></div>':'')
+          +'<div style="background:#e3f2fd;border-radius:10px;padding:6px 12px;text-align:center"><div style="font-size:16px;font-weight:900;color:#1565c0">'+totalKm.toFixed(1)+'</div><div style="font-size:9px;font-family:monospace;color:#8a7a6a">KM (est)</div></div>'
+        +'</div>'
+      +'</div>'
+    +'</div>'
+
+    +'<div style="overflow-x:auto;margin-bottom:10px">'
+      +'<table style="width:100%;border-collapse:collapse;background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;overflow:hidden;font-family:-apple-system,sans-serif">'
+        +'<thead>'
+          +'<tr style="background:#f5ede0">'
+            +'<th style="padding:8px 10px;font-size:10px;font-family:monospace;color:#8a7a6a;text-transform:uppercase;letter-spacing:1px;font-weight:700">#</th>'
+            +'<th style="padding:8px 10px;font-size:10px;font-family:monospace;color:#8a7a6a;text-transform:uppercase;letter-spacing:1px;font-weight:700;text-align:left">Shop</th>'
+            +'<th style="padding:8px 10px;font-size:10px;font-family:monospace;color:#8a7a6a;text-transform:uppercase;letter-spacing:1px;font-weight:700">Time</th>'
+            +'<th style="padding:8px 10px;font-size:10px;font-family:monospace;color:#8a7a6a;text-transform:uppercase;letter-spacing:1px;font-weight:700">⏱ Travel</th>'
+            +'<th style="padding:8px 10px;font-size:10px;font-family:monospace;color:#8a7a6a;text-transform:uppercase;letter-spacing:1px;font-weight:700">📏 KM</th>'
+            +'<th style="padding:8px 10px;font-size:10px;font-family:monospace;color:#8a7a6a;text-transform:uppercase;letter-spacing:1px;font-weight:700">Route</th>'
+          +'</tr>'
+        +'</thead>'
+        +'<tbody>'+rows+'</tbody>'
+      +'</table>'
+    +'</div>'
+
+    +(fullRouteUrl
+      ?'<a href="'+fullRouteUrl+'" target="_blank" style="display:block;background:#1565c0;color:#fff;padding:13px;border-radius:14px;text-align:center;font-weight:800;font-size:14px;text-decoration:none;margin-bottom:8px">🗺 Open Full Route in Google Maps</a>'
+      :'')
+
+    +'<div style="font-size:10px;font-family:monospace;color:#8a7a6a;text-align:center">📏 Distances are straight-line (GPS). Actual road km may be higher.</div>';
+}
+
 /* ── EXPORTS ── */
 function exportRouteCSV(){dlCSV([['Date','Driver','Start','Shops','KM','Est']].concat(routesData.map(function(r){return[r.date,r.driver,r.start_time||'',r.total_shops,r.total_km,r.est_time];})),'routes-'+todayStr()+'.csv');}
 function exportGPSCSV(){dlCSV([['Customer ID','Name','Area','Driver','Lat','Lng']].concat(allCustomers.map(function(c){return[c.customer_id||c.shop_id,c.name,c.area,c.assigned_driver,c.lat||'',c.lng||''];})),'gps-'+todayStr()+'.csv');}
@@ -2628,7 +2824,7 @@ loadProductMaster(); // cache products for XLS preview
   if(_allowedTabs === null){ first='orders'; }
   else { first = _allowedTabs.length ? _allowedTabs[0] : 'summary'; }
   // Hide all pages, then show the right one
-  ['orders','approve','queue','summary','delivery','routes','customers','products','drivers','gps','users','notify','cleanup'].forEach(function(t){
+  ['orders','approve','queue','summary','delivery','routes','customers','products','drivers','gps','users','notify','cleanup','audit'].forEach(function(t){
     var pg=document.getElementById('pg-'+t);if(pg)pg.classList.remove('on');
     var tb=document.getElementById('tb-'+t);if(tb)tb.classList.remove('on');
   });
