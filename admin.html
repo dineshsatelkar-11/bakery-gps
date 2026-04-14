@@ -2593,8 +2593,9 @@ async function loadTripAudit(){
   stops.push({
     name: CONFIG.HQ.name,
     time: route?route.start_time:null,
-    lat:  route&&route.start_lat?parseFloat(route.start_lat):null,
-    lng:  route&&route.start_lng?parseFloat(route.start_lng):null,
+    // Use captured start GPS if available, else fall back to known HQ coordinates
+    lat:  route&&route.start_lat ? parseFloat(route.start_lat) : CONFIG.HQ.lat,
+    lng:  route&&route.start_lng ? parseFloat(route.start_lng) : CONFIG.HQ.lng,
     isHQ: true
   });
 
