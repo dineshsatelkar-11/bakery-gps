@@ -10,7 +10,7 @@ const CONFIG = {
   SUPABASE_ANON_KEY: 'sb_publishable_Tkemd93FwHu4Cg6BcgjLNA_w4cTxqea',                // ← paste anon/public key
 
   // Bakery HQ location (used for route optimisation in driver app)
-  HQ: { lat: 18.5734, lng: 73.9197, name: "It's Baked · Lohegaon" },
+  HQ: { lat: 18.60718624307306, lng: 73.92742696886077, name: "It's Baked · Lohegaon" },
 
   DRIVERS: ['Bharat', 'Anand', 'Vikas', 'Yuvraj', 'Rama'],
 
