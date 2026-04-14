@@ -150,6 +150,12 @@ input[type=text],input[type=date]{width:100%;padding:11px 14px;border:1.5px soli
     <div id="orderSummaryBody"></div>
   </div>
   <div id="ordersList"></div>
+  <!-- Return Crates banner — shown in Orders tab when crate tracking enabled -->
+  <div id="returnCratesBanner" style="display:none;position:sticky;bottom:8px;margin-top:10px">
+    <button onclick="openReturnCrates()" style="width:100%;padding:14px;border:1.5px solid #c8a020;border-radius:14px;background:#fff8e1;color:#7a4800;font-size:14px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;box-shadow:0 2px 12px rgba(0,0,0,.15)">
+      <span id="t-returnCratesBanner">📦 Return Crates to Bakery</span>
+    </button>
+  </div>
 </div>
 
 <!-- ── ROUTE ── -->
@@ -354,7 +360,8 @@ function applyLang() {
   document.getElementById('t-crateSkip').textContent    = mr ? 'वगळा' : 'Skip';
   document.getElementById('t-crateRetTitle').textContent  = mr ? 'क्रेट परत केले' : 'Crates Returned';
   document.getElementById('t-crateRetSub').textContent    = mr ? 'किती क्रेट परत करत आहात?' : 'How many crates are you returning to bakery?';
-  document.getElementById('t-returnCratesBtn').textContent = mr ? '📦 क्रेट परत करा' : '📦 Return Crates to Bakery';
+  document.getElementById('t-returnCratesBtn').textContent    = mr ? '📦 क्रेट परत करा' : '📦 Return Crates to Bakery';
+  document.getElementById('t-returnCratesBanner').textContent = mr ? '📦 क्रेट परत करा' : '📦 Return Crates to Bakery';
 
   // GPS tab
   document.getElementById('t-searchLbl').textContent   = mr ? 'ग्राहक शोधा' : 'Search Customer';
@@ -562,6 +569,8 @@ async function init() {
     crateTrackingEnabled = !!(row && row.value === '1');
     var btn = document.getElementById('returnCratesBtn');
     if(btn) btn.style.display = crateTrackingEnabled ? '' : 'none';
+    var banner = document.getElementById('returnCratesBanner');
+    if(banner) banner.style.display = (crateTrackingEnabled && routeStarted) ? '' : 'none';
   });
   renderOrdersList();
   renderCustomerList(allCustomers);
@@ -1028,9 +1037,12 @@ async function buildRouteUI() {
   }
 
   // Show start banner or summary card
-  document.getElementById('startBanner').style.display    = routeStarted ? 'none' : 'block';
-  document.getElementById('routeSummaryCard').style.display = routeStarted ? 'block' : 'none';
-  document.getElementById('routeStats').style.display       = 'none';
+  document.getElementById('startBanner').style.display      = routeStarted ? 'none' : 'block';
+  document.getElementById('routeSummaryCard').style.display  = routeStarted ? 'block' : 'none';
+  document.getElementById('routeStats').style.display        = 'none';
+  // Show Return Crates banner in Orders tab once route is started
+  var _rcBanner = document.getElementById('returnCratesBanner');
+  if(_rcBanner) _rcBanner.style.display = (crateTrackingEnabled && routeStarted) ? '' : 'none';
   if(!routeStarted) return;
 
   // Only customers who have orders for today AND are assigned to this driver
