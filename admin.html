@@ -2557,8 +2557,8 @@ async function loadTripAudit(){
 
   var [routeArr, delivArr, shopsArr] = await Promise.all([
     api({action:'getRoutes', driver, date}),
-    api({action:'getDeliveries', driver, date}),
-    api({action:'getShops'}) // all shops — no driver filter, to match any reassignment
+    api({action:'getDeliveries', date}),  // fetch ALL deliveries for date, filter client-side
+    api({action:'getShops'})
   ]);
 
   var route = Array.isArray(routeArr)&&routeArr.length ? routeArr[0] : null;
@@ -2569,13 +2569,18 @@ async function loadTripAudit(){
   var shopByName = {};
   if(Array.isArray(shopsArr)) shopsArr.forEach(function(s){ shopByName[s.name]=s; });
 
-  if(!route && !(Array.isArray(delivArr)&&delivArr.length)){
+  // Filter deliveries for this driver (case-insensitive to handle any name mismatch)
+  var driverLower = driver.toLowerCase();
+  var allDeliveries = Array.isArray(delivArr) ? delivArr : [];
+  var driverDeliveries = allDeliveries.filter(function(d){ return (d.driver||'').toLowerCase()===driverLower; });
+
+  if(!route && !driverDeliveries.length){
     el.innerHTML='<div class="msg er" style="display:block">No data found for '+esc(driver)+' on '+date+'.</div>';
     return;
   }
 
   // ── PRIMARY: deliveries sorted by time ──
-  var delivList = Array.isArray(delivArr) ? delivArr.slice() : [];
+  var delivList = driverDeliveries.slice();
   delivList.sort(function(a,b){ return (_auditTimeToMins(a.time)||0)-(_auditTimeToMins(b.time)||0); });
 
   // ── SECONDARY: undelivered shops from shop_order ──
