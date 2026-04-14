@@ -527,12 +527,34 @@ async function init() {
     var cachedOrders = localStorage.getItem('offlineOrders_'+driver+'_'+selectedDate);
     if (cachedOrders) orders = JSON.parse(cachedOrders);
   }
-  // check if route already started today
+  // check if route already started — first try localStorage, then fall back to DB
   const savedStart = localStorage.getItem('routeStart_'+driver+'_'+selectedDate);
   if(savedStart){
     routeStarted=true; routeStartTime=savedStart;
     routeStartLat = parseFloat(localStorage.getItem('routeStartLat_'+driver+'_'+selectedDate)) || null;
     routeStartLng = parseFloat(localStorage.getItem('routeStartLng_'+driver+'_'+selectedDate)) || null;
+  } else {
+    // localStorage cleared or different device — check DB for route record
+    const routeRows = await api({action:'getRoutes', driver, date:selectedDate});
+    const dbRoute = Array.isArray(routeRows) && routeRows.length ? routeRows[0] : null;
+    if(dbRoute && dbRoute.start_time){
+      routeStarted=true; routeStartTime=dbRoute.start_time;
+      routeStartLat = dbRoute.start_lat ? parseFloat(dbRoute.start_lat) : null;
+      routeStartLng = dbRoute.start_lng ? parseFloat(dbRoute.start_lng) : null;
+      // Save back to localStorage so future checks are instant
+      localStorage.setItem('routeStart_'+driver+'_'+selectedDate, routeStartTime);
+      if(routeStartLat) {
+        localStorage.setItem('routeStartLat_'+driver+'_'+selectedDate, routeStartLat);
+        localStorage.setItem('routeStartLng_'+driver+'_'+selectedDate, routeStartLng);
+      }
+    } else if(Object.keys(deliveries).length > 0) {
+      // Driver has deliveries but no start record — they obviously started
+      routeStarted=true;
+      // Use earliest delivery time as approximate start
+      var times = Object.values(deliveries).map(function(d){return d.time||'';}).filter(Boolean).sort();
+      routeStartTime = times.length ? times[0] : null;
+      if(routeStartTime) localStorage.setItem('routeStart_'+driver+'_'+selectedDate, routeStartTime);
+    }
   }
   _restoreRouteState();
   // Check if crate tracking is enabled

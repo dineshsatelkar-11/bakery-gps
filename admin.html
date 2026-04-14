@@ -1741,7 +1741,49 @@ function renderRoutes(){
       (notStarted.length?' <span style="color:#c8382a">('+notStarted.length+' not started)</span>':'  <span style="color:#2d7a4f">All dispatched ✅</span>')+
     '</div>'+dispatchRows+'</div>';
 
-  el.innerHTML=dispatchCard+routesData.map(function(r){
+  // ── Crate Summary card (only if any crate data exists for this date) ──
+  var crateEntries=Object.values(_crateLogMap);
+  var crateCard='';
+  if(crateEntries.length){
+    var totalTaken=0, totalReturned=0;
+    crateEntries.forEach(function(c){
+      if(c.crates_taken!=null)    totalTaken    += c.crates_taken;
+      if(c.crates_returned!=null) totalReturned += c.crates_returned;
+    });
+    var crateRows=routesData.map(function(r){
+      var c=_crateLogMap[r.driver]||null;
+      var taken    = c&&c.crates_taken!=null    ? c.crates_taken    : '—';
+      var returned = c&&c.crates_returned!=null ? c.crates_returned : '—';
+      var diff     = (c&&c.crates_taken!=null&&c.crates_returned!=null) ? (c.crates_taken-c.crates_returned) : null;
+      var diffStr  = diff===null?'—':(diff===0?'<span style="color:#2d7a4f">✅ 0</span>':'<span style="color:'+(diff>0?'#c8382a':'#1565c0')+'">'+diff+'</span>');
+      return '<tr>'
+        +'<td style="padding:7px 10px;font-weight:700;font-size:13px">'+esc(r.driver)+'</td>'
+        +'<td style="padding:7px 10px;text-align:center;font-family:monospace;font-weight:900;font-size:14px;color:#4a2f14">'+taken+'</td>'
+        +'<td style="padding:7px 10px;text-align:center;font-family:monospace;font-weight:900;font-size:14px;color:#2d7a4f">'+returned+'</td>'
+        +'<td style="padding:7px 10px;text-align:center;font-family:monospace;font-weight:900;font-size:14px">'+diffStr+'</td>'
+        +'<td style="padding:7px 10px;text-align:center;font-family:monospace;font-size:11px;color:#8a7a6a">'+(c&&c.taken_time?c.taken_time:'—')+(c&&c.returned_time?' → '+c.returned_time:'')+'</td>'
+        +'</tr>';
+    }).join('');
+    crateCard='<div style="background:#fff;border:1.5px solid #ffe082;border-radius:14px;padding:12px 14px;margin-bottom:10px">'
+      +'<div style="font-size:11px;font-weight:900;color:#7a4800;font-family:monospace;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">📦 Crate Tracking'
+        +'<span style="font-size:10px;font-weight:700;color:#8a7a6a;margin-left:8px;text-transform:none">Total out: <b>'+totalTaken+'</b> · Returned: <b>'+totalReturned+'</b></span>'
+      +'</div>'
+      +'<div style="overflow-x:auto">'
+        +'<table style="width:100%;border-collapse:collapse;font-family:-apple-system,sans-serif">'
+          +'<thead><tr style="background:#fff8e1">'
+            +'<th style="padding:6px 10px;font-size:10px;font-family:monospace;color:#8a7a6a;text-transform:uppercase;text-align:left">Driver</th>'
+            +'<th style="padding:6px 10px;font-size:10px;font-family:monospace;color:#8a7a6a;text-transform:uppercase">Taken</th>'
+            +'<th style="padding:6px 10px;font-size:10px;font-family:monospace;color:#8a7a6a;text-transform:uppercase">Returned</th>'
+            +'<th style="padding:6px 10px;font-size:10px;font-family:monospace;color:#8a7a6a;text-transform:uppercase">Diff</th>'
+            +'<th style="padding:6px 10px;font-size:10px;font-family:monospace;color:#8a7a6a;text-transform:uppercase">Times</th>'
+          +'</tr></thead>'
+          +'<tbody>'+crateRows+'</tbody>'
+        +'</table>'
+      +'</div>'
+    +'</div>';
+  }
+
+  el.innerHTML=dispatchCard+crateCard+routesData.map(function(r){
     var sh=[];try{sh=JSON.parse(r.shop_order||'[]');}catch(e){}
     var dDelivs=_routeDelivMap[r.driver]||{};
     var dOrders=uniqueShops(_routeOrdersByDriver[r.driver]||[]);
