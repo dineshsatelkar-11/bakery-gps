@@ -760,6 +760,7 @@ function showTab(t){
   if(t==='drivers')   loadDrivers().then(renderDrivers);
   if(t==='users')     loadStaff().then(renderStaff);
   if(t==='notify')    loadNotifyDriverList();
+  if(t==='audit')     initAuditTab();
 }
 
 /* ── CUSTOMER MASTER (replaces allShops) ──
@@ -2547,9 +2548,14 @@ function _auditMapsFullRoute(stops){
   return 'https://www.google.com/maps/dir/'+pts.map(function(s){return s.lat+','+s.lng;}).join('/');
 }
 
+function initAuditTab(){
+  var d=document.getElementById('audit-date');
+  if(d&&!d.value) d.value=todayStr();
+}
+
 async function loadTripAudit(){
   var driver=document.getElementById('audit-driver').value;
-  var date=document.getElementById('audit-date').value;
+  var date=document.getElementById('audit-date').value||todayStr();
   var el=document.getElementById('audit-result');
   if(!driver){alert('Select a driver');return;}
   if(!date){alert('Select a date');return;}
@@ -2670,6 +2676,16 @@ async function loadTripAudit(){
   var delivered=stops.filter(function(s){return s.delivered;}).length;
   var pending=stops.filter(function(s){return !s.isHQ&&!s.delivered;}).length;
 
+  // Total trip time: start_time → last delivery time
+  var startMins=_auditTimeToMins(stops[0].time);
+  var delivTimes=stops.filter(function(s){return s.delivered&&s.time;}).map(function(s){return _auditTimeToMins(s.time);});
+  var lastMins=delivTimes.length?Math.max.apply(null,delivTimes):null;
+  var totalTimeStr='—';
+  if(startMins!==null&&lastMins!==null){
+    var diff=lastMins-startMins; if(diff<0)diff+=1440;
+    totalTimeStr=(diff>=60?Math.floor(diff/60)+'h ':'')+(diff%60)+'m';
+  }
+
   el.innerHTML=
     '<div class="card" style="margin-bottom:10px;padding:12px 14px">'
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">'
@@ -2684,6 +2700,7 @@ async function loadTripAudit(){
           +'<div style="background:#e8f5e9;border-radius:10px;padding:6px 12px;text-align:center"><div style="font-size:16px;font-weight:900;color:#2d7a4f">'+delivered+'</div><div style="font-size:9px;font-family:monospace;color:#8a7a6a">DELIVERED</div></div>'
           +(pending?'<div style="background:#fde8e8;border-radius:10px;padding:6px 12px;text-align:center"><div style="font-size:16px;font-weight:900;color:#c8382a">'+pending+'</div><div style="font-size:9px;font-family:monospace;color:#8a7a6a">PENDING</div></div>':'')
           +'<div style="background:#e3f2fd;border-radius:10px;padding:6px 12px;text-align:center"><div style="font-size:16px;font-weight:900;color:#1565c0">'+totalKm.toFixed(1)+'</div><div style="font-size:9px;font-family:monospace;color:#8a7a6a">KM (est)</div></div>'
+          +'<div style="background:#fff3e0;border-radius:10px;padding:6px 12px;text-align:center"><div style="font-size:16px;font-weight:900;color:#e67e22">'+totalTimeStr+'</div><div style="font-size:9px;font-family:monospace;color:#8a7a6a">TOTAL TIME</div></div>'
         +'</div>'
       +'</div>'
     +'</div>'
