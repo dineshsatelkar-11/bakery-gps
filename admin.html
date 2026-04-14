@@ -422,10 +422,10 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   <div class="card" style="margin-bottom:12px">
     <div class="lbl">Days to Keep</div>
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
-      <input type="number" id="cleanup-days" min="1" max="365" value="15"
+      <input type="number" id="cleanup-days" min="0" max="365" value="15"
         style="width:110px;margin-bottom:0;font-size:18px;font-weight:900;text-align:center;flex:none">
       <div style="font-size:12px;font-family:monospace;color:#8a7a6a;line-height:1.5">
-        days to keep.<br>Everything <strong>older</strong> will be deleted.
+        days to keep.<br>Everything <strong>older</strong> will be deleted.<br><span style="color:#c8382a">0 = delete all data</span>
       </div>
     </div>
     <button class="btn btn-grey" onclick="previewCleanup()" style="margin-bottom:0">🔍 Preview What Will Be Deleted</button>
@@ -2503,13 +2503,15 @@ function sendPush(driverNames, message) {
 /* ── MAINTENANCE / CLEANUP ── */
 function _getCleanupDays(){
   var v = parseInt(document.getElementById('cleanup-days').value);
-  return (v && v >= 1) ? v : 15;
+  return (!isNaN(v) && v >= 0) ? v : 15;
 }
 
 function previewCleanup(){
   var days = _getCleanupDays();
   var cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - days);
+  // days=1 → keep today only → delete < today
+  // days=0 → delete everything → cutoff = tomorrow
+  cutoff.setDate(cutoff.getDate() - days + 1);
   var cutoffDate = cutoff.toISOString().slice(0,10);
   var preview = document.getElementById('cleanup-preview');
   var btn = document.getElementById('cleanup-btn');

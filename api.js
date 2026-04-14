@@ -465,9 +465,11 @@
 
       case 'cleanOldData': {
         // Delete data older than N days from orders, deliveries, routes, notifications
-        var days = parseInt(p.days) || 7;
+        var days = (!isNaN(parseInt(p.days)) && parseInt(p.days) >= 0) ? parseInt(p.days) : 7;
         var cutoff = new Date();
-        cutoff.setDate(cutoff.getDate() - days);
+        // days=1 → keep today only (delete < today)
+        // days=0 → delete everything (cutoff = tomorrow)
+        cutoff.setDate(cutoff.getDate() - days + 1);
         var cutoffDate = cutoff.toISOString().slice(0, 10); // 'YYYY-MM-DD'
         var cutoffTs   = cutoff.toISOString();              // for timestamptz columns
 
