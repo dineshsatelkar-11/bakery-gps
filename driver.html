@@ -236,9 +236,7 @@ input[type=text],input[type=date]{width:100%;padding:11px 14px;border:1.5px soli
     <input type="number" id="crateTakenInput" min="0" max="999" placeholder="0"
       style="width:100%;padding:16px;border:2px solid #e8dfd2;border-radius:14px;font-size:32px;font-weight:900;text-align:center;color:#4a2f14;background:#f5ede0;outline:none;margin-bottom:16px;-webkit-appearance:none;appearance:none">
     <button onclick="confirmCratesTaken()" id="t-crateConfirm"
-      style="width:100%;padding:14px;border:none;border-radius:14px;background:#2d7a4f;color:#fff;font-size:16px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:8px">✅ Confirm</button>
-    <button onclick="skipCratesTaken()" id="t-crateSkip"
-      style="width:100%;padding:10px;border:1.5px solid #e8dfd2;border-radius:14px;background:#fff;color:#8a7a6a;font-size:13px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif">Skip</button>
+      style="width:100%;padding:14px;border:none;border-radius:14px;background:#2d7a4f;color:#fff;font-size:16px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif">✅ Confirm</button>
   </div>
 </div>
 
@@ -357,7 +355,7 @@ function applyLang() {
   document.getElementById('t-crateTitle').textContent   = mr ? 'बेकरीतून किती क्रेट?' : 'Crates from Bakery';
   document.getElementById('t-crateSub').textContent     = mr ? 'आज किती क्रेट घेत आहात?' : 'How many crates are you taking today?';
   document.getElementById('t-crateConfirm').textContent = mr ? '✅ ठीक आहे' : '✅ Confirm';
-  document.getElementById('t-crateSkip').textContent    = mr ? 'वगळा' : 'Skip';
+
   document.getElementById('t-crateRetTitle').textContent  = mr ? 'क्रेट परत केले' : 'Crates Returned';
   document.getElementById('t-crateRetSub').textContent    = mr ? 'किती क्रेट परत करत आहात?' : 'How many crates are you returning to bakery?';
   document.getElementById('t-returnCratesBtn').textContent    = mr ? '📦 क्रेट परत करा' : '📦 Return Crates to Bakery';
@@ -567,10 +565,17 @@ async function init() {
   // Check if crate tracking is enabled
   api({action:'getSetting', key:'crate_tracking'}).then(function(row){
     crateTrackingEnabled = !!(row && row.value === '1');
-    var btn = document.getElementById('returnCratesBtn');
-    if(btn) btn.style.display = crateTrackingEnabled ? '' : 'none';
-    var banner = document.getElementById('returnCratesBanner');
-    if(banner) banner.style.display = (crateTrackingEnabled && routeStarted) ? '' : 'none';
+    if(!crateTrackingEnabled) return;
+    // Check if driver already returned crates today — hide button if so
+    api({action:'getCrateLogs', date:todayStr()}).then(function(logs){
+      var myLog = Array.isArray(logs) ? logs.find(function(l){ return l.driver===driver; }) : null;
+      var alreadyReturned = !!(myLog && myLog.crates_returned !== null && myLog.crates_returned !== undefined);
+      var showReturn = routeStarted && !alreadyReturned;
+      var btn = document.getElementById('returnCratesBtn');
+      if(btn) btn.style.display = showReturn ? '' : 'none';
+      var banner = document.getElementById('returnCratesBanner');
+      if(banner) banner.style.display = showReturn ? '' : 'none';
+    });
   });
   renderOrdersList();
   renderCustomerList(allCustomers);
@@ -816,24 +821,26 @@ async function startRoute() {
   await apiPost(saveBody);
   buildRouteUI();
 
-  // If crate tracking is enabled, show crate count popup
+  // If crate tracking is enabled, show mandatory crate count popup
   if (crateTrackingEnabled) {
-    document.getElementById('crateInput').value = '';
+    document.getElementById('crateTakenInput').value = '';
     document.getElementById('crateTakenModal').style.display = 'flex';
   }
 }
 
 // ── CRATE TRACKING ──
 async function confirmCratesTaken() {
-  var val = parseInt(document.getElementById('crateInput').value);
-  if (isNaN(val) || val < 0) { alert(lang==='mr' ? 'संख्या टाका' : 'Enter a valid number'); return; }
+  var val = parseInt(document.getElementById('crateTakenInput').value);
+  if (isNaN(val) || val < 0) {
+    alert(lang==='mr' ? 'किती क्रेट घेतले ते सांगा' : 'Please enter number of crates taken');
+    return;
+  }
+  var btn = document.getElementById('t-crateConfirm');
+  if(btn){ btn.disabled=true; btn.textContent='Saving…'; }
   document.getElementById('crateTakenModal').style.display = 'none';
   var time = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
   await apiPost({action:'logCratesTaken', driver, date:todayStr(), crates:val, time});
-}
-
-function skipCratesTaken() {
-  document.getElementById('crateTakenModal').style.display = 'none';
+  if(btn){ btn.disabled=false; btn.textContent='✅ Confirm'; }
 }
 
 function openReturnCrates() {
@@ -843,13 +850,22 @@ function openReturnCrates() {
 
 async function confirmCratesReturned() {
   var val = parseInt(document.getElementById('crateReturnInput').value);
-  if (isNaN(val) || val < 0) { alert(lang==='mr' ? 'संख्या टाका' : 'Enter a valid number'); return; }
-  var btn = document.querySelector('#crateReturnModal button[onclick="confirmCratesReturned()"]');
+  if (isNaN(val) || val < 0) {
+    alert(lang==='mr' ? 'किती क्रेट परत केले ते सांगा' : 'Please enter number of crates returned');
+    return;
+  }
+  var btn = document.getElementById('t-crateRetConfirm');
   if(btn){ btn.disabled=true; btn.textContent='Saving…'; }
   document.getElementById('crateReturnModal').style.display = 'none';
   var time = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
   await apiPost({action:'logCratesReturned', driver, date:todayStr(), crates:val, time});
   if(btn){ btn.disabled=false; btn.textContent='✅ Confirm Return'; }
+  // Hide both Return Crates buttons — can only be done once per day
+  var rb = document.getElementById('returnCratesBtn');
+  if(rb) rb.style.display = 'none';
+  var banner = document.getElementById('returnCratesBanner');
+  if(banner) banner.style.display = 'none';
+  alert(lang==='mr' ? '✅ क्रेट परत नोंदवले!' : '✅ Crates return recorded!');
 }
 
 function setRouteFilter(f) { routeFilter=f; buildRouteUI(); }
