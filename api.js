@@ -256,6 +256,17 @@
           .catch(function(){ return []; });
       }
 
+      case 'getSetting':
+        return sbGet('settings', {key: p.key})
+          .then(function(rows){ return rows&&rows.length ? rows[0] : null; });
+
+      case 'getCrateLogs': {
+        var where = {};
+        if (p.date)   where.date   = p.date;
+        if (p.driver) where.driver = p.driver;
+        return sbGet('crate_logs', where, 'date.desc,driver');
+      }
+
       default:
         return Promise.resolve([]);
     }
@@ -479,6 +490,7 @@
           delTable('orders',        'date=lt.' + encodeURIComponent(cutoffDate)),
           delTable('deliveries',    'date=lt.' + encodeURIComponent(cutoffDate)),
           delTable('routes',        'date=lt.' + encodeURIComponent(cutoffDate)),
+          delTable('crate_logs',    'date=lt.' + encodeURIComponent(cutoffDate)),
           delTable('notifications', 'created_at=lt.' + encodeURIComponent(cutoffTs))
         ]).then(function(counts) {
           return {
@@ -486,11 +498,25 @@
             orders:        counts[0],
             deliveries:    counts[1],
             routes:        counts[2],
-            notifications: counts[3],
+            crate_logs:    counts[3],
+            notifications: counts[4],
             cutoff:        cutoffDate
           };
         }).catch(function(){ return { ok: false, error: 'Network error' }; });
       }
+
+      case 'setSetting':
+        return sbUpsert('settings', {key: b.key, value: b.value}, 'key');
+
+      case 'logCratesTaken':
+        return sbUpsert('crate_logs',
+          {driver: b.driver, date: b.date, crates_taken: b.crates, taken_time: b.time},
+          'driver,date');
+
+      case 'logCratesReturned':
+        return sbUpsert('crate_logs',
+          {driver: b.driver, date: b.date, crates_returned: b.crates, returned_time: b.time},
+          'driver,date');
 
       default:
         return Promise.resolve({ ok: false, error: 'Unknown action: ' + b.action });

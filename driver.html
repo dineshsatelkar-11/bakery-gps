@@ -182,6 +182,10 @@ input[type=text],input[type=date]{width:100%;padding:11px 14px;border:1.5px soli
       <button id="wa-teapost-btn" onclick="shareTeaPost()" disabled style="flex:1;padding:10px 4px;border:none;border-radius:10px;background:#e8dfd2;color:#b0a090;font-size:11px;font-weight:800;cursor:not-allowed;font-family:-apple-system,sans-serif;transition:all .2s"><span id="t-teapostBtn">☕ Tea Post Done</span></button>
       <button id="wa-alldone-btn" onclick="shareAllDone()" disabled style="flex:1;padding:10px 4px;border:none;border-radius:10px;background:#e8dfd2;color:#b0a090;font-size:11px;font-weight:800;cursor:not-allowed;font-family:-apple-system,sans-serif;transition:all .2s"><span id="t-allDoneBtn">✅ All Done</span></button>
     </div>
+    <!-- Return Crates button — only shown if crate tracking enabled -->
+    <button id="returnCratesBtn" onclick="openReturnCrates()" style="display:none;width:100%;margin-top:8px;padding:10px;border:1.5px solid #c8a020;border-radius:10px;background:#fff8e1;color:#7a4800;font-size:12px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif">
+      <span id="t-returnCratesBtn">📦 Return Crates to Bakery</span>
+    </button>
   </div>
   <div id="routeStats" style="display:none"></div>
 
@@ -214,6 +218,36 @@ input[type=text],input[type=date]{width:100%;padding:11px 14px;border:1.5px soli
       <button onclick="celebWhatsApp()" id="t-celShare" style="width:100%;padding:13px;border:none;border-radius:12px;background:#25d366;color:#fff;font-size:14px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif">📲 Share Update</button>
     </div>
     <button onclick="document.getElementById('celebModal').style.display='none'" id="t-celClose" style="width:100%;padding:12px;border:1.5px solid #e8dfd2;border-radius:12px;background:#fff;color:#8a7a6a;font-size:13px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif">Close</button>
+  </div>
+</div>
+
+<!-- ── CRATE TAKEN MODAL ── -->
+<div id="crateTakenModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:400;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:24px;padding:28px 22px;width:100%;max-width:320px;text-align:center">
+    <div style="font-size:44px;margin-bottom:8px">📦</div>
+    <div style="font-size:18px;font-weight:900;color:#4a2f14;margin-bottom:4px" id="t-crateTitle">Crates from Bakery</div>
+    <div style="font-size:12px;color:#8a7a6a;font-family:monospace;margin-bottom:16px" id="t-crateSub">How many crates are you taking today?</div>
+    <input type="number" id="crateTakenInput" min="0" max="999" placeholder="0"
+      style="width:100%;padding:16px;border:2px solid #e8dfd2;border-radius:14px;font-size:32px;font-weight:900;text-align:center;color:#4a2f14;background:#f5ede0;outline:none;margin-bottom:16px;-webkit-appearance:none;appearance:none">
+    <button onclick="confirmCratesTaken()" id="t-crateConfirm"
+      style="width:100%;padding:14px;border:none;border-radius:14px;background:#2d7a4f;color:#fff;font-size:16px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:8px">✅ Confirm</button>
+    <button onclick="skipCratesTaken()" id="t-crateSkip"
+      style="width:100%;padding:10px;border:1.5px solid #e8dfd2;border-radius:14px;background:#fff;color:#8a7a6a;font-size:13px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif">Skip</button>
+  </div>
+</div>
+
+<!-- ── CRATE RETURN MODAL ── -->
+<div id="crateReturnModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:400;align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:24px;padding:28px 22px;width:100%;max-width:320px;text-align:center">
+    <div style="font-size:44px;margin-bottom:8px">🔄</div>
+    <div style="font-size:18px;font-weight:900;color:#4a2f14;margin-bottom:4px" id="t-crateRetTitle">Crates Returned</div>
+    <div style="font-size:12px;color:#8a7a6a;font-family:monospace;margin-bottom:16px" id="t-crateRetSub">How many crates are you returning to bakery?</div>
+    <input type="number" id="crateReturnInput" min="0" max="999" placeholder="0"
+      style="width:100%;padding:16px;border:2px solid #e8dfd2;border-radius:14px;font-size:32px;font-weight:900;text-align:center;color:#4a2f14;background:#f5ede0;outline:none;margin-bottom:16px;-webkit-appearance:none;appearance:none">
+    <button onclick="confirmCratesReturned()" id="t-crateRetConfirm"
+      style="width:100%;padding:14px;border:none;border-radius:14px;background:#4a2f14;color:#fff;font-size:16px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:8px">✅ Confirm Return</button>
+    <button onclick="document.getElementById('crateReturnModal').style.display='none'"
+      style="width:100%;padding:10px;border:1.5px solid #e8dfd2;border-radius:14px;background:#fff;color:#8a7a6a;font-size:13px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif">Cancel</button>
   </div>
 </div>
 
@@ -313,6 +347,14 @@ function applyLang() {
 
   // Offline banner
   document.getElementById('t-offline').textContent = mr ? 'ऑफलाइन — कनेक्ट झाल्यावर डेटा सिंक होईल' : 'Offline — deliveries will sync when connected';
+  // Crate modals
+  document.getElementById('t-crateTitle').textContent   = mr ? 'बेकरीतून किती क्रेट?' : 'Crates from Bakery';
+  document.getElementById('t-crateSub').textContent     = mr ? 'आज किती क्रेट घेत आहात?' : 'How many crates are you taking today?';
+  document.getElementById('t-crateConfirm').textContent = mr ? '✅ ठीक आहे' : '✅ Confirm';
+  document.getElementById('t-crateSkip').textContent    = mr ? 'वगळा' : 'Skip';
+  document.getElementById('t-crateRetTitle').textContent  = mr ? 'क्रेट परत केले' : 'Crates Returned';
+  document.getElementById('t-crateRetSub').textContent    = mr ? 'किती क्रेट परत करत आहात?' : 'How many crates are you returning to bakery?';
+  document.getElementById('t-returnCratesBtn').textContent = mr ? '📦 क्रेट परत करा' : '📦 Return Crates to Bakery';
 
   // GPS tab
   document.getElementById('t-searchLbl').textContent   = mr ? 'ग्राहक शोधा' : 'Search Customer';
@@ -449,6 +491,7 @@ let customRoute = null; // null = auto-optimized, array = custom/historical orde
 let lastRouteKm  = 0;  // total km of last built route (for celebration screen)
 let routeMode   = 'distance'; // 'distance' | 'history' | 'manual'
 let routeFilter = 'all'; // 'all' | 'done' | 'pending'
+let crateTrackingEnabled = false;
 
 // ── LOAD ──
 async function init() {
@@ -492,6 +535,12 @@ async function init() {
     routeStartLng = parseFloat(localStorage.getItem('routeStartLng_'+driver+'_'+selectedDate)) || null;
   }
   _restoreRouteState();
+  // Check if crate tracking is enabled
+  api({action:'getSetting', key:'crate_tracking'}).then(function(row){
+    crateTrackingEnabled = !!(row && row.value === '1');
+    var btn = document.getElementById('returnCratesBtn');
+    if(btn) btn.style.display = crateTrackingEnabled ? '' : 'none';
+  });
   renderOrdersList();
   renderCustomerList(allCustomers);
 }
@@ -735,6 +784,41 @@ async function startRoute() {
   if (routeStartLat) { saveBody.lat = routeStartLat; saveBody.lng = routeStartLng; }
   await apiPost(saveBody);
   buildRouteUI();
+
+  // If crate tracking is enabled, show crate count popup
+  if (crateTrackingEnabled) {
+    document.getElementById('crateInput').value = '';
+    document.getElementById('crateTakenModal').style.display = 'flex';
+  }
+}
+
+// ── CRATE TRACKING ──
+async function confirmCratesTaken() {
+  var val = parseInt(document.getElementById('crateInput').value);
+  if (isNaN(val) || val < 0) { alert(lang==='mr' ? 'संख्या टाका' : 'Enter a valid number'); return; }
+  document.getElementById('crateTakenModal').style.display = 'none';
+  var time = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+  await apiPost({action:'logCratesTaken', driver, date:todayStr(), crates:val, time});
+}
+
+function skipCratesTaken() {
+  document.getElementById('crateTakenModal').style.display = 'none';
+}
+
+function openReturnCrates() {
+  document.getElementById('crateReturnInput').value = '';
+  document.getElementById('crateReturnModal').style.display = 'flex';
+}
+
+async function confirmCratesReturned() {
+  var val = parseInt(document.getElementById('crateReturnInput').value);
+  if (isNaN(val) || val < 0) { alert(lang==='mr' ? 'संख्या टाका' : 'Enter a valid number'); return; }
+  var btn = document.querySelector('#crateReturnModal button[onclick="confirmCratesReturned()"]');
+  if(btn){ btn.disabled=true; btn.textContent='Saving…'; }
+  document.getElementById('crateReturnModal').style.display = 'none';
+  var time = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+  await apiPost({action:'logCratesReturned', driver, date:todayStr(), crates:val, time});
+  if(btn){ btn.disabled=false; btn.textContent='✅ Confirm Return'; }
 }
 
 function setRouteFilter(f) { routeFilter=f; buildRouteUI(); }

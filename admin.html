@@ -331,6 +331,20 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
 
 <!-- USERS (super_admin only) -->
 <div class="page" id="pg-users">
+  <!-- Feature Settings -->
+  <div class="card" style="margin-bottom:14px;border-color:#c8a020">
+    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:10px;letter-spacing:.5px">⚙️ FEATURE SETTINGS</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f0e8dc">
+      <div>
+        <div style="font-size:13px;font-weight:800;color:#4a2f14">📦 Crate Tracking</div>
+        <div style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-top:2px">Ask drivers to log crates taken & returned each day</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span id="crate-status-lbl" style="font-size:11px;font-family:monospace;font-weight:700;color:#8a7a6a">…</span>
+        <button id="crate-toggle-btn" onclick="toggleCrateTracking()" style="padding:8px 16px;border-radius:20px;border:none;font-size:12px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;background:#e8dfd2;color:#8a7a6a">…</button>
+      </div>
+    </div>
+  </div>
   <div class="stats-grid" id="staffStats"></div>
   <button class="btn btn-brown" onclick="openAddStaff()">➕ Add Staff User</button>
   <div id="staffList"></div>
@@ -758,7 +772,7 @@ function showTab(t){
   if(t==='customers') loadCustomers();
   if(t==='products')  loadProducts();
   if(t==='drivers')   loadDrivers().then(renderDrivers);
-  if(t==='users')     loadStaff().then(renderStaff);
+  if(t==='users')     { loadStaff().then(renderStaff); loadFeatureSettings(); }
   if(t==='notify')    loadNotifyDriverList();
   if(t==='audit')     initAuditTab();
 }
@@ -1591,7 +1605,7 @@ function renderDeliveries(){
 }
 
 /* ── ROUTES ── */
-var routesData=[], _routeDelivMap={}, _routeOrdersByDriver={}, _routeLastDeliv={}, _routeFilter='all', _routeShopGPS={};
+var routesData=[], _routeDelivMap={}, _routeOrdersByDriver={}, _routeLastDeliv={}, _routeFilter='all', _routeShopGPS={}, _crateLogMap={};
 function setRouteFilter(f){ _routeFilter=f; renderRoutes(); }
 function loadRoutes(){
   var el=document.getElementById('routesList');
@@ -1602,7 +1616,8 @@ function loadRoutes(){
     api({action:'getRoutes',date:date,driver:driverFilter}),
     api({action:'getDeliveries',date:date,driver:driverFilter}),
     api({action:'getOrders',date:date,driver:driverFilter}),
-    api({action:'getShops'})
+    api({action:'getShops'}),
+    api({action:'getCrateLogs',date:date})
   ]).then(function(res){
     routesData=Array.isArray(res[0])?res[0]:[];
     var deliveries=Array.isArray(res[1])?res[1]:[];
@@ -1612,6 +1627,9 @@ function loadRoutes(){
     (Array.isArray(res[3])?res[3]:[]).forEach(function(s){
       _routeShopGPS[s.name]= !!(s.lat && s.lng);
     });
+    // Build crate log map: driver → {crates_taken, crates_returned, taken_time, returned_time}
+    _crateLogMap={};
+    (Array.isArray(res[4])?res[4]:[]).forEach(function(c){ _crateLogMap[c.driver]=c; });
 
     // delivMap: driver → { shop_id: record, shop_name: record }
     _routeDelivMap={};
@@ -1703,8 +1721,16 @@ function renderRoutes(){
     // Highlight if started late (after 08:00)
     var late=false;
     if(r.start_time){var m=r.start_time.match(/(\d+):(\d+)\s*(AM|PM|am|pm)?/);if(m){var h=parseInt(m[1]),ap=(m[3]||'').toUpperCase();if(ap==='PM'&&h!==12)h+=12;if(ap==='AM'&&h===12)h=0;late=(h*60+parseInt(m[2]))>8*60;}}
+    var cLog=_crateLogMap[r.driver]||null;
+    var crateStr='';
+    if(cLog&&(cLog.crates_taken!=null||cLog.crates_returned!=null)){
+      crateStr='<span style="font-size:10px;font-family:monospace;color:#7a4800;background:#fff8e1;border:1px solid #ffe082;border-radius:5px;padding:2px 7px;margin-left:6px">'
+        +'📦 '+(cLog.crates_taken!=null?cLog.crates_taken:'?')
+        +' → '+(cLog.crates_returned!=null?cLog.crates_returned:'–')
+        +'</span>';
+    }
     return '<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0e8dc">'+
-      '<span style="font-size:12px;font-weight:700;color:#4a2f14">'+esc(r.driver)+'</span>'+
+      '<span style="font-size:12px;font-weight:700;color:#4a2f14">'+esc(r.driver)+crateStr+'</span>'+
       (started
         ?'<span style="font-size:11px;font-family:monospace;font-weight:700;color:'+(late?'#c8382a':'#2d7a4f')+'">⏰ '+(displayTime?esc(displayTime):'started')+(late?' ⚠ Late':'')+'</span>'
         :'<span style="font-size:11px;font-family:monospace;color:#c8382a">🔴 Not started</span>')+
@@ -2466,9 +2492,10 @@ function previewCleanup(){
     countOld('orders','date'),
     countOld('deliveries','date'),
     countOld('routes','date'),
+    countOld('crate_logs','date'),
     countOld('notifications','created_at')
   ]).then(function(counts){
-    var total=counts[0]+counts[1]+counts[2]+counts[3];
+    var total=counts[0]+counts[1]+counts[2]+counts[3]+counts[4];
     if(total===0){
       preview.innerHTML='<div class="card" style="border-color:#a5d6a7"><div style="font-size:13px;font-weight:700;color:#2d7a4f;text-align:center;padding:8px">✅ Nothing to delete — no data older than '+days+' days.</div></div>';
       btn.style.display='none';
@@ -2480,7 +2507,8 @@ function previewCleanup(){
         '<div>📋 Orders: <strong>'+counts[0]+'</strong></div>'+
         '<div>🚚 Deliveries: <strong>'+counts[1]+'</strong></div>'+
         '<div>🗺 Routes: <strong>'+counts[2]+'</strong></div>'+
-        '<div>🔔 Notifications: <strong>'+counts[3]+'</strong></div>'+
+        '<div>📦 Crate Logs: <strong>'+counts[3]+'</strong></div>'+
+        '<div>🔔 Notifications: <strong>'+counts[4]+'</strong></div>'+
       '</div>'+
       '<div style="margin-top:10px;font-size:11px;font-family:monospace;color:#8a7a6a">Shops and products are NOT affected.</div>'+
     '</div>';
@@ -2501,7 +2529,7 @@ function runCleanup(){
     if(res&&res.ok){
       btn.style.display='none';
       document.getElementById('cleanup-preview').style.display='none';
-      msg.textContent='✅ Done! Deleted (before '+res.cutoff+'):\n'+res.orders+' orders · '+res.deliveries+' deliveries · '+res.routes+' routes · '+res.notifications+' notifications';
+      msg.textContent='✅ Done! Deleted (before '+res.cutoff+'):\n'+res.orders+' orders · '+res.deliveries+' deliveries · '+res.routes+' routes · '+res.crate_logs+' crate logs · '+res.notifications+' notifications';
       msg.className='msg ok';
     } else {
       btn.textContent='🗑 Retry Delete';
@@ -2735,6 +2763,40 @@ function dlCSV(rows,fn){var csv=rows.map(function(r){return r.map(function(c){re
 
 /* ── STAFF (Users tab — super_admin only) ── */
 var allStaffList = [];
+
+/* ── FEATURE SETTINGS ── */
+var _crateTrackingEnabled = false;
+
+function loadFeatureSettings(){
+  api({action:'getSetting', key:'crate_tracking'}).then(function(row){
+    _crateTrackingEnabled = !!(row && row.value === '1');
+    _updateCrateToggleUI();
+  });
+}
+
+function _updateCrateToggleUI(){
+  var lbl = document.getElementById('crate-status-lbl');
+  var btn = document.getElementById('crate-toggle-btn');
+  if(!lbl||!btn) return;
+  if(_crateTrackingEnabled){
+    lbl.textContent='ENABLED'; lbl.style.color='#2d7a4f';
+    btn.textContent='Disable'; btn.style.background='#fde8e8'; btn.style.color='#c8382a';
+  } else {
+    lbl.textContent='DISABLED'; lbl.style.color='#c8382a';
+    btn.textContent='Enable'; btn.style.background='#e8f5e9'; btn.style.color='#2d7a4f';
+  }
+}
+
+function toggleCrateTracking(){
+  var btn = document.getElementById('crate-toggle-btn');
+  btn.disabled=true; btn.textContent='…';
+  var newVal = _crateTrackingEnabled ? '0' : '1';
+  apiPost({action:'setSetting', key:'crate_tracking', value:newVal}).then(function(){
+    _crateTrackingEnabled = (newVal==='1');
+    _updateCrateToggleUI();
+    btn.disabled=false;
+  });
+}
 
 function loadStaff(){
   return api({action:'getStaff'}).then(function(data){
