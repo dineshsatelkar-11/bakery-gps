@@ -2558,52 +2558,68 @@ async function loadTripAudit(){
   var [routeArr, delivArr, shopsArr] = await Promise.all([
     api({action:'getRoutes', driver, date}),
     api({action:'getDeliveries', driver, date}),
-    api({action:'getShops', driver})
+    api({action:'getShops'}) // all shops — no driver filter, to match any reassignment
   ]);
 
   var route = Array.isArray(routeArr)&&routeArr.length ? routeArr[0] : null;
-  var deliveries = {};
-  if(Array.isArray(delivArr)) delivArr.forEach(function(d){ deliveries[d.shop_id]=d; });
+  // Build shopMap keyed by shop_id
   var shopMap = {};
   if(Array.isArray(shopsArr)) shopsArr.forEach(function(s){ shopMap[s.shop_id]=s; });
+  // Also index by name for fallback
+  var shopByName = {};
+  if(Array.isArray(shopsArr)) shopsArr.forEach(function(s){ shopByName[s.name]=s; });
 
-  if(!route){
-    el.innerHTML='<div class="msg er" style="display:block">No route data found for '+esc(driver)+' on '+date+'.</div>';
+  if(!route && !(Array.isArray(delivArr)&&delivArr.length)){
+    el.innerHTML='<div class="msg er" style="display:block">No data found for '+esc(driver)+' on '+date+'.</div>';
     return;
   }
 
-  var shopOrder=[];
-  try{ shopOrder=JSON.parse(route.shop_order||'[]'); }catch(e){}
+  // ── PRIMARY: deliveries sorted by time ──
+  var delivList = Array.isArray(delivArr) ? delivArr.slice() : [];
+  delivList.sort(function(a,b){ return (_auditTimeToMins(a.time)||0)-(_auditTimeToMins(b.time)||0); });
 
-  // Build stop list: HQ first, then each shop in route order
-  var HQ_NAME = CONFIG.HQ.name;
+  // ── SECONDARY: undelivered shops from shop_order ──
+  var shopOrder=[];
+  if(route){ try{ shopOrder=JSON.parse(route.shop_order||'[]'); }catch(e){} }
+  var deliveredShopIds=new Set(delivList.map(function(d){return d.shop_id;}));
+
+  // Build stop list: HQ first
   var stops=[];
   stops.push({
-    name: HQ_NAME,
-    time: route.start_time||null,
-    lat: route.start_lat||null,
-    lng: route.start_lng||null,
+    name: CONFIG.HQ.name,
+    time: route?route.start_time:null,
+    lat:  route&&route.start_lat?parseFloat(route.start_lat):null,
+    lng:  route&&route.start_lng?parseFloat(route.start_lng):null,
     isHQ: true
   });
 
+  // Delivered stops in time order
+  var seenIds=new Set();
+  delivList.forEach(function(d){
+    if(seenIds.has(d.shop_id))return; seenIds.add(d.shop_id);
+    var shop=shopMap[d.shop_id]||null;
+    var lat=d.lat?parseFloat(d.lat):(shop&&shop.lat?parseFloat(shop.lat):null);
+    var lng=d.lng?parseFloat(d.lng):(shop&&shop.lng?parseFloat(shop.lng):null);
+    stops.push({
+      name: d.shop_name||(shop?shop.name:d.shop_id),
+      time: d.time,
+      lat: lat, lng: lng,
+      delivered: true,
+      shop_id: d.shop_id
+    });
+  });
+
+  // Undelivered stops from shop_order (not yet in delivered list)
   shopOrder.forEach(function(shopName){
-    // find shop by name
-    var shop=null;
-    Object.values(shopMap).forEach(function(s){ if(s.name===shopName)shop=s; });
-    // find delivery
-    var deliv=null;
-    Object.values(deliveries).forEach(function(d){ if(d.shop_name===shopName||( shop&&d.shop_id===shop.shop_id))deliv=d; });
-
-    var lat=null,lng=null;
-    if(deliv&&deliv.lat)       { lat=parseFloat(deliv.lat); lng=parseFloat(deliv.lng); }
-    else if(shop&&shop.lat)    { lat=parseFloat(shop.lat);  lng=parseFloat(shop.lng);  }
-
+    if(deliveredShopIds.size===0) return; // no deliveries at all, skip pending
+    var shop=shopByName[shopName]||null;
+    if(shop&&deliveredShopIds.has(shop.shop_id)) return; // already added
     stops.push({
       name: shopName,
-      time: deliv?deliv.time:null,
-      lat: lat,
-      lng: lng,
-      delivered: !!deliv,
+      time: null,
+      lat: shop&&shop.lat?parseFloat(shop.lat):null,
+      lng: shop&&shop.lng?parseFloat(shop.lng):null,
+      delivered: false,
       shop_id: shop?shop.shop_id:null
     });
   });
