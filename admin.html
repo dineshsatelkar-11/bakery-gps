@@ -433,9 +433,16 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
 
   <div id="cleanup-preview" style="display:none;margin-bottom:12px"></div>
 
-  <button class="btn" id="cleanup-btn" style="background:#c8382a;color:#fff;display:none" onclick="runCleanup()">
-    🗑 Delete Old Data
-  </button>
+  <div id="cleanup-confirm-box" style="display:none;margin-bottom:12px">
+    <div class="card" style="border-color:#c8382a;background:#fff5f5">
+      <div style="font-size:13px;font-weight:900;color:#c8382a;margin-bottom:10px">⚠️ Are you sure?</div>
+      <div style="font-size:12px;font-family:monospace;color:#4a2f14;margin-bottom:14px" id="cleanup-confirm-msg">This will permanently delete old data. This CANNOT be undone.</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn" id="cleanup-btn" style="background:#c8382a;color:#fff;margin-bottom:0;flex:1" onclick="runCleanup()">🗑 Yes, Delete</button>
+        <button class="btn btn-grey" style="margin-bottom:0;flex:1" onclick="document.getElementById('cleanup-confirm-box').style.display='none'">Cancel</button>
+      </div>
+    </div>
+  </div>
   <div id="cleanupMsg" style="display:none;margin-top:8px" class="msg ok"></div>
 </div>
 
@@ -2514,10 +2521,10 @@ function previewCleanup(){
   cutoff.setDate(cutoff.getDate() - days + 1);
   var cutoffDate = cutoff.toISOString().slice(0,10);
   var preview = document.getElementById('cleanup-preview');
-  var btn = document.getElementById('cleanup-btn');
+  var confirmBox = document.getElementById('cleanup-confirm-box');
   preview.style.display='block';
+  confirmBox.style.display='none';
   preview.innerHTML='<div class="card" style="border-color:#ffe082"><div style="font-size:12px;font-family:monospace;color:#7a4800;text-align:center;padding:8px">⏳ Counting records older than '+days+' days…</div></div>';
-  btn.style.display='none';
   // Count rows to be deleted by fetching just the date column with a limit of 1000
   // We use a HEAD request trick via fetching count only
   var BASE2 = CONFIG.SUPABASE_URL + '/rest/v1';
@@ -2542,7 +2549,7 @@ function previewCleanup(){
     var total=counts[0]+counts[1]+counts[2]+counts[3]+counts[4];
     if(total===0){
       preview.innerHTML='<div class="card" style="border-color:#a5d6a7"><div style="font-size:13px;font-weight:700;color:#2d7a4f;text-align:center;padding:8px">✅ Nothing to delete — no data older than '+days+' days.</div></div>';
-      btn.style.display='none';
+      confirmBox.style.display='none';
       return;
     }
     preview.innerHTML='<div class="card" style="border-color:#f0b0b0">'+
@@ -2556,8 +2563,8 @@ function previewCleanup(){
       '</div>'+
       '<div style="margin-top:10px;font-size:11px;font-family:monospace;color:#8a7a6a">Shops and products are NOT affected.</div>'+
     '</div>';
-    btn.style.display='block';
-    btn.textContent='🗑 Delete '+total+' Records Older Than '+days+' Days';
+    document.getElementById('cleanup-confirm-msg').textContent = 'Delete '+total+' records before '+cutoffDate+'? This CANNOT be undone.';
+    confirmBox.style.display='block';
   });
 }
 
@@ -2565,13 +2572,12 @@ function runCleanup(){
   var days = _getCleanupDays();
   var btn = document.getElementById('cleanup-btn');
   var msg = document.getElementById('cleanupMsg');
-  if(!confirm('Permanently delete data older than '+days+' days?\nThis CANNOT be undone.'))return;
   btn.disabled=true; btn.textContent='⏳ Deleting…';
   msg.style.display='none';
   apiPost({action:'cleanOldData', days:days}).then(function(res){
-    btn.disabled=false;
+    btn.disabled=false; btn.textContent='🗑 Yes, Delete';
     if(res&&res.ok){
-      btn.style.display='none';
+      document.getElementById('cleanup-confirm-box').style.display='none';
       document.getElementById('cleanup-preview').style.display='none';
       msg.textContent='✅ Done! Deleted (before '+res.cutoff+'):\n'+res.orders+' orders · '+res.deliveries+' deliveries · '+res.routes+' routes · '+res.crate_logs+' crate logs · '+res.notifications+' notifications';
       msg.className='msg ok';
