@@ -251,6 +251,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   </div>
   <button class="btn btn-grey" onclick="loadRoutes()">Refresh</button>
   <button class="btn-csv" onclick="exportRouteCSV()">⬇ Export CSV</button>
+  <button class="btn" style="background:#25d366;color:#fff;margin-bottom:8px;width:100%" onclick="shareRouteSummary()">📤 Share Driver Summary</button>
 
   <!-- Substitute Driver — driver absent for the day -->
   <div class="card" style="margin-bottom:10px;border-color:#e8c87a">
@@ -2804,6 +2805,74 @@ async function loadTripAudit(){
       :'')
 
     +'<div style="font-size:10px;font-family:monospace;color:#8a7a6a;text-align:center">📏 Distances are straight-line (GPS). Actual road km may be higher.</div>';
+}
+
+/* ── ROUTE SUMMARY SHARE ── */
+function shareRouteSummary(){
+  if(!routesData.length){ alert('No route data loaded. Please load routes first.'); return; }
+  var date = document.getElementById('f-rt-date').value || todayStr();
+  var d = new Date(date+'T00:00:00');
+  var dateLabel = d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+
+  function uniqueShops(orders){
+    var seen=new Set(), result=[];
+    orders.forEach(function(o){ if(!seen.has(o.shop_id)){seen.add(o.shop_id);result.push(o);} });
+    return result;
+  }
+
+  var totalDone=0, totalShops=0;
+  var lines = ['📦 *Route Summary — '+dateLabel+'*', ''];
+
+  routesData.forEach(function(r){
+    var sh=[]; try{sh=JSON.parse(r.shop_order||'[]');}catch(e){}
+    var dDelivs = _routeDelivMap[r.driver]||{};
+    var dOrders = uniqueShops(_routeOrdersByDriver[r.driver]||[]);
+    var orderedNames = new Set(dOrders.map(function(o){return o.shop_name;}));
+    var shopOrderSet = new Set(sh);
+    var gpsOrdered = sh.filter(function(s){return orderedNames.has(s);});
+    var noGPSOrders = dOrders.filter(function(o){return !shopOrderSet.has(o.shop_name);});
+    var done = gpsOrdered.filter(function(s){return dDelivs[s];}).length
+             + noGPSOrders.filter(function(o){return dDelivs[o.shop_id]||dDelivs[o.shop_name];}).length;
+    var total = gpsOrdered.length + noGPSOrders.length;
+    totalDone += done; totalShops += total;
+
+    var hasDeliveries = Object.keys(dDelivs).length > 0;
+    var started = !!r.start_time || hasDeliveries;
+    var startLabel = r.start_time ? r.start_time : (hasDeliveries ? 'Started' : 'Not started');
+
+    var cLog = _crateLogMap[r.driver]||null;
+    var crateInfo = '';
+    if(cLog && (cLog.crates_taken!=null || cLog.crates_returned!=null)){
+      crateInfo = '   📦 Crates: '+(cLog.crates_taken!=null?cLog.crates_taken:'?')+' taken'
+        +(cLog.crates_returned!=null?' / '+cLog.crates_returned+' returned':'');
+    }
+
+    var lastDeliv = _routeLastDeliv[r.driver];
+    var lastTime = lastDeliv && lastDeliv.time ? lastDeliv.time : null;
+
+    lines.push('🚗 *'+r.driver+'*');
+    lines.push('   ⏰ Start: '+startLabel);
+    if(lastTime) lines.push('   🕐 Last delivery: '+lastTime);
+    lines.push('   ✅ Done: '+done+' / '+total+' shops');
+    if(done < total) lines.push('   ⏳ Pending: '+(total-done));
+    if(crateInfo) lines.push(crateInfo);
+    lines.push('');
+  });
+
+  lines.push('─────────────────');
+  lines.push('📊 *Total: '+totalDone+' done / '+totalShops+' shops across '+routesData.length+' drivers*');
+
+  var msg = lines.join('\n');
+  if(navigator.share){
+    navigator.share({text: msg}).catch(function(){});
+  } else if(navigator.clipboard){
+    navigator.clipboard.writeText(msg).then(function(){ alert('✅ Summary copied! Paste in WhatsApp.'); });
+  } else {
+    var ta=document.createElement('textarea');
+    ta.value=msg; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+    alert('✅ Summary copied! Paste in WhatsApp.');
+  }
 }
 
 /* ── EXPORTS ── */
