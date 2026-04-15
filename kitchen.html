@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Kitchen — It's Baked</title>
+<script src="config.js"></script>
+<script src="api.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:480px;margin:0 auto;min-height:100vh}
+/* Login */
+.login-wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 20px}
+.login-logo{font-size:52px;margin-bottom:6px}
+.login-title{font-size:22px;font-weight:900;color:#4a2f14;text-align:center;margin-bottom:2px}
+.login-sub{font-size:12px;color:#8a7a6a;font-family:monospace;margin-bottom:28px;text-align:center}
+.login-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:20px;padding:22px;width:100%;max-width:360px}
+.lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:6px;text-transform:uppercase;display:block}
+select,input[type=text],input[type=password],input[type=date]{width:100%;padding:12px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:10px}
+.btn{width:100%;padding:14px;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:8px}
+.btn-orange{background:#e67e22;color:#fff}
+.btn-green{background:#2d7a4f;color:#fff}
+.btn-grey{background:#e8dfd2;color:#4a2f14}
+.btn-sm{padding:8px 14px;border-radius:10px;font-size:12px;font-weight:700;border:none;cursor:pointer;font-family:-apple-system,sans-serif}
+.err{color:#c8382a;font-size:12px;font-family:monospace;text-align:center;margin-top:8px}
+/* App */
+.topbar{background:#e67e22;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:99}
+.topbar-title{color:#fff;font-size:15px;font-weight:800}
+.topbar-sub{color:rgba(255,255,255,.8);font-size:11px;font-family:monospace;margin-top:1px}
+.logout-btn{background:rgba(255,255,255,.2);border:none;color:#fff;padding:6px 11px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif}
+.main{padding:14px 14px 100px}
+.card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:14px;margin-bottom:10px}
+.msg{padding:11px 14px;border-radius:12px;font-size:12px;font-weight:600;font-family:monospace;margin-bottom:10px;line-height:1.8;white-space:pre-line}
+.ok{background:#e8f5e9;color:#2d7a4f;border:1px solid #a5d6a7}
+.er{background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0}
+.in{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9}
+/* Count grid */
+.count-grid{display:flex;flex-direction:column;gap:6px}
+.count-row{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:#fffaf4;border:1.5px solid #e8dfd2;border-radius:10px}
+.count-name{font-size:13px;font-weight:700;color:#1e1611;flex:1}
+.count-num{font-size:22px;font-weight:900;color:#e67e22;font-family:monospace;min-width:48px;text-align:right}
+/* Shop breakdown */
+.shop-block{background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;margin-bottom:8px;overflow:hidden}
+.shop-block-head{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;background:#f5ede0;border-bottom:1px solid #e8dfd2}
+.shop-block-name{font-size:14px;font-weight:800;color:#4a2f14}
+.shop-block-body{padding:10px 14px;font-size:12px;font-family:monospace;color:#4a2f14;line-height:2}
+.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;font-family:monospace}
+.b-ok{background:#e8f5e9;color:#2d7a4f}
+.b-warn{background:#fff8e1;color:#7a4800}
+.sticky-bottom{position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;background:#fff;border-top:2px solid #e8dfd2;padding:12px 14px;z-index:90}
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN ── -->
+<div id="loginScreen" class="login-wrap">
+  <div class="login-logo">👨‍🍳</div>
+  <div class="login-title">Kitchen</div>
+  <div class="login-sub">It's Baked · Kitchen Portal</div>
+  <div class="login-card">
+    <label class="lbl">Staff Name</label>
+    <select id="loginName"><option value="">Select name…</option></select>
+    <label class="lbl">Password</label>
+    <input type="password" id="loginPass" placeholder="Password">
+    <button class="btn btn-orange" id="loginBtn" onclick="doLogin()">👨‍🍳 Kitchen Login</button>
+    <div id="loginErr" class="err" style="display:none">Wrong name or password.</div>
+  </div>
+</div>
+
+<!-- ── APP ── -->
+<div id="appScreen" style="display:none">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title">👨‍🍳 Kitchen</div>
+      <div class="topbar-sub" id="topName"></div>
+    </div>
+    <button class="logout-btn" onclick="doLogout()">Logout</button>
+  </div>
+
+  <div class="main">
+    <!-- Date selector -->
+    <div class="card">
+      <div class="lbl">Delivery Date</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="date" id="kitchenDate" onchange="loadKitchenOrders()" style="flex:1;margin-bottom:0">
+        <button onclick="loadKitchenOrders()" style="background:#f5ede0;border:1.5px solid #e8dfd2;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;color:#4a2f14;font-family:-apple-system,sans-serif;flex-shrink:0">↻</button>
+      </div>
+    </div>
+
+    <div id="kitchenMsg" style="display:none" class="msg in"></div>
+
+    <!-- Summary stats -->
+    <div id="kitchenStats" style="display:none" class="card">
+      <div style="display:flex;gap:8px">
+        <div style="flex:1;text-align:center;background:#fff8f0;border:1.5px solid #f5c87a;border-radius:12px;padding:10px">
+          <div style="font-size:24px;font-weight:900;color:#e67e22" id="statOrders">0</div>
+          <div style="font-size:9px;color:#8a7a6a;font-family:monospace;text-transform:uppercase">Orders</div>
+        </div>
+        <div style="flex:1;text-align:center;background:#f0faf4;border:1.5px solid #a5d6a7;border-radius:12px;padding:10px">
+          <div style="font-size:24px;font-weight:900;color:#2d7a4f" id="statItems">0</div>
+          <div style="font-size:9px;color:#8a7a6a;font-family:monospace;text-transform:uppercase">Total Qty</div>
+        </div>
+        <div style="flex:1;text-align:center;background:#fff8e1;border:1.5px solid #ffe082;border-radius:12px;padding:10px">
+          <div style="font-size:24px;font-weight:900;color:#7a4800" id="statProds">0</div>
+          <div style="font-size:9px;color:#8a7a6a;font-family:monospace;text-transform:uppercase">Products</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Product count aggregate -->
+    <div id="countSection" style="display:none">
+      <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:8px;letter-spacing:.5px">📊 MAKE THIS MUCH</div>
+      <div class="count-grid" id="countGrid"></div>
+    </div>
+
+    <!-- Shop breakdown -->
+    <div id="shopSection" style="display:none" style="margin-top:10px">
+      <div style="font-size:13px;font-weight:900;color:#4a2f14;margin:14px 0 8px;letter-spacing:.5px">🏪 SHOP-WISE BREAKDOWN</div>
+      <div id="shopGrid"></div>
+    </div>
+  </div>
+
+  <!-- Sticky: Mark Done button -->
+  <div class="sticky-bottom" id="doneBar" style="display:none">
+    <button class="btn btn-green" id="doneBtn" onclick="markKitchenDone()" style="margin-bottom:0">
+      ✅ Mark Kitchen Done — <span id="doneBtnCount">0</span> Orders
+    </button>
+  </div>
+</div>
+
+<script>
+var staffName = '';
+var kitchenOrders = []; // customer_orders with status='approved'
+
+// ── LOGIN ──
+(function(){
+  api({action:'getStaff'}).then(function(data){
+    var list = (Array.isArray(data)?data:[]).filter(function(s){ return s.active && (s.role==='chef'||s.role==='admin'||s.role==='super_admin'); });
+    var sel = document.getElementById('loginName');
+    sel.innerHTML = '<option value="">Select name…</option>' + list.map(function(s){ return '<option value="'+esc(s.name)+'">👨‍🍳 '+esc(s.name)+'</option>'; }).join('');
+  });
+  // Restore session
+  var sn = sessionStorage.getItem('kitchenStaff') || localStorage.getItem('kitchenStaff');
+  if (sn) { staffName = sn; showApp(); }
+})();
+
+function doLogin(){
+  var name = document.getElementById('loginName').value;
+  var pass = document.getElementById('loginPass').value;
+  var btn  = document.getElementById('loginBtn');
+  var err  = document.getElementById('loginErr');
+  err.style.display = 'none';
+  if (!name) { alert('Select your name'); return; }
+  if (!pass) { err.style.display='block'; return; }
+  btn.disabled=true; btn.textContent='⏳ Checking…';
+  api({action:'staffLogin', name:name, password:pass}).then(function(data){
+    btn.disabled=false; btn.textContent='👨‍🍳 Kitchen Login';
+    var s = Array.isArray(data)&&data.length ? data[0] : null;
+    if (!s || (s.role!=='chef'&&s.role!=='admin'&&s.role!=='super_admin')){
+      err.style.display='block'; err.textContent=s?'Access denied for this role.':'Wrong password.'; return;
+    }
+    staffName = s.name;
+    sessionStorage.setItem('kitchenStaff', staffName);
+    localStorage.setItem('kitchenStaff', staffName);
+    showApp();
+  });
+}
+
+function doLogout(){
+  sessionStorage.removeItem('kitchenStaff'); localStorage.removeItem('kitchenStaff');
+  staffName = ''; kitchenOrders = [];
+  document.getElementById('appScreen').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+}
+
+// ── APP ──
+function showApp(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('appScreen').style.display='block';
+  document.getElementById('topName').textContent = staffName + ' · ' + new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'});
+  // Default date = tomorrow (what will be delivered)
+  document.getElementById('kitchenDate').value = tomorrowStr();
+  loadKitchenOrders();
+}
+
+function tomorrowStr(){
+  var d=new Date(); d.setDate(d.getDate()+1);
+  return d.getFullYear()+'-'+zp(d.getMonth()+1)+'-'+zp(d.getDate());
+}
+function zp(n){ return String(n).padStart(2,'0'); }
+
+function loadKitchenOrders(){
+  var date = document.getElementById('kitchenDate').value;
+  if (!date) return;
+  var msg = document.getElementById('kitchenMsg');
+  msg.textContent='⏳ Loading orders…';msg.className='msg in';msg.style.display='block';
+  document.getElementById('kitchenStats').style.display='none';
+  document.getElementById('countSection').style.display='none';
+  document.getElementById('shopSection').style.display='none';
+  document.getElementById('doneBar').style.display='none';
+
+  // Fetch both 'approved' (needs kitchen work) and already 'packaging' (done) for context
+  api({ action:'getCustomerOrders', delivery_date:date, status:'approved' }).then(function(data){
+    kitchenOrders = Array.isArray(data) ? data : [];
+    msg.style.display='none';
+
+    if (!kitchenOrders.length){
+      msg.textContent='No approved orders for this date.';msg.className='msg in';msg.style.display='block';
+      return;
+    }
+
+    // Build aggregate product counts
+    var counts = {}; // product_name → total qty
+    kitchenOrders.forEach(function(o){
+      var items=(o.items||'').split(',');
+      var qtys=(o.qty||'').split(',');
+      items.forEach(function(item,i){
+        item=item.trim(); if(!item)return;
+        counts[item]=(counts[item]||0)+(parseInt(qtys[i])||0);
+      });
+    });
+
+    var totalQty = Object.values(counts).reduce(function(s,v){return s+v;},0);
+    document.getElementById('statOrders').textContent = kitchenOrders.length;
+    document.getElementById('statItems').textContent  = totalQty;
+    document.getElementById('statProds').textContent  = Object.keys(counts).length;
+    document.getElementById('kitchenStats').style.display='block';
+    document.getElementById('doneBtnCount').textContent = kitchenOrders.length;
+
+    // Render count grid — sorted by name
+    var sortedCounts = Object.entries(counts).sort(function(a,b){return a[0].localeCompare(b[0]);});
+    document.getElementById('countGrid').innerHTML = sortedCounts.map(function(e){
+      return '<div class="count-row"><span class="count-name">'+esc(e[0])+'</span><span class="count-num">×'+e[1]+'</span></div>';
+    }).join('');
+    document.getElementById('countSection').style.display='block';
+
+    // Render shop breakdown
+    document.getElementById('shopGrid').innerHTML = kitchenOrders.map(function(o){
+      var pairs=[];
+      var items=(o.items||'').split(','); var qtys=(o.qty||'').split(',');
+      items.forEach(function(item,i){ if(item.trim())pairs.push('<b>'+qtys[i]+'×</b> '+esc(item.trim())); });
+      return '<div class="shop-block">'+
+        '<div class="shop-block-head">'+
+          '<span class="shop-block-name">'+esc(o.shop_name)+'</span>'+
+          '<span class="badge b-ok">✅ Approved</span>'+
+        '</div>'+
+        '<div class="shop-block-body">'+pairs.join(' &nbsp;·&nbsp; ')+(o.note?'<br><span style="color:#8a7a6a">📝 '+esc(o.note)+'</span>':'')+'</div>'+
+      '</div>';
+    }).join('');
+    document.getElementById('shopSection').style.display='block';
+    document.getElementById('doneBar').style.display='block';
+  });
+}
+
+// ── MARK KITCHEN DONE ──
+function markKitchenDone(){
+  if (!kitchenOrders.length) return;
+  if (!confirm('Mark all '+kitchenOrders.length+' orders as kitchen done?\nThey will move to Packaging queue.')) return;
+
+  var btn = document.getElementById('doneBtn');
+  btn.disabled=true; btn.textContent='⏳ Updating…';
+
+  var promises = kitchenOrders.map(function(o){
+    return apiPost({ action:'updateCustomerOrderStatus', id:o.id, status:'packaging' });
+  });
+
+  Promise.all(promises).then(function(){
+    btn.disabled=false; btn.textContent='✅ Mark Kitchen Done — '+kitchenOrders.length+' Orders';
+    var msg=document.getElementById('kitchenMsg');
+    msg.textContent='✅ '+kitchenOrders.length+' orders moved to Packaging!';
+    msg.className='msg ok'; msg.style.display='block';
+    kitchenOrders=[];
+    document.getElementById('kitchenStats').style.display='none';
+    document.getElementById('countSection').style.display='none';
+    document.getElementById('shopSection').style.display='none';
+    document.getElementById('doneBar').style.display='none';
+  });
+}
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+</script>
+</body>
+</html>

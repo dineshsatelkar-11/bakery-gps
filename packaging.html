@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Packaging — It's Baked</title>
+<script src="config.js"></script>
+<script src="api.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:480px;margin:0 auto;min-height:100vh}
+/* Login */
+.login-wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 20px}
+.login-logo{font-size:52px;margin-bottom:6px}
+.login-title{font-size:22px;font-weight:900;color:#4a2f14;text-align:center;margin-bottom:2px}
+.login-sub{font-size:12px;color:#8a7a6a;font-family:monospace;margin-bottom:28px;text-align:center}
+.login-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:20px;padding:22px;width:100%;max-width:360px}
+.lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:6px;text-transform:uppercase;display:block}
+select,input[type=text],input[type=password],input[type=date]{width:100%;padding:12px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:10px}
+.btn{width:100%;padding:14px;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:8px}
+.btn-purple{background:#6e3da8;color:#fff}
+.btn-green{background:#2d7a4f;color:#fff}
+.btn-grey{background:#e8dfd2;color:#4a2f14}
+.err{color:#c8382a;font-size:12px;font-family:monospace;text-align:center;margin-top:8px}
+/* App */
+.topbar{background:#6e3da8;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:99}
+.topbar-title{color:#fff;font-size:15px;font-weight:800}
+.topbar-sub{color:rgba(255,255,255,.75);font-size:11px;font-family:monospace;margin-top:1px}
+.logout-btn{background:rgba(255,255,255,.2);border:none;color:#fff;padding:6px 11px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif}
+.main{padding:14px 14px 100px}
+.card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:14px;margin-bottom:10px}
+.msg{padding:11px 14px;border-radius:12px;font-size:12px;font-weight:600;font-family:monospace;margin-bottom:10px;line-height:1.8;white-space:pre-line}
+.ok{background:#e8f5e9;color:#2d7a4f;border:1px solid #a5d6a7}
+.er{background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0}
+.in{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9}
+/* Order card */
+.order-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;margin-bottom:10px;overflow:hidden;transition:opacity .3s}
+.order-card.done{opacity:.4}
+.order-head{padding:12px 14px;background:#f3e8ff;border-bottom:1.5px solid #e8dfd2;display:flex;align-items:flex-start;justify-content:space-between}
+.order-shop{font-size:14px;font-weight:800;color:#4a2f14}
+.order-driver{font-size:10px;color:#6e3da8;font-family:monospace;font-weight:700;margin-top:2px}
+.order-body{padding:12px 14px}
+.order-items{font-size:12px;font-family:monospace;background:#f5ede0;border-radius:8px;padding:8px 10px;line-height:1.9;margin-bottom:10px}
+.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;font-family:monospace}
+.b-pack{background:#f3e8ff;color:#6e3da8}
+.b-done{background:#e8f5e9;color:#2d7a4f}
+/* Confirm button states */
+.pack-btn{width:100%;padding:11px;border:none;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;background:#6e3da8;color:#fff;transition:all .2s}
+.pack-btn.done-state{background:#2d7a4f;cursor:default}
+/* Stats */
+.stats-row{display:flex;gap:8px;margin-bottom:10px}
+.stat-box{flex:1;background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:10px;text-align:center}
+.stat-n{font-size:22px;font-weight:900;color:#4a2f14}
+.stat-l{font-size:9px;color:#8a7a6a;font-family:monospace;text-transform:uppercase}
+.sticky-bottom{position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;background:#fff;border-top:2px solid #e8dfd2;padding:12px 14px;z-index:90}
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN ── -->
+<div id="loginScreen" class="login-wrap">
+  <div class="login-logo">📦</div>
+  <div class="login-title">Packaging</div>
+  <div class="login-sub">It's Baked · Packaging Portal</div>
+  <div class="login-card">
+    <label class="lbl">Staff Name</label>
+    <select id="loginName"><option value="">Select name…</option></select>
+    <label class="lbl">Password</label>
+    <input type="password" id="loginPass" placeholder="Password">
+    <button class="btn btn-purple" id="loginBtn" onclick="doLogin()">📦 Packaging Login</button>
+    <div id="loginErr" class="err" style="display:none">Wrong name or password.</div>
+  </div>
+</div>
+
+<!-- ── APP ── -->
+<div id="appScreen" style="display:none">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title">📦 Packaging</div>
+      <div class="topbar-sub" id="topName"></div>
+    </div>
+    <button class="logout-btn" onclick="doLogout()">Logout</button>
+  </div>
+
+  <div class="main">
+    <!-- Date selector + refresh -->
+    <div class="card">
+      <div class="lbl">Delivery Date</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="date" id="packDate" onchange="loadPackagingOrders()" style="flex:1;margin-bottom:0">
+        <button onclick="loadPackagingOrders()" style="background:#f5ede0;border:1.5px solid #e8dfd2;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;color:#4a2f14;font-family:-apple-system,sans-serif;flex-shrink:0">↻</button>
+      </div>
+    </div>
+
+    <div id="packMsg" style="display:none" class="msg in"></div>
+
+    <!-- Stats -->
+    <div id="packStats" style="display:none" class="stats-row">
+      <div class="stat-box"><div class="stat-n" id="sPending">0</div><div class="stat-l">To Pack</div></div>
+      <div class="stat-box"><div class="stat-n" id="sDone" style="color:#2d7a4f">0</div><div class="stat-l">Packed</div></div>
+      <div class="stat-box"><div class="stat-n" id="sTotal">0</div><div class="stat-l">Total</div></div>
+    </div>
+
+    <div id="ordersList"></div>
+  </div>
+
+  <!-- Sticky: Mark All Packed -->
+  <div class="sticky-bottom" id="allDoneBar" style="display:none">
+    <button class="btn btn-green" id="allDoneBtn" onclick="markAllPacked()" style="margin-bottom:0">
+      ✅ Mark All Packed &amp; Send to Driver — <span id="allDoneCount">0</span> Orders
+    </button>
+  </div>
+</div>
+
+<script>
+var staffName = '';
+var packOrders = [];  // customer_orders with status='packaging'
+var shopMap   = {};   // shop_id → shop record (for assigned_driver)
+var packedIds = new Set(); // locally tracked packed IDs
+
+// ── LOGIN ──
+(function(){
+  api({action:'getStaff'}).then(function(data){
+    var list = (Array.isArray(data)?data:[]).filter(function(s){ return s.active && (s.role==='packer'||s.role==='admin'||s.role==='super_admin'); });
+    var sel = document.getElementById('loginName');
+    sel.innerHTML = '<option value="">Select name…</option>' + list.map(function(s){ return '<option value="'+esc(s.name)+'">📦 '+esc(s.name)+'</option>'; }).join('');
+  });
+  var sn = sessionStorage.getItem('packStaff') || localStorage.getItem('packStaff');
+  if (sn) { staffName = sn; showApp(); }
+})();
+
+function doLogin(){
+  var name = document.getElementById('loginName').value;
+  var pass = document.getElementById('loginPass').value;
+  var btn  = document.getElementById('loginBtn');
+  var err  = document.getElementById('loginErr');
+  err.style.display='none';
+  if (!name){alert('Select your name');return;}
+  if (!pass){err.style.display='block';return;}
+  btn.disabled=true; btn.textContent='⏳ Checking…';
+  api({action:'staffLogin', name:name, password:pass}).then(function(data){
+    btn.disabled=false; btn.textContent='📦 Packaging Login';
+    var s = Array.isArray(data)&&data.length ? data[0] : null;
+    if (!s || (s.role!=='packer'&&s.role!=='admin'&&s.role!=='super_admin')){
+      err.style.display='block'; err.textContent=s?'Access denied for this role.':'Wrong password.'; return;
+    }
+    staffName = s.name;
+    sessionStorage.setItem('packStaff', staffName);
+    localStorage.setItem('packStaff', staffName);
+    showApp();
+  });
+}
+
+function doLogout(){
+  sessionStorage.removeItem('packStaff'); localStorage.removeItem('packStaff');
+  staffName=''; packOrders=[]; packedIds=new Set();
+  document.getElementById('appScreen').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+}
+
+// ── APP ──
+function showApp(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('appScreen').style.display='block';
+  document.getElementById('topName').textContent = staffName + ' · ' + new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'});
+  document.getElementById('packDate').value = tomorrowStr();
+  // Load shops first for driver assignment
+  api({action:'getShops'}).then(function(data){
+    shopMap={};
+    (Array.isArray(data)?data:[]).forEach(function(s){ shopMap[s.shop_id]=s; });
+    loadPackagingOrders();
+  });
+}
+
+function tomorrowStr(){
+  var d=new Date(); d.setDate(d.getDate()+1);
+  return d.getFullYear()+'-'+zp(d.getMonth()+1)+'-'+zp(d.getDate());
+}
+function zp(n){ return String(n).padStart(2,'0'); }
+
+// ── LOAD ORDERS ──
+function loadPackagingOrders(){
+  var date = document.getElementById('packDate').value;
+  if (!date) return;
+  var msg = document.getElementById('packMsg');
+  msg.textContent='⏳ Loading…';msg.className='msg in';msg.style.display='block';
+  document.getElementById('packStats').style.display='none';
+  document.getElementById('ordersList').innerHTML='';
+  document.getElementById('allDoneBar').style.display='none';
+  packedIds = new Set();
+
+  api({ action:'getCustomerOrders', delivery_date:date, status:'packaging' }).then(function(data){
+    packOrders = Array.isArray(data) ? data : [];
+    msg.style.display='none';
+    if (!packOrders.length){
+      msg.textContent='No orders ready for packaging on this date.\n(Kitchen needs to mark done first)';
+      msg.className='msg in'; msg.style.display='block'; return;
+    }
+    updateStats();
+    renderOrders();
+  });
+}
+
+function updateStats(){
+  var total   = packOrders.length;
+  var done    = packedIds.size;
+  var pending = total - done;
+  document.getElementById('sPending').textContent = pending;
+  document.getElementById('sDone').textContent    = done;
+  document.getElementById('sTotal').textContent   = total;
+  document.getElementById('packStats').style.display = 'flex';
+  document.getElementById('allDoneCount').textContent = total - done;
+  document.getElementById('allDoneBar').style.display = (pending > 0) ? 'block' : 'none';
+}
+
+// ── RENDER ──
+function renderOrders(){
+  var el = document.getElementById('ordersList');
+  el.innerHTML = packOrders.map(function(o){
+    var isPacked = packedIds.has(o.id);
+    var shop = shopMap[o.shop_id] || {};
+    var driver = shop.assigned_driver || 'Unassigned';
+    var pairs=[];
+    var items=(o.items||'').split(','); var qtys=(o.qty||'').split(',');
+    items.forEach(function(item,i){ if(item.trim()) pairs.push('<b>'+esc((qtys[i]||'')+'×')+'</b> '+esc(item.trim())); });
+    return '<div class="order-card'+(isPacked?' done':'')+'" id="oc-'+o.id+'">'+
+      '<div class="order-head">'+
+        '<div>'+
+          '<div class="order-shop">'+esc(o.shop_name)+'</div>'+
+          '<div class="order-driver">🚗 '+esc(driver)+'</div>'+
+        '</div>'+
+        '<span class="badge '+(isPacked?'b-done':'b-pack')+'" id="badge-'+o.id+'">'+(isPacked?'✅ Packed':'📦 To Pack')+'</span>'+
+      '</div>'+
+      '<div class="order-body">'+
+        '<div class="order-items">'+pairs.join('<br>')+'</div>'+
+        (o.note?'<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:8px">📝 '+esc(o.note)+'</div>':'')+
+        '<button class="pack-btn'+(isPacked?' done-state':'')+'" id="pbtn-'+o.id+'"'+
+          (isPacked?' disabled':' onclick="markOnePacked('+o.id+')"')+'>'+
+          (isPacked?'✅ Packed':'📦 Mark as Packed')+
+        '</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+// ── MARK ONE PACKED ──
+function markOnePacked(orderId){
+  var order = packOrders.find(function(o){ return o.id===orderId; });
+  if (!order) return;
+
+  var btn  = document.getElementById('pbtn-'+orderId);
+  btn.disabled=true; btn.textContent='⏳ Saving…';
+
+  var shop   = shopMap[order.shop_id] || {};
+  var driver = shop.assigned_driver || '';
+
+  apiPost({
+    action:'dispatchCustomerOrder',
+    id:            order.id,
+    shop_id:       order.shop_id,
+    shop_name:     order.shop_name,
+    driver:        driver,
+    items:         order.items,
+    qty:           order.qty,
+    note:          order.note,
+    delivery_date: order.delivery_date
+  }).then(function(res){
+    if (res && res.ok){
+      packedIds.add(orderId);
+      btn.textContent='✅ Packed'; btn.className='pack-btn done-state';
+      var badge = document.getElementById('badge-'+orderId);
+      if (badge){ badge.className='badge b-done'; badge.textContent='✅ Packed'; }
+      document.getElementById('oc-'+orderId).classList.add('done');
+      updateStats();
+    } else {
+      btn.disabled=false; btn.textContent='📦 Mark as Packed';
+      alert('Failed to save: '+(res&&res.error||'try again'));
+    }
+  });
+}
+
+// ── MARK ALL PACKED ──
+function markAllPacked(){
+  var remaining = packOrders.filter(function(o){ return !packedIds.has(o.id); });
+  if (!remaining.length) return;
+  if (!confirm('Mark all '+remaining.length+' remaining orders as packed?\nThey will be sent to the driver queue.')) return;
+
+  var btn = document.getElementById('allDoneBtn');
+  btn.disabled=true; btn.textContent='⏳ Saving…';
+
+  var promises = remaining.map(function(o){
+    var shop   = shopMap[o.shop_id] || {};
+    var driver = shop.assigned_driver || '';
+    return apiPost({
+      action:'dispatchCustomerOrder',
+      id:            o.id,
+      shop_id:       o.shop_id,
+      shop_name:     o.shop_name,
+      driver:        driver,
+      items:         o.items,
+      qty:           o.qty,
+      note:          o.note,
+      delivery_date: o.delivery_date
+    }).then(function(res){
+      if (res&&res.ok) packedIds.add(o.id);
+    });
+  });
+
+  Promise.all(promises).then(function(){
+    btn.disabled=false; btn.textContent='✅ Mark All Packed & Send to Driver — 0 Orders';
+    updateStats();
+    renderOrders();
+  });
+}
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+</script>
+</body>
+</html>

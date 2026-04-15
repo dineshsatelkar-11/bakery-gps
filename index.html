@@ -64,6 +64,13 @@ select,input{width:100%;padding:13px;border:1.5px solid #e8dfd2;border-radius:12
   <div class="err" id="a-err">Wrong name or password.</div>
 </div>
 
+<div class="divider">or</div>
+
+<div class="card">
+  <div class="lbl" id="lbl-customer">Customer Order Portal</div>
+  <button class="btn" style="background:#2d7a4f;color:#fff;margin-bottom:0" onclick="goto('order')">🛒 Place / View Order</button>
+</div>
+
 <script>
 // Register Service Worker for PWA
 if('serviceWorker' in navigator) {
@@ -134,7 +141,10 @@ function staffLogin(){
     localStorage.setItem('staffRole', s.role);
     localStorage.setItem('staffTabs', s.tabs || '[]');
     localStorage.setItem('staffNamePersist', s.name);
-    goto('admin');
+    // Route chef → kitchen, packer → packaging, others → admin
+    if (s.role === 'chef') { localStorage.setItem('kitchenStaff', s.name); goto('kitchen'); }
+    else if (s.role === 'packer') { localStorage.setItem('packStaff', s.name); goto('packaging'); }
+    else goto('admin');
   });
 }
 
@@ -185,7 +195,9 @@ if(!_r && localStorage.getItem('staffRole')){
   _r = _sr;
 }
 if(_r==='driver') goto('driver');
-if(_r==='super_admin'||_r==='admin'||_r==='assistant'||_r==='chef'||_r==='packer') goto('admin');
+if(_r==='chef') goto('kitchen');
+if(_r==='packer') goto('packaging');
+if(_r==='super_admin'||_r==='admin'||_r==='assistant') goto('admin');
 </script>
 </body>
 </html>

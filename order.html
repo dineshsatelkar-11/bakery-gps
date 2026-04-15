@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Place Order — It's Baked</title>
+<script src="config.js"></script>
+<script src="api.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:440px;margin:0 auto;min-height:100vh}
+/* ── Login ── */
+.login-wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 20px}
+.login-logo{font-size:52px;margin-bottom:6px}
+.login-title{font-size:22px;font-weight:900;color:#4a2f14;text-align:center}
+.login-sub{font-size:12px;color:#8a7a6a;font-family:monospace;margin-bottom:28px;margin-top:2px;text-align:center}
+.login-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:20px;padding:22px;width:100%;max-width:360px}
+.lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:6px;text-transform:uppercase;display:block}
+input[type=text],input[type=password]{width:100%;padding:13px 14px;border:1.5px solid #e8dfd2;border-radius:12px;font-size:15px;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:12px}
+.btn{width:100%;padding:14px;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif}
+.btn-brown{background:#4a2f14;color:#fff}
+.btn-green{background:#2d7a4f;color:#fff}
+.btn-grey{background:#e8dfd2;color:#4a2f14}
+.err{color:#c8382a;font-size:12px;font-family:monospace;text-align:center;margin-top:8px}
+/* ── App ── */
+.topbar{background:#4a2f14;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:99}
+.topbar-title{color:#fff;font-size:15px;font-weight:800}
+.topbar-sub{color:#c8a87a;font-size:11px;font-family:monospace;margin-top:1px}
+.logout-btn{background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 11px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif}
+.tabs{display:flex;background:#fff;border-bottom:2px solid #e8dfd2;position:sticky;top:53px;z-index:98}
+.tab{flex:1;padding:12px 4px;border:none;background:none;font-size:11px;font-weight:700;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;border-bottom:3px solid transparent;margin-bottom:-2px}
+.tab.on{color:#4a2f14;border-bottom-color:#4a2f14}
+.page{display:none;padding:14px 14px 100px}.page.on{display:block}
+.card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:14px;margin-bottom:10px}
+.msg{padding:11px 14px;border-radius:12px;font-size:12px;font-weight:600;font-family:monospace;margin-bottom:10px;line-height:1.8;white-space:pre-line}
+.ok{background:#e8f5e9;color:#2d7a4f;border:1px solid #a5d6a7}
+.er{background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0}
+.in{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9}
+.cat-label{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;text-transform:uppercase;padding:10px 0 6px;border-top:1.5px solid #e8dfd2;margin-top:4px}
+.cat-label:first-child{border-top:none;margin-top:0}
+.prod-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f5ede0}
+.prod-row:last-child{border-bottom:none}
+.prod-info{flex:1;min-width:0;margin-right:12px}
+.prod-name{font-size:13px;font-weight:700;color:#1e1611}
+.prod-meta{font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px}
+.qty-ctrl{display:flex;align-items:center;gap:0;flex-shrink:0}
+.qty-btn{width:32px;height:32px;border:1.5px solid #e8dfd2;background:#fff;border-radius:8px;font-size:18px;font-weight:700;cursor:pointer;color:#4a2f14;display:flex;align-items:center;justify-content:center;line-height:1;font-family:-apple-system,sans-serif}
+.qty-btn:active{background:#f5ede0}
+.qty-val{width:36px;text-align:center;font-size:15px;font-weight:800;color:#4a2f14;font-family:monospace}
+.order-total-bar{position:fixed;bottom:0;left:0;right:0;max-width:440px;margin:0 auto;background:#fff;border-top:2px solid #e8dfd2;padding:12px 14px;z-index:90}
+.hist-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;padding:12px 14px;margin-bottom:8px}
+.hist-date{font-size:12px;font-weight:800;color:#4a2f14}
+.hist-status{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;font-family:monospace}
+.s-pending{background:#fff8e1;color:#7a4800}
+.s-approved{background:#e3f2fd;color:#1565c0}
+.s-kitchen{background:#fff3e0;color:#c8864a}
+.s-packaging{background:#f3e8ff;color:#6e3da8}
+.s-dispatched{background:#e8f5e9;color:#2d7a4f}
+.s-rejected{background:#fde8e8;color:#c8382a}
+textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:13px;color:#1e1611;background:#f5ede0;outline:none;resize:none;font-family:-apple-system,sans-serif;line-height:1.6;margin-bottom:8px}
+</style>
+</head>
+<body>
+
+<!-- ── LOGIN SCREEN ── -->
+<div id="loginScreen" class="login-wrap">
+  <div class="login-logo">🥖</div>
+  <div class="login-title">It's Baked</div>
+  <div class="login-sub">Customer Order Portal</div>
+  <div class="login-card">
+    <label class="lbl">Username / Mobile</label>
+    <input type="text" id="loginUser" placeholder="Enter your username" autocomplete="username" autocapitalize="none">
+    <label class="lbl">Password</label>
+    <input type="password" id="loginPass" placeholder="Enter password" autocomplete="current-password">
+    <button class="btn btn-brown" id="loginBtn" onclick="doLogin()">🔑 Login</button>
+    <div id="loginErr" class="err" style="display:none">Invalid username or password.</div>
+  </div>
+</div>
+
+<!-- ── APP SCREEN ── -->
+<div id="appScreen" style="display:none">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title">🥖 <span id="topShopName"></span></div>
+      <div class="topbar-sub" id="topDate"></div>
+    </div>
+    <button class="logout-btn" onclick="doLogout()">Logout</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab on" id="tb-order" onclick="showTab('order')">🛒 New Order</button>
+    <button class="tab" id="tb-history" onclick="showTab('history')">📋 My Orders</button>
+  </div>
+
+  <!-- ORDER TAB -->
+  <div class="page on" id="pg-order">
+    <div class="card" style="margin-bottom:10px">
+      <div class="lbl">Delivery Date</div>
+      <div style="font-size:16px;font-weight:800;color:#4a2f14" id="delivDate"></div>
+      <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:2px">Orders are for next day delivery</div>
+    </div>
+
+    <div id="orderMsg" style="display:none" class="msg ok"></div>
+
+    <div class="card" id="productsCard">
+      <div class="lbl">Select Products</div>
+      <div id="productsList"><div style="padding:10px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading products…</div></div>
+    </div>
+
+    <div class="card">
+      <div class="lbl">Note / Special Instructions</div>
+      <textarea id="orderNote" rows="2" placeholder="e.g. leave at reception…"></textarea>
+    </div>
+  </div>
+
+  <!-- HISTORY TAB -->
+  <div class="page" id="pg-history">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-size:13px;font-weight:800;color:#4a2f14">Your Past Orders</div>
+      <button class="btn-sm" onclick="loadHistory()" style="background:#f5ede0;border:1.5px solid #e8dfd2;border-radius:10px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;color:#4a2f14;font-family:-apple-system,sans-serif">↻ Refresh</button>
+    </div>
+    <div id="historyList"><div style="padding:20px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div></div>
+  </div>
+
+  <!-- Sticky bottom bar (order tab) -->
+  <div class="order-total-bar" id="orderBar" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div style="font-size:12px;font-weight:700;color:#4a2f14"><span id="totalItems">0</span> items selected</div>
+      <div style="font-size:11px;color:#8a7a6a;font-family:monospace">For: <span id="barDate"></span></div>
+    </div>
+    <button class="btn btn-green" id="submitBtn" onclick="submitOrder()">📤 Place Order</button>
+  </div>
+</div>
+
+<script>
+// ── SESSION STATE ──
+var session = null; // { shop_id, shop_name, mobile, product_group_id }
+var products = [];  // active products for this customer's group
+var qty = {};       // { product_id: qty }
+
+// Restore session from localStorage
+(function(){
+  var s = localStorage.getItem('custSession');
+  if (s) { try { session = JSON.parse(s); } catch(e) {} }
+  if (session) showApp();
+})();
+
+// ── AUTH ──
+function doLogin(){
+  var user = document.getElementById('loginUser').value.trim();
+  var pass = document.getElementById('loginPass').value;
+  var btn  = document.getElementById('loginBtn');
+  var err  = document.getElementById('loginErr');
+  err.style.display = 'none';
+  if (!user || !pass) { err.style.display = 'block'; err.textContent = 'Enter username and password.'; return; }
+  btn.disabled = true; btn.textContent = '⏳ Logging in…';
+  api({ action: 'customerLogin', username: user, password: pass }).then(function(data){
+    btn.disabled = false; btn.textContent = '🔑 Login';
+    var s = Array.isArray(data) && data.length ? data[0] : null;
+    if (!s) { err.style.display = 'block'; err.textContent = 'Invalid username or password.'; return; }
+    session = s;
+    localStorage.setItem('custSession', JSON.stringify(session));
+    showApp();
+  }).catch(function(){ btn.disabled=false; btn.textContent='🔑 Login'; err.style.display='block'; });
+}
+
+document.getElementById('loginPass').addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
+
+function doLogout(){
+  localStorage.removeItem('custSession');
+  session = null; products = []; qty = {};
+  document.getElementById('appScreen').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+}
+
+// ── APP INIT ──
+function showApp(){
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appScreen').style.display = 'block';
+  document.getElementById('topShopName').textContent = session.shop_name;
+
+  var tomorrow = tomorrowStr();
+  document.getElementById('delivDate').textContent = fmtDate(tomorrow);
+  document.getElementById('topDate').textContent = 'Ordering for: ' + fmtDate(tomorrow);
+  document.getElementById('barDate').textContent = fmtDate(tomorrow);
+
+  loadProducts();
+  loadHistory();
+}
+
+// ── HELPERS ──
+function tomorrowStr(){
+  var d = new Date(); d.setDate(d.getDate()+1);
+  return d.getFullYear()+'-'+zp(d.getMonth()+1)+'-'+zp(d.getDate());
+}
+function zp(n){ return String(n).padStart(2,'0'); }
+function fmtDate(s){ var d=new Date(s+'T00:00:00'); return d.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short',year:'numeric'}); }
+
+// ── PRODUCTS ──
+function loadProducts(){
+  var el = document.getElementById('productsList');
+  el.innerHTML = '<div style="padding:10px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
+  api({ action:'getProductsByGroup', group_id: session.product_group_id }).then(function(data){
+    products = Array.isArray(data) ? data : [];
+    qty = {};
+    if (!products.length){
+      el.innerHTML = '<div style="padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace;text-align:center">No products available. Contact admin.</div>';
+      return;
+    }
+    renderProducts();
+  });
+}
+
+function renderProducts(){
+  var el = document.getElementById('productsList');
+  // Group by category
+  var cats = {};
+  products.forEach(function(p){
+    var c = p.category || 'Other';
+    if (!cats[c]) cats[c] = [];
+    cats[c].push(p);
+  });
+  var html = '';
+  Object.keys(cats).sort().forEach(function(cat){
+    html += '<div class="cat-label">'+esc(cat)+'</div>';
+    cats[cat].forEach(function(p){
+      var q = qty[p.product_id] || 0;
+      html += '<div class="prod-row">'+
+        '<div class="prod-info">'+
+          '<div class="prod-name">'+esc(p.name)+'</div>'+
+          '<div class="prod-meta">'+(p.unit||'Pieces')+(p.price?' · ₹'+p.price:'')+' each</div>'+
+        '</div>'+
+        '<div class="qty-ctrl">'+
+          '<button class="qty-btn" onclick="changeQty(\''+p.product_id+'\',-1)">−</button>'+
+          '<div class="qty-val" id="qv-'+p.product_id+'">'+q+'</div>'+
+          '<button class="qty-btn" onclick="changeQty(\''+p.product_id+'\',1)">+</button>'+
+        '</div>'+
+      '</div>';
+    });
+  });
+  el.innerHTML = html;
+  updateBar();
+}
+
+function changeQty(pid, delta){
+  qty[pid] = Math.max(0, (qty[pid] || 0) + delta);
+  var el = document.getElementById('qv-'+pid);
+  if (el) el.textContent = qty[pid];
+  updateBar();
+}
+
+function totalItemCount(){
+  return Object.values(qty).reduce(function(s,v){ return s+v; }, 0);
+}
+
+function updateBar(){
+  var total = totalItemCount();
+  document.getElementById('totalItems').textContent = total;
+  document.getElementById('orderBar').style.display = total > 0 ? 'block' : 'none';
+}
+
+// ── SUBMIT ORDER ──
+function submitOrder(){
+  var selected = products.filter(function(p){ return (qty[p.product_id]||0) > 0; });
+  if (!selected.length){ alert('Select at least one product.'); return; }
+
+  var items = selected.map(function(p){ return p.name; }).join(',');
+  var qtys  = selected.map(function(p){ return qty[p.product_id]; }).join(',');
+  var note  = document.getElementById('orderNote').value.trim();
+  var date  = tomorrowStr();
+
+  var btn = document.getElementById('submitBtn');
+  btn.disabled = true; btn.textContent = '⏳ Placing order…';
+
+  var msgEl = document.getElementById('orderMsg');
+  msgEl.style.display = 'none';
+
+  apiPost({
+    action: 'placeCustomerOrder',
+    shop_id: session.shop_id, shop_name: session.shop_name,
+    delivery_date: date, items: items, qty: qtys, note: note
+  }).then(function(res){
+    btn.disabled = false; btn.textContent = '📤 Place Order';
+    if (res && res.ok){
+      // Reset
+      qty = {};
+      renderProducts();
+      document.getElementById('orderNote').value = '';
+      msgEl.textContent = '✅ Order placed! Delivery: '+fmtDate(date);
+      msgEl.className = 'msg ok'; msgEl.style.display = 'block';
+      loadHistory();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      msgEl.textContent = '❌ Failed to place order: '+(res&&res.error||'try again');
+      msgEl.className = 'msg er'; msgEl.style.display = 'block';
+    }
+  });
+}
+
+// ── HISTORY ──
+function loadHistory(){
+  var el = document.getElementById('historyList');
+  el.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
+  api({ action:'getCustomerOrders', shop_id: session.shop_id, limit: 30 }).then(function(data){
+    var list = Array.isArray(data) ? data : [];
+    if (!list.length){
+      el.innerHTML = '<div style="padding:30px;text-align:center;font-size:13px;color:#8a7a6a;font-family:monospace">No orders yet.</div>';
+      return;
+    }
+    el.innerHTML = list.map(function(o){
+      var itemPairs = [];
+      var iArr = (o.items||'').split(',');
+      var qArr = (o.qty||'').split(',');
+      iArr.forEach(function(item,i){ if(item.trim()) itemPairs.push(qArr[i]+'× '+item.trim()); });
+      var statusLabel = {pending:'⏳ Pending Approval',approved:'✅ Approved',rejected:'❌ Rejected',kitchen:'👨‍🍳 In Kitchen',packaging:'📦 Packaging',dispatched:'🚚 Out for Delivery'};
+      var statusClass = {pending:'s-pending',approved:'s-approved',rejected:'s-rejected',kitchen:'s-kitchen',packaging:'s-packaging',dispatched:'s-dispatched'};
+      return '<div class="hist-card">'+
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">'+
+          '<div>'+
+            '<div class="hist-date">Delivery: '+fmtDate(o.delivery_date)+'</div>'+
+            '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px">Ordered: '+new Date(o.created_at).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+'</div>'+
+          '</div>'+
+          '<span class="hist-status '+(statusClass[o.status]||'s-pending')+'">'+(statusLabel[o.status]||o.status)+'</span>'+
+        '</div>'+
+        '<div style="font-size:12px;font-family:monospace;background:#f5ede0;border-radius:8px;padding:8px 10px;line-height:1.8">'+itemPairs.join('<br>')+'</div>'+
+        (o.note?'<div style="font-size:11px;color:#8a7a6a;margin-top:6px;font-family:monospace">📝 '+esc(o.note)+'</div>':'')+
+        (o.admin_note?'<div style="font-size:11px;color:#1565c0;margin-top:4px;font-family:monospace">💬 Admin: '+esc(o.admin_note)+'</div>':'')+
+      '</div>';
+    }).join('');
+  });
+}
+
+// ── TABS ──
+function showTab(t){
+  ['order','history'].forEach(function(x){
+    document.getElementById('pg-'+x).classList.toggle('on', x===t);
+    document.getElementById('tb-'+x).classList.toggle('on', x===t);
+  });
+  document.getElementById('orderBar').style.display = t==='order' && totalItemCount()>0 ? 'block' : 'none';
+}
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+</script>
+</body>
+</html>

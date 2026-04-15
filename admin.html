@@ -117,8 +117,10 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   <button class="tab"    id="tb-delivery"  onclick="showTab('delivery')">🚚 Delivery</button>
   <button class="tab"    id="tb-routes"    onclick="showTab('routes')">🗺 Routes</button>
   <button class="tab"    id="tb-customers" onclick="showTab('customers')">🏪 Customers</button>
-  <button class="tab"    id="tb-products"  onclick="showTab('products')">📦 Products</button>
-  <button class="tab"    id="tb-drivers"   onclick="showTab('drivers')">🚗 Drivers</button>
+  <button class="tab"    id="tb-cust-orders" onclick="showTab('cust-orders')">🛒 Cust Orders</button>
+  <button class="tab"    id="tb-products"   onclick="showTab('products')">📦 Products</button>
+  <button class="tab"    id="tb-groups"     onclick="showTab('groups')">🏷 Groups</button>
+  <button class="tab"    id="tb-drivers"    onclick="showTab('drivers')">🚗 Drivers</button>
   <button class="tab"    id="tb-users"     onclick="showTab('users')">👥 Users</button>
   <button class="tab"    id="tb-gps"       onclick="showTab('gps')">📍 GPS</button>
   <button class="tab"    id="tb-notify"    onclick="showTab('notify')">🔔 Notify</button>
@@ -462,6 +464,35 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   <div id="audit-result"></div>
 </div>
 
+<!-- CUSTOMER ORDERS (approval pipeline) -->
+<div class="page" id="pg-cust-orders">
+  <div class="card">
+    <div class="lbl">Filter Orders</div>
+    <div class="filter-row">
+      <input type="date" id="co-date" onchange="loadCustOrders()" style="margin-bottom:0">
+      <select id="co-status" onchange="loadCustOrders()" style="margin-bottom:0">
+        <option value="">All Statuses</option>
+        <option value="pending">⏳ Pending</option>
+        <option value="approved">✅ Approved / In Kitchen</option>
+        <option value="rejected">❌ Rejected</option>
+        <option value="packaging">📦 Packaging</option>
+        <option value="dispatched">🚚 Dispatched</option>
+      </select>
+    </div>
+    <button class="btn btn-grey" onclick="loadCustOrders()" style="margin-top:4px">↻ Refresh</button>
+  </div>
+  <div class="stats-grid" id="coStats"></div>
+  <div id="coMsg" style="display:none" class="msg in"></div>
+  <div id="coList"></div>
+</div>
+
+<!-- PRODUCT GROUPS -->
+<div class="page" id="pg-groups">
+  <div class="stats-grid" id="groupStats"></div>
+  <button class="btn btn-brown" onclick="openAddGroup()">➕ Add Product Group</button>
+  <div id="groupsList"></div>
+</div>
+
 <!-- APPROVE CUSTOMER MODAL -->
 <div class="modal-bg" id="approveModal" style="display:none" onclick="if(event.target===this)closeApproveModal()">
   <div class="modal">
@@ -525,6 +556,13 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
     <div class="lbl">GPS Longitude</div><input type="text" id="cm-lng" placeholder="73.920456">
     <button class="btn btn-blue" onclick="pickGPS()">📍 Use My Current Location</button>
     <div id="cm-gps-msg" style="display:none" class="msg in"></div>
+    <div style="border-top:1.5px dashed #e8dfd2;margin:12px 0 10px;padding-top:10px">
+      <div style="font-size:11px;font-weight:900;color:#4a2f14;margin-bottom:10px;letter-spacing:.5px">🛒 CUSTOMER PORTAL LOGIN</div>
+      <div class="lbl">Login Username</div><input type="text" id="cm-login-user" placeholder="e.g. teapost_baner" autocomplete="off" autocapitalize="none">
+      <div class="lbl">Login Password</div><input type="text" id="cm-login-pass" placeholder="Set a password (min 4 chars)" autocomplete="off">
+      <div class="lbl">Product Group</div>
+      <select id="cm-group"><option value="">— No group assigned —</option></select>
+    </div>
     <div id="cm-msg" style="display:none" class="msg ok"></div>
     <!-- Delivery history — shown only when editing an existing customer -->
     <div id="cm-hist-wrap" style="display:none;margin-bottom:12px">
@@ -547,9 +585,49 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
     <div class="lbl">Unit Price (₹)</div><input type="text" id="pm-price" placeholder="18">
     <div class="lbl">Unit</div><input type="text" id="pm-unit" placeholder="Pieces">
     <div class="lbl">Notes</div><textarea id="pm-desc" placeholder="Size, specs…"></textarea>
+    <div class="lbl">Product Group</div>
+    <select id="pm-group"><option value="">— No group —</option></select>
+    <div class="lbl">Status</div>
+    <select id="pm-active"><option value="true">✅ Active (visible to customers)</option><option value="false">❌ Inactive (hidden)</option></select>
     <div id="pm-msg" style="display:none" class="msg ok"></div>
     <button class="btn btn-brown" onclick="saveProduct()">💾 Save Product</button>
     <button class="btn btn-grey" style="margin-bottom:0" onclick="closeProductModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- CUSTOMER ORDER EDIT MODAL -->
+<div class="modal-bg" id="coModal" style="display:none" onclick="if(event.target===this)closeCoModal()">
+  <div class="modal">
+    <div class="modal-title">Customer Order</div>
+    <input type="hidden" id="com-id">
+    <div id="com-info" style="background:#fff;border:1.5px solid #e8dfd2;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;font-family:monospace;line-height:1.9"></div>
+    <div class="lbl">Items (comma-separated)</div>
+    <input type="text" id="com-items" placeholder="VEG PUFF, White Bread">
+    <div class="lbl">Quantities (comma-separated, same order)</div>
+    <input type="text" id="com-qty" placeholder="10, 5">
+    <div class="lbl">Customer Note</div>
+    <textarea id="com-note" rows="2" style="min-height:50px;resize:none"></textarea>
+    <div class="lbl">Admin Note (visible to customer)</div>
+    <input type="text" id="com-admin-note" placeholder="e.g. partial qty approved">
+    <div id="com-msg" style="display:none" class="msg ok"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <button class="btn btn-green" style="margin-bottom:0" onclick="saveCustOrder('approved')">✅ Approve</button>
+      <button class="btn btn-del" style="border:none;border-radius:14px;padding:13px;font-size:13px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;background:#fde8e8;color:#c8382a;margin-bottom:0" onclick="saveCustOrder('rejected')">❌ Reject</button>
+    </div>
+    <button class="btn btn-grey" style="margin-bottom:0" onclick="closeCoModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- PRODUCT GROUP MODAL -->
+<div class="modal-bg" id="groupModal" style="display:none" onclick="if(event.target===this)closeGroupModal()">
+  <div class="modal">
+    <div class="modal-title" id="groupModalTitle">Add Product Group</div>
+    <input type="hidden" id="gm-id">
+    <div class="lbl">Group Name *</div>
+    <input type="text" id="gm-name" placeholder="e.g. Tea Post Products, Bakery Pack">
+    <div id="gm-msg" style="display:none" class="msg ok"></div>
+    <button class="btn btn-brown" onclick="saveGroup()">💾 Save Group</button>
+    <button class="btn btn-grey" style="margin-bottom:0" onclick="closeGroupModal()">Cancel</button>
   </div>
 </div>
 
@@ -704,7 +782,7 @@ var _allowedTabs = _staffRole === 'super_admin' ? null : JSON.parse(sessionStora
 (function(){var r=sessionStorage.getItem('role');if(['super_admin','admin','assistant','chef','packer'].indexOf(r)<0)goto('');})();
 
 function initTabVisibility(){
-  var allTabKeys = ['orders','approve','queue','summary','delivery','routes','customers','products','drivers','gps','users','notify','cleanup','audit'];
+  var allTabKeys = ['orders','approve','queue','summary','delivery','routes','customers','cust-orders','products','groups','drivers','gps','users','notify','cleanup','audit'];
   allTabKeys.forEach(function(t){
     var btn = document.getElementById('tb-'+t);
     if(!btn) return;
@@ -767,18 +845,20 @@ document.getElementById('logoutBtn').onclick=function(){
 
 /* ── TAB SWITCHER ── */
 function showTab(t){
-  ['orders','approve','queue','summary','delivery','routes','customers','products','drivers','gps','users','notify','cleanup','audit'].forEach(function(x){
+  ['orders','approve','queue','summary','delivery','routes','customers','cust-orders','products','groups','drivers','gps','users','notify','cleanup','audit'].forEach(function(x){
     var pg=document.getElementById('pg-'+x); if(pg) pg.classList.toggle('on',x===t);
     var tb=document.getElementById('tb-'+x); if(tb) tb.classList.toggle('on',x===t);
   });
   if(t==='summary')   setLatestDate('f-sum-date','orders','',loadSummary);
   if(t==='delivery')  setLatestDate('f-del-date','deliveries',document.getElementById('f-del-driver').value,loadDeliveries);
   if(t==='routes')    setLatestDate('f-rt-date','routes',document.getElementById('f-rt-driver').value,loadRoutes);
-  if(t==='gps')       loadGPS();
-  if(t==='approve')   renderApproveQueue();
-  if(t==='queue')     loadQueue();
-  if(t==='customers') loadCustomers();
-  if(t==='products')  loadProducts();
+  if(t==='gps')         loadGPS();
+  if(t==='approve')     renderApproveQueue();
+  if(t==='queue')       loadQueue();
+  if(t==='customers')   loadCustomers();
+  if(t==='products')    loadProducts();
+  if(t==='cust-orders') { document.getElementById('co-date').value=todayStr(); loadCustOrders(); }
+  if(t==='groups')      loadGroups();
   if(t==='drivers')   loadDrivers().then(renderDrivers);
   if(t==='users')     { loadStaff().then(renderStaff); loadFeatureSettings(); }
   if(t==='notify')    loadNotifyDriverList();
@@ -1934,8 +2014,9 @@ function renderCustomers(){
 function openAddCustomer(){
   document.getElementById('custModalTitle').textContent='Add Customer';
   document.getElementById('custModalSub').textContent='';
-  ['cm-id','cm-cust-id','cm-name','cm-address','cm-area','cm-mobile','cm-flag','cm-lat','cm-lng'].forEach(function(id){document.getElementById(id).value='';});
+  ['cm-id','cm-cust-id','cm-name','cm-address','cm-area','cm-mobile','cm-flag','cm-lat','cm-lng','cm-login-user','cm-login-pass'].forEach(function(id){document.getElementById(id).value='';});
   document.getElementById('cm-driver').value='';
+  document.getElementById('cm-group').value='';
   document.getElementById('cm-msg').style.display='none';
   document.getElementById('cm-gps-msg').style.display='none';
   document.getElementById('cm-hist-wrap').style.display='none';
@@ -1954,6 +2035,9 @@ function openEditCustomer(c){
   document.getElementById('cm-flag').value=c.flag||'';
   document.getElementById('cm-lat').value=c.lat||'';
   document.getElementById('cm-lng').value=c.lng||'';
+  document.getElementById('cm-login-user').value=c.login_username||'';
+  document.getElementById('cm-login-pass').value=''; // never pre-fill password
+  document.getElementById('cm-group').value=c.product_group_id||'';
   document.getElementById('cm-msg').style.display='none';
   document.getElementById('cm-gps-msg').style.display='none';
   // Load delivery history
@@ -2019,6 +2103,9 @@ function saveCustomer(){
   var now=new Date().toLocaleString('en-IN');
   msg.textContent='Saving…';msg.className='msg in';msg.style.display='block';
   var assignedDriver=document.getElementById('cm-driver').value||'';
+  var loginUser=document.getElementById('cm-login-user').value.trim();
+  var loginPass=document.getElementById('cm-login-pass').value.trim();
+  var groupId=document.getElementById('cm-group').value||null;
   apiPost({action:existing?'updateShop':'addShop',shop_id:cid,customer_id:cid,name:name,
     address:document.getElementById('cm-address').value.trim(),area:document.getElementById('cm-area').value.trim(),
     assigned_driver:assignedDriver,
@@ -2027,6 +2114,12 @@ function saveCustomer(){
     last_updated_by:'Admin',last_updated_at:now
   }).then(function(res){
     if(res&&res.ok){
+      // Save login credentials + group separately
+      var loginBody={action:'updateShopLogin',shop_id:cid,product_group_id:groupId?parseInt(groupId):null};
+      if(loginUser) loginBody.login_username=loginUser;
+      if(loginPass) loginBody.login_password=loginPass;
+      apiPost(loginBody);
+
       msg.textContent='✅ Saved!';msg.className='msg ok';
       // Notify driver when shop is added or reassigned
       if(assignedDriver){
@@ -2167,6 +2260,8 @@ function renderProducts(){
 function openAddProduct(){
   document.getElementById('productModalTitle').textContent='Add Product';
   ['pm-id','pm-name','pm-pid','pm-cat','pm-price','pm-unit','pm-desc'].forEach(function(id){document.getElementById(id).value='';});
+  document.getElementById('pm-group').value='';
+  document.getElementById('pm-active').value='true';
   document.getElementById('pm-msg').style.display='none';
   document.getElementById('productModal').style.display='flex';
 }
@@ -2179,6 +2274,8 @@ function openEditProduct(p){
   document.getElementById('pm-price').value=p.price||'';
   document.getElementById('pm-unit').value=p.unit||'';
   document.getElementById('pm-desc').value=p.description||'';
+  document.getElementById('pm-group').value=p.group_id||'';
+  document.getElementById('pm-active').value=p.active===false?'false':'true';
   document.getElementById('pm-msg').style.display='none';
   document.getElementById('productModal').style.display='flex';
 }
@@ -2189,7 +2286,8 @@ function saveProduct(){
   var id=document.getElementById('pm-id').value;
   var msg=document.getElementById('pm-msg');
   msg.textContent='Saving…';msg.className='msg in';msg.style.display='block';
-  apiPost({action:id?'updateProduct':'addProduct',product_id:document.getElementById('pm-pid').value.trim()||id,name:name,category:document.getElementById('pm-cat').value.trim(),price:document.getElementById('pm-price').value.trim(),unit:document.getElementById('pm-unit').value.trim(),description:document.getElementById('pm-desc').value.trim()})
+  var gid=document.getElementById('pm-group').value; var actVal=document.getElementById('pm-active').value;
+  apiPost({action:id?'updateProduct':'addProduct',product_id:document.getElementById('pm-pid').value.trim()||id,name:name,category:document.getElementById('pm-cat').value.trim(),price:document.getElementById('pm-price').value.trim(),unit:document.getElementById('pm-unit').value.trim(),description:document.getElementById('pm-desc').value.trim(),group_id:gid?parseInt(gid):null,active:actVal!=='false'})
   .then(function(res){
     if(res&&res.ok){msg.textContent='✅ Saved!';msg.className='msg ok';setTimeout(function(){closeProductModal();loadProducts();},600);}
     else{msg.textContent='❌ '+(res.error||'Failed');msg.className='msg er';}
@@ -3034,17 +3132,209 @@ function deleteStaff(id, name){
   });
 }
 
+/* ── PRODUCT GROUPS ── */
+var allGroups = [];
+
+function loadGroups(){
+  api({action:'getProductGroups'}).then(function(data){
+    allGroups = Array.isArray(data) ? data : [];
+    document.getElementById('groupStats').innerHTML =
+      '<div class="stat"><div class="stat-n">'+allGroups.length+'</div><div class="stat-l">Groups</div></div>';
+    renderGroups();
+    populateGroupSelects();
+  });
+}
+
+function renderGroups(){
+  var el = document.getElementById('groupsList');
+  if (!allGroups.length){
+    el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No product groups yet. Add one above.</div>';
+    return;
+  }
+  el.innerHTML = allGroups.map(function(g){
+    var prodCount = allProducts.filter(function(p){ return p.group_id == g.id; }).length;
+    return '<div class="item-card">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center">'+
+        '<div>'+
+          '<div style="font-size:14px;font-weight:800;color:#4a2f14">'+esc(g.name)+'</div>'+
+          '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:3px">'+prodCount+' product'+(prodCount!==1?'s':'')+'</div>'+
+        '</div>'+
+        '<div style="display:flex;gap:8px">'+
+          '<button class="btn-sm btn-edit" onclick=\'openEditGroup('+esc(JSON.stringify(g))+')\'>✏️ Edit</button>'+
+          '<button class="btn-sm btn-del" onclick="delGroup(\''+g.id+'\',\''+esc(g.name)+'\')">🗑 Delete</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+function populateGroupSelects(){
+  var opts = '<option value="">— No group —</option>' + allGroups.map(function(g){ return '<option value="'+g.id+'">'+esc(g.name)+'</option>'; }).join('');
+  var pmg = document.getElementById('pm-group'); if(pmg) pmg.innerHTML = opts;
+  var cmg = document.getElementById('cm-group'); if(cmg) cmg.innerHTML = '<option value="">— No group assigned —</option>' + allGroups.map(function(g){ return '<option value="'+g.id+'">'+esc(g.name)+'</option>'; }).join('');
+}
+
+function openAddGroup(){
+  document.getElementById('groupModalTitle').textContent = 'Add Product Group';
+  document.getElementById('gm-id').value = '';
+  document.getElementById('gm-name').value = '';
+  document.getElementById('gm-msg').style.display = 'none';
+  document.getElementById('groupModal').style.display = 'flex';
+}
+function openEditGroup(g){
+  document.getElementById('groupModalTitle').textContent = 'Edit Group';
+  document.getElementById('gm-id').value = g.id;
+  document.getElementById('gm-name').value = g.name || '';
+  document.getElementById('gm-msg').style.display = 'none';
+  document.getElementById('groupModal').style.display = 'flex';
+}
+function closeGroupModal(){ document.getElementById('groupModal').style.display='none'; }
+function saveGroup(){
+  var name = document.getElementById('gm-name').value.trim();
+  var id   = document.getElementById('gm-id').value;
+  var msg  = document.getElementById('gm-msg');
+  if (!name){ alert('Name required'); return; }
+  msg.textContent='Saving…';msg.className='msg in';msg.style.display='block';
+  apiPost({ action: id ? 'updateProductGroup' : 'addProductGroup', id: id, name: name })
+    .then(function(res){
+      if (res&&res.ok){ msg.textContent='✅ Saved!';msg.className='msg ok';setTimeout(function(){ closeGroupModal();loadGroups(); },600); }
+      else { msg.textContent='❌ '+(res.error||'Failed');msg.className='msg er'; }
+    });
+}
+function delGroup(id, name){
+  if (!confirm('Delete group "'+name+'"?\nProducts in this group will become ungrouped.')) return;
+  apiPost({action:'deleteProductGroup', id:id}).then(function(res){
+    if (res&&res.ok) loadGroups(); else alert('Delete failed: '+(res.error||'unknown'));
+  });
+}
+
+/* ── CUSTOMER ORDERS (admin approval tab) ── */
+var allCustOrders = [];
+
+function loadCustOrders(){
+  var date   = document.getElementById('co-date').value;
+  var status = document.getElementById('co-status').value;
+  var msg    = document.getElementById('coMsg');
+  var el     = document.getElementById('coList');
+  msg.textContent='⏳ Loading…';msg.className='msg in';msg.style.display='block';
+  el.innerHTML='';
+
+  var p = { action:'getCustomerOrders' };
+  if (date)   p.delivery_date = date;
+  if (status) p.status = status;
+
+  api(p).then(function(data){
+    allCustOrders = Array.isArray(data) ? data : [];
+    msg.style.display='none';
+
+    var counts = {pending:0, approved:0, rejected:0, packaging:0, dispatched:0};
+    allCustOrders.forEach(function(o){ if(counts[o.status]!==undefined) counts[o.status]++; });
+    document.getElementById('coStats').innerHTML =
+      '<div class="stat" style="cursor:pointer" onclick="document.getElementById(\'co-status\').value=\'\';loadCustOrders()"><div class="stat-n">'+allCustOrders.length+'</div><div class="stat-l">Total</div></div>'+
+      '<div class="stat" style="cursor:pointer;border-color:#ffe082" onclick="document.getElementById(\'co-status\').value=\'pending\';loadCustOrders()"><div class="stat-n" style="color:#7a4800">'+counts.pending+'</div><div class="stat-l">Pending</div></div>'+
+      '<div class="stat" style="cursor:pointer;border-color:#f5c87a" onclick="document.getElementById(\'co-status\').value=\'approved\';loadCustOrders()"><div class="stat-n" style="color:#e67e22">'+counts.approved+'</div><div class="stat-l">Kitchen</div></div>'+
+      '<div class="stat" style="cursor:pointer;border-color:#ce93d8" onclick="document.getElementById(\'co-status\').value=\'packaging\';loadCustOrders()"><div class="stat-n" style="color:#6e3da8">'+counts.packaging+'</div><div class="stat-l">Packaging</div></div>'+
+      '<div class="stat" style="cursor:pointer;border-color:#a5d6a7" onclick="document.getElementById(\'co-status\').value=\'dispatched\';loadCustOrders()"><div class="stat-n" style="color:#2d7a4f">'+counts.dispatched+'</div><div class="stat-l">Dispatched</div></div>';
+
+    if (!allCustOrders.length){
+      el.innerHTML='<div style="text-align:center;padding:30px;font-size:13px;color:#8a7a6a;font-family:monospace">No customer orders found.</div>';
+      return;
+    }
+    renderCustOrders();
+  });
+}
+
+var STATUS_COLORS = { pending:'b-warn', approved:'b-logistics', rejected:'b-miss', packaging:'b-blue', dispatched:'b-ok' };
+var STATUS_LABELS = { pending:'⏳ Pending', approved:'👨‍🍳 In Kitchen', rejected:'❌ Rejected', packaging:'📦 Packaging', dispatched:'🚚 Dispatched' };
+
+function renderCustOrders(){
+  var el = document.getElementById('coList');
+  el.innerHTML = allCustOrders.map(function(o){
+    var pairs=[];
+    var items=(o.items||'').split(','); var qtys=(o.qty||'').split(',');
+    items.forEach(function(item,i){ if(item.trim()) pairs.push(esc((qtys[i]||''))+'× '+esc(item.trim())); });
+    var cls = STATUS_COLORS[o.status] || 'b-warn';
+    var lbl = STATUS_LABELS[o.status] || o.status;
+    var created = o.created_at ? new Date(o.created_at).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+    return '<div class="item-card '+(o.status==='pending'?'pending':'')+'">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">'+
+        '<div>'+
+          '<div style="font-size:14px;font-weight:800;color:#4a2f14">'+esc(o.shop_name)+'</div>'+
+          '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px">📅 Delivery: <b>'+esc(o.delivery_date)+'</b> · Ordered: '+created+'</div>'+
+        '</div>'+
+        '<span class="badge '+cls+'">'+lbl+'</span>'+
+      '</div>'+
+      '<div style="font-size:12px;font-family:monospace;background:#f5ede0;border-radius:8px;padding:7px 10px;line-height:1.8;margin-bottom:8px">'+pairs.join(' · ')+'</div>'+
+      (o.note?'<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:6px">📝 '+esc(o.note)+'</div>':'')+
+      (o.admin_note?'<div style="font-size:11px;color:#1565c0;font-family:monospace;margin-bottom:6px">💬 Admin: '+esc(o.admin_note)+'</div>':'')+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+        (o.status==='pending'?'<button class="btn-sm" style="background:#e8f5e9;color:#2d7a4f" onclick="quickApprove('+o.id+')">✅ Approve</button>':'') +
+        (o.status==='pending'?'<button class="btn-sm btn-del" onclick="quickReject('+o.id+')">❌ Reject</button>':'') +
+        '<button class="btn-sm btn-edit" onclick=\'openCoModal('+esc(JSON.stringify(o))+')\'>✏️ Edit</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+function quickApprove(id){ updateCoStatus(id,'approved'); }
+function quickReject(id){
+  var note=prompt('Reason for rejection (optional):','');
+  if (note===null) return;
+  updateCoStatus(id,'rejected', note);
+}
+
+function updateCoStatus(id, status, adminNote){
+  var body = { action:'updateCustomerOrderStatus', id:id, status:status };
+  if (adminNote!==undefined) body.admin_note = adminNote;
+  apiPost(body).then(function(res){
+    if (res&&res.ok) loadCustOrders();
+    else alert('Update failed: '+(res.error||'unknown'));
+  });
+}
+
+function openCoModal(o){
+  document.getElementById('com-id').value = o.id;
+  document.getElementById('com-items').value = o.items || '';
+  document.getElementById('com-qty').value   = o.qty || '';
+  document.getElementById('com-note').value  = o.note || '';
+  document.getElementById('com-admin-note').value = o.admin_note || '';
+  document.getElementById('com-info').innerHTML =
+    '<b>'+esc(o.shop_name)+'</b><br>Delivery: <b>'+esc(o.delivery_date)+'</b><br>Status: <b>'+(STATUS_LABELS[o.status]||o.status)+'</b>';
+  document.getElementById('com-msg').style.display='none';
+  document.getElementById('coModal').style.display='flex';
+}
+function closeCoModal(){ document.getElementById('coModal').style.display='none'; }
+function saveCustOrder(status){
+  var id    = document.getElementById('com-id').value;
+  var items = document.getElementById('com-items').value.trim();
+  var qty   = document.getElementById('com-qty').value.trim();
+  var note  = document.getElementById('com-note').value.trim();
+  var adminNote = document.getElementById('com-admin-note').value.trim();
+  var msg   = document.getElementById('com-msg');
+  if (!items||!qty){ msg.textContent='Items and quantities required.';msg.className='msg er';msg.style.display='block';return; }
+  msg.textContent='Saving…';msg.className='msg in';msg.style.display='block';
+  apiPost({ action:'updateCustomerOrderStatus', id:id, status:status, items:items, qty:qty, note:note, admin_note:adminNote })
+    .then(function(res){
+      if (res&&res.ok){ msg.textContent='✅ Saved!';msg.className='msg ok';setTimeout(function(){closeCoModal();loadCustOrders();},600); }
+      else { msg.textContent='❌ '+(res.error||'Failed');msg.className='msg er'; }
+    });
+}
+
+/* ── PATCH: customer modal save — include login fields ── */
+var _origSaveCustomer = typeof saveCustomer === 'function' ? saveCustomer : null;
+
 /* ── INIT ── */
 initTabVisibility();
 loadDrivers();       // populate DRIVERS array + all select dropdowns
 loadProductMaster(); // cache products for XLS preview
+loadGroups();        // cache product groups for selects
 // Navigate to the first tab this role can see
 (function(){
   var first;
   if(_allowedTabs === null){ first='orders'; }
   else { first = _allowedTabs.length ? _allowedTabs[0] : 'summary'; }
   // Hide all pages, then show the right one
-  ['orders','approve','queue','summary','delivery','routes','customers','products','drivers','gps','users','notify','cleanup','audit'].forEach(function(t){
+  ['orders','approve','queue','summary','delivery','routes','customers','cust-orders','products','groups','drivers','gps','users','notify','cleanup','audit'].forEach(function(t){
     var pg=document.getElementById('pg-'+t);if(pg)pg.classList.remove('on');
     var tb=document.getElementById('tb-'+t);if(tb)tb.classList.remove('on');
   });

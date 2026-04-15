@@ -154,6 +154,36 @@
       case 'getProducts':
         return sbGet('products', {}, 'name');
 
+      case 'getProductGroups':
+        return sbGet('product_groups', {}, 'name');
+
+      case 'getProductsByGroup': {
+        var url = BASE + '/products?active=eq.true&order=category,name';
+        if (p.group_id) url += '&group_id=eq.' + encodeURIComponent(p.group_id);
+        return fetch(url, { headers: hdrs() })
+          .then(function(r){ return r.ok ? r.json() : []; })
+          .catch(function(){ return []; });
+      }
+
+      case 'customerLogin':
+        return fetch(BASE.replace('/rest/v1','') + '/rest/v1/rpc/customer_login', {
+          method: 'POST', headers: hdrs(),
+          body: JSON.stringify({ p_username: p.username, p_password: p.password })
+        }).then(function(r){ return r.ok ? r.json() : []; }).catch(function(){ return []; });
+
+      case 'getCustomerOrders': {
+        var url = BASE + '/customer_orders?select=*&order=created_at.desc';
+        if (p.status)         url += '&status=eq.'         + encodeURIComponent(p.status);
+        if (p.shop_id)        url += '&shop_id=eq.'        + encodeURIComponent(p.shop_id);
+        if (p.delivery_date)  url += '&delivery_date=eq.'  + encodeURIComponent(p.delivery_date);
+        if (p.statuses && p.statuses.length)
+          url += '&status=in.(' + p.statuses.map(encodeURIComponent).join(',') + ')';
+        if (p.limit)          url += '&limit=' + parseInt(p.limit);
+        return fetch(url, { headers: hdrs() })
+          .then(function(r){ return r.ok ? r.json() : []; })
+          .catch(function(){ return []; });
+      }
+
       case 'getDrivers':
         // Uses RPC so password column is never sent over the wire
         return fetch(BASE.replace('/rest/v1','') + '/rest/v1/rpc/get_drivers_public', {
@@ -372,7 +402,8 @@
       case 'addProduct':
         return sbPost('products', {
           product_id: b.product_id, name: b.name, category: b.category || '',
-          price: b.price || '', unit: b.unit || 'Pieces', description: b.description || ''
+          price: b.price || '', unit: b.unit || 'Pieces', description: b.description || '',
+          group_id: b.group_id || null, active: b.active !== false
         });
 
       // Batch upsert — single request for any number of products
@@ -380,18 +411,79 @@
         return sbUpsert('products', b.products.map(function (p) {
           return {
             product_id: p.product_id, name: p.name, category: p.category || '',
-            price: p.price || '', unit: p.unit || 'Pieces', description: p.description || ''
+            price: p.price || '', unit: p.unit || 'Pieces', description: p.description || '',
+            group_id: p.group_id || null, active: p.active !== false
           };
         }), 'product_id');
 
       case 'updateProduct':
         return sbPatch('products', { product_id: b.product_id }, {
           name: b.name, category: b.category || '',
-          price: b.price || '', unit: b.unit || 'Pieces', description: b.description || ''
+          price: b.price || '', unit: b.unit || 'Pieces', description: b.description || '',
+          group_id: b.group_id || null, active: b.active !== false
         });
 
       case 'deleteProduct':
         return sbDelete('products', { product_id: b.product_id });
+
+      // Product Groups
+      case 'addProductGroup':
+        return sbPost('product_groups', { name: b.name });
+
+      case 'updateProductGroup':
+        return sbPatch('product_groups', { id: b.id }, { name: b.name });
+
+      case 'deleteProductGroup':
+        return sbDelete('product_groups', { id: b.id });
+
+      // Customer portal: update shop login credentials + product group
+      case 'updateShopLogin':
+        return sbPatch('shops', { shop_id: b.shop_id }, {
+          login_username:   b.login_username   || null,
+          login_password:   b.login_password   || null,
+          product_group_id: b.product_group_id || null
+        });
+
+      // Customer places order
+      case 'placeCustomerOrder':
+        return sbPost('customer_orders', {
+          shop_id: b.shop_id, shop_name: b.shop_name,
+          delivery_date: b.delivery_date,
+          items: b.items, qty: b.qty, note: b.note || '',
+          status: 'pending'
+        });
+
+      // Admin / kitchen / packaging: update order status
+      case 'updateCustomerOrderStatus': {
+        var upd = { status: b.status };
+        if (b.status === 'approved')   upd.approved_at     = new Date().toISOString();
+        if (b.status === 'packaging')  upd.kitchen_done_at = new Date().toISOString();
+        if (b.status === 'dispatched') upd.packaged_at     = new Date().toISOString();
+        if (b.admin_note !== undefined) upd.admin_note = b.admin_note;
+        if (b.items !== undefined) upd.items = b.items;
+        if (b.qty   !== undefined) upd.qty   = b.qty;
+        if (b.note  !== undefined) upd.note  = b.note;
+        return sbPatch('customer_orders', { id: b.id }, upd);
+      }
+
+      // Packaging: mark dispatched + create the driver orders row in one step
+      case 'dispatchCustomerOrder': {
+        var now = new Date().toISOString();
+        return sbPatch('customer_orders', { id: b.id }, { status: 'dispatched', packaged_at: now })
+          .then(function(res) {
+            if (!res.ok) return res;
+            return sbPost('orders', {
+              customer_id: b.shop_id, shop_id: b.shop_id,
+              shop_name:   b.shop_name,
+              driver:      b.driver || '',
+              items:       b.items,
+              qty:         b.qty,
+              note:        b.note || '',
+              date:        b.delivery_date,
+              dc_num:      'CO-' + b.id
+            });
+          });
+      }
 
       case 'addDriver':
         return sbPost('drivers', {
