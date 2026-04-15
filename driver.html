@@ -286,6 +286,7 @@ input[type=text],input[type=date]{width:100%;padding:11px 14px;border:1.5px soli
     <div id="selName" style="font-size:15px;font-weight:800;color:#4a2f14"></div>
     <div id="selArea" style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:3px"></div>
     <div id="selStatus" style="font-size:11px;font-weight:700;font-family:monospace;margin-top:6px;color:#1565c0"></div>
+    <a id="navToShopBtn" href="#" target="_blank" style="display:none;margin-top:10px;text-decoration:none;background:#1565c0;color:#fff;border-radius:10px;padding:9px 14px;font-size:12px;font-weight:800;font-family:-apple-system,sans-serif;text-align:center;width:100%;box-sizing:border-box">🗺 <span id="t-navToShop">Navigate to Shop</span></a>
   </div>
   <button class="btn btn-gps" id="gpsBtn" onclick="doGPS()">📍 <span id="t-captureBtn">Capture My Location</span></button>
   <button class="btn btn-save" id="saveBtn" onclick="doSave()" style="display:none">✅ <span id="t-saveBtn">Confirm & Save</span></button>
@@ -373,6 +374,7 @@ function applyLang() {
   document.getElementById('t-captureBtn').textContent  = mr ? 'माझे स्थान घ्या' : 'Capture My Location';
   document.getElementById('t-saveBtn').textContent     = mr ? 'जतन करा' : 'Confirm & Save';
   document.getElementById('t-myCustomers').textContent = mr ? 'माझे ग्राहक' : 'My Customers';
+  var navLbl=document.getElementById('t-navToShop'); if(navLbl) navLbl.textContent=mr?'दुकानाकडे नेव्हिगेट करा':'Navigate to Shop';
 }
 
 function toggleLang() {
@@ -1419,6 +1421,14 @@ function pickShop(id){
   document.getElementById('selArea').textContent='📍 '+(selCustomer.area||'');
   document.getElementById('selStatus').textContent=selCustomer.lat?`GPS: ${selCustomer.lat}, ${selCustomer.lng}`:(lang==='mr'?'GPS नाही — खाली घ्या':'No GPS — capture below');
   document.getElementById('selBox').style.display='block';
+  const navBtn=document.getElementById('navToShopBtn');
+  if(selCustomer.lat && selCustomer.lng){
+    navBtn.href='https://www.google.com/maps/dir/?api=1&destination='+selCustomer.lat+','+selCustomer.lng;
+    navBtn.style.display='block';
+    document.getElementById('t-navToShop').textContent=lang==='mr'?'दुकानाकडे नेव्हिगेट करा':'Navigate to Shop';
+  } else {
+    navBtn.style.display='none';
+  }
   renderCustomerList(allCustomers);
   document.getElementById('selBox').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
