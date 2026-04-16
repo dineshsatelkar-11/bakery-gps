@@ -759,34 +759,23 @@ function loadTrack(){
       var sortedDel = deliveries.slice().sort(function(a,b){ return (b.time||'') > (a.time||'') ? 1 : -1; });
       var lastDeliv = sortedDel[0] || null;
 
-      // Latest customer order
+      // Latest customer order (for status pipeline)
       var latestCust = custOrders[0] || null;
-
-      // Status card content
-      var statusIcon, statusText, statusSub, statusClass='';
-      if(!driverName){
-        statusIcon='📋'; statusText='No Driver Assigned'; statusSub='Contact admin for delivery info.';
-      } else if(!hasOrder){
-        statusIcon='📋'; statusText='No Order Today'; statusSub='No delivery scheduled for your shop today.';
-      } else if(myDelivery){
-        statusIcon='✅'; statusText='Delivered Today!'; statusSub='Your order was delivered at '+(myDelivery.time||'—'); statusClass='trk-status-delivered';
-      } else {
-        statusIcon='⏳'; statusText='Not Yet Delivered'; statusClass='trk-status-pending';
-        var done=deliveries.length;
-        statusSub = done>0 ? 'Driver has completed '+done+' stop'+(done===1?'':'s')+' today' : 'Driver has not started deliveries yet';
-      }
 
       var html = '';
 
-      // ── Delivery status card ──
-      html += '<div class="card '+statusClass+'" id="trkStatusCard" style="text-align:center;padding:20px 16px;margin-bottom:10px">'+
-        '<div style="font-size:40px;margin-bottom:8px">'+statusIcon+'</div>'+
-        '<div style="font-size:16px;font-weight:900;color:#4a2f14;margin-bottom:4px">'+esc(statusText)+'</div>'+
-        '<div style="font-size:12px;color:#8a7a6a;font-family:monospace;margin-bottom:14px">'+esc(statusSub||'')+'</div>'+
-        '<button onclick="reloadTrack(this)" style="padding:9px 22px;border:1.5px solid #e8dfd2;border-radius:20px;background:#fff;color:#4a2f14;font-size:12px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif">🔄 Refresh Status</button>'+
-      '</div>';
+      // ── Rule 1: No order today → show only a simple message ──
+      if(!hasOrder){
+        el.innerHTML = '<div style="padding:40px 20px;text-align:center">'+
+          '<div style="font-size:36px;margin-bottom:12px">📋</div>'+
+          '<div style="font-size:15px;font-weight:800;color:#4a2f14;margin-bottom:6px">No order for today</div>'+
+          '<div style="font-size:12px;color:#8a7a6a;font-family:monospace;line-height:1.6">You do not have a delivery scheduled for today.</div>'+
+          '<button onclick="reloadTrack(this)" style="margin-top:16px;padding:9px 22px;border:1.5px solid #e8dfd2;border-radius:20px;background:#fff;color:#4a2f14;font-size:12px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif">🔄 Refresh</button>'+
+        '</div>';
+        return;
+      }
 
-      // ── Customer order status pipeline ──
+      // ── Order exists — show order status pipeline ──
       if(latestCust){
         var sLabel={pending:'⏳ Pending',approved:'✅ Approved',rejected:'❌ Rejected',kitchen:'👨‍🍳 In Kitchen',packaging:'📦 Packaging',dispatched:'🚚 Dispatched'};
         var sClass={pending:'s-pending',approved:'s-approved',rejected:'s-rejected',kitchen:'s-kitchen',packaging:'s-packaging',dispatched:'s-dispatched'};
@@ -794,7 +783,7 @@ function loadTrack(){
         var curr=steps.indexOf(latestCust.status);
         html += '<div class="card" style="margin-bottom:10px">'+
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'+
-            '<div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#8a7a6a;font-family:monospace;text-transform:uppercase">Order Status</div>'+
+            '<div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#8a7a6a;font-family:monospace;text-transform:uppercase">Your Order</div>'+
             '<span class="hist-status '+(sClass[latestCust.status]||'s-pending')+'">'+(sLabel[latestCust.status]||latestCust.status)+'</span>'+
           '</div>'+
           '<div style="display:flex;align-items:center;gap:4px;overflow-x:auto;padding-bottom:4px">'+
@@ -810,10 +799,13 @@ function loadTrack(){
             '</div>';
           }).join('')+
           '</div>'+
+          '<div style="text-align:right;margin-top:10px">'+
+            '<button onclick="reloadTrack(this)" style="padding:7px 16px;border:1.5px solid #e8dfd2;border-radius:20px;background:#fff;color:#4a2f14;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif">🔄 Refresh</button>'+
+          '</div>'+
         '</div>';
       }
 
-      // ── Contact & escalation ──
+      // ── Contact & escalation (always shown when order exists) ──
       html += '<div class="card" style="margin-bottom:10px">'+
         '<div style="font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;text-transform:uppercase;margin-bottom:10px">Contact</div>'+
         '<div class="trk-contact-row">'+
@@ -850,27 +842,28 @@ function loadTrack(){
         '</div>'+
       '</div>';
 
-      // ── Driver's last delivery today ──
-      html += '<div class="card" style="margin-bottom:10px">'+
-        '<div style="font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;text-transform:uppercase;margin-bottom:8px">Driver\'s Last Delivery Today</div>';
-      if(lastDeliv){
-        var mapLink=(lastDeliv.lat&&lastDeliv.lng)
-          ? '<a href="https://www.google.com/maps?q='+lastDeliv.lat+','+lastDeliv.lng+'" target="_blank" style="font-size:11px;color:#1565c0;font-family:monospace;font-weight:700;margin-top:4px;display:inline-block">📍 View on Map ↗</a>' : '';
-        html += '<div style="background:#f5ede0;border-radius:10px;padding:10px 12px">'+
-          '<div style="font-size:14px;font-weight:800;color:#4a2f14">📦 '+esc(lastDeliv.shop_name||'—')+'</div>'+
-          '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:2px">🕐 Delivered at '+(lastDeliv.time||'—')+'</div>'+
-          mapLink+'</div>'+
-          '<div style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-top:6px">Total deliveries today: <b>'+deliveries.length+'</b></div>';
-      } else {
-        html += '<div style="text-align:center;padding:14px;font-size:12px;color:#8a7a6a;font-family:monospace;background:#f9f6f1;border-radius:10px">⏳ No deliveries recorded yet today.</div>';
-      }
-      html += '</div>';
+      // ── Rule 2: Only show driver progress + live tracking if NOT yet delivered ──
+      if(!myDelivery){
+        // Driver's last delivery (progress indicator)
+        html += '<div class="card" style="margin-bottom:10px">'+
+          '<div style="font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;text-transform:uppercase;margin-bottom:8px">Driver Progress Today</div>';
+        if(lastDeliv){
+          html += '<div style="background:#f5ede0;border-radius:10px;padding:10px 12px">'+
+            '<div style="font-size:13px;font-weight:800;color:#4a2f14">📦 Last delivered: '+esc(lastDeliv.shop_name||'—')+'</div>'+
+            '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:2px">🕐 '+( lastDeliv.time||'—')+'</div>'+
+            '</div>'+
+            '<div style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-top:6px">Stops completed today: <b>'+deliveries.length+'</b></div>';
+        } else {
+          html += '<div style="text-align:center;padding:14px;font-size:12px;color:#8a7a6a;font-family:monospace;background:#f9f6f1;border-radius:10px">⏳ Driver has not started deliveries yet.</div>';
+        }
+        html += '</div>';
 
-      // ── Live Ajjas tracking button ──
-      if(trackingUrl && trackingOn){
-        html += '<a href="'+esc(trackingUrl)+'" target="_blank" style="display:block;background:linear-gradient(135deg,#e53935,#b71c1c);color:#fff;padding:14px 16px;border-radius:14px;text-align:center;text-decoration:none;font-weight:800;font-size:14px;margin-bottom:4px">'+
-          '🔴 Track Tempo Live Location'+
-          '<div style="font-size:10px;opacity:.85;font-weight:500;margin-top:2px;font-family:monospace">Powered by Ajjas GPS · Tap to open</div></a>';
+        // Live tracking button
+        if(trackingUrl && trackingOn){
+          html += '<a href="'+esc(trackingUrl)+'" target="_blank" style="display:block;background:linear-gradient(135deg,#e53935,#b71c1c);color:#fff;padding:14px 16px;border-radius:14px;text-align:center;text-decoration:none;font-weight:800;font-size:14px;margin-bottom:4px">'+
+            '🔴 Track Tempo Live Location'+
+            '<div style="font-size:10px;opacity:.85;font-weight:500;margin-top:2px;font-family:monospace">Powered by Ajjas GPS · Tap to open</div></a>';
+        }
       }
 
       el.innerHTML = html;
