@@ -284,7 +284,10 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
 <!-- CUSTOMERS -->
 <div class="page" id="pg-customers">
   <div class="stats-grid" id="custStats"></div>
-  <button class="btn btn-brown" onclick="openAddCustomer()">➕ Add Customer</button>
+  <div style="display:flex;gap:8px;margin-bottom:0">
+    <button class="btn btn-brown" style="flex:1;margin-bottom:0" onclick="openAddCustomer()">➕ Add Customer</button>
+    <button class="btn" style="flex:1;margin-bottom:0;background:#1565c0;color:#fff" onclick="openCustLoginsModal()">🔐 View Logins</button>
+  </div>
   <div class="card" style="margin-bottom:10px">
     <div class="lbl">🔀 Bulk Reassign Driver</div>
     <div style="display:flex;gap:8px;margin-bottom:8px">
@@ -596,6 +599,19 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   </div>
 </div>
 
+
+<!-- CUSTOMER LOGINS MODAL -->
+<div class="modal-bg" id="custLoginsModal" style="display:none" onclick="if(event.target===this)closeCustLoginsModal()">
+  <div class="modal" style="max-height:90vh;overflow:hidden;display:flex;flex-direction:column">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-shrink:0">
+      <div class="modal-title" style="margin-bottom:0">🔐 Customer Logins</div>
+      <button onclick="closeCustLoginsModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#8a7a6a;padding:0 4px">✖</button>
+    </div>
+    <div class="modal-sub" style="flex-shrink:0">Tap ✏️ Edit to update a customer's username or password.</div>
+    <input type="text" id="cl-search" placeholder="Search by name or username…" oninput="renderCustLoginsList()" style="flex-shrink:0;margin-bottom:10px">
+    <div id="cl-list" style="overflow-y:auto;flex:1;margin:0 -4px;padding:0 4px"></div>
+  </div>
+</div>
 
 <!-- CUSTOMER MODAL -->
 <div class="modal-bg" id="custModal" style="display:none" onclick="if(event.target===this)closeCustModal()">
@@ -2189,7 +2205,6 @@ function saveCustomer(){
   if(!cid){msg.textContent='Customer ID required.';msg.className='msg er';msg.style.display='block';return;}
   var existing=document.getElementById('cm-id').value;
   var now=new Date().toLocaleString('en-IN');
-  msg.textContent='Saving…';msg.className='msg in';msg.style.display='block';
   var assignedDriver=document.getElementById('cm-driver').value||'';
   var loginUser=document.getElementById('cm-login-user').value.trim();
   var loginPass=document.getElementById('cm-login-pass').value.trim();
@@ -2202,6 +2217,15 @@ function saveCustomer(){
     document.getElementById('cm-login-user').value=loginUser;
     document.getElementById('cm-login-pass').value=loginPass;
   }
+  // Duplicate username check
+  if(loginUser){
+    var dup=allCustomers.find(function(c){
+      var cid2=c.customer_id||c.shop_id||'';
+      return cid2!==existing && (c.login_username||'').toLowerCase().trim()===loginUser.toLowerCase();
+    });
+    if(dup){msg.textContent='❌ Username "'+loginUser+'" is already used by "'+dup.name+'". Choose a different username.';msg.className='msg er';msg.style.display='block';return;}
+  }
+  msg.textContent='Saving…';msg.className='msg in';msg.style.display='block';
   apiPost({action:existing?'updateShop':'addShop',shop_id:cid,customer_id:cid,name:name,
     address:document.getElementById('cm-address').value.trim(),area:document.getElementById('cm-area').value.trim(),
     assigned_driver:assignedDriver,
@@ -2244,6 +2268,112 @@ function genRandomPass(){
 }
 function genPassword(){
   document.getElementById('cm-login-pass').value=genRandomPass();
+}
+
+// ── Customer Logins Modal ──
+function openCustLoginsModal(){
+  document.getElementById('cl-search').value='';
+  renderCustLoginsList();
+  document.getElementById('custLoginsModal').style.display='flex';
+}
+function closeCustLoginsModal(){
+  document.getElementById('custLoginsModal').style.display='none';
+}
+function renderCustLoginsList(){
+  var q=(document.getElementById('cl-search').value||'').toLowerCase();
+  var list=allCustomers.filter(function(c){
+    if(!q) return true;
+    return (c.name+' '+(c.login_username||'')).toLowerCase().indexOf(q)>=0;
+  });
+  var el=document.getElementById('cl-list');
+  if(!list.length){
+    el.innerHTML='<div style="padding:20px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">No customers found.</div>';
+    return;
+  }
+  el.innerHTML=list.map(function(c){
+    var sid=c.customer_id||c.shop_id||'';
+    var safeSid=encodeURIComponent(sid);
+    return '<div id="clrow-'+safeSid+'" style="background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:11px 13px;margin-bottom:8px">'+
+      '<div style="font-size:13px;font-weight:800;color:#4a2f14;margin-bottom:6px">'+esc(c.name)+'</div>'+
+      '<div id="clview-'+safeSid+'">'+
+        '<div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">'+
+          '<span style="font-size:10px;color:#8a7a6a;font-family:monospace;width:56px;flex-shrink:0">MOBILE</span>'+
+          '<span style="font-size:13px;font-weight:700;font-family:monospace;flex:1">'+(c.mobile?'<a href="tel:'+esc(c.mobile)+'" style="color:#1565c0;text-decoration:none">'+esc(c.mobile)+'</a>':'<span style="color:#8a7a6a">—</span>')+'</span>'+
+        '</div>'+
+        '<div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">'+
+          '<span style="font-size:10px;color:#8a7a6a;font-family:monospace;width:56px;flex-shrink:0">USERNAME</span>'+
+          '<span style="font-size:13px;font-weight:700;font-family:monospace;flex:1;word-break:break-all">'+(c.login_username?esc(c.login_username):'<span style="color:#c8382a">— not set —</span>')+'</span>'+
+        '</div>'+
+        '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">'+
+          '<span style="font-size:10px;color:#8a7a6a;font-family:monospace;width:56px;flex-shrink:0">PASSWORD</span>'+
+          '<span id="clpw-'+safeSid+'" style="font-size:13px;font-weight:700;font-family:monospace;flex:1;word-break:break-all;filter:blur(4px);cursor:pointer" onclick="togglePwBlur(\''+safeSid+'\')">'+(c.login_password?esc(c.login_password):'<span style="color:#c8382a">— not set —</span>')+'</span>'+
+          '<span style="font-size:10px;color:#8a7a6a;font-family:monospace;cursor:pointer" onclick="togglePwBlur(\''+safeSid+'\')">👁</span>'+
+        '</div>'+
+        '<button class="btn-sm btn-edit" onclick="editCustLogin(\''+safeSid+'\',\''+esc(sid)+'\')">✏️ Edit</button>'+
+      '</div>'+
+      '<div id="cledit-'+safeSid+'" style="display:none">'+
+        '<div class="lbl" style="margin-top:4px">Mobile</div>'+
+        '<input type="tel" id="cl-m-'+safeSid+'" value="'+esc(c.mobile||'')+'" placeholder="Mobile number" style="margin-bottom:8px">'+
+        '<div class="lbl">Username</div>'+
+        '<input type="text" id="cl-u-'+safeSid+'" value="'+esc(c.login_username||'')+'" placeholder="Username" style="margin-bottom:8px">'+
+        '<div class="lbl">Password</div>'+
+        '<div style="display:flex;gap:6px;margin-bottom:8px">'+
+          '<input type="text" id="cl-p-'+safeSid+'" value="'+esc(c.login_password||'')+'" placeholder="Password" style="margin-bottom:0;flex:1">'+
+          '<button class="btn-sm" onclick="document.getElementById(\'cl-p-'+safeSid+'\').value=genRandomPass()" style="flex-shrink:0;background:#f5ede0;border:1.5px solid #e8dfd2;border-radius:10px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;color:#4a2f14;font-family:-apple-system,sans-serif">🔀 Gen</button>'+
+        '</div>'+
+        '<div id="cl-msg-'+safeSid+'" style="display:none;font-size:11px;font-family:monospace;padding:6px 10px;border-radius:8px;margin-bottom:8px"></div>'+
+        '<div style="display:flex;gap:8px">'+
+          '<button class="btn btn-green" style="margin-bottom:0;flex:1;padding:10px" onclick="saveCustLogin(\''+safeSid+'\',\''+esc(sid)+'\')">💾 Save</button>'+
+          '<button class="btn btn-grey" style="margin-bottom:0;flex:0 0 auto;padding:10px 14px" onclick="cancelCustLogin(\''+safeSid+'\')">Cancel</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+function togglePwBlur(safeSid){
+  var el=document.getElementById('clpw-'+safeSid);
+  if(!el) return;
+  el.style.filter=el.style.filter?'':'blur(4px)';
+}
+function editCustLogin(safeSid, shopId){
+  document.getElementById('clview-'+safeSid).style.display='none';
+  document.getElementById('cledit-'+safeSid).style.display='block';
+}
+function cancelCustLogin(safeSid){
+  document.getElementById('cledit-'+safeSid).style.display='none';
+  document.getElementById('clview-'+safeSid).style.display='block';
+}
+function saveCustLogin(safeSid, shopId){
+  var newMobile=document.getElementById('cl-m-'+safeSid).value.trim();
+  var newUser=document.getElementById('cl-u-'+safeSid).value.trim();
+  var newPass=document.getElementById('cl-p-'+safeSid).value.trim();
+  var msgEl=document.getElementById('cl-msg-'+safeSid);
+  function showMsg(txt,type){msgEl.textContent=txt;msgEl.style.background=type==='ok'?'#e8f5e9':type==='er'?'#fde8e8':'#e3f2fd';msgEl.style.color=type==='ok'?'#2d7a4f':type==='er'?'#c8382a':'#1565c0';msgEl.style.border='1px solid '+(type==='ok'?'#a5d6a7':type==='er'?'#f0b0b0':'#90caf9');msgEl.style.display='block';}
+  if(!newUser){showMsg('Username cannot be empty.','er');return;}
+  // Duplicate username check
+  var dup=allCustomers.find(function(c){
+    var cid=c.customer_id||c.shop_id||'';
+    return cid!==shopId && (c.login_username||'').toLowerCase().trim()===newUser.toLowerCase();
+  });
+  if(dup){showMsg('Username "'+newUser+'" is already used by "'+dup.name+'". Choose a different username.','er');return;}
+  showMsg('Saving…','in');
+  var c=allCustomers.find(function(x){return (x.customer_id||x.shop_id||'')===shopId;});
+  var now=new Date().toLocaleString('en-IN');
+  // Save mobile + other shop fields if mobile changed
+  var p1 = (newMobile !== (c&&c.mobile||''))
+    ? apiPost({action:'updateShop', shop_id:shopId, mobile:newMobile, last_updated_by:'Admin', last_updated_at:now})
+    : Promise.resolve({ok:true});
+  // Save login credentials
+  var loginBody={action:'updateShopLogin', shop_id:shopId, login_username:newUser};
+  if(newPass) loginBody.login_password=newPass;
+  p1.then(function(){
+    return apiPost(loginBody);
+  }).then(function(){
+    // Update local cache
+    if(c){c.mobile=newMobile;c.login_username=newUser;if(newPass)c.login_password=newPass;}
+    showMsg('✅ Saved!','ok');
+    setTimeout(function(){cancelCustLogin(safeSid);renderCustLoginsList();},700);
+  }).catch(function(){showMsg('❌ Save failed.','er');});
 }
 function autoGenLogin(){
   var name=document.getElementById('cm-name').value.trim();

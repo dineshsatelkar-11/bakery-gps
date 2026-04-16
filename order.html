@@ -151,6 +151,7 @@ textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:1
       <div style="font-size:13px;font-weight:800;color:#4a2f14">Your Past Orders</div>
       <button class="btn-sm" onclick="loadHistory()" style="background:#f5ede0;border:1.5px solid #e8dfd2;border-radius:10px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;color:#4a2f14;font-family:-apple-system,sans-serif">↻ Refresh</button>
     </div>
+    <div id="histSummaryBar" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:10px"></div>
     <div id="historyList"><div style="padding:20px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div></div>
   </div>
 
@@ -623,14 +624,34 @@ function submitOrder(){
 
 // ── HISTORY ──
 function loadHistory(){
-  var el = document.getElementById('historyList');
+  var el  = document.getElementById('historyList');
+  var sb  = document.getElementById('histSummaryBar');
   el.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
+  sb.style.display = 'none'; sb.innerHTML = '';
   api({ action:'getCustomerOrders', shop_id: session.shop_id, limit: 30 }).then(function(data){
     var list = Array.isArray(data) ? data : [];
     if (!list.length){
       el.innerHTML = '<div style="padding:30px;text-align:center;font-size:13px;color:#8a7a6a;font-family:monospace">No orders yet.</div>';
       return;
     }
+    // ── Summary counts ──
+    var counts = {};
+    list.forEach(function(o){ counts[o.status] = (counts[o.status]||0) + 1; });
+    var chips = [];
+    var countDefs = [
+      { key:'rejected',   label:'❌ Rejected',   bg:'#fde8e8', color:'#c8382a', border:'#f0b0b0' },
+      { key:'pending',    label:'⏳ Pending',     bg:'#fff8e1', color:'#7a4800', border:'#ffe082' },
+      { key:'approved',   label:'✅ Approved',    bg:'#e3f2fd', color:'#1565c0', border:'#90caf9' },
+      { key:'dispatched', label:'🚚 Dispatched',  bg:'#e8f5e9', color:'#2d7a4f', border:'#a5d6a7' },
+      { key:'kitchen',    label:'👨‍🍳 Kitchen',    bg:'#fff3e0', color:'#c8864a', border:'#ffe0b2' },
+      { key:'packaging',  label:'📦 Packaging',   bg:'#f3e8ff', color:'#6e3da8', border:'#ce93d8' }
+    ];
+    countDefs.forEach(function(d){
+      if (!counts[d.key]) return;
+      chips.push('<span style="display:inline-flex;align-items:center;gap:5px;background:'+d.bg+';border:1px solid '+d.border+';border-radius:20px;padding:5px 11px;font-size:11px;font-weight:800;color:'+d.color+';font-family:monospace">'+d.label+' <span style="background:'+d.border+';border-radius:10px;padding:1px 7px;font-size:11px">'+counts[d.key]+'</span></span>');
+    });
+    if(chips.length){ sb.innerHTML = chips.join(''); sb.style.display = 'flex'; }
+
     el.innerHTML = list.map(function(o){
       var itemPairs = [];
       var iArr = (o.items||'').split(',');
