@@ -140,6 +140,12 @@ textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:1
     <!-- Existing order status banner -->
     <div id="existingOrderBanner" style="display:none"></div>
 
+    <!-- Read-only order summary — shown when order is approved/locked, independent of order window state -->
+    <div id="orderSummaryCard" style="display:none" class="card">
+      <div class="lbl" id="orderSummaryLabel">Your Order for Tomorrow</div>
+      <div id="orderSummaryItems"></div>
+    </div>
+
     <div class="card" id="productsCard">
       <div class="lbl" id="productsCardLabel">Select Products</div>
       <!-- Search + category filter — shown after products load -->
@@ -269,6 +275,8 @@ function showApp(){
   document.getElementById('orderMsg').textContent = '';
   document.getElementById('existingOrderBanner').style.display = 'none';
   document.getElementById('existingOrderBanner').innerHTML = '';
+  document.getElementById('orderSummaryCard').style.display = 'none';
+  document.getElementById('orderSummaryItems').innerHTML = '';
   document.getElementById('orderBar').style.display = 'none';
   document.getElementById('orderClosedBanner').style.display = 'none';
   document.getElementById('broadcastBanner').style.display = 'none';
@@ -485,14 +493,17 @@ function updateBar(){
 var _editLocked = false;
 var _orderClosed = false; // true when admin has closed the order window
 function renderOrderBanner(){
-  var banner  = document.getElementById('existingOrderBanner');
+  var banner    = document.getElementById('existingOrderBanner');
   var submitBtn = document.getElementById('submitBtn');
   var lockNote  = document.getElementById('orderLockedNote');
   var label     = document.getElementById('productsCardLabel');
+  var summaryCard = document.getElementById('orderSummaryCard');
+  var summaryItems = document.getElementById('orderSummaryItems');
+  var summaryLabel = document.getElementById('orderSummaryLabel');
 
   if (!existingOrder) {
-    // No order yet — fresh
     banner.style.display = 'none';
+    summaryCard.style.display = 'none';
     submitBtn.textContent = '👁 Review & Place Order';
     submitBtn.disabled = false;
     lockNote.style.display = 'none';
@@ -505,26 +516,48 @@ function renderOrderBanner(){
   var s = existingOrder.status;
 
   if (s === 'pending') {
-    // Editable
     banner.innerHTML = '<div style="background:#e3f2fd;border:1.5px solid #90caf9;border-radius:12px;padding:11px 14px;margin-bottom:10px;font-size:12px;font-weight:700;color:#1565c0;font-family:monospace;line-height:1.6">✏️ You already have an order for tomorrow.<br>You can update quantities below until admin approves it.</div>';
     banner.style.display = 'block';
+    summaryCard.style.display = 'none';
     submitBtn.textContent = '👁 Review & Update Order';
     submitBtn.disabled = false;
     lockNote.style.display = 'none';
     if (label) label.textContent = 'Update Your Order';
     _editLocked = false;
   } else {
-    // Locked — approved/kitchen/packaging/dispatched/rejected
-    var msg = s === 'rejected'
-      ? '❌ Your order was rejected. Contact admin.'
-      : '🔒 Order status: ' + (statusLabel[s]||s) + '. Editing is no longer available.';
-    banner.innerHTML = '<div style="background:#fde8e8;border:1.5px solid #f0b0b0;border-radius:12px;padding:11px 14px;margin-bottom:10px;font-size:12px;font-weight:700;color:#c8382a;font-family:monospace;line-height:1.6">'+esc(msg)+'</div>';
+    // Locked — show status banner + read-only order summary card
+    var statusColor = s === 'rejected' ? '#c8382a' : '#2d7a4f';
+    var statusBg    = s === 'rejected' ? '#fde8e8' : '#e8f5e9';
+    var statusBorder= s === 'rejected' ? '#f0b0b0' : '#a5d6a7';
+    var statusMsg   = s === 'rejected'
+      ? '❌ Your order was rejected. Please contact admin.'
+      : '✅ Order ' + (statusLabel[s]||s) + ' — your order for tomorrow is confirmed!';
+    banner.innerHTML = '<div style="background:'+statusBg+';border:1.5px solid '+statusBorder+';border-radius:12px;padding:11px 14px;margin-bottom:10px;font-size:12px;font-weight:700;color:'+statusColor+';font-family:monospace;line-height:1.6">'+esc(statusMsg)+'</div>';
     banner.style.display = 'block';
+
+    // Build read-only order summary
+    var iArr = (existingOrder.items||'').split(',');
+    var qArr = (existingOrder.qty||'').split(',');
+    var totalItems = 0;
+    var rows = iArr.map(function(item, i){
+      var q = parseInt(qArr[i])||0;
+      if(!item.trim() || !q) return '';
+      totalItems += q;
+      return '<div class="prod-row">'+
+        '<div class="prod-name">'+esc(item.trim())+'</div>'+
+        '<div style="font-size:14px;font-weight:800;color:#2d7a4f;font-family:monospace;flex-shrink:0">× '+q+'</div>'+
+      '</div>';
+    }).join('');
+    summaryItems.innerHTML = rows +
+      (existingOrder.note ? '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:8px;padding-top:8px;border-top:1px solid #f5ede0">📝 '+esc(existingOrder.note)+'</div>' : '') +
+      '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:8px;text-align:right">Total: <b>'+totalItems+'</b> items</div>';
+    if(summaryLabel) summaryLabel.textContent = 'Your Order for Tomorrow ('+(statusLabel[s]||s)+')';
+    summaryCard.style.display = 'block';
+
     submitBtn.disabled = true;
     lockNote.style.display = 'block';
     if (label) label.textContent = 'Your Order (read-only)';
     _editLocked = true;
-    // Disable all qty controls
     document.querySelectorAll('.qty-btn, .qty-val').forEach(function(el){ el.disabled = true; });
   }
 }
@@ -764,7 +797,7 @@ function loadTrack(){
 
       var html = '';
 
-      // ── Rule 1: No order today → show only a simple message ──
+      // ── No order today → simple message only ──
       if(!hasOrder){
         el.innerHTML = '<div style="padding:40px 20px;text-align:center">'+
           '<div style="font-size:36px;margin-bottom:12px">📋</div>'+
@@ -775,34 +808,46 @@ function loadTrack(){
         return;
       }
 
-      // ── Order exists — show order status pipeline ──
-      if(latestCust){
-        var sLabel={pending:'⏳ Pending',approved:'✅ Approved',rejected:'❌ Rejected',kitchen:'👨‍🍳 In Kitchen',packaging:'📦 Packaging',dispatched:'🚚 Dispatched'};
-        var sClass={pending:'s-pending',approved:'s-approved',rejected:'s-rejected',kitchen:'s-kitchen',packaging:'s-packaging',dispatched:'s-dispatched'};
-        var steps=['pending','approved','kitchen','packaging','dispatched'];
-        var curr=steps.indexOf(latestCust.status);
-        html += '<div class="card" style="margin-bottom:10px">'+
-          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'+
-            '<div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#8a7a6a;font-family:monospace;text-transform:uppercase">Your Order</div>'+
-            '<span class="hist-status '+(sClass[latestCust.status]||'s-pending')+'">'+(sLabel[latestCust.status]||latestCust.status)+'</span>'+
-          '</div>'+
-          '<div style="display:flex;align-items:center;gap:4px;overflow-x:auto;padding-bottom:4px">'+
-          steps.map(function(s,i){
-            var active=i<=curr;
-            var icons={pending:'⏳',approved:'✅',kitchen:'👨‍🍳',packaging:'📦',dispatched:'🚚'};
-            return '<div style="display:flex;align-items:center;gap:4px">'+
-              (i>0?'<div style="width:14px;height:2px;background:'+(active?'#2d7a4f':'#e8dfd2')+';flex-shrink:0"></div>':'')+
-              '<div style="text-align:center;flex-shrink:0">'+
-                '<div style="font-size:15px">'+icons[s]+'</div>'+
-                '<div style="font-size:8px;font-family:monospace;color:'+(active?'#2d7a4f':'#b0a090')+';font-weight:700;text-transform:uppercase;margin-top:2px">'+s+'</div>'+
-              '</div>'+
-            '</div>';
-          }).join('')+
-          '</div>'+
-          '<div style="text-align:right;margin-top:10px">'+
-            '<button onclick="reloadTrack(this)" style="padding:7px 16px;border:1.5px solid #e8dfd2;border-radius:20px;background:#fff;color:#4a2f14;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif">🔄 Refresh</button>'+
-          '</div>'+
+      // ── Delivery status card ──
+      if(myDelivery){
+        html += '<div class="card trk-status-delivered" style="text-align:center;padding:22px 16px;margin-bottom:10px">'+
+          '<div style="font-size:44px;margin-bottom:8px">✅</div>'+
+          '<div style="font-size:17px;font-weight:900;color:#1a5a38;margin-bottom:4px">Delivered!</div>'+
+          '<div style="font-size:12px;color:#2d7a4f;font-family:monospace">Your order was delivered at '+(myDelivery.time||'—')+'</div>'+
+          '<button onclick="reloadTrack(this)" style="margin-top:14px;padding:8px 20px;border:1.5px solid #a5d6a7;border-radius:20px;background:#fff;color:#2d7a4f;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif">🔄 Refresh</button>'+
         '</div>';
+      } else {
+        var done = deliveries.length;
+        var subMsg = done > 0
+          ? 'Driver has completed '+done+' stop'+(done===1?'':'s')+' — your delivery is coming up soon!'
+          : 'Driver has not started deliveries yet — your order will be on its way soon.';
+        html += '<div class="card trk-status-pending" style="text-align:center;padding:22px 16px;margin-bottom:10px">'+
+          '<div style="font-size:44px;margin-bottom:8px">🚚</div>'+
+          '<div style="font-size:17px;font-weight:900;color:#7a4800;margin-bottom:4px">Delivery Coming Soon</div>'+
+          '<div style="font-size:12px;color:#7a4800;font-family:monospace;line-height:1.6">'+esc(subMsg)+'</div>'+
+          '<button onclick="reloadTrack(this)" style="margin-top:14px;padding:8px 20px;border:1.5px solid #ffe082;border-radius:20px;background:#fff;color:#7a4800;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif">🔄 Refresh</button>'+
+        '</div>';
+
+        // Driver progress — only when not yet delivered
+        html += '<div class="card" style="margin-bottom:10px">'+
+          '<div style="font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;text-transform:uppercase;margin-bottom:8px">Driver Progress Today</div>';
+        if(lastDeliv){
+          html += '<div style="background:#f5ede0;border-radius:10px;padding:10px 12px">'+
+            '<div style="font-size:13px;font-weight:800;color:#4a2f14">📦 Last stop: '+esc(lastDeliv.shop_name||'—')+'</div>'+
+            '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:2px">🕐 '+esc(lastDeliv.time||'—')+'</div>'+
+          '</div>'+
+          '<div style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-top:6px">Stops completed: <b>'+deliveries.length+'</b></div>';
+        } else {
+          html += '<div style="text-align:center;padding:14px;font-size:12px;color:#8a7a6a;font-family:monospace;background:#f9f6f1;border-radius:10px">⏳ Driver has not started deliveries yet.</div>';
+        }
+        html += '</div>';
+
+        // Live tracking — only when not yet delivered
+        if(trackingUrl && trackingOn){
+          html += '<a href="'+esc(trackingUrl)+'" target="_blank" style="display:block;background:linear-gradient(135deg,#e53935,#b71c1c);color:#fff;padding:14px 16px;border-radius:14px;text-align:center;text-decoration:none;font-weight:800;font-size:14px;margin-bottom:10px">'+
+            '🔴 Track Tempo Live Location'+
+            '<div style="font-size:10px;opacity:.85;font-weight:500;margin-top:2px;font-family:monospace">Powered by Ajjas GPS · Tap to open</div></a>';
+        }
       }
 
       // ── Contact & escalation (always shown when order exists) ──
@@ -841,30 +886,6 @@ function loadTrack(){
           '</div>'+
         '</div>'+
       '</div>';
-
-      // ── Rule 2: Only show driver progress + live tracking if NOT yet delivered ──
-      if(!myDelivery){
-        // Driver's last delivery (progress indicator)
-        html += '<div class="card" style="margin-bottom:10px">'+
-          '<div style="font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;text-transform:uppercase;margin-bottom:8px">Driver Progress Today</div>';
-        if(lastDeliv){
-          html += '<div style="background:#f5ede0;border-radius:10px;padding:10px 12px">'+
-            '<div style="font-size:13px;font-weight:800;color:#4a2f14">📦 Last delivered: '+esc(lastDeliv.shop_name||'—')+'</div>'+
-            '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:2px">🕐 '+( lastDeliv.time||'—')+'</div>'+
-            '</div>'+
-            '<div style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-top:6px">Stops completed today: <b>'+deliveries.length+'</b></div>';
-        } else {
-          html += '<div style="text-align:center;padding:14px;font-size:12px;color:#8a7a6a;font-family:monospace;background:#f9f6f1;border-radius:10px">⏳ Driver has not started deliveries yet.</div>';
-        }
-        html += '</div>';
-
-        // Live tracking button
-        if(trackingUrl && trackingOn){
-          html += '<a href="'+esc(trackingUrl)+'" target="_blank" style="display:block;background:linear-gradient(135deg,#e53935,#b71c1c);color:#fff;padding:14px 16px;border-radius:14px;text-align:center;text-decoration:none;font-weight:800;font-size:14px;margin-bottom:4px">'+
-            '🔴 Track Tempo Live Location'+
-            '<div style="font-size:10px;opacity:.85;font-weight:500;margin-top:2px;font-family:monospace">Powered by Ajjas GPS · Tap to open</div></a>';
-        }
-      }
 
       el.innerHTML = html;
     });
