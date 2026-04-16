@@ -152,10 +152,30 @@
       }
 
       case 'getProducts':
+        if (p.group_id) {
+          // Use junction table via RPC to support multi-group products
+          return fetch(BASE.replace('/rest/v1','') + '/rest/v1/rpc/get_products_for_group', {
+            method: 'POST', headers: hdrs(),
+            body: JSON.stringify({ p_group_id: parseInt(p.group_id) })
+          }).then(function(r){ return r.ok ? r.json() : []; }).catch(function(){ return []; });
+        }
         return sbGet('products', {}, 'name');
 
       case 'getProductGroups':
         return sbGet('product_groups', {}, 'name');
+
+      // Get product IDs belonging to a group (for admin group editor)
+      case 'getGroupProductIds':
+        return fetch(BASE.replace('/rest/v1','') + '/rest/v1/rpc/get_group_product_ids', {
+          method: 'POST', headers: hdrs(),
+          body: JSON.stringify({ p_group_id: parseInt(p.group_id) })
+        }).then(function(r){ return r.ok ? r.json() : []; }).catch(function(){ return []; });
+
+      // Get member counts for all groups {group_id, cnt}[]
+      case 'getGroupMemberCounts':
+        return fetch(BASE.replace('/rest/v1','') + '/rest/v1/rpc/get_group_member_counts', {
+          method: 'POST', headers: hdrs(), body: JSON.stringify({})
+        }).then(function(r){ return r.ok ? r.json() : []; }).catch(function(){ return []; });
 
       case 'getProductsByGroup': {
         var url = BASE + '/products?active=eq.true&order=category,name';
@@ -436,13 +456,61 @@
       case 'deleteProductGroup':
         return sbDelete('product_groups', { id: b.id });
 
+      // Bulk assign/remove products to/from a group via junction table
+      case 'assignProductsToGroup': {
+        var gidInt = parseInt(b.group_id);
+        var ops = [];
+        if (b.add_ids && b.add_ids.length) {
+          // product_id is TEXT in junction table — never parseInt
+          var rows = b.add_ids.map(function(pid){ return { product_id: String(pid), group_id: gidInt }; });
+          ops.push(fetch(BASE + '/product_group_members', {
+            method: 'POST',
+            headers: hdrs({ 'Prefer': 'return=minimal,resolution=ignore-duplicates' }),
+            body: JSON.stringify(rows)
+          }).then(function(r){ return r.ok ? { ok: true } : { ok: false }; })
+            .catch(function(){ return { ok: false }; }));
+        }
+        if (b.remove_ids && b.remove_ids.length) {
+          var remStr = b.remove_ids.map(function(pid){ return encodeURIComponent(String(pid)); }).join(',');
+          ops.push(fetch(BASE + '/product_group_members?product_id=in.(' + remStr + ')&group_id=eq.' + gidInt, {
+            method: 'DELETE',
+            headers: hdrs({ 'Prefer': 'return=minimal' })
+          }).then(function(r){ return r.ok ? { ok: true } : { ok: false }; })
+            .catch(function(){ return { ok: false }; }));
+        }
+        if (!ops.length) return Promise.resolve({ ok: true });
+        return Promise.all(ops)
+          .then(function(res){ return res.every(function(r){ return r.ok; }) ? { ok: true } : { ok: false, error: 'Some updates failed' }; })
+          .catch(function(){ return { ok: false, error: 'Network error' }; });
+      }
+
+      // Get group IDs that a product belongs to (from junction table)
+      case 'getProductGroupIds':
+        return fetch(BASE + '/product_group_members?product_id=eq.' + encodeURIComponent(String(p.product_id)) + '&select=group_id', {
+          headers: hdrs()
+        }).then(function(r){ return r.ok ? r.json() : []; })
+          .then(function(rows){ return rows.map(function(r){ return r.group_id; }); })
+          .catch(function(){ return []; });
+
       // Customer portal: update shop login credentials + product group
-      case 'updateShopLogin':
+      case 'updateShopLogin': {
+        var ids = Array.isArray(b.product_group_ids) ? b.product_group_ids.map(Number).filter(Boolean) : [];
         return sbPatch('shops', { shop_id: b.shop_id }, {
-          login_username:   b.login_username   || null,
-          login_password:   b.login_password   || null,
-          product_group_id: b.product_group_id || null
+          login_username:    b.login_username || null,
+          login_password:    b.login_password || null,
+          product_group_id:  ids.length ? ids[0] : null,   // keep legacy column = first group
+          product_group_ids: ids
         });
+      }
+
+      // Customer: change own password (verified via RPC first)
+      case 'changeCustomerPassword':
+        return fetch(BASE.replace('/rest/v1','') + '/rest/v1/rpc/change_customer_password', {
+          method: 'POST', headers: hdrs(),
+          body: JSON.stringify({ p_shop_id: b.shop_id, p_old_password: b.old_password, p_new_password: b.new_password })
+        }).then(function(r){ return r.ok ? r.json() : false; })
+          .then(function(ok){ return { ok: !!ok }; })
+          .catch(function(){ return { ok: false }; });
 
       // Customer places order
       case 'placeCustomerOrder':
@@ -451,6 +519,12 @@
           delivery_date: b.delivery_date,
           items: b.items, qty: b.qty, note: b.note || '',
           status: 'pending'
+        });
+
+      // Customer editing their own pending order
+      case 'updateCustomerOrder':
+        return sbPatch('customer_orders', { id: b.id }, {
+          items: b.items, qty: b.qty, note: b.note || ''
         });
 
       // Admin / kitchen / packaging: update order status

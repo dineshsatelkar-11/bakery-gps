@@ -44,9 +44,18 @@ input[type=text],input[type=password]{width:100%;padding:13px 14px;border:1.5px 
 .prod-name{font-size:13px;font-weight:700;color:#1e1611}
 .prod-meta{font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px}
 .qty-ctrl{display:flex;align-items:center;gap:0;flex-shrink:0}
-.qty-btn{width:32px;height:32px;border:1.5px solid #e8dfd2;background:#fff;border-radius:8px;font-size:18px;font-weight:700;cursor:pointer;color:#4a2f14;display:flex;align-items:center;justify-content:center;line-height:1;font-family:-apple-system,sans-serif}
+.qty-btn{width:34px;height:34px;border:1.5px solid #e8dfd2;background:#fff;border-radius:8px;font-size:18px;font-weight:700;cursor:pointer;color:#4a2f14;display:flex;align-items:center;justify-content:center;line-height:1;font-family:-apple-system,sans-serif;flex-shrink:0}
 .qty-btn:active{background:#f5ede0}
-.qty-val{width:36px;text-align:center;font-size:15px;font-weight:800;color:#4a2f14;font-family:monospace}
+.qty-val{width:52px;text-align:center;font-size:15px;font-weight:800;color:#4a2f14;font-family:monospace;border:1.5px solid #e8dfd2;border-left:none;border-right:none;background:#f9f6f1;padding:5px 2px;outline:none;-webkit-appearance:none;-moz-appearance:textfield}
+.qty-val:focus{background:#fff;border-color:#4a2f14}
+/* preview sheet */
+.preview-sheet{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:flex-end;justify-content:center}
+.preview-card{background:#fff;width:100%;max-width:440px;border-radius:20px 20px 0 0;padding:20px 16px 32px;max-height:85vh;overflow-y:auto}
+.preview-title{font-size:16px;font-weight:900;color:#4a2f14;margin-bottom:14px;text-align:center}
+.preview-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f5ede0;font-size:13px}
+.preview-row:last-child{border-bottom:none}
+.preview-row .pn{font-weight:700;color:#1e1611;flex:1}
+.preview-row .pq{font-weight:800;color:#2d7a4f;font-family:monospace;flex-shrink:0}
 .order-total-bar{position:fixed;bottom:0;left:0;right:0;max-width:440px;margin:0 auto;background:#fff;border-top:2px solid #e8dfd2;padding:12px 14px;z-index:90}
 .hist-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;padding:12px 14px;margin-bottom:8px}
 .hist-date{font-size:12px;font-weight:800;color:#4a2f14}
@@ -68,8 +77,8 @@ textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:1
   <div class="login-title">It's Baked</div>
   <div class="login-sub">Customer Order Portal</div>
   <div class="login-card">
-    <label class="lbl">Username / Mobile</label>
-    <input type="text" id="loginUser" placeholder="Enter your username" autocomplete="username" autocapitalize="none">
+    <label class="lbl">Username or Mobile Number</label>
+    <input type="text" id="loginUser" placeholder="Username or mobile number" autocomplete="username" autocapitalize="none" inputmode="text">
     <label class="lbl">Password</label>
     <input type="password" id="loginPass" placeholder="Enter password" autocomplete="current-password">
     <button class="btn btn-brown" id="loginBtn" onclick="doLogin()">🔑 Login</button>
@@ -88,12 +97,19 @@ textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:1
   </div>
 
   <div class="tabs">
-    <button class="tab on" id="tb-order" onclick="showTab('order')">🛒 New Order</button>
-    <button class="tab" id="tb-history" onclick="showTab('history')">📋 My Orders</button>
+    <button class="tab on" id="tb-order" onclick="showTab('order')">🛒 Order</button>
+    <button class="tab" id="tb-history" onclick="showTab('history')">📋 History</button>
+    <button class="tab" id="tb-track" onclick="showTab('track')">📍 Track</button>
+    <button class="tab" id="tb-settings" onclick="showTab('settings')">⚙️</button>
   </div>
 
   <!-- ORDER TAB -->
   <div class="page on" id="pg-order">
+    <!-- Broadcast banner -->
+    <div id="broadcastBanner" style="display:none;background:#fff8e1;border:1.5px solid #ffe082;border-radius:12px;padding:11px 14px;margin-bottom:10px;font-size:12px;font-weight:700;color:#7a4800;font-family:monospace;line-height:1.6"></div>
+    <!-- Order closed banner -->
+    <div id="orderClosedBanner" style="display:none;background:#fde8e8;border:1.5px solid #f0b0b0;border-radius:12px;padding:11px 14px;margin-bottom:10px;font-size:13px;font-weight:800;color:#c8382a;text-align:center">🔒 Orders are currently closed. Please check back later.</div>
+
     <div class="card" style="margin-bottom:10px">
       <div class="lbl">Delivery Date</div>
       <div style="font-size:16px;font-weight:800;color:#4a2f14" id="delivDate"></div>
@@ -101,13 +117,15 @@ textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:1
     </div>
 
     <div id="orderMsg" style="display:none" class="msg ok"></div>
+    <!-- Existing order status banner -->
+    <div id="existingOrderBanner" style="display:none"></div>
 
     <div class="card" id="productsCard">
-      <div class="lbl">Select Products</div>
+      <div class="lbl" id="productsCardLabel">Select Products</div>
       <div id="productsList"><div style="padding:10px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading products…</div></div>
     </div>
 
-    <div class="card">
+    <div class="card" id="orderNoteCard">
       <div class="lbl">Note / Special Instructions</div>
       <textarea id="orderNote" rows="2" placeholder="e.g. leave at reception…"></textarea>
     </div>
@@ -122,21 +140,61 @@ textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:1
     <div id="historyList"><div style="padding:20px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div></div>
   </div>
 
+  <!-- TRACK TAB -->
+  <div class="page" id="pg-track">
+    <div id="trackContent">
+      <div style="padding:30px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">Loading delivery info…</div>
+    </div>
+  </div>
+
+  <!-- SETTINGS TAB -->
+  <div class="page" id="pg-settings">
+    <div class="card">
+      <div class="lbl">Change Password</div>
+      <div style="font-size:12px;color:#8a7a6a;font-family:monospace;margin-bottom:12px">Enter your current password to set a new one.</div>
+      <label class="lbl">Current Password</label>
+      <input type="password" id="cpOld" placeholder="Current password" autocomplete="current-password">
+      <label class="lbl">New Password</label>
+      <input type="password" id="cpNew" placeholder="New password (min 4 chars)" autocomplete="new-password">
+      <label class="lbl">Confirm New Password</label>
+      <input type="password" id="cpConfirm" placeholder="Repeat new password" autocomplete="new-password">
+      <div id="cpMsg" style="display:none" class="msg ok"></div>
+      <button class="btn btn-brown" onclick="changePassword()">🔑 Change Password</button>
+    </div>
+  </div>
+
   <!-- Sticky bottom bar (order tab) -->
   <div class="order-total-bar" id="orderBar" style="display:none">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
       <div style="font-size:12px;font-weight:700;color:#4a2f14"><span id="totalItems">0</span> items selected</div>
       <div style="font-size:11px;color:#8a7a6a;font-family:monospace">For: <span id="barDate"></span></div>
     </div>
-    <button class="btn btn-green" id="submitBtn" onclick="submitOrder()">📤 Place Order</button>
+    <button class="btn btn-green" id="submitBtn" onclick="showPreview()">👁 Review & Place Order</button>
+    <div id="orderLockedNote" style="display:none;font-size:11px;color:#c8382a;font-family:monospace;text-align:center;margin-top:6px">✅ Order approved — editing is no longer allowed.</div>
+  </div>
+</div>
+
+<!-- ORDER PREVIEW SHEET -->
+<div class="preview-sheet" id="previewSheet" style="display:none">
+  <div class="preview-card">
+    <div class="preview-title">🧾 Order Summary</div>
+    <div style="font-size:11px;color:#8a7a6a;font-family:monospace;text-align:center;margin-bottom:12px">Delivery: <span id="pvDate"></span></div>
+    <div id="pvItems"></div>
+    <div id="pvNote" style="margin-top:10px;font-size:11px;color:#8a7a6a;font-family:monospace;display:none"></div>
+    <div id="pvMsg" style="display:none;margin-top:10px" class="msg ok"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px">
+      <button class="btn btn-grey" style="margin-bottom:0" onclick="closePreview()">← Edit</button>
+      <button class="btn btn-green" style="margin-bottom:0" id="confirmBtn" onclick="submitOrder()">✅ Confirm</button>
+    </div>
   </div>
 </div>
 
 <script>
 // ── SESSION STATE ──
-var session = null; // { shop_id, shop_name, mobile, product_group_id }
+var session = null; // { shop_id, shop_name, mobile, product_group_ids[] }
 var products = [];  // active products for this customer's group
 var qty = {};       // { product_id: qty }
+var existingOrder = null; // existing order for tomorrow (if any)
 
 // Restore session from localStorage
 (function(){
@@ -184,8 +242,22 @@ function showApp(){
   document.getElementById('topDate').textContent = 'Ordering for: ' + fmtDate(tomorrow);
   document.getElementById('barDate').textContent = fmtDate(tomorrow);
 
-  loadProducts();
+  // Check for existing order FIRST, then load products (so we can pre-fill qty)
+  loadExistingOrder().then(function(){ loadProducts(); });
   loadHistory();
+  checkOrderWindow();
+  setInterval(checkOrderWindow, 30000);
+}
+
+// ── EXISTING ORDER CHECK ──
+function loadExistingOrder(){
+  return api({ action:'getCustomerOrders', shop_id: session.shop_id, limit: 10 }).then(function(data){
+    var list = Array.isArray(data) ? data : [];
+    var tomorrow = tomorrowStr();
+    // Find order for tomorrow's delivery date
+    var found = list.find(function(o){ return o.delivery_date === tomorrow; });
+    existingOrder = found || null;
+  });
 }
 
 // ── HELPERS ──
@@ -200,14 +272,56 @@ function fmtDate(s){ var d=new Date(s+'T00:00:00'); return d.toLocaleDateString(
 function loadProducts(){
   var el = document.getElementById('productsList');
   el.innerHTML = '<div style="padding:10px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
-  api({ action:'getProductsByGroup', group_id: session.product_group_id }).then(function(data){
-    products = Array.isArray(data) ? data : [];
+
+  // Support multiple groups — combine & deduplicate by product_id
+  var gids = Array.isArray(session.product_group_ids) && session.product_group_ids.length
+    ? session.product_group_ids
+    : (session.product_group_id ? [session.product_group_id] : []);
+
+  if (!gids.length) {
+    products = []; qty = {};
+    el.innerHTML = '<div style="padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace;text-align:center">No products assigned. Contact admin.</div>';
+    return;
+  }
+
+  Promise.all(gids.map(function(gid){
+    return api({ action:'getProducts', group_id: gid });
+  })).then(function(results){
+    var seen = {}, combined = [];
+    results.forEach(function(list){
+      (Array.isArray(list) ? list : []).forEach(function(p){
+        var key = String(p.product_id || p.id);
+        if (!seen[key]) { seen[key] = true; combined.push(p); }
+      });
+    });
+    // Sort combined by category then name
+    combined.sort(function(a,b){
+      var ca=(a.category||'').localeCompare(b.category||'');
+      return ca !== 0 ? ca : (a.name||'').localeCompare(b.name||'');
+    });
+    products = combined;
     qty = {};
+
+    // Pre-fill qty from existing order (if pending)
+    if (existingOrder && existingOrder.status === 'pending') {
+      var iArr = (existingOrder.items||'').split(',');
+      var qArr = (existingOrder.qty||'').split(',');
+      iArr.forEach(function(name, i){
+        var n = name.trim();
+        var q = parseInt(qArr[i]) || 0;
+        if (n && q) {
+          var p = products.find(function(p){ return p.name === n; });
+          if (p) qty[p.product_id] = q;
+        }
+      });
+    }
+
     if (!products.length){
       el.innerHTML = '<div style="padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace;text-align:center">No products available. Contact admin.</div>';
       return;
     }
     renderProducts();
+    renderOrderBanner();
   });
 }
 
@@ -232,7 +346,7 @@ function renderProducts(){
         '</div>'+
         '<div class="qty-ctrl">'+
           '<button class="qty-btn" onclick="changeQty(\''+p.product_id+'\',-1)">−</button>'+
-          '<div class="qty-val" id="qv-'+p.product_id+'">'+q+'</div>'+
+          '<input type="number" class="qty-val" id="qv-'+p.product_id+'" value="'+q+'" min="0" inputmode="numeric" onchange="setQty(\''+p.product_id+'\',this.value)" oninput="setQty(\''+p.product_id+'\',this.value)">'+
           '<button class="qty-btn" onclick="changeQty(\''+p.product_id+'\',1)">+</button>'+
         '</div>'+
       '</div>';
@@ -245,7 +359,13 @@ function renderProducts(){
 function changeQty(pid, delta){
   qty[pid] = Math.max(0, (qty[pid] || 0) + delta);
   var el = document.getElementById('qv-'+pid);
-  if (el) el.textContent = qty[pid];
+  if (el) el.value = qty[pid];
+  updateBar();
+}
+function setQty(pid, val){
+  qty[pid] = Math.max(0, parseInt(val) || 0);
+  var el = document.getElementById('qv-'+pid);
+  if (el && parseInt(el.value) !== qty[pid]) el.value = qty[pid];
   updateBar();
 }
 
@@ -259,40 +379,115 @@ function updateBar(){
   document.getElementById('orderBar').style.display = total > 0 ? 'block' : 'none';
 }
 
-// ── SUBMIT ORDER ──
-function submitOrder(){
+// ── ORDER BANNER (existing order state) ──
+var _editLocked = false;
+function renderOrderBanner(){
+  var banner  = document.getElementById('existingOrderBanner');
+  var submitBtn = document.getElementById('submitBtn');
+  var lockNote  = document.getElementById('orderLockedNote');
+  var label     = document.getElementById('productsCardLabel');
+
+  if (!existingOrder) {
+    // No order yet — fresh
+    banner.style.display = 'none';
+    submitBtn.textContent = '👁 Review & Place Order';
+    submitBtn.disabled = false;
+    lockNote.style.display = 'none';
+    if (label) label.textContent = 'Select Products';
+    _editLocked = false;
+    return;
+  }
+
+  var statusLabel = {pending:'⏳ Pending Approval', approved:'✅ Approved', rejected:'❌ Rejected', kitchen:'👨‍🍳 In Kitchen', packaging:'📦 Packaging', dispatched:'🚚 Out for Delivery'};
+  var s = existingOrder.status;
+
+  if (s === 'pending') {
+    // Editable
+    banner.innerHTML = '<div style="background:#e3f2fd;border:1.5px solid #90caf9;border-radius:12px;padding:11px 14px;margin-bottom:10px;font-size:12px;font-weight:700;color:#1565c0;font-family:monospace;line-height:1.6">✏️ You already have an order for tomorrow.<br>You can update quantities below until admin approves it.</div>';
+    banner.style.display = 'block';
+    submitBtn.textContent = '👁 Review & Update Order';
+    submitBtn.disabled = false;
+    lockNote.style.display = 'none';
+    if (label) label.textContent = 'Update Your Order';
+    _editLocked = false;
+  } else {
+    // Locked — approved/kitchen/packaging/dispatched/rejected
+    var msg = s === 'rejected'
+      ? '❌ Your order was rejected. Contact admin.'
+      : '🔒 Order status: ' + (statusLabel[s]||s) + '. Editing is no longer available.';
+    banner.innerHTML = '<div style="background:#fde8e8;border:1.5px solid #f0b0b0;border-radius:12px;padding:11px 14px;margin-bottom:10px;font-size:12px;font-weight:700;color:#c8382a;font-family:monospace;line-height:1.6">'+esc(msg)+'</div>';
+    banner.style.display = 'block';
+    submitBtn.disabled = true;
+    lockNote.style.display = 'block';
+    if (label) label.textContent = 'Your Order (read-only)';
+    _editLocked = true;
+    // Disable all qty controls
+    document.querySelectorAll('.qty-btn, .qty-val').forEach(function(el){ el.disabled = true; });
+  }
+}
+
+// ── ORDER PREVIEW ──
+function showPreview(){
   var selected = products.filter(function(p){ return (qty[p.product_id]||0) > 0; });
   if (!selected.length){ alert('Select at least one product.'); return; }
+  var note = document.getElementById('orderNote').value.trim();
+  document.getElementById('pvDate').textContent = fmtDate(tomorrowStr());
+  document.getElementById('pvItems').innerHTML = selected.map(function(p){
+    return '<div class="preview-row"><span class="pn">'+esc(p.name)+'</span><span class="pq">× '+qty[p.product_id]+'</span></div>';
+  }).join('');
+  var pvNote = document.getElementById('pvNote');
+  if (note){ pvNote.textContent = '📝 ' + note; pvNote.style.display='block'; }
+  else { pvNote.style.display='none'; }
+  document.getElementById('pvMsg').style.display='none';
+  document.getElementById('confirmBtn').disabled=false;
+  var isEdit = existingOrder && existingOrder.status === 'pending';
+  document.getElementById('confirmBtn').textContent = isEdit ? '✅ Update Order' : '✅ Place Order';
+  document.getElementById('previewSheet').style.display='flex';
+}
+function closePreview(){
+  document.getElementById('previewSheet').style.display='none';
+}
+
+// ── SUBMIT ORDER ──
+function submitOrder(){
+  if (_editLocked) { closePreview(); return; }
+  var selected = products.filter(function(p){ return (qty[p.product_id]||0) > 0; });
+  if (!selected.length){ closePreview(); return; }
 
   var items = selected.map(function(p){ return p.name; }).join(',');
   var qtys  = selected.map(function(p){ return qty[p.product_id]; }).join(',');
   var note  = document.getElementById('orderNote').value.trim();
   var date  = tomorrowStr();
 
-  var btn = document.getElementById('submitBtn');
-  btn.disabled = true; btn.textContent = '⏳ Placing order…';
+  var btn   = document.getElementById('confirmBtn');
+  var pvMsg = document.getElementById('pvMsg');
+  var isEdit = existingOrder && existingOrder.status === 'pending';
 
-  var msgEl = document.getElementById('orderMsg');
-  msgEl.style.display = 'none';
+  btn.disabled = true; btn.textContent = isEdit ? '⏳ Updating…' : '⏳ Placing…';
+  pvMsg.style.display='none';
 
-  apiPost({
-    action: 'placeCustomerOrder',
-    shop_id: session.shop_id, shop_name: session.shop_name,
-    delivery_date: date, items: items, qty: qtys, note: note
-  }).then(function(res){
-    btn.disabled = false; btn.textContent = '📤 Place Order';
+  var apiCall = isEdit
+    ? apiPost({ action:'updateCustomerOrder', id: existingOrder.id, items: items, qty: qtys, note: note })
+    : apiPost({ action:'placeCustomerOrder', shop_id: session.shop_id, shop_name: session.shop_name, delivery_date: date, items: items, qty: qtys, note: note });
+
+  apiCall.then(function(res){
+    btn.disabled = false; btn.textContent = '✅ Confirm';
     if (res && res.ok){
-      // Reset
-      qty = {};
-      renderProducts();
+      closePreview();
+      // Refresh existing order state
+      loadExistingOrder().then(function(){
+        renderProducts();
+        renderOrderBanner();
+      });
       document.getElementById('orderNote').value = '';
-      msgEl.textContent = '✅ Order placed! Delivery: '+fmtDate(date);
+      var msgEl = document.getElementById('orderMsg');
+      msgEl.textContent = isEdit ? '✅ Order updated! Delivery: '+fmtDate(date) : '✅ Order placed! Delivery: '+fmtDate(date);
       msgEl.className = 'msg ok'; msgEl.style.display = 'block';
       loadHistory();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      msgEl.textContent = '❌ Failed to place order: '+(res&&res.error||'try again');
-      msgEl.className = 'msg er'; msgEl.style.display = 'block';
+      pvMsg.textContent = '❌ Failed: '+(res&&res.error||'try again');
+      pvMsg.className='msg er'; pvMsg.style.display='block';
     }
   });
 }
@@ -330,13 +525,167 @@ function loadHistory(){
   });
 }
 
+// ── ORDER WINDOW CHECK ──
+var _lastBroadcastAt = '';
+function checkOrderWindow(){
+  Promise.all([
+    api({action:'getSetting', key:'order_enabled'}),
+    api({action:'getSetting', key:'order_message'}),
+    api({action:'getSetting', key:'customer_broadcast'}),
+    api({action:'getSetting', key:'customer_broadcast_at'})
+  ]).then(function(results){
+    var enabled  = !results[0].length || results[0][0].value !== 'false';
+    var owMsg    = results[1].length ? (results[1][0].value||'') : '';
+    var bcast    = results[2].length ? (results[2][0].value||'') : '';
+    var bcastAt  = results[3].length ? (results[3][0].value||'') : '';
+
+    // Order open/closed banner
+    var closedEl    = document.getElementById('orderClosedBanner');
+    var productsCard = document.getElementById('productsCard');
+    var orderNoteCard = document.getElementById('orderNoteCard');
+    var orderBar    = document.getElementById('orderBar');
+    if(!enabled){
+      closedEl.textContent = '🔒 Orders are currently closed.' + (owMsg ? ' '+owMsg : '');
+      closedEl.style.display = 'block';
+      if(productsCard)  productsCard.style.display  = 'none';
+      if(orderNoteCard) orderNoteCard.style.display  = 'none';
+      if(orderBar)      orderBar.style.display       = 'none';
+    } else {
+      closedEl.style.display = 'none';
+      if(productsCard)  productsCard.style.display  = '';
+      if(orderNoteCard) orderNoteCard.style.display  = '';
+      // orderBar visibility controlled by updateBar()
+    }
+
+    // Broadcast banner — show only if new
+    if(bcast && bcastAt && bcastAt !== _lastBroadcastAt){
+      _lastBroadcastAt = bcastAt;
+      var bb = document.getElementById('broadcastBanner');
+      bb.textContent = '📢 '+bcast;
+      bb.style.display = 'block';
+      setTimeout(function(){ bb.style.display='none'; }, 15000);
+    }
+  });
+}
+
+// ── TRACK DELIVERY ──
+function loadTrack(){
+  var el = document.getElementById('trackContent');
+  el.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
+
+  Promise.all([
+    api({action:'getCustomerOrders', shop_id: session.shop_id, limit: 5}),
+    api({action:'getShops'})
+  ]).then(function(results){
+    var orders = Array.isArray(results[0]) ? results[0] : [];
+    var shops  = Array.isArray(results[1]) ? results[1] : [];
+    var myShop = shops.find(function(s){ return s.shop_id === session.shop_id; });
+    var driver = myShop ? (myShop.assigned_driver||'') : '';
+
+    var dispatched = orders.filter(function(o){ return o.status==='dispatched'; });
+    var latest = orders[0] || null;
+
+    var html = '';
+
+    // Dispatched order card
+    if(dispatched.length){
+      var o = dispatched[0];
+      var pairs=[];
+      (o.items||'').split(',').forEach(function(item,i){
+        var q=((o.qty||'').split(',')[i]||'').trim();
+        if(item.trim()) pairs.push(q+'× '+item.trim());
+      });
+      html += '<div class="card" style="border-color:#a5d6a7;background:#f0faf4;margin-bottom:10px">'+
+        '<div style="font-size:13px;font-weight:900;color:#2d7a4f;margin-bottom:6px">🚚 Order Out for Delivery!</div>'+
+        '<div style="font-size:11px;font-family:monospace;background:#e8f5e9;border-radius:8px;padding:8px 10px;line-height:1.9;margin-bottom:8px">'+pairs.join('<br>')+'</div>'+
+        '<div style="font-size:11px;color:#2d7a4f;font-family:monospace">Delivery: '+fmtDate(o.delivery_date)+'</div>'+
+      '</div>';
+    }
+
+    // Driver info
+    if(driver){
+      html += '<div class="card" style="margin-bottom:10px">'+
+        '<div style="font-size:11px;font-weight:900;letter-spacing:1.5px;color:#8a7a6a;font-family:monospace;text-transform:uppercase;margin-bottom:10px">Your Delivery Driver</div>'+
+        '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">'+
+          '<div style="width:44px;height:44px;border-radius:50%;background:#e3f2fd;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🚗</div>'+
+          '<div><div style="font-size:15px;font-weight:800;color:#4a2f14">'+esc(driver)+'</div>'+
+          '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:2px">Assigned Driver</div></div>'+
+        '</div>'+
+        (session.mobile ?
+          '<a href="tracking.html?mobile='+encodeURIComponent(session.mobile)+'" style="display:block;background:#4a2f14;color:#fff;padding:12px;border-radius:12px;text-align:center;text-decoration:none;font-weight:800;font-size:13px">📍 Live Tracking</a>'
+        : '')+
+      '</div>';
+    } else {
+      html += '<div class="card" style="margin-bottom:10px"><div style="font-size:12px;color:#8a7a6a;font-family:monospace;text-align:center;padding:10px">No driver assigned yet. Contact admin.</div></div>';
+    }
+
+    // Latest order status
+    if(latest){
+      var statusLabel={pending:'⏳ Pending Approval',approved:'✅ Approved',rejected:'❌ Rejected',kitchen:'👨‍🍳 In Kitchen',packaging:'📦 Packaging',dispatched:'🚚 Out for Delivery'};
+      var statusClass={pending:'s-pending',approved:'s-approved',rejected:'s-rejected',kitchen:'s-kitchen',packaging:'s-packaging',dispatched:'s-dispatched'};
+      html += '<div class="card">'+
+        '<div style="font-size:11px;font-weight:900;letter-spacing:1.5px;color:#8a7a6a;font-family:monospace;text-transform:uppercase;margin-bottom:8px">Latest Order Status</div>'+
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'+
+          '<div style="font-size:13px;font-weight:800;color:#4a2f14">'+fmtDate(latest.delivery_date)+'</div>'+
+          '<span class="hist-status '+(statusClass[latest.status]||'s-pending')+'">'+(statusLabel[latest.status]||latest.status)+'</span>'+
+        '</div>'+
+        // Status pipeline
+        '<div style="display:flex;align-items:center;gap:4px;margin-top:10px;overflow-x:auto;padding-bottom:4px">'+
+        ['pending','approved','kitchen','packaging','dispatched'].map(function(s,i){
+          var steps = ['pending','approved','kitchen','packaging','dispatched'];
+          var curr = steps.indexOf(latest.status);
+          var active = i <= curr;
+          var icons = {pending:'⏳',approved:'✅',kitchen:'👨‍🍳',packaging:'📦',dispatched:'🚚'};
+          return '<div style="display:flex;align-items:center;gap:4px">'+
+            (i>0?'<div style="width:16px;height:2px;background:'+(active?'#2d7a4f':'#e8dfd2')+';flex-shrink:0"></div>':'')+
+            '<div style="text-align:center;flex-shrink:0">'+
+              '<div style="font-size:16px">'+icons[s]+'</div>'+
+              '<div style="font-size:8px;font-family:monospace;color:'+(active?'#2d7a4f':'#b0a090')+';font-weight:700;margin-top:2px;text-transform:uppercase">'+s+'</div>'+
+            '</div>'+
+          '</div>';
+        }).join('')+
+        '</div>'+
+      '</div>';
+    }
+
+    if(!html) html = '<div style="padding:30px;text-align:center;font-size:13px;color:#8a7a6a;font-family:monospace">No order data yet. Place your first order!</div>';
+    el.innerHTML = html;
+  });
+}
+
 // ── TABS ──
 function showTab(t){
-  ['order','history'].forEach(function(x){
+  ['order','history','track','settings'].forEach(function(x){
     document.getElementById('pg-'+x).classList.toggle('on', x===t);
     document.getElementById('tb-'+x).classList.toggle('on', x===t);
   });
   document.getElementById('orderBar').style.display = t==='order' && totalItemCount()>0 ? 'block' : 'none';
+  if(t==='track') loadTrack();
+  if(t==='history') loadHistory();
+}
+
+// ── CHANGE PASSWORD ──
+function changePassword(){
+  var old  = document.getElementById('cpOld').value;
+  var np   = document.getElementById('cpNew').value;
+  var nc   = document.getElementById('cpConfirm').value;
+  var msg  = document.getElementById('cpMsg');
+  msg.style.display='none';
+  if(!old||!np||!nc){ msg.textContent='Fill all fields.'; msg.className='msg er'; msg.style.display='block'; return; }
+  if(np.length < 4){ msg.textContent='New password must be at least 4 characters.'; msg.className='msg er'; msg.style.display='block'; return; }
+  if(np !== nc){ msg.textContent='New passwords do not match.'; msg.className='msg er'; msg.style.display='block'; return; }
+  msg.textContent='Updating…'; msg.className='msg in'; msg.style.display='block';
+  apiPost({ action:'changeCustomerPassword', shop_id:session.shop_id, old_password:old, new_password:np })
+    .then(function(res){
+      if(res && res.ok){
+        msg.textContent='✅ Password changed successfully!'; msg.className='msg ok';
+        document.getElementById('cpOld').value='';
+        document.getElementById('cpNew').value='';
+        document.getElementById('cpConfirm').value='';
+      } else {
+        msg.textContent='❌ Current password is incorrect.'; msg.className='msg er';
+      }
+    });
 }
 
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>Baked GPS</title>
+<title>It's Baked</title>
 <script src="config.js"></script>
 <script src="api.js"></script>
 <link rel="manifest" href="manifest.json">
@@ -15,189 +15,187 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
-.logo{font-size:52px;margin-bottom:6px;text-align:center}
+.logo{font-size:56px;margin-bottom:6px;text-align:center}
 h1{font-size:24px;font-weight:900;color:#4a2f14;text-align:center}
-.sub{font-size:12px;color:#8a7a6a;font-family:monospace;text-align:center;margin-bottom:28px;margin-top:2px}
-.card{background:#fff;border:1.5px solid #e8dfd2;border-radius:20px;padding:22px;width:100%;max-width:360px;margin-bottom:12px}
-.lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:8px;text-transform:uppercase}
-select,input{width:100%;padding:13px;border:1.5px solid #e8dfd2;border-radius:12px;font-size:15px;font-weight:600;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:10px}
-.btn{width:100%;padding:15px;border:none;border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif}
-.btn-driver{background:#2d7a4f;color:#fff;margin-bottom:0}
-.btn-admin{background:#4a2f14;color:#fff;margin-bottom:0}
-.err{color:#c8382a;font-size:12px;font-family:monospace;text-align:center;margin-top:8px;display:none}
-.divider{display:flex;align-items:center;gap:10px;margin:14px 0;color:#8a7a6a;font-size:12px;width:100%;max-width:360px}
-.divider::before,.divider::after{content:'';flex:1;height:1px;background:#e8dfd2}
-.lang-row{display:flex;gap:8px;justify-content:center;margin-bottom:20px}
-.lang-btn{padding:7px 18px;border-radius:20px;border:1.5px solid #e8dfd2;background:#fff;font-size:13px;font-weight:700;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif}
-.lang-btn.on{background:#4a2f14;color:#fff;border-color:#4a2f14}
+.sub{font-size:12px;color:#8a7a6a;font-family:monospace;text-align:center;margin-bottom:32px;margin-top:3px}
+.card{background:#fff;border:1.5px solid #e8dfd2;border-radius:20px;padding:24px;width:100%;max-width:360px}
+.lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:8px;text-transform:uppercase;display:block}
+input{width:100%;padding:14px;border:1.5px solid #e8dfd2;border-radius:12px;font-size:15px;font-weight:600;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:12px;transition:border-color .2s}
+input:focus{border-color:#e67e22}
+.btn{width:100%;padding:15px;border:none;border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;background:#4a2f14;color:#fff;transition:opacity .2s}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.err{color:#c8382a;font-size:12px;font-family:monospace;text-align:center;margin-top:10px;display:none;line-height:1.6}
+.hint{font-size:11px;color:#8a7a6a;font-family:monospace;text-align:center;margin-top:14px;line-height:1.8}
+.hint span{color:#4a2f14;font-weight:700}
+.checking{color:#1565c0;font-size:12px;font-family:monospace;text-align:center;margin-top:10px;display:none}
 </style>
 </head>
 <body>
+
 <div class="logo">🥖</div>
-<h1>Baked GPS</h1>
+<h1>It's Baked</h1>
 <div class="sub">Delivery Management · Lohegaon</div>
 
-<div class="lang-row">
-  <button class="lang-btn on" id="btn-en" onclick="setLang('en')">English</button>
-  <button class="lang-btn" id="btn-mr" onclick="setLang('mr')">मराठी</button>
+<div class="card">
+  <label class="lbl">Name / Username / Mobile</label>
+  <input type="text" id="loginId" placeholder="Enter your name or username" autocomplete="off" autocorrect="off" autocapitalize="off">
+  <label class="lbl">Password</label>
+  <input type="password" id="loginPass" placeholder="Password" autocomplete="current-password">
+  <button class="btn" id="loginBtn" onclick="doLogin()">🔑 Login</button>
+  <div class="checking" id="checkingMsg"></div>
+  <div class="err" id="errMsg">Wrong name / username / password.<br>Please check and try again.</div>
 </div>
 
-<div class="card">
-  <div class="lbl" id="lbl-driver">Driver Login</div>
-  <select id="driverName">
-    <option value="">Loading drivers…</option>
-  </select>
-  <input type="password" id="driverPass" placeholder="Password">
-  <button class="btn btn-driver" id="btn-dlogin" onclick="driverLogin()">🚗 Driver Login</button>
-  <div class="err" id="d-err">Wrong password.</div>
-</div>
-
-<div class="divider">or</div>
-
-<div class="card">
-  <div class="lbl">Staff Login</div>
-  <select id="staffName">
-    <option value="">Loading…</option>
-  </select>
-  <input type="password" id="staffPass" placeholder="Password">
-  <button class="btn btn-admin" onclick="staffLogin()">📊 Staff Login</button>
-  <div class="err" id="a-err">Wrong name or password.</div>
-</div>
-
-<div class="divider">or</div>
-
-<div class="card">
-  <div class="lbl" id="lbl-customer">Customer Order Portal</div>
-  <button class="btn" style="background:#2d7a4f;color:#fff;margin-bottom:0" onclick="goto('order')">🛒 Place / View Order</button>
+<div class="hint">
+  Staff · Driver · Customer — <span>one login for all</span>
 </div>
 
 <script>
-// Register Service Worker for PWA
-if('serviceWorker' in navigator) {
-  window.addEventListener('load', function() {
-    navigator.serviceWorker.register('/sw.js', {scope: '/'})
-      .then(function(){ console.log('SW registered'); })
-      .catch(function(e){ console.log('SW error', e); });
+// Register Service Worker
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(function(){});
   });
 }
 
-var lang = localStorage.getItem('lang') || 'en';
+// Load staff + driver names for datalist autocomplete and case-insensitive matching
+var staffNames  = [];
+var driverNames = [];
 
-function loadDriversForLogin(){
-  var sel = document.getElementById('driverName');
-  api({action:'getDrivers'}).then(function(data){
-    var list = Array.isArray(data) ? data.filter(function(d){return d.active;}) : [];
-    sel.innerHTML = '<option value="">Select your name…</option>' +
-      list.map(function(d){ return '<option value="'+d.name+'">'+d.name+'</option>'; }).join('');
-  }).catch(function(){ sel.innerHTML = '<option value="">Select your name…</option>'; });
-}
-
-function setLang(l) {
-  lang = l;
-  localStorage.setItem('lang', l);
-  document.getElementById('btn-en').className = 'lang-btn' + (l==='en'?' on':'');
-  document.getElementById('btn-mr').className = 'lang-btn' + (l==='mr'?' on':'');
-  if (l==='mr') {
-    document.getElementById('lbl-driver').textContent = 'ड्रायव्हर लॉगिन';
-    document.getElementById('btn-dlogin').textContent = '🚗 लॉगिन करा';
-    document.getElementById('driverPass').placeholder = 'पासवर्ड';
-  } else {
-    document.getElementById('lbl-driver').textContent = 'Driver Login';
-    document.getElementById('btn-dlogin').textContent = '🚗 Driver Login';
-    document.getElementById('driverPass').placeholder = 'Password';
-  }
-}
-
-function loadStaffForLogin(){
-  var sel = document.getElementById('staffName');
+// namesReady resolves once both lists are fetched — doLogin waits for this
+var namesReady = Promise.all([
   api({action:'getStaff'}).then(function(data){
-    var list = Array.isArray(data) ? data.filter(function(s){return s.active && s.role !== 'super_admin';}) : [];
-    sel.innerHTML = '<option value="">Select name…</option>' +
-      list.map(function(s){
-        var icon = s.role==='chef'?'👨‍🍳':s.role==='packer'?'📦':'👤';
-        return '<option value="'+s.name+'">'+icon+' '+s.name+'</option>';
-      }).join('');
-  }).catch(function(){ sel.innerHTML = '<option value="">Select name…</option>'; });
+    staffNames = (Array.isArray(data)?data:[]).filter(function(s){return s.active;}).map(function(s){return s.name;});
+  }),
+  api({action:'getDrivers'}).then(function(data){
+    driverNames = (Array.isArray(data)?data:[]).filter(function(d){return d.active;}).map(function(d){return d.name;});
+  })
+]);
+
+// Find exact DB name with case-insensitive + trimmed match
+function exactName(input, list){
+  var q = input.trim().toLowerCase();
+  return list.find(function(n){ return n.trim().toLowerCase() === q; }) || null;
 }
 
-function staffLogin(){
-  var name = document.getElementById('staffName').value;
-  var pass = document.getElementById('staffPass').value;
-  var err  = document.getElementById('a-err');
-  var btn  = document.querySelector('.btn-admin');
-  err.style.display = 'none';
-  if(!name){ alert('Select your name'); return; }
-  if(!pass){ err.style.display='block'; return; }
-  btn.disabled=true; btn.textContent='⏳ Logging in…';
-  // Password checked server-side via RPC — never exposed to browser
-  api({action:'staffLogin', name:name, password:pass}).then(function(data){
-    btn.disabled=false; btn.textContent='📊 Staff Login';
-    var s = Array.isArray(data) && data.length ? data[0] : null;
-    if(!s){ err.style.display='block'; return; }
-    sessionStorage.setItem('role', s.role);
-    sessionStorage.setItem('tabs', s.tabs || '[]');
-    sessionStorage.setItem('staffName', s.name);
-    // Persist staff session so app stays logged in after closing
-    localStorage.setItem('staffRole', s.role);
-    localStorage.setItem('staffTabs', s.tabs || '[]');
-    localStorage.setItem('staffNamePersist', s.name);
-    // Route chef → kitchen, packer → packaging, others → admin
-    if (s.role === 'chef') { localStorage.setItem('kitchenStaff', s.name); goto('kitchen'); }
-    else if (s.role === 'packer') { localStorage.setItem('packStaff', s.name); goto('packaging'); }
-    else goto('admin');
+var loginId   = document.getElementById('loginId');
+var loginPass = document.getElementById('loginPass');
+var loginBtn  = document.getElementById('loginBtn');
+var errMsg    = document.getElementById('errMsg');
+var checkMsg  = document.getElementById('checkingMsg');
+
+loginPass.addEventListener('keydown',function(e){ if(e.key==='Enter') doLogin(); });
+loginId.addEventListener('keydown',function(e){ if(e.key==='Enter') loginPass.focus(); });
+
+function setChecking(msg){
+  errMsg.style.display='none';
+  checkMsg.textContent=msg;
+  checkMsg.style.display=msg?'block':'none';
+}
+
+function doLogin(){
+  var id   = loginId.value.trim();
+  var pass = loginPass.value.trim();
+  if(!id){ loginId.focus(); return; }
+  if(!pass){ loginPass.focus(); return; }
+
+  loginBtn.disabled=true;
+  errMsg.style.display='none';
+  setChecking('⏳ Checking…');
+
+  // Wait for names to load (instant if already done), then resolve exact casing
+  namesReady.then(function(){
+  var staffExact  = exactName(id, staffNames);
+  var driverExact = exactName(id, driverNames);
+
+  // Step 1: Try staff login (use exact DB name if found, else trimmed input)
+  api({action:'staffLogin', name:staffExact||id, password:pass}).then(function(data){
+    var s = Array.isArray(data)&&data.length ? data[0] : null;
+    if(s && s.role){
+      sessionStorage.setItem('role', s.role);
+      sessionStorage.setItem('tabs', s.tabs||'[]');
+      sessionStorage.setItem('staffName', s.name);
+      localStorage.setItem('staffRole', s.role);
+      localStorage.setItem('staffTabs', s.tabs||'[]');
+      localStorage.setItem('staffNamePersist', s.name);
+      if(s.role==='chef'){
+        localStorage.setItem('kitchenStaff', s.name);
+        goto('kitchen');
+      } else if(s.role==='packer'){
+        localStorage.setItem('packStaff', s.name);
+        goto('packaging');
+      } else {
+        goto('admin');
+      }
+      return;
+    }
+
+    // Step 2: Try driver login
+    return api({action:'driverLogin', name:driverExact||id, password:pass}).then(function(data){
+      var d = Array.isArray(data)&&data.length ? data[0] : null;
+      if(d && d.name){
+        sessionStorage.setItem('role','driver');
+        sessionStorage.setItem('driver', d.name);
+        localStorage.setItem('driverRole','driver');
+        localStorage.setItem('driverName', d.name);
+        goto('driver');
+        return;
+      }
+
+      // Step 3: Try customer login (username or mobile — RPC already does LOWER+TRIM)
+      return api({action:'customerLogin', username:id, password:pass}).then(function(data){
+        var c = Array.isArray(data)&&data.length ? data[0] : null;
+        if(c && c.shop_id){
+          // Write full session to localStorage so order.html auto-restore picks it up correctly
+          localStorage.setItem('custSession', JSON.stringify(c));
+          goto('order');
+          return;
+        }
+
+        // All failed
+        loginBtn.disabled=false;
+        setChecking('');
+        errMsg.style.display='block';
+      });
+    });
+  }).catch(function(){
+    loginBtn.disabled=false;
+    setChecking('');
+    errMsg.style.display='block';
   });
+  }); // end namesReady.then
 }
 
-// apply saved lang on load
-setLang(lang);
-loadDriversForLogin();
-loadStaffForLogin();
-
-function driverLogin(){
-  var name = document.getElementById('driverName').value;
-  var pass = document.getElementById('driverPass').value;
-  var btn  = document.getElementById('btn-dlogin');
-  if (!name) { alert(lang==='mr' ? 'नाव निवडा' : 'Select your name'); return; }
-  if (!pass) { document.getElementById('d-err').style.display='block'; return; }
-  btn.disabled=true; btn.textContent = lang==='mr' ? '⏳ थांबा…' : '⏳ Checking…';
-  // Password checked server-side via RPC — never exposed to browser
-  api({action:'driverLogin', name:name, password:pass}).then(function(data){
-    btn.disabled=false; btn.textContent = lang==='mr' ? '🚗 लॉगिन करा' : '🚗 Driver Login';
-    var d = Array.isArray(data) && data.length ? data[0] : null;
-    if(!d){ document.getElementById('d-err').style.display='block'; return; }
-    sessionStorage.setItem('role', 'driver');
-    sessionStorage.setItem('driver', d.name);
-    sessionStorage.setItem('lang', lang);
-    // Persist driver session so app stays logged in after closing
-    localStorage.setItem('driverRole', 'driver');
-    localStorage.setItem('driverName', d.name);
-    goto('driver');
-  });
+function goto(page){
+  setChecking('✅ Logged in! Opening…');
+  window.location.href = page + '.html';
 }
 
-document.getElementById('driverPass').addEventListener('keydown', function(e){ if(e.key==='Enter') driverLogin(); });
-document.getElementById('staffPass').addEventListener('keydown', function(e){ if(e.key==='Enter') staffLogin(); });
+// ── Auto-restore session ──
+(function(){
+  var _r = sessionStorage.getItem('role');
 
-// redirect if already logged in
-var _r = sessionStorage.getItem('role');
-// Restore persistent driver session from localStorage if sessionStorage was cleared
-if(!_r && localStorage.getItem('driverRole')==='driver'){
-  sessionStorage.setItem('role','driver');
-  sessionStorage.setItem('driver', localStorage.getItem('driverName'));
-  _r = 'driver';
-}
-// Restore persistent staff/admin session from localStorage if sessionStorage was cleared
-if(!_r && localStorage.getItem('staffRole')){
-  var _sr = localStorage.getItem('staffRole');
-  sessionStorage.setItem('role', _sr);
-  sessionStorage.setItem('tabs', localStorage.getItem('staffTabs') || '[]');
-  sessionStorage.setItem('staffName', localStorage.getItem('staffNamePersist') || '');
-  _r = _sr;
-}
-if(_r==='driver') goto('driver');
-if(_r==='chef') goto('kitchen');
-if(_r==='packer') goto('packaging');
-if(_r==='super_admin'||_r==='admin'||_r==='assistant') goto('admin');
+  // Restore driver
+  if(!_r && localStorage.getItem('driverRole')==='driver'){
+    sessionStorage.setItem('role','driver');
+    sessionStorage.setItem('driver', localStorage.getItem('driverName'));
+    _r='driver';
+  }
+  // Restore staff
+  if(!_r && localStorage.getItem('staffRole')){
+    var sr=localStorage.getItem('staffRole');
+    sessionStorage.setItem('role', sr);
+    sessionStorage.setItem('tabs', localStorage.getItem('staffTabs')||'[]');
+    sessionStorage.setItem('staffName', localStorage.getItem('staffNamePersist')||'');
+    _r=sr;
+  }
+
+  if(_r==='driver')    goto('driver');
+  if(_r==='chef')      goto('kitchen');
+  if(_r==='packer')    goto('packaging');
+  if(_r==='super_admin'||_r==='admin'||_r==='assistant') goto('admin');
+  // Note: customer sessions are not auto-restored (they must login each time for security)
+})();
 </script>
 </body>
 </html>

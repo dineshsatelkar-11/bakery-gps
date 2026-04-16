@@ -110,15 +110,15 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   <div class="topbar-right"><button class="tbtn" id="logoutBtn">Logout</button></div>
 </div>
 <div class="tabs">
-  <button class="tab on" id="tb-orders"    onclick="showTab('orders')">📋 Orders</button>
-  <button class="tab"    id="tb-approve"   onclick="showTab('approve')">⏳ New</button>
-  <button class="tab"    id="tb-queue"     onclick="showTab('queue')">⚠️ Queue</button>
-  <button class="tab"    id="tb-summary"   onclick="showTab('summary')">📊 Summary</button>
-  <button class="tab"    id="tb-delivery"  onclick="showTab('delivery')">🚚 Delivery</button>
-  <button class="tab"    id="tb-routes"    onclick="showTab('routes')">🗺 Routes</button>
-  <button class="tab"    id="tb-customers" onclick="showTab('customers')">🏪 Customers</button>
+  <button class="tab on" id="tb-orders"      onclick="showTab('orders')">📋 Orders</button>
   <button class="tab"    id="tb-cust-orders" onclick="showTab('cust-orders')">🛒 Cust Orders</button>
-  <button class="tab"    id="tb-products"   onclick="showTab('products')">📦 Products</button>
+  <button class="tab"    id="tb-approve"     onclick="showTab('approve')">⏳ New</button>
+  <button class="tab"    id="tb-queue"       onclick="showTab('queue')">⚠️ Queue</button>
+  <button class="tab"    id="tb-summary"     onclick="showTab('summary')">📊 Summary</button>
+  <button class="tab"    id="tb-delivery"    onclick="showTab('delivery')">🚚 Delivery</button>
+  <button class="tab"    id="tb-routes"      onclick="showTab('routes')">🗺 Routes</button>
+  <button class="tab"    id="tb-customers"   onclick="showTab('customers')">🏪 Customers</button>
+  <button class="tab"    id="tb-products"    onclick="showTab('products')">📦 Products</button>
   <button class="tab"    id="tb-groups"     onclick="showTab('groups')">🏷 Groups</button>
   <button class="tab"    id="tb-drivers"    onclick="showTab('drivers')">🚗 Drivers</button>
   <button class="tab"    id="tb-users"     onclick="showTab('users')">👥 Users</button>
@@ -374,7 +374,41 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
 <!-- NOTIFY (super_admin only) -->
 <div class="page" id="pg-notify">
 
-  <!-- Summary sticker -->
+  <!-- ORDER WINDOW TOGGLE -->
+  <div class="card" style="margin-bottom:10px">
+    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">🛒 Order Window</div>
+    <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:12px;line-height:1.6">Enable or disable ordering for all customers. When disabled, customers see a "closed" message and cannot place orders.</div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+      <div id="orderWindowStatus" style="font-size:13px;font-weight:800;color:#2d7a4f">⏳ Loading…</div>
+      <div style="flex:1"></div>
+      <button id="orderWindowBtn" class="btn" style="width:auto;padding:10px 20px;margin-bottom:0;font-size:13px" onclick="toggleOrderWindow()">…</button>
+    </div>
+    <input type="text" id="orderWindowMsg" placeholder="Optional message to show customers (e.g. Orders open until 9 PM)" style="margin-bottom:0;font-size:13px;padding:10px 12px">
+  </div>
+
+  <!-- BROADCAST TO CUSTOMERS -->
+  <div class="card" style="margin-bottom:12px">
+    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">📢 Broadcast to Customers</div>
+    <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:10px;line-height:1.6">Send an announcement to all customers. They will see it as a banner when they open the order page.</div>
+
+    <!-- Quick templates -->
+    <div class="lbl" style="margin-bottom:6px">Quick Templates</div>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+      <button class="btn-sm" style="background:#f5ede0;color:#4a2f14;border:1.5px solid #e8dfd2;text-align:left;padding:9px 12px" onclick="broadcastTemplate('📢 Orders are now open! Place your order as early as possible.')">📢 Orders are now open! Place your order as early as possible.</button>
+      <button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082;text-align:left;padding:9px 12px" onclick="broadcastTemplate('⏰ Order window will close soon. Place your order now!')">⏰ Order window will close soon. Place your order now!</button>
+      <button class="btn-sm" style="background:#f5ede0;color:#4a2f14;border:1.5px solid #e8dfd2;text-align:left;padding:9px 12px" onclick="broadcastTemplate('✅ Already placed your order? You\'re all set — nothing more to do!')">✅ Already placed your order? You're all set — nothing more to do!</button>
+      <button class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1.5px solid #f0b0b0;text-align:left;padding:9px 12px" onclick="broadcastTemplate('🔒 Orders are now closed for today. See you tomorrow!')">🔒 Orders are now closed for today. See you tomorrow!</button>
+    </div>
+
+    <textarea id="broadcastMsg" rows="2" placeholder="e.g. Orders for tomorrow are now open! Place your order before 9 PM." style="resize:vertical;margin-bottom:8px"></textarea>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-brown" style="margin-bottom:0;flex:1" onclick="sendBroadcast()">📢 Send to All Customers</button>
+      <button class="btn btn-grey" style="margin-bottom:0;width:auto;padding:10px 14px" onclick="clearBroadcast()">✖ Clear</button>
+    </div>
+    <div id="broadcast-msg" style="display:none;margin-top:8px" class="msg ok"></div>
+  </div>
+
+  <!-- DRIVER PUSH NOTIFICATIONS -->
   <div style="background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:14px;margin-bottom:12px">
     <div style="font-size:15px;font-weight:900;color:#4a2f14;margin-bottom:4px">🔔 Send Push Notification</div>
     <div style="font-size:12px;font-family:monospace;color:#8a7a6a;line-height:1.6">Send instant notification to one or more drivers.<br>Notification appears on their phone even if the app is closed.</div>
@@ -410,6 +444,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
 
   <button class="btn btn-brown" onclick="sendManualNotif()">🔔 Send Notification</button>
   <div id="notif-send-msg" style="display:none;margin-top:8px" class="msg ok"></div>
+  </div><!-- end driver push card -->
 </div>
 
 <!-- CLEANUP (super_admin only) -->
@@ -466,6 +501,11 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
 
 <!-- CUSTOMER ORDERS (approval pipeline) -->
 <div class="page" id="pg-cust-orders">
+  <!-- Pending orders alert banner -->
+  <div id="pendingOrdersBanner" style="display:none;background:#fff8e1;border:1.5px solid #ffe082;border-radius:12px;padding:11px 14px;margin-bottom:10px;font-size:13px;font-weight:800;color:#7a4800;text-align:center;cursor:pointer" onclick="document.getElementById('co-status').value='pending';loadCustOrders()">
+    ⏳ <span id="pendingOrdersCount">0</span> order(s) waiting for your approval — tap to view
+  </div>
+
   <div class="card">
     <div class="lbl">Filter Orders</div>
     <div class="filter-row">
@@ -557,11 +597,21 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
     <button class="btn btn-blue" onclick="pickGPS()">📍 Use My Current Location</button>
     <div id="cm-gps-msg" style="display:none" class="msg in"></div>
     <div style="border-top:1.5px dashed #e8dfd2;margin:12px 0 10px;padding-top:10px">
-      <div style="font-size:11px;font-weight:900;color:#4a2f14;margin-bottom:10px;letter-spacing:.5px">🛒 CUSTOMER PORTAL LOGIN</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:900;color:#4a2f14;letter-spacing:.5px">🛒 CUSTOMER PORTAL LOGIN</div>
+        <button type="button" class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082;font-size:10px" onclick="autoGenLogin()">⚡ Auto-generate</button>
+      </div>
       <div class="lbl">Login Username</div><input type="text" id="cm-login-user" placeholder="e.g. teapost_baner" autocomplete="off" autocapitalize="none">
-      <div class="lbl">Login Password</div><input type="text" id="cm-login-pass" placeholder="Set a password (min 4 chars)" autocomplete="off">
-      <div class="lbl">Product Group</div>
-      <select id="cm-group"><option value="">— No group assigned —</option></select>
+      <div class="lbl">Login Password</div>
+      <div style="position:relative;margin-bottom:8px">
+        <input type="text" id="cm-login-pass" placeholder="Set a password (min 4 chars)" autocomplete="off" style="margin-bottom:0;padding-right:44px">
+        <button type="button" onclick="genPassword()" title="Generate random password" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;padding:4px">🎲</button>
+      </div>
+      <div class="lbl" style="margin-bottom:6px">Product Groups</div>
+      <div id="cm-groups-list" style="border:1.5px solid #e8dfd2;border-radius:10px;max-height:150px;overflow-y:auto;background:#fafafa;margin-bottom:10px">
+        <div style="padding:10px;font-size:11px;color:#8a7a6a;font-family:monospace">Loading groups…</div>
+      </div>
+      <button type="button" class="btn-sm" style="background:#e8f5e9;color:#2d7a4f;border:1.5px solid #a5d6a7;width:100%;padding:9px;border-radius:10px;font-size:12px;margin-top:4px" onclick="shareLoginDetails()">📤 Share Login Details</button>
     </div>
     <div id="cm-msg" style="display:none" class="msg ok"></div>
     <!-- Delivery history — shown only when editing an existing customer -->
@@ -598,15 +648,14 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
 <!-- CUSTOMER ORDER EDIT MODAL -->
 <div class="modal-bg" id="coModal" style="display:none" onclick="if(event.target===this)closeCoModal()">
   <div class="modal">
-    <div class="modal-title">Customer Order</div>
+    <div class="modal-title" id="com-title">Customer Order</div>
     <input type="hidden" id="com-id">
-    <div id="com-info" style="background:#fff;border:1.5px solid #e8dfd2;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;font-family:monospace;line-height:1.9"></div>
-    <div class="lbl">Items (comma-separated)</div>
-    <input type="text" id="com-items" placeholder="VEG PUFF, White Bread">
-    <div class="lbl">Quantities (comma-separated, same order)</div>
-    <input type="text" id="com-qty" placeholder="10, 5">
+    <input type="hidden" id="com-shop-id">
+    <div id="com-info" style="background:#f5ede0;border-radius:10px;padding:9px 12px;margin-bottom:12px;font-size:12px;font-family:monospace;line-height:1.8"></div>
+    <div class="lbl">Products & Quantities</div>
+    <div id="com-prod-list" style="border:1.5px solid #e8dfd2;border-radius:10px;overflow:hidden;margin-bottom:10px;background:#fff"></div>
     <div class="lbl">Customer Note</div>
-    <textarea id="com-note" rows="2" style="min-height:50px;resize:none"></textarea>
+    <textarea id="com-note" rows="2" style="min-height:44px;resize:none"></textarea>
     <div class="lbl">Admin Note (visible to customer)</div>
     <input type="text" id="com-admin-note" placeholder="e.g. partial qty approved">
     <div id="com-msg" style="display:none" class="msg ok"></div>
@@ -625,6 +674,15 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
     <input type="hidden" id="gm-id">
     <div class="lbl">Group Name *</div>
     <input type="text" id="gm-name" placeholder="e.g. Tea Post Products, Bakery Pack">
+    <!-- Product assignment -->
+    <div style="border-top:1.5px dashed #e8dfd2;margin:12px 0 10px;padding-top:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div class="lbl" style="margin-bottom:0">Products in this group</div>
+        <span id="gm-checked-count" style="font-size:11px;font-family:monospace;color:#2d7a4f;font-weight:700"></span>
+      </div>
+      <input type="text" id="gm-prod-search" placeholder="Search products…" oninput="filterGroupProducts()" style="margin-bottom:8px">
+      <div id="gm-prod-list" style="max-height:260px;overflow-y:auto;border:1.5px solid #e8dfd2;border-radius:10px;background:#fafafa"></div>
+    </div>
     <div id="gm-msg" style="display:none" class="msg ok"></div>
     <button class="btn btn-brown" onclick="saveGroup()">💾 Save Group</button>
     <button class="btn btn-grey" style="margin-bottom:0" onclick="closeGroupModal()">Cancel</button>
@@ -787,10 +845,15 @@ function initTabVisibility(){
     var btn = document.getElementById('tb-'+t);
     if(!btn) return;
     var show;
-    if(t === 'users' || t === 'notify' || t === 'cleanup' || t === 'audit') {
+    if(t === 'users' || t === 'cleanup' || t === 'audit') {
       show = (_staffRole === 'super_admin');
+    } else if(t === 'notify') {
+      show = (_staffRole === 'super_admin' || _staffRole === 'admin');
     } else if(_allowedTabs === null) {
       show = true; // super_admin sees all
+    } else if(t === 'cust-orders' || t === 'groups') {
+      // Always visible to admin/assistant; others need it in their tabs list
+      show = (_staffRole === 'admin' || _staffRole === 'assistant') || (_allowedTabs.indexOf(t) >= 0);
     } else {
       show = (_allowedTabs.indexOf(t) >= 0);
     }
@@ -802,6 +865,7 @@ function initTabVisibility(){
 }
 
 function todayStr(){var d=new Date();return d.getFullYear()+'-'+zp(d.getMonth()+1)+'-'+zp(d.getDate());}
+function tomorrowStr(){var d=new Date();d.setDate(d.getDate()+1);return d.getFullYear()+'-'+zp(d.getMonth()+1)+'-'+zp(d.getDate());}
 function zp(n){return String(n).padStart(2,'0');}
 
 // Sets a date input to the latest available date in a table, then runs callback.
@@ -832,7 +896,9 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 function nrm(s){return(s||'').toLowerCase().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ').trim();}
 
 document.getElementById('topDate').textContent=new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'});
-['f-ord-date','f-rt-date','f-sum-date','f-del-date','sub-date'].forEach(function(id){var el=document.getElementById(id);if(el)el.value=todayStr();});
+['f-ord-date','f-rt-date','f-del-date','sub-date'].forEach(function(id){var el=document.getElementById(id);if(el)el.value=todayStr();});
+var _sumEl=document.getElementById('f-sum-date');if(_sumEl)_sumEl.value=tomorrowStr();
+var _coEl=document.getElementById('co-date');if(_coEl)_coEl.value=tomorrowStr();
 document.getElementById('logoutBtn').onclick=function(){
   var r=sessionStorage.getItem('role');
   sessionStorage.clear();
@@ -849,7 +915,7 @@ function showTab(t){
     var pg=document.getElementById('pg-'+x); if(pg) pg.classList.toggle('on',x===t);
     var tb=document.getElementById('tb-'+x); if(tb) tb.classList.toggle('on',x===t);
   });
-  if(t==='summary')   setLatestDate('f-sum-date','orders','',loadSummary);
+  if(t==='summary')   { document.getElementById('f-sum-date').value=tomorrowStr(); loadSummary(); }
   if(t==='delivery')  setLatestDate('f-del-date','deliveries',document.getElementById('f-del-driver').value,loadDeliveries);
   if(t==='routes')    setLatestDate('f-rt-date','routes',document.getElementById('f-rt-driver').value,loadRoutes);
   if(t==='gps')         loadGPS();
@@ -857,11 +923,11 @@ function showTab(t){
   if(t==='queue')       loadQueue();
   if(t==='customers')   loadCustomers();
   if(t==='products')    loadProducts();
-  if(t==='cust-orders') { document.getElementById('co-date').value=todayStr(); loadCustOrders(); }
+  if(t==='cust-orders') { document.getElementById('co-date').value=tomorrowStr(); loadCustomerMaster().then(loadCustOrders); }
   if(t==='groups')      loadGroups();
   if(t==='drivers')   loadDrivers().then(renderDrivers);
   if(t==='users')     { loadStaff().then(renderStaff); loadFeatureSettings(); }
-  if(t==='notify')    loadNotifyDriverList();
+  if(t==='notify')    { loadNotifyDriverList(); loadOrderWindow(); }
   if(t==='audit')     initAuditTab();
 }
 
@@ -2016,7 +2082,7 @@ function openAddCustomer(){
   document.getElementById('custModalSub').textContent='';
   ['cm-id','cm-cust-id','cm-name','cm-address','cm-area','cm-mobile','cm-flag','cm-lat','cm-lng','cm-login-user','cm-login-pass'].forEach(function(id){document.getElementById(id).value='';});
   document.getElementById('cm-driver').value='';
-  document.getElementById('cm-group').value='';
+  renderCmGroupList([]);
   document.getElementById('cm-msg').style.display='none';
   document.getElementById('cm-gps-msg').style.display='none';
   document.getElementById('cm-hist-wrap').style.display='none';
@@ -2037,7 +2103,8 @@ function openEditCustomer(c){
   document.getElementById('cm-lng').value=c.lng||'';
   document.getElementById('cm-login-user').value=c.login_username||'';
   document.getElementById('cm-login-pass').value=''; // never pre-fill password
-  document.getElementById('cm-group').value=c.product_group_id||'';
+  var gids = Array.isArray(c.product_group_ids) && c.product_group_ids.length ? c.product_group_ids : (c.product_group_id ? [c.product_group_id] : []);
+  renderCmGroupList(gids);
   document.getElementById('cm-msg').style.display='none';
   document.getElementById('cm-gps-msg').style.display='none';
   // Load delivery history
@@ -2105,7 +2172,15 @@ function saveCustomer(){
   var assignedDriver=document.getElementById('cm-driver').value||'';
   var loginUser=document.getElementById('cm-login-user').value.trim();
   var loginPass=document.getElementById('cm-login-pass').value.trim();
-  var groupId=document.getElementById('cm-group').value||null;
+  var mobile=document.getElementById('cm-mobile').value.trim();
+  var groupIds=getCmSelectedGroupIds();
+  // Auto-generate credentials for new customers if not set
+  if(!existing){
+    if(!loginUser) loginUser=genUsername(name);
+    if(!loginPass) loginPass=mobile||genRandomPass();
+    document.getElementById('cm-login-user').value=loginUser;
+    document.getElementById('cm-login-pass').value=loginPass;
+  }
   apiPost({action:existing?'updateShop':'addShop',shop_id:cid,customer_id:cid,name:name,
     address:document.getElementById('cm-address').value.trim(),area:document.getElementById('cm-area').value.trim(),
     assigned_driver:assignedDriver,
@@ -2114,26 +2189,67 @@ function saveCustomer(){
     last_updated_by:'Admin',last_updated_at:now
   }).then(function(res){
     if(res&&res.ok){
-      // Save login credentials + group separately
-      var loginBody={action:'updateShopLogin',shop_id:cid,product_group_id:groupId?parseInt(groupId):null};
+      // Save login credentials + group — await this so groups are actually written before reload
+      var loginBody={action:'updateShopLogin',shop_id:cid,product_group_ids:groupIds};
       if(loginUser) loginBody.login_username=loginUser;
       if(loginPass) loginBody.login_password=loginPass;
-      apiPost(loginBody);
-
-      msg.textContent='✅ Saved!';msg.className='msg ok';
-      // Notify driver when shop is added or reassigned
-      if(assignedDriver){
-        var shopMsg=existing?'Shop "'+name+'" has been assigned to your route':'New shop "'+name+'" added to your route';
-        apiPost({action:'addNotification',driver_name:assignedDriver,type:existing?'shop_reassigned':'new_shop',message:shopMsg});
-        sendPush(assignedDriver, shopMsg);
-      }
-      setTimeout(function(){closeCustModal();loadCustomers();},700);
+      apiPost(loginBody).then(function(){
+        msg.textContent='✅ Saved!';msg.className='msg ok';
+        // Notify driver when shop is added or reassigned
+        if(assignedDriver){
+          var shopMsg=existing?'Shop "'+name+'" has been assigned to your route':'New shop "'+name+'" added to your route';
+          apiPost({action:'addNotification',driver_name:assignedDriver,type:existing?'shop_reassigned':'new_shop',message:shopMsg});
+          sendPush(assignedDriver, shopMsg);
+        }
+        setTimeout(function(){closeCustModal(); _custLoaded=false; loadCustomers();},700);
+      });
     }
     else{msg.textContent='❌ '+(res.error||'Failed');msg.className='msg er';}
   });
 }
+// ── Customer portal login helpers ──
+function genUsername(shopName){
+  return (shopName||'').toLowerCase()
+    .replace(/[^a-z0-9\s]/g,'')   // strip special chars
+    .trim()
+    .replace(/\s+/g,'_');          // spaces → underscores
+}
+function genRandomPass(){
+  var chars='abcdefghjkmnpqrstuvwxyz23456789';
+  var p='';
+  for(var i=0;i<8;i++) p+=chars[Math.floor(Math.random()*chars.length)];
+  return p;
+}
+function genPassword(){
+  document.getElementById('cm-login-pass').value=genRandomPass();
+}
+function autoGenLogin(){
+  var name=document.getElementById('cm-name').value.trim();
+  var mobile=document.getElementById('cm-mobile').value.trim();
+  if(!name){alert('Enter shop name first');return;}
+  document.getElementById('cm-login-user').value=genUsername(name);
+  document.getElementById('cm-login-pass').value=mobile||genRandomPass();
+}
+function shareLoginDetails(){
+  var name =document.getElementById('cm-name').value.trim()||'Customer';
+  var user =document.getElementById('cm-login-user').value.trim();
+  var pass =document.getElementById('cm-login-pass').value.trim();
+  if(!user||!pass){alert('Save or generate login credentials first.');return;}
+  var url=window.location.origin+'/order.html';
+  var msg='🥖 *It\'s Baked — Customer Portal*\n\nShop: *'+name+'*\nUsername: *'+user+'*\nPassword: *'+pass+'*\n\nLogin here: '+url+'\n\n_(You can also login using your mobile number instead of username)_';
+  if(navigator.share){
+    navigator.share({title:'Baked GPS Login — '+name,text:msg}).catch(function(){});
+  } else {
+    navigator.clipboard.writeText(msg).then(function(){
+      alert('Login details copied to clipboard!\n\nPaste and send to customer via WhatsApp.');
+    }).catch(function(){
+      prompt('Copy this and send to customer:',msg);
+    });
+  }
+}
+
 function delCustomer(id,name){
-  if(!confirm('Delete "'+name+'"?\nThis cannot be undone.'))return;
+  if(!confirm('Delete "'+name+'"?\n\nThis will permanently remove the shop and cannot be undone.'))return;
   apiPost({action:'deleteShop',shop_id:id}).then(function(res){
     if(res&&res.ok){ _custLoaded=false; loadCustomers(); }
     else alert('Delete failed: '+(res.error||'unknown error'));
@@ -2265,6 +2381,7 @@ function openAddProduct(){
   document.getElementById('pm-msg').style.display='none';
   document.getElementById('productModal').style.display='flex';
 }
+var _pmOldGroupId = null; // track original group to diff on save
 function openEditProduct(p){
   document.getElementById('productModalTitle').textContent='Edit Product';
   document.getElementById('pm-id').value=p.product_id||'';
@@ -2274,22 +2391,44 @@ function openEditProduct(p){
   document.getElementById('pm-price').value=p.price||'';
   document.getElementById('pm-unit').value=p.unit||'';
   document.getElementById('pm-desc').value=p.description||'';
-  document.getElementById('pm-group').value=p.group_id||'';
   document.getElementById('pm-active').value=p.active===false?'false':'true';
   document.getElementById('pm-msg').style.display='none';
+  document.getElementById('pm-group').value='';
+  _pmOldGroupId = null;
   document.getElementById('productModal').style.display='flex';
+  // Load group from junction table (source of truth)
+  api({action:'getProductGroupIds', product_id: p.product_id}).then(function(gids){
+    var first = gids && gids.length ? String(gids[0]) : '';
+    document.getElementById('pm-group').value = first;
+    _pmOldGroupId = first || null;
+  });
 }
-function closeProductModal(){document.getElementById('productModal').style.display='none';}
+function closeProductModal(){document.getElementById('productModal').style.display='none'; _pmOldGroupId=null;}
 function saveProduct(){
   var name=document.getElementById('pm-name').value.trim();
   if(!name){alert('Name required');return;}
   var id=document.getElementById('pm-id').value;
   var msg=document.getElementById('pm-msg');
   msg.textContent='Saving…';msg.className='msg in';msg.style.display='block';
-  var gid=document.getElementById('pm-group').value; var actVal=document.getElementById('pm-active').value;
-  apiPost({action:id?'updateProduct':'addProduct',product_id:document.getElementById('pm-pid').value.trim()||id,name:name,category:document.getElementById('pm-cat').value.trim(),price:document.getElementById('pm-price').value.trim(),unit:document.getElementById('pm-unit').value.trim(),description:document.getElementById('pm-desc').value.trim(),group_id:gid?parseInt(gid):null,active:actVal!=='false'})
+  var gid=document.getElementById('pm-group').value;
+  var pid=String(document.getElementById('pm-pid').value.trim()||id);
+  var actVal=document.getElementById('pm-active').value;
+  apiPost({action:id?'updateProduct':'addProduct',product_id:pid,name:name,category:document.getElementById('pm-cat').value.trim(),price:document.getElementById('pm-price').value.trim(),unit:document.getElementById('pm-unit').value.trim(),description:document.getElementById('pm-desc').value.trim(),group_id:gid?parseInt(gid):null,active:actVal!=='false'})
   .then(function(res){
-    if(res&&res.ok){msg.textContent='✅ Saved!';msg.className='msg ok';setTimeout(function(){closeProductModal();loadProducts();},600);}
+    if(res&&res.ok){
+      // Sync junction table: remove from old group, add to new group
+      var ops = [];
+      var newGid = gid || null;
+      if(_pmOldGroupId && _pmOldGroupId !== newGid){
+        ops.push(apiPost({action:'assignProductsToGroup', group_id:_pmOldGroupId, add_ids:[], remove_ids:[pid]}));
+      }
+      if(newGid && newGid !== _pmOldGroupId){
+        ops.push(apiPost({action:'assignProductsToGroup', group_id:newGid, add_ids:[pid], remove_ids:[]}));
+      }
+      Promise.all(ops).then(function(){ loadGroups(); });
+      msg.textContent='✅ Saved!';msg.className='msg ok';
+      setTimeout(function(){closeProductModal();loadProducts();},600);
+    }
     else{msg.textContent='❌ '+(res.error||'Failed');msg.className='msg er';}
   });
 }
@@ -3135,9 +3274,16 @@ function deleteStaff(id, name){
 /* ── PRODUCT GROUPS ── */
 var allGroups = [];
 
+var gmCounts = {}; // group_id → member count (from junction table)
+
 function loadGroups(){
-  api({action:'getProductGroups'}).then(function(data){
-    allGroups = Array.isArray(data) ? data : [];
+  Promise.all([
+    api({action:'getProductGroups'}),
+    api({action:'getGroupMemberCounts'})
+  ]).then(function(results){
+    allGroups = Array.isArray(results[0]) ? results[0] : [];
+    gmCounts  = {};
+    (Array.isArray(results[1]) ? results[1] : []).forEach(function(r){ gmCounts[String(r.group_id)] = r.cnt; });
     document.getElementById('groupStats').innerHTML =
       '<div class="stat"><div class="stat-n">'+allGroups.length+'</div><div class="stat-l">Groups</div></div>';
     renderGroups();
@@ -3152,7 +3298,7 @@ function renderGroups(){
     return;
   }
   el.innerHTML = allGroups.map(function(g){
-    var prodCount = allProducts.filter(function(p){ return p.group_id == g.id; }).length;
+    var prodCount = gmCounts[String(g.id)] || 0;
     return '<div class="item-card">'+
       '<div style="display:flex;justify-content:space-between;align-items:center">'+
         '<div>'+
@@ -3171,40 +3317,197 @@ function renderGroups(){
 function populateGroupSelects(){
   var opts = '<option value="">— No group —</option>' + allGroups.map(function(g){ return '<option value="'+g.id+'">'+esc(g.name)+'</option>'; }).join('');
   var pmg = document.getElementById('pm-group'); if(pmg) pmg.innerHTML = opts;
-  var cmg = document.getElementById('cm-group'); if(cmg) cmg.innerHTML = '<option value="">— No group assigned —</option>' + allGroups.map(function(g){ return '<option value="'+g.id+'">'+esc(g.name)+'</option>'; }).join('');
+  renderCmGroupList([]);
 }
+
+function renderCmGroupList(selectedIds){
+  var el = document.getElementById('cm-groups-list'); if(!el) return;
+  var ids = (selectedIds||[]).map(String);
+  if(!allGroups.length){
+    el.innerHTML='<div style="padding:10px;font-size:11px;color:#8a7a6a;font-family:monospace">No groups available.</div>'; return;
+  }
+  el.innerHTML = allGroups.map(function(g){
+    var checked = ids.indexOf(String(g.id)) >= 0;
+    return '<label data-gid="'+g.id+'" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid #f0e8dc;cursor:pointer;background:'+(checked?'#f0faf4':'#fff')+'" onclick="toggleCmGroup(this)">'+
+      '<input type="checkbox" '+(checked?'checked':'')+' style="width:16px;height:16px;accent-color:#2d7a4f;flex-shrink:0;cursor:pointer" onclick="event.stopPropagation()" onchange="toggleCmGroup(this.closest(\'label\'))">'+
+      '<span style="font-size:13px;font-weight:700;color:#1e1611">'+esc(g.name)+'</span>'+
+    '</label>';
+  }).join('');
+}
+
+function toggleCmGroup(labelEl){
+  var cb = labelEl.querySelector('input[type=checkbox]');
+  if(event && event.target !== cb) cb.checked = !cb.checked;
+  labelEl.style.background = cb.checked ? '#f0faf4' : '#fff';
+}
+
+function getCmSelectedGroupIds(){
+  return Array.from(document.querySelectorAll('#cm-groups-list label')).filter(function(l){
+    return l.querySelector('input[type=checkbox]').checked;
+  }).map(function(l){ return parseInt(l.getAttribute('data-gid')); });
+}
+
+// Persistent checked-state — survives search re-renders
+var gmCheckedIds  = {};  // pid (string) → true/false  (current state)
+var gmOriginalIds = {};  // pid (string) → true/false  (state when modal opened)
 
 function openAddGroup(){
   document.getElementById('groupModalTitle').textContent = 'Add Product Group';
   document.getElementById('gm-id').value = '';
   document.getElementById('gm-name').value = '';
+  document.getElementById('gm-prod-search').value = '';
   document.getElementById('gm-msg').style.display = 'none';
   document.getElementById('groupModal').style.display = 'flex';
+  document.getElementById('gm-prod-list').innerHTML = '<div style="padding:14px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
+  loadProductMaster().then(function(){
+    gmCheckedIds = {}; gmOriginalIds = {};
+    renderGroupProductList();
+  });
 }
 function openEditGroup(g){
-  document.getElementById('groupModalTitle').textContent = 'Edit Group';
+  document.getElementById('groupModalTitle').textContent = 'Edit Group: '+esc(g.name);
   document.getElementById('gm-id').value = g.id;
   document.getElementById('gm-name').value = g.name || '';
+  document.getElementById('gm-prod-search').value = '';
   document.getElementById('gm-msg').style.display = 'none';
   document.getElementById('groupModal').style.display = 'flex';
+  document.getElementById('gm-prod-list').innerHTML = '<div style="padding:14px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
+  Promise.all([
+    loadProductMaster(),
+    api({action:'getGroupProductIds', group_id: g.id})
+  ]).then(function(results){
+    var memberIds = Array.isArray(results[1]) ? results[1].map(String) : [];
+    gmCheckedIds = {}; gmOriginalIds = {};
+    memberIds.forEach(function(pid){ gmCheckedIds[pid] = true; gmOriginalIds[pid] = true; });
+    renderGroupProductList();
+  });
 }
-function closeGroupModal(){ document.getElementById('groupModal').style.display='none'; }
+function closeGroupModal(){ document.getElementById('groupModal').style.display='none'; gmCheckedIds={}; gmOriginalIds={}; }
+
+function renderGroupProductList(filter){
+  var q  = (filter !== undefined ? filter : (document.getElementById('gm-prod-search').value||'')).toLowerCase();
+  var el = document.getElementById('gm-prod-list');
+  // Deduplicate allProducts by product_id before rendering
+  var seen = {};
+  var list = allProducts.filter(function(p){
+    var key = String(p.product_id);
+    if (seen[key]) return false;
+    seen[key] = true;
+    return true;
+  });
+  if (q) list = list.filter(function(p){ return (p.name+' '+(p.category||'')).toLowerCase().indexOf(q) >= 0; });
+
+  if (!list.length){
+    el.innerHTML = '<div style="padding:14px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">No products found.</div>';
+    updateGmCount(); return;
+  }
+
+  // Group by category
+  var cats = {};
+  list.forEach(function(p){
+    var c = p.category || 'Other';
+    if (!cats[c]) cats[c] = [];
+    cats[c].push(p);
+  });
+
+  var html = '';
+  Object.keys(cats).sort().forEach(function(cat){
+    html += '<div style="padding:6px 12px 2px;font-size:9px;letter-spacing:1.5px;color:#8a7a6a;font-family:monospace;font-weight:700;text-transform:uppercase;background:#f0e8dc;border-bottom:1px solid #e8dfd2">'+esc(cat)+'</div>';
+    cats[cat].forEach(function(p){
+      var pid = String(p.product_id);
+      var checked = !!gmCheckedIds[pid];
+      html += '<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid #f0e8dc;cursor:pointer;background:'+(checked?'#f0faf4':'#fff')+'" id="gml-'+pid+'" onclick="toggleGmProduct(this,\''+pid+'\')">'+
+        '<input type="checkbox" '+(checked?'checked':'')+' style="width:16px;height:16px;accent-color:#2d7a4f;flex-shrink:0;cursor:pointer" onclick="event.stopPropagation()" onchange="toggleGmProduct(document.getElementById(\'gml-'+pid+'\'),\''+pid+'\')">'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-size:13px;font-weight:700;color:#1e1611">'+esc(p.name)+'</div>'+
+          (p.price?'<div style="font-size:10px;color:#8a7a6a;font-family:monospace">₹'+esc(p.price)+' · '+esc(p.unit||'Pieces')+'</div>':'')+
+        '</div>'+
+      '</label>';
+    });
+  });
+  el.innerHTML = html;
+  updateGmCount();
+}
+
+function toggleGmProduct(labelEl, pid){
+  var cb = labelEl.querySelector('input[type=checkbox]');
+  if (event.target !== cb) cb.checked = !cb.checked;
+  gmCheckedIds[String(pid)] = cb.checked;  // persist in JS state, not just DOM
+  labelEl.style.background = cb.checked ? '#f0faf4' : '#fff';
+  updateGmCount();
+}
+
+function updateGmCount(){
+  var total   = allProducts.length;
+  var checked = Object.keys(gmCheckedIds).filter(function(k){ return gmCheckedIds[k]; }).length;
+  document.getElementById('gm-checked-count').textContent = checked ? checked+' / '+total+' selected' : total+' products';
+}
+
+function filterGroupProducts(){
+  renderGroupProductList(document.getElementById('gm-prod-search').value);
+}
+
+function _reloadAfterGroupSave(){
+  _prodLoaded = false;  // force fresh fetch
+  loadProductMaster().then(function(){
+    loadGroups();   // renderGroups() uses allProducts for counts — must run after
+    loadProducts(); // refresh products list UI
+  });
+}
+
 function saveGroup(){
   var name = document.getElementById('gm-name').value.trim();
   var id   = document.getElementById('gm-id').value;
   var msg  = document.getElementById('gm-msg');
   if (!name){ alert('Name required'); return; }
   msg.textContent='Saving…';msg.className='msg in';msg.style.display='block';
+
+  // Compute add/remove using junction-table original state (gmOriginalIds)
+  var addIds    = [];
+  var removeIds = [];
+  allProducts.forEach(function(p){
+    var pid        = String(p.product_id);
+    var nowChecked = !!gmCheckedIds[pid];
+    var wasInGroup = !!gmOriginalIds[pid];
+    if (nowChecked && !wasInGroup) addIds.push(pid);
+    if (!nowChecked && wasInGroup) removeIds.push(pid);
+  });
+
+  // Step 1: save/create the group
   apiPost({ action: id ? 'updateProductGroup' : 'addProductGroup', id: id, name: name })
     .then(function(res){
-      if (res&&res.ok){ msg.textContent='✅ Saved!';msg.className='msg ok';setTimeout(function(){ closeGroupModal();loadGroups(); },600); }
-      else { msg.textContent='❌ '+(res.error||'Failed');msg.className='msg er'; }
+      if (!res||!res.ok){ msg.textContent='❌ '+(res.error||'Failed');msg.className='msg er'; return; }
+
+      // If new group, fetch groups to get the auto-generated id
+      if (!id){
+        return api({action:'getProductGroups'}).then(function(groups){
+          var newGroup = (Array.isArray(groups)?groups:[]).find(function(g){ return g.name===name; });
+          if (!newGroup) return;
+          if (!addIds.length){ msg.textContent='✅ Group created!';msg.className='msg ok';setTimeout(function(){closeGroupModal();_reloadAfterGroupSave();},700); return; }
+          return apiPost({action:'assignProductsToGroup', group_id:newGroup.id, add_ids:addIds, remove_ids:[]})
+            .then(function(){ msg.textContent='✅ Group created!';msg.className='msg ok';setTimeout(function(){closeGroupModal();_reloadAfterGroupSave();},700); });
+        });
+      }
+
+      if (!addIds.length && !removeIds.length){
+        msg.textContent='✅ Saved!';msg.className='msg ok';
+        setTimeout(function(){closeGroupModal();_reloadAfterGroupSave();},700);
+        return;
+      }
+
+      return apiPost({action:'assignProductsToGroup', group_id:id, add_ids:addIds, remove_ids:removeIds})
+        .then(function(r){
+          if (r&&r.ok){ msg.textContent='✅ Saved!';msg.className='msg ok';setTimeout(function(){closeGroupModal();_reloadAfterGroupSave();},700); }
+          else { msg.textContent='❌ '+(r.error||'Product update failed');msg.className='msg er'; }
+        });
     });
 }
+
 function delGroup(id, name){
   if (!confirm('Delete group "'+name+'"?\nProducts in this group will become ungrouped.')) return;
   apiPost({action:'deleteProductGroup', id:id}).then(function(res){
-    if (res&&res.ok) loadGroups(); else alert('Delete failed: '+(res.error||'unknown'));
+    if (res&&res.ok){ allProducts=[];loadProductMaster();loadGroups(); }
+    else alert('Delete failed: '+(res.error||'unknown'));
   });
 }
 
@@ -3293,35 +3596,222 @@ function updateCoStatus(id, status, adminNote){
 }
 
 function openCoModal(o){
-  document.getElementById('com-id').value = o.id;
-  document.getElementById('com-items').value = o.items || '';
-  document.getElementById('com-qty').value   = o.qty || '';
-  document.getElementById('com-note').value  = o.note || '';
+  document.getElementById('com-id').value      = o.id;
+  document.getElementById('com-shop-id').value = o.shop_id || '';
+  document.getElementById('com-note').value    = o.note || '';
   document.getElementById('com-admin-note').value = o.admin_note || '';
+  document.getElementById('com-title').textContent = esc(o.shop_name);
   document.getElementById('com-info').innerHTML =
-    '<b>'+esc(o.shop_name)+'</b><br>Delivery: <b>'+esc(o.delivery_date)+'</b><br>Status: <b>'+(STATUS_LABELS[o.status]||o.status)+'</b>';
+    'Delivery: <b>'+esc(o.delivery_date)+'</b> &nbsp;·&nbsp; Status: <b>'+(STATUS_LABELS[o.status]||o.status)+'</b>';
   document.getElementById('com-msg').style.display='none';
+
+  // Build qty map from current order
+  var itemArr = (o.items||'').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+  var qtyArr  = (o.qty||'').split(',').map(function(s){ return parseInt(s)||0; });
+  var qtyMap  = {};
+  itemArr.forEach(function(name,i){ qtyMap[name] = qtyArr[i]||0; });
+
+  // Get products for this shop's group
+  var shop     = (allCustomers||[]).find(function(c){ return c.shop_id===o.shop_id; });
+  var groupId  = shop ? shop.product_group_id : null;
+  var groupProds = groupId
+    ? allProducts.filter(function(p){ return String(p.group_id)===String(groupId); })
+    : [];
+
+  // Merge: group products first, then any order items not in the group
+  var rows = groupProds.slice();
+  itemArr.forEach(function(name){
+    var inGroup = groupProds.some(function(p){ return p.name===name; });
+    if (!inGroup) rows.push({ product_id:'_'+name, name:name, unit:'', price:'' });
+  });
+
+  if (!rows.length){
+    // Fallback: just show items from order as editable rows
+    itemArr.forEach(function(name){
+      rows.push({ product_id:'_'+name, name:name, unit:'', price:'' });
+    });
+  }
+
+  var html = rows.map(function(p){
+    var q = qtyMap[p.name] || 0;
+    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-bottom:1px solid #f5ede0">'+
+      '<div style="flex:1;min-width:0;margin-right:10px">'+
+        '<div style="font-size:13px;font-weight:700;color:#1e1611">'+esc(p.name)+'</div>'+
+        (p.unit?'<div style="font-size:10px;color:#8a7a6a;font-family:monospace">'+esc(p.unit)+(p.price?' · ₹'+esc(p.price):'')+'</div>':'')+
+      '</div>'+
+      '<div style="display:flex;align-items:center;gap:0;flex-shrink:0">'+
+        '<button type="button" style="width:32px;height:32px;border:1.5px solid #e8dfd2;background:#fff;border-radius:8px;font-size:18px;font-weight:700;cursor:pointer;color:#4a2f14;flex-shrink:0" onclick="coQtyChg(this,-1)">−</button>'+
+        '<input type="number" value="'+q+'" min="0" inputmode="numeric" style="width:52px;text-align:center;font-size:15px;font-weight:800;color:#4a2f14;font-family:monospace;border:1.5px solid #e8dfd2;border-left:none;border-right:none;background:#f9f6f1;padding:5px 2px;outline:none;-webkit-appearance:none;-moz-appearance:textfield" data-name="'+esc(p.name)+'" onchange="this.value=Math.max(0,parseInt(this.value)||0)">'+
+        '<button type="button" style="width:32px;height:32px;border:1.5px solid #e8dfd2;background:#fff;border-radius:8px;font-size:18px;font-weight:700;cursor:pointer;color:#4a2f14;flex-shrink:0" onclick="coQtyChg(this,1)">+</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+  document.getElementById('com-prod-list').innerHTML = html ||
+    '<div style="padding:14px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">No products. Assign a group to this shop.</div>';
+
   document.getElementById('coModal').style.display='flex';
 }
+
+function coQtyChg(btn, delta){
+  var inp = btn.parentElement.querySelector('input[type=number]');
+  inp.value = Math.max(0, (parseInt(inp.value)||0) + delta);
+}
+
 function closeCoModal(){ document.getElementById('coModal').style.display='none'; }
+
 function saveCustOrder(status){
-  var id    = document.getElementById('com-id').value;
-  var items = document.getElementById('com-items').value.trim();
-  var qty   = document.getElementById('com-qty').value.trim();
-  var note  = document.getElementById('com-note').value.trim();
+  var id        = document.getElementById('com-id').value;
+  var note      = document.getElementById('com-note').value.trim();
   var adminNote = document.getElementById('com-admin-note').value.trim();
-  var msg   = document.getElementById('com-msg');
-  if (!items||!qty){ msg.textContent='Items and quantities required.';msg.className='msg er';msg.style.display='block';return; }
+  var msg       = document.getElementById('com-msg');
+
+  // Collect product rows
+  var itemsArr=[], qtyArr=[];
+  document.querySelectorAll('#com-prod-list input[type=number]').forEach(function(inp){
+    var q = parseInt(inp.value)||0;
+    if(q > 0){ itemsArr.push(inp.dataset.name); qtyArr.push(q); }
+  });
+  if(!itemsArr.length){ msg.textContent='Add at least one item with quantity > 0.';msg.className='msg er';msg.style.display='block';return; }
+
   msg.textContent='Saving…';msg.className='msg in';msg.style.display='block';
-  apiPost({ action:'updateCustomerOrderStatus', id:id, status:status, items:items, qty:qty, note:note, admin_note:adminNote })
+  apiPost({ action:'updateCustomerOrderStatus', id:id, status:status,
+    items:itemsArr.join(','), qty:qtyArr.join(','), note:note, admin_note:adminNote })
     .then(function(res){
-      if (res&&res.ok){ msg.textContent='✅ Saved!';msg.className='msg ok';setTimeout(function(){closeCoModal();loadCustOrders();},600); }
+      if(res&&res.ok){ msg.textContent='✅ Saved!';msg.className='msg ok';setTimeout(function(){closeCoModal();loadCustOrders();},600); }
       else { msg.textContent='❌ '+(res.error||'Failed');msg.className='msg er'; }
     });
 }
 
-/* ── PATCH: customer modal save — include login fields ── */
-var _origSaveCustomer = typeof saveCustomer === 'function' ? saveCustomer : null;
+/* ── NEW ORDER POLLING ── */
+var _lastPendingCount = -1;
+// ── ORDER WINDOW MANAGEMENT ──
+function loadOrderWindow(){
+  Promise.all([
+    api({action:'getSetting', key:'order_enabled'}),
+    api({action:'getSetting', key:'order_message'})
+  ]).then(function(results){
+    var enabled = !results[0].length || results[0][0].value !== 'false';
+    var msg = results[1].length ? (results[1][0].value||'') : '';
+    renderOrderWindowStatus(enabled);
+    document.getElementById('orderWindowMsg').value = msg;
+  });
+}
+
+function renderOrderWindowStatus(enabled){
+  var st = document.getElementById('orderWindowStatus');
+  var btn = document.getElementById('orderWindowBtn');
+  if(enabled){
+    st.textContent='✅ Orders OPEN'; st.style.color='#2d7a4f';
+    btn.textContent='🔒 Close Orders'; btn.style.background='#c8382a'; btn.style.color='#fff';
+  } else {
+    st.textContent='🔒 Orders CLOSED'; st.style.color='#c8382a';
+    btn.textContent='✅ Open Orders'; btn.style.background='#2d7a4f'; btn.style.color='#fff';
+  }
+  btn._enabled = enabled;
+}
+
+function toggleOrderWindow(){
+  var btn = document.getElementById('orderWindowBtn');
+  var newEnabled = !btn._enabled;
+  var msg = document.getElementById('orderWindowMsg').value.trim();
+  btn.disabled=true;
+  Promise.all([
+    apiPost({action:'setSetting', key:'order_enabled', value: newEnabled ? 'true' : 'false'}),
+    apiPost({action:'setSetting', key:'order_message', value: msg})
+  ]).then(function(){
+    btn.disabled=false;
+    renderOrderWindowStatus(newEnabled);
+    // Auto-broadcast message to customers
+    if(msg){
+      var bcast = newEnabled ? ('✅ Orders are now OPEN! '+msg) : ('🔒 Orders are now CLOSED. '+msg);
+      apiPost({action:'setSetting', key:'customer_broadcast', value: bcast});
+      apiPost({action:'setSetting', key:'customer_broadcast_at', value: new Date().toISOString()});
+    }
+  });
+}
+
+// ── CUSTOMER BROADCAST ──
+function sendBroadcast(){
+  var msg = document.getElementById('broadcastMsg').value.trim();
+  var el = document.getElementById('broadcast-msg');
+  if(!msg){ el.textContent='Enter a message first.'; el.className='msg er'; el.style.display='block'; return; }
+  el.textContent='Sending…'; el.className='msg in'; el.style.display='block';
+  Promise.all([
+    apiPost({action:'setSetting', key:'customer_broadcast', value: msg}),
+    apiPost({action:'setSetting', key:'customer_broadcast_at', value: new Date().toISOString()})
+  ]).then(function(){
+    el.textContent='✅ Broadcast sent! Customers will see it when they open the app.';
+    el.className='msg ok';
+    setTimeout(function(){ el.style.display='none'; }, 4000);
+  });
+}
+
+function clearBroadcast(){
+  Promise.all([
+    apiPost({action:'setSetting', key:'customer_broadcast', value:''}),
+    apiPost({action:'setSetting', key:'customer_broadcast_at', value:''})
+  ]).then(function(){
+    document.getElementById('broadcastMsg').value='';
+    var el = document.getElementById('broadcast-msg');
+    el.textContent='✅ Broadcast cleared.'; el.className='msg ok'; el.style.display='block';
+    setTimeout(function(){ el.style.display='none'; }, 2000);
+  });
+}
+
+function broadcastTemplate(msg){
+  document.getElementById('broadcastMsg').value = msg;
+  document.getElementById('broadcastMsg').focus();
+}
+
+// ── BROWSER NOTIFICATION PERMISSION ──
+(function(){
+  if('Notification' in window && Notification.permission === 'default'){
+    Notification.requestPermission();
+  }
+})();
+
+function showBrowserNotif(title, body){
+  if('Notification' in window && Notification.permission === 'granted'){
+    var n = new Notification(title, { body: body, icon: 'icon-192.png', requireInteraction: true });
+    n.onclick = function(){
+      window.focus();
+      showTab('cust-orders');
+      n.close();
+    };
+  }
+}
+
+function pollNewOrders(){
+  if(_staffRole !== 'admin' && _staffRole !== 'assistant' && _staffRole !== 'super_admin') return;
+  api({ action:'getCustomerOrders', status:'pending' }).then(function(data){
+    var count = Array.isArray(data) ? data.length : 0;
+
+    // Tab badge
+    var badge = document.getElementById('tb-cust-orders');
+    if(badge){
+      badge.textContent = count > 0 ? '🛒 Orders ('+count+')' : '🛒 Cust Orders';
+      badge.style.color = count > 0 ? '#c8382a' : '';
+    }
+
+    // Pending banner inside Cust Orders tab
+    var banner = document.getElementById('pendingOrdersBanner');
+    var bannerCount = document.getElementById('pendingOrdersCount');
+    if(banner){
+      banner.style.display = count > 0 ? 'block' : 'none';
+      if(bannerCount) bannerCount.textContent = count;
+    }
+
+    // Browser notification on new orders
+    if(_lastPendingCount >= 0 && count > _lastPendingCount){
+      var newCount = count - _lastPendingCount;
+      showBrowserNotif('🛒 New Order!', newCount+' new customer order'+(newCount>1?'s':'')+' waiting for approval. Tap to review.');
+      if(document.getElementById('pg-cust-orders').classList.contains('on')) loadCustOrders();
+    }
+    _lastPendingCount = count;
+  }).catch(function(){});
+}
+setInterval(pollNewOrders, 30000);
+pollNewOrders();
 
 /* ── INIT ── */
 initTabVisibility();
