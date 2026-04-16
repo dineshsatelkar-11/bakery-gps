@@ -1,11 +1,14 @@
-var CACHE = 'baked-gps-v3';
+var CACHE = 'baked-gps-v4';
 var STATIC = [
   '/',
   '/index.html',
-  '/driver.html',
   '/admin.html',
-  '/superadmin.html',
+  '/driver.html',
+  '/order.html',
+  '/kitchen.html',
+  '/packaging.html',
   '/tracking.html',
+  '/superadmin.html',
   '/config.js',
   '/api.js',
   '/icon-192.png',
@@ -14,12 +17,18 @@ var STATIC = [
   '/manifest-driver.json'
 ];
 
-// Install — cache all static files
+// Install — cache files individually so one failure doesn't break the SW
 self.addEventListener('install', function(e) {
   self.skipWaiting();
   e.waitUntil(
     caches.open(CACHE).then(function(cache) {
-      return cache.addAll(STATIC);
+      return Promise.all(
+        STATIC.map(function(url) {
+          return cache.add(url).catch(function() {
+            console.warn('[SW] Failed to cache:', url);
+          });
+        })
+      );
     })
   );
 });

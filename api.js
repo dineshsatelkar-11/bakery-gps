@@ -153,11 +153,22 @@
 
       case 'getProducts':
         if (p.group_id) {
-          // Use junction table via RPC to support multi-group products
+          var gidInt = parseInt(p.group_id);
+          // Try junction table RPC first; fall back to direct group_id column if RPC missing
           return fetch(BASE.replace('/rest/v1','') + '/rest/v1/rpc/get_products_for_group', {
             method: 'POST', headers: hdrs(),
-            body: JSON.stringify({ p_group_id: parseInt(p.group_id) })
-          }).then(function(r){ return r.ok ? r.json() : []; }).catch(function(){ return []; });
+            body: JSON.stringify({ p_group_id: gidInt })
+          }).then(function(r){
+            if (r.ok) return r.json();
+            // RPC not available — fall back to old group_id column
+            return fetch(BASE + '/products?group_id=eq.' + gidInt + '&active=eq.true&order=category,name', {
+              headers: hdrs()
+            }).then(function(r2){ return r2.ok ? r2.json() : []; });
+          }).catch(function(){
+            return fetch(BASE + '/products?group_id=eq.' + gidInt + '&active=eq.true&order=category,name', {
+              headers: hdrs()
+            }).then(function(r2){ return r2.ok ? r2.json() : []; }).catch(function(){ return []; });
+          });
         }
         return sbGet('products', {}, 'name');
 
@@ -495,12 +506,14 @@
       // Customer portal: update shop login credentials + product group
       case 'updateShopLogin': {
         var ids = Array.isArray(b.product_group_ids) ? b.product_group_ids.map(Number).filter(Boolean) : [];
-        return sbPatch('shops', { shop_id: b.shop_id }, {
-          login_username:    b.login_username || null,
-          login_password:    b.login_password || null,
-          product_group_id:  ids.length ? ids[0] : null,   // keep legacy column = first group
+        var patch = {
+          product_group_id:  ids.length ? ids[0] : null,
           product_group_ids: ids
-        });
+        };
+        // Only update username/password if explicitly provided — prevents clearing on group-only edits
+        if (b.login_username !== undefined) patch.login_username = b.login_username || null;
+        if (b.login_password !== undefined) patch.login_password = b.login_password || null;
+        return sbPatch('shops', { shop_id: b.shop_id }, patch);
       }
 
       // Customer: change own password (verified via RPC first)

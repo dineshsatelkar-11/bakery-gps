@@ -122,6 +122,15 @@ textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:1
 
     <div class="card" id="productsCard">
       <div class="lbl" id="productsCardLabel">Select Products</div>
+      <!-- Search + category filter — shown after products load -->
+      <div id="prodFilterBar" style="display:none;margin-bottom:8px">
+        <div style="display:flex;gap:8px">
+          <input type="text" id="prodSearch" placeholder="🔍 Search products…" oninput="renderProducts()" style="flex:1;padding:9px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:13px;background:#f9f6f1;outline:none;color:#1e1611;font-family:-apple-system,sans-serif">
+          <select id="prodCatFilter" onchange="renderProducts()" style="padding:9px 8px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:12px;background:#f9f6f1;color:#4a2f14;font-family:monospace;outline:none;max-width:130px">
+            <option value="">All</option>
+          </select>
+        </div>
+      </div>
       <div id="productsList"><div style="padding:10px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading products…</div></div>
     </div>
 
@@ -242,11 +251,29 @@ function showApp(){
   document.getElementById('topDate').textContent = 'Ordering for: ' + fmtDate(tomorrow);
   document.getElementById('barDate').textContent = fmtDate(tomorrow);
 
-  // Check for existing order FIRST, then load products (so we can pre-fill qty)
-  loadExistingOrder().then(function(){ loadProducts(); });
+  // Always re-fetch session from DB to get latest product_group_ids
+  refreshSession().then(function(){
+    loadExistingOrder().then(function(){ loadProducts(); });
+  });
   loadHistory();
   checkOrderWindow();
   setInterval(checkOrderWindow, 30000);
+}
+
+// Re-fetch customer session from DB to pick up any group changes by admin
+function refreshSession(){
+  return api({ action:'getShops' }).then(function(shops){
+    var mine = Array.isArray(shops) ? shops.find(function(s){ return s.shop_id === session.shop_id; }) : null;
+    if (!mine) return;
+    // Update group ids from latest DB state
+    var ids = Array.isArray(mine.product_group_ids) && mine.product_group_ids.length
+      ? mine.product_group_ids
+      : (mine.product_group_id ? [mine.product_group_id] : []);
+    session.product_group_ids = ids;
+    session.product_group_id  = ids.length ? ids[0] : null;
+    localStorage.setItem('custSession', JSON.stringify(session));
+    console.log('[order] refreshed group ids:', ids);
+  }).catch(function(){});
 }
 
 // ── EXISTING ORDER CHECK ──
@@ -273,10 +300,16 @@ function loadProducts(){
   var el = document.getElementById('productsList');
   el.innerHTML = '<div style="padding:10px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
 
-  // Support multiple groups — combine & deduplicate by product_id
-  var gids = Array.isArray(session.product_group_ids) && session.product_group_ids.length
-    ? session.product_group_ids
-    : (session.product_group_id ? [session.product_group_id] : []);
+  // Build group id list — support both array (new) and single id (legacy)
+  var gids = [];
+  if (Array.isArray(session.product_group_ids) && session.product_group_ids.length) {
+    gids = session.product_group_ids.map(Number).filter(Boolean);
+  } else if (session.product_group_id) {
+    gids = [Number(session.product_group_id)];
+  }
+
+  console.log('[order] session:', JSON.stringify(session));
+  console.log('[order] group ids to load:', gids);
 
   if (!gids.length) {
     products = []; qty = {};
@@ -320,6 +353,15 @@ function loadProducts(){
       el.innerHTML = '<div style="padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace;text-align:center">No products available. Contact admin.</div>';
       return;
     }
+
+    // Populate category filter dropdown
+    var allCats = [], catSeen = {};
+    products.forEach(function(p){ var c=p.category||'Other'; if(!catSeen[c]){catSeen[c]=true; allCats.push(c);} });
+    allCats.sort();
+    var catSel = document.getElementById('prodCatFilter');
+    catSel.innerHTML = '<option value="">All</option>' + allCats.map(function(c){ return '<option value="'+esc(c)+'">'+esc(c)+'</option>'; }).join('');
+    document.getElementById('prodFilterBar').style.display = 'block';
+
     renderProducts();
     renderOrderBanner();
   });
@@ -327,9 +369,23 @@ function loadProducts(){
 
 function renderProducts(){
   var el = document.getElementById('productsList');
+  // Apply search + category filter
+  var search = ((document.getElementById('prodSearch')||{}).value||'').trim().toLowerCase();
+  var catFil = ((document.getElementById('prodCatFilter')||{}).value||'');
+  var filtered = products.filter(function(p){
+    if(catFil && (p.category||'Other') !== catFil) return false;
+    if(search && (p.name||'').toLowerCase().indexOf(search) < 0) return false;
+    return true;
+  });
+
+  if(!filtered.length){
+    el.innerHTML = '<div style="padding:16px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">'+(search||catFil?'No products match your search.':'No products available.')+'</div>';
+    updateBar(); return;
+  }
+
   // Group by category
   var cats = {};
-  products.forEach(function(p){
+  filtered.forEach(function(p){
     var c = p.category || 'Other';
     if (!cats[c]) cats[c] = [];
     cats[c].push(p);
@@ -353,6 +409,10 @@ function renderProducts(){
     });
   });
   el.innerHTML = html;
+  // Re-disable controls if edit is locked
+  if(_editLocked){
+    document.querySelectorAll('.qty-btn, .qty-val').forEach(function(e){ e.disabled = true; });
+  }
   updateBar();
 }
 
@@ -376,11 +436,14 @@ function totalItemCount(){
 function updateBar(){
   var total = totalItemCount();
   document.getElementById('totalItems').textContent = total;
+  // Never show the bar when orders are closed or edit is locked
+  if(_orderClosed || _editLocked){ document.getElementById('orderBar').style.display='none'; return; }
   document.getElementById('orderBar').style.display = total > 0 ? 'block' : 'none';
 }
 
 // ── ORDER BANNER (existing order state) ──
 var _editLocked = false;
+var _orderClosed = false; // true when admin has closed the order window
 function renderOrderBanner(){
   var banner  = document.getElementById('existingOrderBanner');
   var submitBtn = document.getElementById('submitBtn');
@@ -451,44 +514,81 @@ function closePreview(){
 // ── SUBMIT ORDER ──
 function submitOrder(){
   if (_editLocked) { closePreview(); return; }
+
+  // Fast local check first
+  if (_orderClosed) {
+    closePreview();
+    var msgEl = document.getElementById('orderMsg');
+    msgEl.textContent = '🔒 Orders are closed. Your order was not placed.';
+    msgEl.className = 'msg er'; msgEl.style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return;
+  }
+
   var selected = products.filter(function(p){ return (qty[p.product_id]||0) > 0; });
   if (!selected.length){ closePreview(); return; }
 
-  var items = selected.map(function(p){ return p.name; }).join(',');
-  var qtys  = selected.map(function(p){ return qty[p.product_id]; }).join(',');
-  var note  = document.getElementById('orderNote').value.trim();
-  var date  = tomorrowStr();
-
-  var btn   = document.getElementById('confirmBtn');
-  var pvMsg = document.getElementById('pvMsg');
+  var items  = selected.map(function(p){ return p.name; }).join(',');
+  var qtys   = selected.map(function(p){ return qty[p.product_id]; }).join(',');
+  var note   = document.getElementById('orderNote').value.trim();
+  var date   = tomorrowStr();
+  var btn    = document.getElementById('confirmBtn');
+  var pvMsg  = document.getElementById('pvMsg');
   var isEdit = existingOrder && existingOrder.status === 'pending';
 
-  btn.disabled = true; btn.textContent = isEdit ? '⏳ Updating…' : '⏳ Placing…';
-  pvMsg.style.display='none';
+  btn.disabled = true; btn.textContent = '⏳ Checking…';
+  pvMsg.style.display = 'none';
 
-  var apiCall = isEdit
-    ? apiPost({ action:'updateCustomerOrder', id: existingOrder.id, items: items, qty: qtys, note: note })
-    : apiPost({ action:'placeCustomerOrder', shop_id: session.shop_id, shop_name: session.shop_name, delivery_date: date, items: items, qty: qtys, note: note });
-
-  apiCall.then(function(res){
-    btn.disabled = false; btn.textContent = '✅ Confirm';
-    if (res && res.ok){
+  // Re-verify from DB that orders are still open (catches race where admin closes while modal is open)
+  api({ action:'getSetting', key:'order_enabled' }).then(function(rows){
+    var enabled = !rows.length || rows[0].value !== 'false';
+    if(!enabled){
+      _orderClosed = true;
+      btn.disabled = false; btn.textContent = '✅ Confirm';
       closePreview();
-      // Refresh existing order state
-      loadExistingOrder().then(function(){
-        renderProducts();
-        renderOrderBanner();
-      });
-      document.getElementById('orderNote').value = '';
+      document.getElementById('productsCard').style.display = 'none';
+      document.getElementById('orderNoteCard').style.display = 'none';
+      document.getElementById('orderBar').style.display = 'none';
+      var closedEl = document.getElementById('orderClosedBanner');
+      closedEl.textContent = '🔒 Orders have been closed by admin. Your order was not placed.';
+      closedEl.style.display = 'block';
       var msgEl = document.getElementById('orderMsg');
-      msgEl.textContent = isEdit ? '✅ Order updated! Delivery: '+fmtDate(date) : '✅ Order placed! Delivery: '+fmtDate(date);
-      msgEl.className = 'msg ok'; msgEl.style.display = 'block';
-      loadHistory();
+      msgEl.textContent = '🔒 Order window was closed by admin just now. Please try again when orders reopen.';
+      msgEl.className = 'msg er'; msgEl.style.display = 'block';
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      pvMsg.textContent = '❌ Failed: '+(res&&res.error||'try again');
-      pvMsg.className='msg er'; pvMsg.style.display='block';
+      return;
     }
+
+    // Orders still open — proceed
+    btn.textContent = isEdit ? '⏳ Updating…' : '⏳ Placing…';
+
+    var apiCall = isEdit
+      ? apiPost({ action:'updateCustomerOrder', id: existingOrder.id, items: items, qty: qtys, note: note })
+      : apiPost({ action:'placeCustomerOrder', shop_id: session.shop_id, shop_name: session.shop_name, delivery_date: date, items: items, qty: qtys, note: note });
+
+    apiCall.then(function(res){
+      btn.disabled = false; btn.textContent = '✅ Confirm';
+      if (res && res.ok){
+        closePreview();
+        loadExistingOrder().then(function(){
+          renderProducts();
+          renderOrderBanner();
+        });
+        document.getElementById('orderNote').value = '';
+        var msgEl = document.getElementById('orderMsg');
+        msgEl.textContent = isEdit ? '✅ Order updated! Delivery: '+fmtDate(date) : '✅ Order placed! Delivery: '+fmtDate(date);
+        msgEl.className = 'msg ok'; msgEl.style.display = 'block';
+        loadHistory();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        pvMsg.textContent = '❌ Failed: '+(res&&res.error||'try again');
+        pvMsg.className='msg er'; pvMsg.style.display='block';
+      }
+    });
+  }).catch(function(){
+    btn.disabled = false; btn.textContent = '✅ Confirm';
+    pvMsg.textContent = '❌ Network error. Check connection and try again.';
+    pvMsg.className='msg er'; pvMsg.style.display='block';
   });
 }
 
@@ -544,6 +644,7 @@ function checkOrderWindow(){
     var productsCard = document.getElementById('productsCard');
     var orderNoteCard = document.getElementById('orderNoteCard');
     var orderBar    = document.getElementById('orderBar');
+    _orderClosed = !enabled;
     if(!enabled){
       closedEl.textContent = '🔒 Orders are currently closed.' + (owMsg ? ' '+owMsg : '');
       closedEl.style.display = 'block';
@@ -554,7 +655,7 @@ function checkOrderWindow(){
       closedEl.style.display = 'none';
       if(productsCard)  productsCard.style.display  = '';
       if(orderNoteCard) orderNoteCard.style.display  = '';
-      // orderBar visibility controlled by updateBar()
+      updateBar(); // re-show bar if items selected
     }
 
     // Broadcast banner — show only if new
@@ -659,7 +760,7 @@ function showTab(t){
     document.getElementById('pg-'+x).classList.toggle('on', x===t);
     document.getElementById('tb-'+x).classList.toggle('on', x===t);
   });
-  document.getElementById('orderBar').style.display = t==='order' && totalItemCount()>0 ? 'block' : 'none';
+  document.getElementById('orderBar').style.display = (t==='order' && totalItemCount()>0 && !_orderClosed && !_editLocked) ? 'block' : 'none';
   if(t==='track') loadTrack();
   if(t==='history') loadHistory();
 }

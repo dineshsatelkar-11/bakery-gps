@@ -8,6 +8,7 @@
 <script src="api.js"></script>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#4a2f14">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Baked GPS">
@@ -2189,10 +2190,11 @@ function saveCustomer(){
     last_updated_by:'Admin',last_updated_at:now
   }).then(function(res){
     if(res&&res.ok){
-      // Save login credentials + group — await this so groups are actually written before reload
+      // Save group (always) + credentials only if provided — prevents clearing password on group-only edit
       var loginBody={action:'updateShopLogin',shop_id:cid,product_group_ids:groupIds};
       if(loginUser) loginBody.login_username=loginUser;
       if(loginPass) loginBody.login_password=loginPass;
+      // For new customers both are set above; for edits only set if non-empty
       apiPost(loginBody).then(function(){
         msg.textContent='✅ Saved!';msg.className='msg ok';
         // Notify driver when shop is added or reassigned
