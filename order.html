@@ -569,6 +569,19 @@ function amendOrder(){
 function showPreview(){
   var selected = products.filter(function(p){ return (qty[p.product_id]||0) > 0; });
   if (!selected.length){ alert('Select at least one product.'); return; }
+  // In amend mode — block if nothing actually changed vs the approved order
+  if(_amendMode){
+    var changed = products.some(function(p){
+      return (qty[p.product_id]||0) !== (_amendMinQty[p.product_id]||0);
+    });
+    if(!changed){
+      var msgEl = document.getElementById('orderMsg');
+      msgEl.textContent = 'ℹ️ No changes made — quantities are the same as your approved order.';
+      msgEl.className = 'msg in'; msgEl.style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+  }
   var note = document.getElementById('orderNote').value.trim();
   document.getElementById('pvDate').textContent = fmtDate(tomorrowStr());
   document.getElementById('pvItems').innerHTML = selected.map(function(p){
