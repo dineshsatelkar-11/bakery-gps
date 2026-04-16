@@ -705,13 +705,15 @@ function checkOrderWindow(){
     api({action:'getSetting', key:'order_enabled'}),
     api({action:'getSetting', key:'order_message'}),
     api({action:'getSetting', key:'customer_broadcast'}),
-    api({action:'getSetting', key:'customer_broadcast_at'})
+    api({action:'getSetting', key:'customer_broadcast_at'}),
+    api({action:'getSetting', key:'customer_broadcast_enabled'})
   ]).then(function(results){
     // getSetting returns a single row object (or null), NOT an array
-    var enabled  = !results[0] || results[0].value !== 'false';
-    var owMsg    = results[1] ? (results[1].value||'') : '';
-    var bcast    = results[2] ? (results[2].value||'') : '';
-    var bcastAt  = results[3] ? (results[3].value||'') : '';
+    var enabled       = !results[0] || results[0].value !== 'false';
+    var owMsg         = results[1] ? (results[1].value||'') : '';
+    var bcast         = results[2] ? (results[2].value||'') : '';
+    var bcastAt       = results[3] ? (results[3].value||'') : '';
+    var bcastOn       = results[4] ? results[4].value === 'true' : false;
 
     // Order open/closed banner
     var closedEl    = document.getElementById('orderClosedBanner');
@@ -732,16 +734,16 @@ function checkOrderWindow(){
       updateBar(); // re-show bar if items selected
     }
 
-    // Broadcast banner — show if new or still active; dismiss button hides it
+    // Broadcast banner — only show if admin has it enabled
     var bb = document.getElementById('broadcastBanner');
-    if(bcast){
+    if(bcast && bcastOn){
       if(bcastAt !== _lastBroadcastAt){
         _lastBroadcastAt = bcastAt;
         document.getElementById('broadcastText').textContent = '📢 ' + bcast;
         bb.style.display = 'block';
       }
     } else {
-      bb.style.display = 'none'; // admin cleared the broadcast
+      bb.style.display = 'none'; // admin disabled or cleared
     }
   });
 }
@@ -949,19 +951,33 @@ function loadCustomerNotifs(){
   api({ action:'getCustomerNotifications', shop_id: session.shop_id }).then(function(notifs){
     var list = Array.isArray(notifs) ? notifs : [];
     if(!list.length) return;
-    // Mark as read in DB first — before showing — so refresh never re-shows them
+
+    // Check localStorage: skip any notifications dismissed/seen before their created_at
+    var dismissedAt = localStorage.getItem('notifDismissed_' + session.shop_id) || '';
+    var fresh = dismissedAt
+      ? list.filter(function(n){ return n.created_at > dismissedAt; })
+      : list;
+    if(!fresh.length) return;
+
+    // Mark as read in DB and in localStorage
     apiPost({ action:'markCustomerNotifsRead', shop_id: session.shop_id });
+    var latest = fresh.reduce(function(max, n){ return n.created_at > max ? n.created_at : max; }, '');
+    localStorage.setItem('notifDismissed_' + session.shop_id, latest);
+
     var banner = document.getElementById('customerNotifBanner');
     var textEl = document.getElementById('customerNotifText');
-    textEl.innerHTML = list.map(function(n){ return '💬 ' + esc(n.message); }).join('<br>');
+    textEl.innerHTML = fresh.map(function(n){ return '💬 ' + esc(n.message); }).join('<br>');
     banner.style.display = 'block';
   }).catch(function(){});
 }
 
 function dismissCustomerNotifs(){
   document.getElementById('customerNotifBanner').style.display = 'none';
-  // Belt-and-suspenders: re-mark as read in case the first call failed
-  if(session) apiPost({ action:'markCustomerNotifsRead', shop_id: session.shop_id });
+  // Store dismiss timestamp in localStorage — prevents re-showing on refresh
+  if(session){
+    localStorage.setItem('notifDismissed_' + session.shop_id, new Date().toISOString());
+    apiPost({ action:'markCustomerNotifsRead', shop_id: session.shop_id });
+  }
 }
 
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }

@@ -389,8 +389,14 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
 
   <!-- BROADCAST TO CUSTOMERS -->
   <div class="card" style="margin-bottom:12px">
-    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">📢 Broadcast to Customers</div>
-    <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:10px;line-height:1.6">Send an announcement to all customers. They will see it as a banner when they open the order page.</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div style="font-size:13px;font-weight:900;color:#4a2f14">📢 Broadcast to Customers</div>
+      <div id="broadcastStatusBadge" style="font-size:11px;font-weight:700;font-family:monospace;padding:3px 10px;border-radius:20px;background:#e8dfd2;color:#8a7a6a">⏳ Loading…</div>
+    </div>
+    <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:10px;line-height:1.6">Customers see this as a banner when they open the order page. Toggle to show or hide without losing the message.</div>
+
+    <!-- Current active broadcast -->
+    <div id="broadcastActiveBar" style="display:none;background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:9px 12px;margin-bottom:10px;font-size:12px;font-weight:700;color:#7a4800;font-family:monospace;line-height:1.5"></div>
 
     <!-- Quick templates -->
     <div class="lbl" style="margin-bottom:6px">Quick Templates</div>
@@ -401,10 +407,10 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
       <button class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1.5px solid #f0b0b0;text-align:left;padding:9px 12px" onclick="broadcastTemplate('🔒 Orders are now closed for today. See you tomorrow!')">🔒 Orders are now closed for today. See you tomorrow!</button>
     </div>
 
-    <textarea id="broadcastMsg" rows="2" placeholder="e.g. Orders for tomorrow are now open! Place your order before 9 PM." style="resize:vertical;margin-bottom:8px"></textarea>
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-brown" style="margin-bottom:0;flex:1" onclick="sendBroadcast()">📢 Send to All Customers</button>
-      <button class="btn btn-grey" style="margin-bottom:0;width:auto;padding:10px 14px" onclick="clearBroadcast()">✖ Clear</button>
+    <textarea id="broadcastMsg" rows="2" placeholder="Type a message or pick a template above…" style="resize:vertical;margin-bottom:8px"></textarea>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:0">
+      <button class="btn btn-brown" style="margin-bottom:0" onclick="sendBroadcast()">📢 Send / Update</button>
+      <button id="broadcastToggleBtn" class="btn" style="margin-bottom:0;background:#e8dfd2;color:#4a2f14" onclick="toggleBroadcast()">⏳ Loading…</button>
     </div>
     <div id="broadcast-msg" style="display:none;margin-top:8px" class="msg ok"></div>
   </div>
@@ -942,7 +948,7 @@ function showTab(t){
   if(t==='groups')      loadGroups();
   if(t==='drivers')   loadDrivers().then(renderDrivers);
   if(t==='users')     { loadStaff().then(renderStaff); loadFeatureSettings(); }
-  if(t==='notify')    { loadNotifyDriverList(); loadOrderWindow(); loadNotifyCustomerList(); }
+  if(t==='notify')    { loadNotifyDriverList(); loadOrderWindow(); loadBroadcast(); loadNotifyCustomerList(); }
   if(t==='audit')     initAuditTab();
 }
 
@@ -3706,8 +3712,9 @@ function loadOrderWindow(){
     api({action:'getSetting', key:'order_enabled'}),
     api({action:'getSetting', key:'order_message'})
   ]).then(function(results){
-    var enabled = !results[0].length || results[0][0].value !== 'false';
-    var msg = results[1].length ? (results[1][0].value||'') : '';
+    // getSetting returns a single row object (or null), NOT an array
+    var enabled = !results[0] || results[0].value !== 'false';
+    var msg = results[1] ? (results[1].value||'') : '';
     renderOrderWindowStatus(enabled);
     document.getElementById('orderWindowMsg').value = msg;
   });
@@ -3747,30 +3754,71 @@ function toggleOrderWindow(){
 }
 
 // ── CUSTOMER BROADCAST ──
+var _broadcastEnabled = false;
+var _broadcastMsg = '';
+
+function loadBroadcast(){
+  Promise.all([
+    api({action:'getSetting', key:'customer_broadcast'}),
+    api({action:'getSetting', key:'customer_broadcast_enabled'})
+  ]).then(function(r){
+    _broadcastMsg     = r[0] ? (r[0].value||'') : '';
+    _broadcastEnabled = r[1] ? r[1].value === 'true' : false;
+    renderBroadcastStatus();
+    // Populate textarea with current message so admin can see & edit it
+    if(_broadcastMsg) document.getElementById('broadcastMsg').value = _broadcastMsg;
+  });
+}
+
+function renderBroadcastStatus(){
+  var badge   = document.getElementById('broadcastStatusBadge');
+  var bar     = document.getElementById('broadcastActiveBar');
+  var togBtn  = document.getElementById('broadcastToggleBtn');
+  if(!badge) return;
+
+  if(_broadcastEnabled && _broadcastMsg){
+    badge.textContent = '🟢 LIVE'; badge.style.background='#e8f5e9'; badge.style.color='#2d7a4f';
+    bar.textContent   = '📢 Currently showing: '+_broadcastMsg; bar.style.display='block';
+    togBtn.textContent='🔕 Hide from Customers'; togBtn.style.background='#fde8e8'; togBtn.style.color='#c8382a';
+  } else {
+    badge.textContent = '⚫ OFF'; badge.style.background='#f5ede0'; badge.style.color='#8a7a6a';
+    bar.style.display='none';
+    togBtn.textContent='📢 Show to Customers'; togBtn.style.background='#e8f5e9'; togBtn.style.color='#2d7a4f';
+  }
+}
+
 function sendBroadcast(){
   var msg = document.getElementById('broadcastMsg').value.trim();
-  var el = document.getElementById('broadcast-msg');
+  var el  = document.getElementById('broadcast-msg');
   if(!msg){ el.textContent='Enter a message first.'; el.className='msg er'; el.style.display='block'; return; }
   el.textContent='Sending…'; el.className='msg in'; el.style.display='block';
+  _broadcastMsg     = msg;
+  _broadcastEnabled = true;
   Promise.all([
-    apiPost({action:'setSetting', key:'customer_broadcast', value: msg}),
-    apiPost({action:'setSetting', key:'customer_broadcast_at', value: new Date().toISOString()})
+    apiPost({action:'setSetting', key:'customer_broadcast',         value: msg}),
+    apiPost({action:'setSetting', key:'customer_broadcast_enabled', value: 'true'}),
+    apiPost({action:'setSetting', key:'customer_broadcast_at',      value: new Date().toISOString()})
   ]).then(function(){
-    el.textContent='✅ Broadcast sent! Customers will see it when they open the app.';
-    el.className='msg ok';
+    el.textContent='✅ Broadcast sent and now visible to all customers.'; el.className='msg ok';
+    renderBroadcastStatus();
     setTimeout(function(){ el.style.display='none'; }, 4000);
   });
 }
 
-function clearBroadcast(){
-  Promise.all([
-    apiPost({action:'setSetting', key:'customer_broadcast', value:''}),
-    apiPost({action:'setSetting', key:'customer_broadcast_at', value:''})
-  ]).then(function(){
-    document.getElementById('broadcastMsg').value='';
-    var el = document.getElementById('broadcast-msg');
-    el.textContent='✅ Broadcast cleared.'; el.className='msg ok'; el.style.display='block';
-    setTimeout(function(){ el.style.display='none'; }, 2000);
+function toggleBroadcast(){
+  var el = document.getElementById('broadcast-msg');
+  _broadcastEnabled = !_broadcastEnabled;
+  el.textContent='Updating…'; el.className='msg in'; el.style.display='block';
+  var ops = [apiPost({action:'setSetting', key:'customer_broadcast_enabled', value: _broadcastEnabled ? 'true' : 'false'})];
+  // When turning ON, also refresh the timestamp so customers see it fresh
+  if(_broadcastEnabled){
+    ops.push(apiPost({action:'setSetting', key:'customer_broadcast_at', value: new Date().toISOString()}));
+  }
+  Promise.all(ops).then(function(){
+    el.textContent = _broadcastEnabled ? '✅ Broadcast is now visible to customers.' : '✅ Broadcast hidden from customers (message saved).';
+    el.className='msg ok';
+    renderBroadcastStatus();
+    setTimeout(function(){ el.style.display='none'; }, 3000);
   });
 }
 
