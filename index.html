@@ -208,6 +208,38 @@ function setChecking(msg){
   checkMsg.style.display=msg?'block':'none';
 }
 
+// Mobile number normalisation — strips +91 / 91 / spaces / dashes, returns last 10 digits
+function normalizePhone(input){
+  var digits = input.replace(/\D/g,'');
+  return digits.slice(-10); // last 10 digits
+}
+function isPhoneLike(input){
+  var digits = input.replace(/\D/g,'');
+  return digits.length >= 10 && digits.length <= 13;
+}
+// Build deduplicated list of username variants to try for customer login
+function phoneVariants(input){
+  var variants = [input];
+  if(isPhoneLike(input)){
+    var ten = normalizePhone(input);
+    if(ten.length === 10){
+      [ten, '+91'+ten, '91'+ten, '+91 '+ten].forEach(function(v){
+        if(variants.indexOf(v) < 0) variants.push(v);
+      });
+    }
+  }
+  return variants;
+}
+// Try customer login with each variant in sequence, resolve on first hit
+function tryCustomerLogin(variants, idx, pass){
+  if(idx >= variants.length) return Promise.resolve(null);
+  return api({action:'customerLogin', username:variants[idx], password:pass}).then(function(data){
+    var c = Array.isArray(data)&&data.length ? data[0] : null;
+    if(c && c.shop_id) return c;
+    return tryCustomerLogin(variants, idx+1, pass);
+  });
+}
+
 function doLogin(){
   var id   = loginId.value.trim();
   var pass = loginPass.value.trim();
@@ -254,8 +286,7 @@ function doLogin(){
           return;
         }
 
-        return api({action:'customerLogin', username:id, password:pass}).then(function(data){
-          var c = Array.isArray(data)&&data.length ? data[0] : null;
+        return tryCustomerLogin(phoneVariants(id), 0, pass).then(function(c){
           if(c && c.shop_id){
             localStorage.setItem('custSession', JSON.stringify(c));
             goto('order');

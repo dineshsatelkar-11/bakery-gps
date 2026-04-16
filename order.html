@@ -260,8 +260,10 @@ function showApp(){
   loadHistory();
   checkOrderWindow();
   loadCustomerNotifs();
-  setInterval(checkOrderWindow, 30000);
-  setInterval(loadCustomerNotifs, 60000); // poll for personal notifications every 60s
+  if (window._timerOrderWindow) clearInterval(window._timerOrderWindow);
+  if (window._timerNotifs)      clearInterval(window._timerNotifs);
+  window._timerOrderWindow = setInterval(checkOrderWindow, 30000);
+  window._timerNotifs      = setInterval(loadCustomerNotifs, 60000);
 }
 
 // Re-fetch customer session from DB to pick up any group changes by admin
