@@ -949,17 +949,19 @@ function loadCustomerNotifs(){
   api({ action:'getCustomerNotifications', shop_id: session.shop_id }).then(function(notifs){
     var list = Array.isArray(notifs) ? notifs : [];
     if(!list.length) return;
+    // Mark as read in DB first — before showing — so refresh never re-shows them
+    apiPost({ action:'markCustomerNotifsRead', shop_id: session.shop_id });
     var banner = document.getElementById('customerNotifBanner');
     var textEl = document.getElementById('customerNotifText');
     textEl.innerHTML = list.map(function(n){ return '💬 ' + esc(n.message); }).join('<br>');
     banner.style.display = 'block';
-    // Mark as read so they don't re-appear next poll
-    apiPost({ action:'markCustomerNotifsRead', shop_id: session.shop_id });
   }).catch(function(){});
 }
 
 function dismissCustomerNotifs(){
   document.getElementById('customerNotifBanner').style.display = 'none';
+  // Belt-and-suspenders: re-mark as read in case the first call failed
+  if(session) apiPost({ action:'markCustomerNotifsRead', shop_id: session.shop_id });
 }
 
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
