@@ -539,11 +539,12 @@
           status: 'pending'
         });
 
-      // Customer editing their own pending order
-      case 'updateCustomerOrder':
-        return sbPatch('customer_orders', { id: b.id }, {
-          items: b.items, qty: b.qty, note: b.note || ''
-        });
+      // Customer editing their own pending order (or amending an approved one)
+      case 'updateCustomerOrder': {
+        var upd2 = { items: b.items, qty: b.qty, note: b.note || '' };
+        if (b.reset_to_pending) upd2.status = 'pending';
+        return sbPatch('customer_orders', { id: b.id }, upd2);
+      }
 
       // Admin / kitchen / packaging: update order status
       case 'updateCustomerOrderStatus': {

@@ -228,7 +228,7 @@ function doLogout(){
 // ── APP INIT ──
 function showApp(){
   // Reset all stale state from any previous session / user
-  existingOrder = null; qty = {}; products = []; _editLocked = false; _orderClosed = false;
+  existingOrder = null; qty = {}; products = []; _editLocked = false; _orderClosed = false; _amendMode = false; _amendMinQty = {};
   document.getElementById('orderMsg').style.display = 'none';
   document.getElementById('orderMsg').textContent = '';
   document.getElementById('existingOrderBanner').style.display = 'none';
@@ -422,13 +422,15 @@ function renderProducts(){
 }
 
 function changeQty(pid, delta){
-  qty[pid] = Math.max(0, (qty[pid] || 0) + delta);
+  var floor = _amendMode ? (_amendMinQty[pid] || 0) : 0;
+  qty[pid] = Math.max(floor, (qty[pid] || 0) + delta);
   var el = document.getElementById('qv-'+pid);
   if (el) el.value = qty[pid];
   updateBar();
 }
 function setQty(pid, val){
-  qty[pid] = Math.max(0, parseInt(val) || 0);
+  var floor = _amendMode ? (_amendMinQty[pid] || 0) : 0;
+  qty[pid] = Math.max(floor, parseInt(val) || 0);
   var el = document.getElementById('qv-'+pid);
   if (el && parseInt(el.value) !== qty[pid]) el.value = qty[pid];
   updateBar();
@@ -442,13 +444,15 @@ function updateBar(){
   var total = totalItemCount();
   document.getElementById('totalItems').textContent = total;
   // Never show the bar when orders are closed or edit is locked
-  if(_orderClosed || _editLocked){ document.getElementById('orderBar').style.display='none'; return; }
+  if(_orderClosed || (_editLocked && !_amendMode)){ document.getElementById('orderBar').style.display='none'; return; }
   document.getElementById('orderBar').style.display = total > 0 ? 'block' : 'none';
 }
 
 // ── ORDER BANNER (existing order state) ──
-var _editLocked = false;
-var _orderClosed = false; // true when admin has closed the order window
+var _editLocked    = false;
+var _orderClosed   = false; // true when admin has closed the order window
+var _amendMode     = false; // true when customer is adding more to an approved order
+var _amendMinQty   = {};    // product_id → minimum qty (from approved order, cannot go below)
 function renderOrderBanner(){
   var banner    = document.getElementById('existingOrderBanner');
   var submitBtn = document.getElementById('submitBtn');
@@ -507,7 +511,11 @@ function renderOrderBanner(){
     }).join('');
     summaryItems.innerHTML = rows +
       (existingOrder.note ? '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:8px;padding-top:8px;border-top:1px solid #f5ede0">📝 '+esc(existingOrder.note)+'</div>' : '') +
-      '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:8px;text-align:right">Total: <b>'+totalItems+'</b> items</div>';
+      '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:8px;text-align:right">Total: <b>'+totalItems+'</b> items</div>' +
+      // Show "Add to Order" only when approved + window still open
+      (s === 'approved' && !_orderClosed
+        ? '<button onclick="amendOrder()" style="width:100%;margin-top:12px;padding:11px;border:1.5px dashed #2d7a4f;background:#e8f5e9;border-radius:12px;font-size:13px;font-weight:800;color:#2d7a4f;cursor:pointer;font-family:-apple-system,sans-serif">➕ Add More Items to This Order</button>'
+        : '');
     if(summaryLabel) summaryLabel.textContent = 'Your Order for Tomorrow ('+(statusLabel[s]||s)+')';
     summaryCard.style.display = 'block';
 
@@ -517,6 +525,42 @@ function renderOrderBanner(){
     _editLocked = true;
     document.querySelectorAll('.qty-btn, .qty-val').forEach(function(el){ el.disabled = true; });
   }
+}
+
+// ── AMEND APPROVED ORDER ──
+function amendOrder(){
+  _amendMode   = true;
+  _editLocked  = false;
+  _amendMinQty = {};
+  // Pre-fill qty from the approved order and lock those as minimums
+  qty = {};
+  if (existingOrder) {
+    var iArr = (existingOrder.items||'').split(',');
+    var qArr = (existingOrder.qty||'').split(',');
+    iArr.forEach(function(name, i){
+      var n = name.trim();
+      var q = parseInt(qArr[i]) || 0;
+      if (n && q) {
+        var p = products.find(function(p){ return p.name === n; });
+        if (p) { qty[p.product_id] = q; _amendMinQty[p.product_id] = q; }
+      }
+    });
+  }
+  // Unlock controls and update labels
+  var submitBtn = document.getElementById('submitBtn');
+  var lockNote  = document.getElementById('orderLockedNote');
+  var label     = document.getElementById('productsCardLabel');
+  document.querySelectorAll('.qty-btn, .qty-val').forEach(function(el){ el.disabled = false; });
+  submitBtn.disabled = false;
+  submitBtn.textContent = '👁 Review & Add to Order';
+  lockNote.style.display = 'none';
+  if (label) label.textContent = 'Add or Adjust Products';
+  // Show a banner explaining what's happening
+  var banner = document.getElementById('existingOrderBanner');
+  banner.innerHTML = '<div style="background:#fff8e1;border:1.5px solid #ffe082;border-radius:12px;padding:11px 14px;margin-bottom:10px;font-size:12px;font-weight:700;color:#7a4800;font-family:monospace;line-height:1.6">➕ Adding to your approved order.<br>Your existing items are pre-filled — adjust quantities and submit.<br>Order will go back to <b>Pending</b> for admin re-approval.</div>';
+  banner.style.display = 'block';
+  renderProducts();
+  window.scrollTo({ top: document.getElementById('productsCard').offsetTop - 60, behavior: 'smooth' });
 }
 
 // ── ORDER PREVIEW ──
@@ -533,8 +577,8 @@ function showPreview(){
   else { pvNote.style.display='none'; }
   document.getElementById('pvMsg').style.display='none';
   document.getElementById('confirmBtn').disabled=false;
-  var isEdit = existingOrder && existingOrder.status === 'pending';
-  document.getElementById('confirmBtn').textContent = isEdit ? '✅ Update Order' : '✅ Place Order';
+  var isEdit = existingOrder && (existingOrder.status === 'pending' || _amendMode);
+  document.getElementById('confirmBtn').textContent = _amendMode ? '✅ Add to Order' : isEdit ? '✅ Update Order' : '✅ Place Order';
   document.getElementById('previewSheet').style.display='flex';
 }
 function closePreview(){
@@ -564,7 +608,7 @@ function submitOrder(){
   var date   = tomorrowStr();
   var btn    = document.getElementById('confirmBtn');
   var pvMsg  = document.getElementById('pvMsg');
-  var isEdit = existingOrder && existingOrder.status === 'pending';
+  var isEdit = existingOrder && (existingOrder.status === 'pending' || _amendMode);
 
   btn.disabled = true; btn.textContent = '⏳ Checking…';
   pvMsg.style.display = 'none';
@@ -593,7 +637,7 @@ function submitOrder(){
     btn.textContent = isEdit ? '⏳ Updating…' : '⏳ Placing…';
 
     var apiCall = isEdit
-      ? apiPost({ action:'updateCustomerOrder', id: existingOrder.id, items: items, qty: qtys, note: note })
+      ? apiPost({ action:'updateCustomerOrder', id: existingOrder.id, items: items, qty: qtys, note: note, reset_to_pending: _amendMode })
       : apiPost({ action:'placeCustomerOrder', shop_id: session.shop_id, shop_name: session.shop_name, delivery_date: date, items: items, qty: qtys, note: note });
 
     apiCall.then(function(res){
@@ -606,7 +650,9 @@ function submitOrder(){
         });
         document.getElementById('orderNote').value = '';
         var msgEl = document.getElementById('orderMsg');
-        msgEl.textContent = isEdit ? '✅ Order updated! Delivery: '+fmtDate(date) : '✅ Order placed! Delivery: '+fmtDate(date);
+        var wasAmend = _amendMode;
+        _amendMode = false;
+        msgEl.textContent = wasAmend ? '✅ Items added! Order sent back for re-approval. Delivery: '+fmtDate(date) : isEdit ? '✅ Order updated! Delivery: '+fmtDate(date) : '✅ Order placed! Delivery: '+fmtDate(date);
         msgEl.className = 'msg ok'; msgEl.style.display = 'block';
         loadHistory();
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -893,7 +939,7 @@ function showTab(t){
     document.getElementById('pg-'+x).classList.toggle('on', x===t);
     document.getElementById('tb-'+x).classList.toggle('on', x===t);
   });
-  document.getElementById('orderBar').style.display = (t==='order' && totalItemCount()>0 && !_orderClosed && !_editLocked) ? 'block' : 'none';
+  document.getElementById('orderBar').style.display = (t==='order' && totalItemCount()>0 && !_orderClosed && (!_editLocked || _amendMode)) ? 'block' : 'none';
   if(t==='track') loadTrack();
   if(t==='history') loadHistory();
 }
