@@ -67,6 +67,14 @@ input[type=text],input[type=password]{width:100%;padding:13px 14px;border:1.5px 
 .s-dispatched{background:#e8f5e9;color:#2d7a4f}
 .s-rejected{background:#fde8e8;color:#c8382a}
 textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:13px;color:#1e1611;background:#f5ede0;outline:none;resize:none;font-family:-apple-system,sans-serif;line-height:1.6;margin-bottom:8px}
+/* ── Track tab ── */
+.trk-contact-row{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #f5ede0}
+.trk-contact-row:last-child{border-bottom:none}
+.trk-contact-icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.trk-call-btn{background:#e8f5e9;color:#2d7a4f;border:1.5px solid #a5d6a7;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:700;text-decoration:none;display:inline-block;font-family:-apple-system,sans-serif;flex-shrink:0}
+.trk-escalate-btn{width:100%;background:#fff3e0;border:1.5px dashed #e67e22;border-radius:12px;padding:11px;font-size:13px;font-weight:700;color:#7a4800;cursor:pointer;font-family:-apple-system,sans-serif;margin-top:8px;text-align:center;display:block}
+.trk-status-delivered{background:linear-gradient(135deg,#e8f5e9,#c8e6c9)!important;border-color:#a5d6a7!important}
+.trk-status-pending{background:linear-gradient(135deg,#fff8e1,#ffecb3)!important;border-color:#ffe082!important}
 </style>
 </head>
 <body>
@@ -103,10 +111,22 @@ textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:1
     <button class="tab" id="tb-settings" onclick="showTab('settings')">⚙️</button>
   </div>
 
+  <!-- Global banners — shown on all tabs -->
+  <div id="broadcastBanner" style="display:none;margin:10px 14px 0;background:#fff8e1;border:1.5px solid #ffe082;border-radius:12px;padding:10px 12px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+      <div id="broadcastText" style="font-size:12px;font-weight:700;color:#7a4800;font-family:monospace;line-height:1.6;flex:1"></div>
+      <button onclick="document.getElementById('broadcastBanner').style.display='none'" style="background:none;border:none;font-size:16px;color:#7a4800;cursor:pointer;flex-shrink:0;padding:0 2px;line-height:1">✖</button>
+    </div>
+  </div>
+  <div id="customerNotifBanner" style="display:none;margin:10px 14px 0;background:#e3f2fd;border:1.5px solid #90caf9;border-radius:12px;padding:10px 12px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+      <div id="customerNotifText" style="font-size:12px;font-weight:700;color:#1565c0;font-family:monospace;line-height:1.6;flex:1"></div>
+      <button onclick="dismissCustomerNotifs()" style="background:none;border:none;font-size:16px;color:#1565c0;cursor:pointer;flex-shrink:0;padding:0 2px;line-height:1">✖</button>
+    </div>
+  </div>
+
   <!-- ORDER TAB -->
   <div class="page on" id="pg-order">
-    <!-- Broadcast banner -->
-    <div id="broadcastBanner" style="display:none;background:#fff8e1;border:1.5px solid #ffe082;border-radius:12px;padding:11px 14px;margin-bottom:10px;font-size:12px;font-weight:700;color:#7a4800;font-family:monospace;line-height:1.6"></div>
     <!-- Order closed banner -->
     <div id="orderClosedBanner" style="display:none;background:#fde8e8;border:1.5px solid #f0b0b0;border-radius:12px;padding:11px 14px;margin-bottom:10px;font-size:13px;font-weight:800;color:#c8382a;text-align:center">🔒 Orders are currently closed. Please check back later.</div>
 
@@ -235,13 +255,30 @@ document.getElementById('loginPass').addEventListener('keydown', function(e){ if
 
 function doLogout(){
   localStorage.removeItem('custSession');
-  session = null; products = []; qty = {};
+  session = null; products = []; qty = {}; existingOrder = null;
+  _editLocked = false; _orderClosed = false;
   document.getElementById('appScreen').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'flex';
 }
 
 // ── APP INIT ──
 function showApp(){
+  // Reset all stale state from any previous session / user
+  existingOrder = null; qty = {}; products = []; _editLocked = false; _orderClosed = false;
+  document.getElementById('orderMsg').style.display = 'none';
+  document.getElementById('orderMsg').textContent = '';
+  document.getElementById('existingOrderBanner').style.display = 'none';
+  document.getElementById('existingOrderBanner').innerHTML = '';
+  document.getElementById('orderBar').style.display = 'none';
+  document.getElementById('orderClosedBanner').style.display = 'none';
+  document.getElementById('broadcastBanner').style.display = 'none';
+  document.getElementById('customerNotifBanner').style.display = 'none';
+  _lastBroadcastAt = '';
+  document.getElementById('prodFilterBar').style.display = 'none';
+  document.getElementById('productsList').innerHTML = '<div style="padding:10px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading products…</div>';
+  var ps = document.getElementById('prodSearch'); if(ps) ps.value = '';
+  var pc = document.getElementById('prodCatFilter'); if(pc) pc.innerHTML = '<option value="">All</option>';
+
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'block';
   document.getElementById('topShopName').textContent = session.shop_name;
@@ -257,14 +294,17 @@ function showApp(){
   });
   loadHistory();
   checkOrderWindow();
+  loadCustomerNotifs();
   setInterval(checkOrderWindow, 30000);
+  setInterval(loadCustomerNotifs, 60000); // poll for personal notifications every 60s
 }
 
 // Re-fetch customer session from DB to pick up any group changes by admin
 function refreshSession(){
-  return api({ action:'getShops' }).then(function(shops){
-    var mine = Array.isArray(shops) ? shops.find(function(s){ return s.shop_id === session.shop_id; }) : null;
-    if (!mine) return;
+  // Fetch only this customer's shop by shop_id (fast + no cross-customer data)
+  return api({ action:'getShops', shop_id: session.shop_id }).then(function(shops){
+    var mine = Array.isArray(shops) && shops.length ? shops[0] : null;
+    if (!mine) { console.log('[order] shop not found for id:', session.shop_id); return; }
     // Update group ids from latest DB state
     var ids = Array.isArray(mine.product_group_ids) && mine.product_group_ids.length
       ? mine.product_group_ids
@@ -273,7 +313,7 @@ function refreshSession(){
     session.product_group_id  = ids.length ? ids[0] : null;
     localStorage.setItem('custSession', JSON.stringify(session));
     console.log('[order] refreshed group ids:', ids);
-  }).catch(function(){});
+  }).catch(function(){ console.log('[order] refreshSession failed'); });
 }
 
 // ── EXISTING ORDER CHECK ──
@@ -634,10 +674,11 @@ function checkOrderWindow(){
     api({action:'getSetting', key:'customer_broadcast'}),
     api({action:'getSetting', key:'customer_broadcast_at'})
   ]).then(function(results){
-    var enabled  = !results[0].length || results[0][0].value !== 'false';
-    var owMsg    = results[1].length ? (results[1][0].value||'') : '';
-    var bcast    = results[2].length ? (results[2][0].value||'') : '';
-    var bcastAt  = results[3].length ? (results[3][0].value||'') : '';
+    // getSetting returns a single row object (or null), NOT an array
+    var enabled  = !results[0] || results[0].value !== 'false';
+    var owMsg    = results[1] ? (results[1].value||'') : '';
+    var bcast    = results[2] ? (results[2].value||'') : '';
+    var bcastAt  = results[3] ? (results[3].value||'') : '';
 
     // Order open/closed banner
     var closedEl    = document.getElementById('orderClosedBanner');
@@ -658,100 +699,199 @@ function checkOrderWindow(){
       updateBar(); // re-show bar if items selected
     }
 
-    // Broadcast banner — show only if new
-    if(bcast && bcastAt && bcastAt !== _lastBroadcastAt){
-      _lastBroadcastAt = bcastAt;
-      var bb = document.getElementById('broadcastBanner');
-      bb.textContent = '📢 '+bcast;
-      bb.style.display = 'block';
-      setTimeout(function(){ bb.style.display='none'; }, 15000);
+    // Broadcast banner — show if new or still active; dismiss button hides it
+    var bb = document.getElementById('broadcastBanner');
+    if(bcast){
+      if(bcastAt !== _lastBroadcastAt){
+        _lastBroadcastAt = bcastAt;
+        document.getElementById('broadcastText').textContent = '📢 ' + bcast;
+        bb.style.display = 'block';
+      }
+    } else {
+      bb.style.display = 'none'; // admin cleared the broadcast
     }
   });
+}
+
+// ── HELPERS ──
+function todayStr(){
+  var d=new Date();
+  return d.getFullYear()+'-'+zp(d.getMonth()+1)+'-'+zp(d.getDate());
 }
 
 // ── TRACK DELIVERY ──
 function loadTrack(){
   var el = document.getElementById('trackContent');
-  el.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
+  el.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">Loading delivery info…</div>';
+  var today = todayStr();
 
-  Promise.all([
-    api({action:'getCustomerOrders', shop_id: session.shop_id, limit: 5}),
-    api({action:'getShops'})
-  ]).then(function(results){
-    var orders = Array.isArray(results[0]) ? results[0] : [];
-    var shops  = Array.isArray(results[1]) ? results[1] : [];
-    var myShop = shops.find(function(s){ return s.shop_id === session.shop_id; });
-    var driver = myShop ? (myShop.assigned_driver||'') : '';
-
-    var dispatched = orders.filter(function(o){ return o.status==='dispatched'; });
-    var latest = orders[0] || null;
-
-    var html = '';
-
-    // Dispatched order card
-    if(dispatched.length){
-      var o = dispatched[0];
-      var pairs=[];
-      (o.items||'').split(',').forEach(function(item,i){
-        var q=((o.qty||'').split(',')[i]||'').trim();
-        if(item.trim()) pairs.push(q+'× '+item.trim());
-      });
-      html += '<div class="card" style="border-color:#a5d6a7;background:#f0faf4;margin-bottom:10px">'+
-        '<div style="font-size:13px;font-weight:900;color:#2d7a4f;margin-bottom:6px">🚚 Order Out for Delivery!</div>'+
-        '<div style="font-size:11px;font-family:monospace;background:#e8f5e9;border-radius:8px;padding:8px 10px;line-height:1.9;margin-bottom:8px">'+pairs.join('<br>')+'</div>'+
-        '<div style="font-size:11px;color:#2d7a4f;font-family:monospace">Delivery: '+fmtDate(o.delivery_date)+'</div>'+
-      '</div>';
+  // Fetch this customer's shop directly by shop_id
+  api({ action:'getShops', shop_id: session.shop_id }).then(function(shops){
+    var shop = Array.isArray(shops) && shops.length ? shops[0] : null;
+    if(!shop){
+      el.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">Shop not found. Contact admin.</div>';
+      return;
     }
+    var driverName = shop.assigned_driver || '';
+    window._trkShop   = shop;
+    window._trkDriver = driverName;
 
-    // Driver info
-    if(driver){
+    Promise.all([
+      driverName ? api({ action:'getDrivers' })                                           : Promise.resolve([]),
+      driverName ? api({ action:'getOrders',    driver: driverName, date: today })        : Promise.resolve([]),
+      driverName ? api({ action:'getDeliveries', driver: driverName, date: today })       : Promise.resolve([]),
+      api({ action:'getCustomerOrders', shop_id: session.shop_id, limit: 5 })
+    ]).then(function(r){
+      var allDrivers    = Array.isArray(r[0]) ? r[0] : [];
+      var todayOrders   = Array.isArray(r[1]) ? r[1] : [];
+      var deliveries    = Array.isArray(r[2]) ? r[2] : [];
+      var custOrders    = Array.isArray(r[3]) ? r[3] : [];
+      var driverInfo    = allDrivers.find(function(d){ return d.name === driverName; }) || null;
+      var hasOrder      = todayOrders.some(function(o){ return o.shop_id === shop.shop_id; });
+      var myDelivery    = deliveries.find(function(d){ return d.shop_id === shop.shop_id; });
+      var driverMobile  = driverInfo ? (driverInfo.mobile||'') : '';
+      var trackingRaw   = driverInfo ? (driverInfo.tracking_url||'') : '';
+      var trackingOn    = driverInfo ? (driverInfo.tracking_enabled||false) : false;
+      var urlMatch      = trackingRaw.match(/https?:\/\/\S+/);
+      var trackingUrl   = urlMatch ? urlMatch[0] : trackingRaw;
+
+      // Last delivery by driver today (most recent time)
+      var sortedDel = deliveries.slice().sort(function(a,b){ return (b.time||'') > (a.time||'') ? 1 : -1; });
+      var lastDeliv = sortedDel[0] || null;
+
+      // Latest customer order
+      var latestCust = custOrders[0] || null;
+
+      // Status card content
+      var statusIcon, statusText, statusSub, statusClass='';
+      if(!driverName){
+        statusIcon='📋'; statusText='No Driver Assigned'; statusSub='Contact admin for delivery info.';
+      } else if(!hasOrder){
+        statusIcon='📋'; statusText='No Order Today'; statusSub='No delivery scheduled for your shop today.';
+      } else if(myDelivery){
+        statusIcon='✅'; statusText='Delivered Today!'; statusSub='Your order was delivered at '+(myDelivery.time||'—'); statusClass='trk-status-delivered';
+      } else {
+        statusIcon='⏳'; statusText='Not Yet Delivered'; statusClass='trk-status-pending';
+        var done=deliveries.length;
+        statusSub = done>0 ? 'Driver has completed '+done+' stop'+(done===1?'':'s')+' today' : 'Driver has not started deliveries yet';
+      }
+
+      var html = '';
+
+      // ── Delivery status card ──
+      html += '<div class="card '+statusClass+'" id="trkStatusCard" style="text-align:center;padding:20px 16px;margin-bottom:10px">'+
+        '<div style="font-size:40px;margin-bottom:8px">'+statusIcon+'</div>'+
+        '<div style="font-size:16px;font-weight:900;color:#4a2f14;margin-bottom:4px">'+esc(statusText)+'</div>'+
+        '<div style="font-size:12px;color:#8a7a6a;font-family:monospace;margin-bottom:14px">'+esc(statusSub||'')+'</div>'+
+        '<button onclick="reloadTrack(this)" style="padding:9px 22px;border:1.5px solid #e8dfd2;border-radius:20px;background:#fff;color:#4a2f14;font-size:12px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif">🔄 Refresh Status</button>'+
+      '</div>';
+
+      // ── Customer order status pipeline ──
+      if(latestCust){
+        var sLabel={pending:'⏳ Pending',approved:'✅ Approved',rejected:'❌ Rejected',kitchen:'👨‍🍳 In Kitchen',packaging:'📦 Packaging',dispatched:'🚚 Dispatched'};
+        var sClass={pending:'s-pending',approved:'s-approved',rejected:'s-rejected',kitchen:'s-kitchen',packaging:'s-packaging',dispatched:'s-dispatched'};
+        var steps=['pending','approved','kitchen','packaging','dispatched'];
+        var curr=steps.indexOf(latestCust.status);
+        html += '<div class="card" style="margin-bottom:10px">'+
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'+
+            '<div style="font-size:11px;font-weight:700;letter-spacing:1.5px;color:#8a7a6a;font-family:monospace;text-transform:uppercase">Order Status</div>'+
+            '<span class="hist-status '+(sClass[latestCust.status]||'s-pending')+'">'+(sLabel[latestCust.status]||latestCust.status)+'</span>'+
+          '</div>'+
+          '<div style="display:flex;align-items:center;gap:4px;overflow-x:auto;padding-bottom:4px">'+
+          steps.map(function(s,i){
+            var active=i<=curr;
+            var icons={pending:'⏳',approved:'✅',kitchen:'👨‍🍳',packaging:'📦',dispatched:'🚚'};
+            return '<div style="display:flex;align-items:center;gap:4px">'+
+              (i>0?'<div style="width:14px;height:2px;background:'+(active?'#2d7a4f':'#e8dfd2')+';flex-shrink:0"></div>':'')+
+              '<div style="text-align:center;flex-shrink:0">'+
+                '<div style="font-size:15px">'+icons[s]+'</div>'+
+                '<div style="font-size:8px;font-family:monospace;color:'+(active?'#2d7a4f':'#b0a090')+';font-weight:700;text-transform:uppercase;margin-top:2px">'+s+'</div>'+
+              '</div>'+
+            '</div>';
+          }).join('')+
+          '</div>'+
+        '</div>';
+      }
+
+      // ── Contact & escalation ──
       html += '<div class="card" style="margin-bottom:10px">'+
-        '<div style="font-size:11px;font-weight:900;letter-spacing:1.5px;color:#8a7a6a;font-family:monospace;text-transform:uppercase;margin-bottom:10px">Your Delivery Driver</div>'+
-        '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">'+
-          '<div style="width:44px;height:44px;border-radius:50%;background:#e3f2fd;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">🚗</div>'+
-          '<div><div style="font-size:15px;font-weight:800;color:#4a2f14">'+esc(driver)+'</div>'+
-          '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:2px">Assigned Driver</div></div>'+
+        '<div style="font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;text-transform:uppercase;margin-bottom:10px">Contact</div>'+
+        '<div class="trk-contact-row">'+
+          '<div class="trk-contact-icon" style="background:#e8f5e9">🚗</div>'+
+          '<div style="flex:1"><div style="font-size:13px;font-weight:700;color:#1e1611">'+(driverName||'Not assigned')+'</div>'+
+          '<div style="font-size:10px;color:#8a7a6a;font-family:monospace">Your Delivery Driver</div></div>'+
+          (driverMobile ? '<a href="tel:'+esc(driverMobile)+'" class="trk-call-btn">📞 Call</a>' : '')+
         '</div>'+
-        (session.mobile ?
-          '<a href="tracking.html?mobile='+encodeURIComponent(session.mobile)+'" style="display:block;background:#4a2f14;color:#fff;padding:12px;border-radius:12px;text-align:center;text-decoration:none;font-weight:800;font-size:13px">📍 Live Tracking</a>'
-        : '')+
-      '</div>';
-    } else {
-      html += '<div class="card" style="margin-bottom:10px"><div style="font-size:12px;color:#8a7a6a;font-family:monospace;text-align:center;padding:10px">No driver assigned yet. Contact admin.</div></div>';
-    }
-
-    // Latest order status
-    if(latest){
-      var statusLabel={pending:'⏳ Pending Approval',approved:'✅ Approved',rejected:'❌ Rejected',kitchen:'👨‍🍳 In Kitchen',packaging:'📦 Packaging',dispatched:'🚚 Out for Delivery'};
-      var statusClass={pending:'s-pending',approved:'s-approved',rejected:'s-rejected',kitchen:'s-kitchen',packaging:'s-packaging',dispatched:'s-dispatched'};
-      html += '<div class="card">'+
-        '<div style="font-size:11px;font-weight:900;letter-spacing:1.5px;color:#8a7a6a;font-family:monospace;text-transform:uppercase;margin-bottom:8px">Latest Order Status</div>'+
-        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'+
-          '<div style="font-size:13px;font-weight:800;color:#4a2f14">'+fmtDate(latest.delivery_date)+'</div>'+
-          '<span class="hist-status '+(statusClass[latest.status]||'s-pending')+'">'+(statusLabel[latest.status]||latest.status)+'</span>'+
-        '</div>'+
-        // Status pipeline
-        '<div style="display:flex;align-items:center;gap:4px;margin-top:10px;overflow-x:auto;padding-bottom:4px">'+
-        ['pending','approved','kitchen','packaging','dispatched'].map(function(s,i){
-          var steps = ['pending','approved','kitchen','packaging','dispatched'];
-          var curr = steps.indexOf(latest.status);
-          var active = i <= curr;
-          var icons = {pending:'⏳',approved:'✅',kitchen:'👨‍🍳',packaging:'📦',dispatched:'🚚'};
-          return '<div style="display:flex;align-items:center;gap:4px">'+
-            (i>0?'<div style="width:16px;height:2px;background:'+(active?'#2d7a4f':'#e8dfd2')+';flex-shrink:0"></div>':'')+
-            '<div style="text-align:center;flex-shrink:0">'+
-              '<div style="font-size:16px">'+icons[s]+'</div>'+
-              '<div style="font-size:8px;font-family:monospace;color:'+(active?'#2d7a4f':'#b0a090')+';font-weight:700;margin-top:2px;text-transform:uppercase">'+s+'</div>'+
+        '<button class="trk-escalate-btn" onclick="trkToggleEsc(\'trkEsc1\',this,\'⚠️ Issue not resolved? Escalate →\')">⚠️ Issue not resolved? Escalate →</button>'+
+        '<div id="trkEsc1" style="display:none;border-top:1.5px dashed #e8dfd2;padding-top:8px;margin-top:6px">'+
+          '<div style="font-size:10px;font-family:monospace;color:#c8382a;font-weight:700;letter-spacing:1px;margin-bottom:8px;text-transform:uppercase">📋 Level 1 — Delivery Manager</div>'+
+          '<div class="trk-contact-row">'+
+            '<div class="trk-contact-icon" style="background:#e3f2fd">📦</div>'+
+            '<div style="flex:1"><div style="font-size:13px;font-weight:700;color:#1e1611">'+(CONFIG.LOGISTICS_DELIVERY_MGR_NAME||'Delivery Manager')+'</div>'+
+            '<div style="font-size:10px;color:#8a7a6a;font-family:monospace">'+(CONFIG.LOGISTICS_DELIVERY_MGR_MOBILE||'')+'</div></div>'+
+            '<a href="tel:'+(CONFIG.LOGISTICS_DELIVERY_MGR_MOBILE||'')+'" class="trk-call-btn">📞 Call</a>'+
+          '</div>'+
+          '<button class="trk-escalate-btn" style="font-size:12px" onclick="trkToggleEsc(\'trkEsc2\',this,\'🔴 Still not resolved? Escalate to Owner →\')">🔴 Still not resolved? Escalate to Owner →</button>'+
+          '<div id="trkEsc2" style="display:none;border-top:1.5px dashed #e8dfd2;padding-top:8px;margin-top:6px">'+
+            '<div style="font-size:10px;font-family:monospace;color:#c8382a;font-weight:700;letter-spacing:1px;margin-bottom:8px;text-transform:uppercase">🚨 Level 2 — Company Owners</div>'+
+            '<div class="trk-contact-row">'+
+              '<div class="trk-contact-icon" style="background:#fff3e0">👑</div>'+
+              '<div style="flex:1"><div style="font-size:13px;font-weight:700;color:#1e1611">'+(CONFIG.LOGISTICS_OWNER1_NAME||'Owner')+'</div>'+
+              '<div style="font-size:10px;color:#8a7a6a;font-family:monospace">'+(CONFIG.LOGISTICS_OWNER1_MOBILE||'')+'</div></div>'+
+              '<a href="tel:'+(CONFIG.LOGISTICS_OWNER1_MOBILE||'')+'" class="trk-call-btn">📞 Call</a>'+
             '</div>'+
-          '</div>';
-        }).join('')+
+            '<div class="trk-contact-row">'+
+              '<div class="trk-contact-icon" style="background:#fce4ec">👑</div>'+
+              '<div style="flex:1"><div style="font-size:13px;font-weight:700;color:#1e1611">'+(CONFIG.LOGISTICS_OWNER2_NAME||'Owner')+'</div>'+
+              '<div style="font-size:10px;color:#8a7a6a;font-family:monospace">'+(CONFIG.LOGISTICS_OWNER2_MOBILE||'')+'</div></div>'+
+              '<a href="tel:'+(CONFIG.LOGISTICS_OWNER2_MOBILE||'')+'" class="trk-call-btn">📞 Call</a>'+
+            '</div>'+
+          '</div>'+
         '</div>'+
       '</div>';
-    }
 
-    if(!html) html = '<div style="padding:30px;text-align:center;font-size:13px;color:#8a7a6a;font-family:monospace">No order data yet. Place your first order!</div>';
-    el.innerHTML = html;
+      // ── Driver's last delivery today ──
+      html += '<div class="card" style="margin-bottom:10px">'+
+        '<div style="font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;text-transform:uppercase;margin-bottom:8px">Driver\'s Last Delivery Today</div>';
+      if(lastDeliv){
+        var mapLink=(lastDeliv.lat&&lastDeliv.lng)
+          ? '<a href="https://www.google.com/maps?q='+lastDeliv.lat+','+lastDeliv.lng+'" target="_blank" style="font-size:11px;color:#1565c0;font-family:monospace;font-weight:700;margin-top:4px;display:inline-block">📍 View on Map ↗</a>' : '';
+        html += '<div style="background:#f5ede0;border-radius:10px;padding:10px 12px">'+
+          '<div style="font-size:14px;font-weight:800;color:#4a2f14">📦 '+esc(lastDeliv.shop_name||'—')+'</div>'+
+          '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:2px">🕐 Delivered at '+(lastDeliv.time||'—')+'</div>'+
+          mapLink+'</div>'+
+          '<div style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-top:6px">Total deliveries today: <b>'+deliveries.length+'</b></div>';
+      } else {
+        html += '<div style="text-align:center;padding:14px;font-size:12px;color:#8a7a6a;font-family:monospace;background:#f9f6f1;border-radius:10px">⏳ No deliveries recorded yet today.</div>';
+      }
+      html += '</div>';
+
+      // ── Live Ajjas tracking button ──
+      if(trackingUrl && trackingOn){
+        html += '<a href="'+esc(trackingUrl)+'" target="_blank" style="display:block;background:linear-gradient(135deg,#e53935,#b71c1c);color:#fff;padding:14px 16px;border-radius:14px;text-align:center;text-decoration:none;font-weight:800;font-size:14px;margin-bottom:4px">'+
+          '🔴 Track Tempo Live Location'+
+          '<div style="font-size:10px;opacity:.85;font-weight:500;margin-top:2px;font-family:monospace">Powered by Ajjas GPS · Tap to open</div></a>';
+      }
+
+      el.innerHTML = html;
+    });
   });
+}
+
+function reloadTrack(btn){
+  btn.textContent = '⏳ Refreshing…'; btn.disabled = true;
+  loadTrack();
+}
+
+function trkToggleEsc(sectionId, btn, closedLabel){
+  var sec = document.getElementById(sectionId);
+  if(!sec) return;
+  var isOpen = sec.style.display === 'block';
+  sec.style.display = isOpen ? 'none' : 'block';
+  btn.textContent = isOpen ? closedLabel : '✖ Hide contacts';
+  btn.style.background = isOpen ? '' : '#fde8e8';
+  btn.style.borderColor = isOpen ? '' : '#c8382a';
+  btn.style.color       = isOpen ? '' : '#c8382a';
 }
 
 // ── TABS ──
@@ -787,6 +927,25 @@ function changePassword(){
         msg.textContent='❌ Current password is incorrect.'; msg.className='msg er';
       }
     });
+}
+
+// ── CUSTOMER NOTIFICATIONS (sent by admin to specific customer) ──
+function loadCustomerNotifs(){
+  if(!session) return;
+  api({ action:'getCustomerNotifications', shop_id: session.shop_id }).then(function(notifs){
+    var list = Array.isArray(notifs) ? notifs : [];
+    if(!list.length) return;
+    var banner = document.getElementById('customerNotifBanner');
+    var textEl = document.getElementById('customerNotifText');
+    textEl.innerHTML = list.map(function(n){ return '💬 ' + esc(n.message); }).join('<br>');
+    banner.style.display = 'block';
+    // Mark as read so they don't re-appear next poll
+    apiPost({ action:'markCustomerNotifsRead', shop_id: session.shop_id });
+  }).catch(function(){});
+}
+
+function dismissCustomerNotifs(){
+  document.getElementById('customerNotifBanner').style.display = 'none';
 }
 
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }

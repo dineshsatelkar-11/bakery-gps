@@ -117,6 +117,8 @@
     switch (p.action) {
 
       case 'getShops': {
+        // Single shop by shop_id (customer session refresh)
+        if (p.shop_id)  return sbGet('shops', { shop_id: p.shop_id });
         // Driver app passes driverId (preferred) or falls back to name string
         if (p.driverId) return sbGet('shops', { assigned_driver_id: p.driverId }, 'name');
         if (p.driver)   return sbGet('shops', { assigned_driver: p.driver }, 'name');
@@ -320,6 +322,9 @@
       case 'getSetting':
         return sbGet('settings', {key: p.key})
           .then(function(rows){ return rows&&rows.length ? rows[0] : null; });
+
+      case 'getCustomerNotifications':
+        return sbGet('customer_notifications', { shop_id: p.shop_id, is_read: false }, 'created_at.desc');
 
       case 'getCrateLogs': {
         var where = {};
@@ -685,6 +690,19 @@
           };
         }).catch(function(){ return { ok: false, error: 'Network error' }; });
       }
+
+      case 'sendCustomerNotification':
+        return sbPost('customer_notifications', {
+          shop_id: b.shop_id, shop_name: b.shop_name || '', message: b.message
+        });
+
+      case 'markCustomerNotifsRead':
+        return fetch(BASE + '/customer_notifications?shop_id=eq.' + encodeURIComponent(b.shop_id) + '&is_read=eq.false', {
+          method: 'PATCH',
+          headers: hdrs({ 'Prefer': 'return=minimal' }),
+          body: JSON.stringify({ is_read: true })
+        }).then(function(r){ return r.ok ? { ok: true } : { ok: false }; })
+          .catch(function(){ return { ok: false }; });
 
       case 'setSetting':
         return sbUpsert('settings', {key: b.key, value: b.value}, 'key');

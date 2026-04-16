@@ -409,6 +409,20 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
     <div id="broadcast-msg" style="display:none;margin-top:8px" class="msg ok"></div>
   </div>
 
+  <!-- SEND TO SPECIFIC CUSTOMER -->
+  <div class="card" style="margin-bottom:12px">
+    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">💬 Send to Specific Customer(s)</div>
+    <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:10px;line-height:1.6">Send a private message to specific customers. They will see it as a blue notification banner in their order app.</div>
+    <input type="text" id="custNotifSearch" placeholder="🔍 Filter by name or area…" oninput="filterNotifCustomers()" style="margin-bottom:8px;font-size:13px;padding:10px 12px">
+    <div id="custNotifList" style="max-height:220px;overflow-y:auto;border:1.5px solid #e8dfd2;border-radius:10px;margin-bottom:8px;background:#f9f6f1">
+      <div style="padding:12px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">Loading customers…</div>
+    </div>
+    <div id="custNotifSelected" style="display:none;background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:10px;padding:9px 12px;margin-bottom:8px;font-size:12px;font-weight:700;color:#1a5a38;font-family:monospace;line-height:1.6"></div>
+    <textarea id="custNotifMsg" rows="2" placeholder="Type your message for these customers…" style="resize:vertical;margin-bottom:8px"></textarea>
+    <button class="btn btn-brown" style="margin-bottom:0" onclick="sendToCustomers()">💬 Send to Selected</button>
+    <div id="custNotif-result" style="display:none;margin-top:8px" class="msg ok"></div>
+  </div>
+
   <!-- DRIVER PUSH NOTIFICATIONS -->
   <div style="background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:14px;margin-bottom:12px">
     <div style="font-size:15px;font-weight:900;color:#4a2f14;margin-bottom:4px">🔔 Send Push Notification</div>
@@ -928,7 +942,7 @@ function showTab(t){
   if(t==='groups')      loadGroups();
   if(t==='drivers')   loadDrivers().then(renderDrivers);
   if(t==='users')     { loadStaff().then(renderStaff); loadFeatureSettings(); }
-  if(t==='notify')    { loadNotifyDriverList(); loadOrderWindow(); }
+  if(t==='notify')    { loadNotifyDriverList(); loadOrderWindow(); loadNotifyCustomerList(); }
   if(t==='audit')     initAuditTab();
 }
 
@@ -3763,6 +3777,76 @@ function clearBroadcast(){
 function broadcastTemplate(msg){
   document.getElementById('broadcastMsg').value = msg;
   document.getElementById('broadcastMsg').focus();
+}
+
+// ── SEND TO SPECIFIC CUSTOMER(S) ──
+function loadNotifyCustomerList(){
+  loadCustomerMaster().then(function(){
+    renderNotifCustomerList('');
+  });
+}
+
+function renderNotifCustomerList(filter){
+  var el = document.getElementById('custNotifList');
+  if(!el) return;
+  var f = (filter||'').trim().toLowerCase();
+  var list = allCustomers.filter(function(c){
+    if(!f) return true;
+    return (c.name||'').toLowerCase().indexOf(f) >= 0 || (c.area||'').toLowerCase().indexOf(f) >= 0;
+  }).sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });
+
+  if(!list.length){
+    el.innerHTML = '<div style="padding:12px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">No customers found.</div>';
+    return;
+  }
+  el.innerHTML = list.map(function(c){
+    return '<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid #f5ede0;cursor:pointer">'+
+      '<input type="checkbox" class="custNotifCheck" value="'+esc(c.shop_id||c.customer_id)+'" data-name="'+esc(c.name)+'" style="width:16px;height:16px;accent-color:#4a2f14;flex-shrink:0" onchange="updateNotifSelected()">'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-size:13px;font-weight:700;color:#1e1611;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(c.name)+'</div>'+
+        '<div style="font-size:10px;color:#8a7a6a;font-family:monospace">'+esc(c.area||'—')+(c.mobile?' · '+c.mobile:'')+'</div>'+
+      '</div>'+
+    '</label>';
+  }).join('');
+  updateNotifSelected();
+}
+
+function filterNotifCustomers(){
+  var f = (document.getElementById('custNotifSearch')||{value:''}).value;
+  renderNotifCustomerList(f);
+}
+
+function updateNotifSelected(){
+  var checks = Array.from(document.querySelectorAll('.custNotifCheck:checked'));
+  var sel = document.getElementById('custNotifSelected');
+  if(!sel) return;
+  if(!checks.length){
+    sel.style.display = 'none';
+    sel.textContent = '';
+  } else {
+    sel.style.display = 'block';
+    sel.textContent = '✅ '+checks.length+' selected: '+checks.map(function(c){return c.dataset.name;}).join(', ');
+  }
+}
+
+function sendToCustomers(){
+  var checks = Array.from(document.querySelectorAll('.custNotifCheck:checked'));
+  var msg = (document.getElementById('custNotifMsg').value||'').trim();
+  var el  = document.getElementById('custNotif-result');
+  if(!checks.length){ el.textContent='Select at least one customer.'; el.className='msg er'; el.style.display='block'; return; }
+  if(!msg){ el.textContent='Enter a message.'; el.className='msg er'; el.style.display='block'; return; }
+  el.textContent='Sending…'; el.className='msg in'; el.style.display='block';
+  Promise.all(checks.map(function(c){
+    return apiPost({ action:'sendCustomerNotification', shop_id: c.value, shop_name: c.dataset.name, message: msg });
+  })).then(function(){
+    el.textContent='✅ Sent to '+checks.length+' customer(s)!'; el.className='msg ok';
+    document.getElementById('custNotifMsg').value='';
+    document.querySelectorAll('.custNotifCheck').forEach(function(c){ c.checked=false; });
+    updateNotifSelected();
+    setTimeout(function(){ el.style.display='none'; }, 4000);
+  }).catch(function(){
+    el.textContent='❌ Failed to send. Try again.'; el.className='msg er';
+  });
 }
 
 // ── BROWSER NOTIFICATION PERMISSION ──
