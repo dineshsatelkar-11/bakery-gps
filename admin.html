@@ -476,7 +476,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   <div class="card" style="border-color:#f5c6c6;margin-bottom:12px">
     <div style="font-size:15px;font-weight:900;color:#c8382a;margin-bottom:4px">🗑 Data Cleanup</div>
     <div style="font-size:12px;font-family:monospace;color:#8a7a6a;line-height:1.7">
-      Permanently deletes old orders, deliveries, routes and notifications.<br>
+      Permanently deletes old orders, deliveries, routes, driver notifications and customer notifications.<br>
       Shops and products are <strong>not</strong> affected.
     </div>
   </div>
@@ -2934,9 +2934,10 @@ function previewCleanup(){
     countOld('deliveries','date'),
     countOld('routes','date'),
     countOld('crate_logs','date'),
-    countOld('notifications','created_at')
+    countOld('notifications','created_at'),
+    countOld('customer_notifications','created_at')
   ]).then(function(counts){
-    var total=counts[0]+counts[1]+counts[2]+counts[3]+counts[4];
+    var total=counts[0]+counts[1]+counts[2]+counts[3]+counts[4]+counts[5];
     if(total===0){
       preview.innerHTML='<div class="card" style="border-color:#a5d6a7"><div style="font-size:13px;font-weight:700;color:#2d7a4f;text-align:center;padding:8px">✅ Nothing to delete — no data older than '+days+' days.</div></div>';
       confirmBox.style.display='none';
@@ -2949,7 +2950,8 @@ function previewCleanup(){
         '<div>🚚 Deliveries: <strong>'+counts[1]+'</strong></div>'+
         '<div>🗺 Routes: <strong>'+counts[2]+'</strong></div>'+
         '<div>📦 Crate Logs: <strong>'+counts[3]+'</strong></div>'+
-        '<div>🔔 Notifications: <strong>'+counts[4]+'</strong></div>'+
+        '<div>🔔 Driver Notifications: <strong>'+counts[4]+'</strong></div>'+
+        '<div>💬 Customer Notifications: <strong>'+counts[5]+'</strong></div>'+
       '</div>'+
       '<div style="margin-top:10px;font-size:11px;font-family:monospace;color:#8a7a6a">Shops and products are NOT affected.</div>'+
     '</div>';
@@ -2969,7 +2971,7 @@ function runCleanup(){
     if(res&&res.ok){
       document.getElementById('cleanup-confirm-box').style.display='none';
       document.getElementById('cleanup-preview').style.display='none';
-      msg.textContent='✅ Done! Deleted (before '+res.cutoff+'):\n'+res.orders+' orders · '+res.deliveries+' deliveries · '+res.routes+' routes · '+res.crate_logs+' crate logs · '+res.notifications+' notifications';
+      msg.textContent='✅ Done! Deleted (before '+res.cutoff+'):\n'+res.orders+' orders · '+res.deliveries+' deliveries · '+res.routes+' routes · '+res.crate_logs+' crate logs · '+res.notifications+' driver notifs · '+res.customer_notifications+' customer notifs';
       msg.className='msg ok';
     } else {
       btn.textContent='🗑 Retry Delete';

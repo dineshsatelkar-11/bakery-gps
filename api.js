@@ -673,20 +673,22 @@
         }
 
         return Promise.all([
-          delTable('orders',        'date=lt.' + encodeURIComponent(cutoffDate)),
-          delTable('deliveries',    'date=lt.' + encodeURIComponent(cutoffDate)),
-          delTable('routes',        'date=lt.' + encodeURIComponent(cutoffDate)),
-          delTable('crate_logs',    'date=lt.' + encodeURIComponent(cutoffDate)),
-          delTable('notifications', 'created_at=lt.' + encodeURIComponent(cutoffTs))
+          delTable('orders',                'date=lt.' + encodeURIComponent(cutoffDate)),
+          delTable('deliveries',            'date=lt.' + encodeURIComponent(cutoffDate)),
+          delTable('routes',                'date=lt.' + encodeURIComponent(cutoffDate)),
+          delTable('crate_logs',            'date=lt.' + encodeURIComponent(cutoffDate)),
+          delTable('notifications',         'created_at=lt.' + encodeURIComponent(cutoffTs)),
+          delTable('customer_notifications','created_at=lt.' + encodeURIComponent(cutoffTs))
         ]).then(function(counts) {
           return {
             ok: true,
-            orders:        counts[0],
-            deliveries:    counts[1],
-            routes:        counts[2],
-            crate_logs:    counts[3],
-            notifications: counts[4],
-            cutoff:        cutoffDate
+            orders:                 counts[0],
+            deliveries:             counts[1],
+            routes:                 counts[2],
+            crate_logs:             counts[3],
+            notifications:          counts[4],
+            customer_notifications: counts[5],
+            cutoff:                 cutoffDate
           };
         }).catch(function(){ return { ok: false, error: 'Network error' }; });
       }
