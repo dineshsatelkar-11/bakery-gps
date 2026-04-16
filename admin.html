@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>Baked — Admin</title>
+<title>IBCAB — Admin</title>
 <script src="config.js"></script>
 <script src="api.js"></script>
 <link rel="manifest" href="manifest.json">
@@ -11,7 +11,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Baked GPS">
+<meta name="apple-mobile-web-app-title" content="IBCAB">
 <link rel="apple-touch-icon" href="icon-192.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -107,7 +107,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
 </head>
 <body>
 <div class="topbar">
-  <div><div class="topbar-title">🥖 Baked Admin</div><div class="topbar-sub" id="topDate"></div></div>
+  <div><div class="topbar-title">🥖 IBCAB Admin</div><div class="topbar-sub" id="topDate"></div></div>
   <div class="topbar-right"><button class="tbtn" id="logoutBtn">Logout</button></div>
 </div>
 <div class="tabs">
@@ -2388,9 +2388,9 @@ function shareLoginDetails(){
   var pass =document.getElementById('cm-login-pass').value.trim();
   if(!user||!pass){alert('Save or generate login credentials first.');return;}
   var url=window.location.origin+'/order.html';
-  var msg='🥖 *It\'s Baked — Customer Portal*\n\nShop: *'+name+'*\nUsername: *'+user+'*\nPassword: *'+pass+'*\n\nLogin here: '+url+'\n\n_(You can also login using your mobile number instead of username)_';
+  var msg='🥖 *IBCAB — Customer Portal*\n\nShop: *'+name+'*\nUsername: *'+user+'*\nPassword: *'+pass+'*\n\nLogin here: '+url+'\n\n_(You can also login using your mobile number instead of username)_';
   if(navigator.share){
-    navigator.share({title:'Baked GPS Login — '+name,text:msg}).catch(function(){});
+    navigator.share({title:'IBCAB Login — '+name,text:msg}).catch(function(){});
   } else {
     navigator.clipboard.writeText(msg).then(function(){
       alert('Login details copied to clipboard!\n\nPaste and send to customer via WhatsApp.');
@@ -2889,7 +2889,7 @@ function sendPush(driverNames, message) {
         app_id: appId,
         include_aliases: { external_id: [name] },
         target_channel: 'push',
-        headings: { en: '🥖 Baked GPS — Satelkar\'s Logistics' },
+        headings: { en: '🥖 IBCAB — Satelkar\'s Logistics' },
         contents: { en: message },
         url: 'https://bakery-gps.vercel.app/driver'
       })
