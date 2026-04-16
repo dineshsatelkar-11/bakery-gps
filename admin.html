@@ -650,6 +650,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
       </div>
       <button type="button" class="btn-sm" style="background:#e8f5e9;color:#2d7a4f;border:1.5px solid #a5d6a7;width:100%;padding:9px;border-radius:10px;font-size:12px;margin-top:4px" onclick="shareLoginDetails()">📤 Share Login Details</button>
     </div>
+
     <div id="cm-msg" style="display:none" class="msg ok"></div>
     <!-- Delivery history — shown only when editing an existing customer -->
     <div id="cm-hist-wrap" style="display:none;margin-bottom:12px">
@@ -824,6 +825,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
       <option value="assistant">🤝 Assistant</option>
       <option value="chef">👨‍🍳 Bakery Chef</option>
       <option value="packer">📦 Packer</option>
+      <option value="teapost_head">☕ Tea Post Head</option>
     </select>
     <div class="lbl">Tab Access</div>
     <div id="sm-tabs-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px;padding:10px;background:#fff;border:1.5px solid #e8dfd2;border-radius:10px"></div>
@@ -865,16 +867,17 @@ var TAB_LIST = [
   {key:'gps',      label:'📍 GPS'}
 ];
 var ROLE_DEFAULT_TABS = {
-  admin:     ['orders','approve','queue','summary','delivery','routes','customers','products','gps'],
-  assistant: ['orders','delivery','summary'],
-  chef:      ['summary'],
-  packer:    ['orders','summary']
+  admin:        ['orders','approve','queue','summary','delivery','routes','customers','products','gps'],
+  assistant:    ['orders','delivery','summary'],
+  chef:         ['summary'],
+  packer:       ['orders','summary'],
+  teapost_head: []
 };
 var _staffRole = sessionStorage.getItem('role') || 'admin';
 var _staffName = sessionStorage.getItem('staffName') || 'Admin';
 var _allowedTabs = _staffRole === 'super_admin' ? null : JSON.parse(sessionStorage.getItem('tabs') || '[]');
 
-(function(){var r=sessionStorage.getItem('role');if(['super_admin','admin','assistant','chef','packer'].indexOf(r)<0)goto('');})();
+(function(){var r=sessionStorage.getItem('role');if(['super_admin','admin','assistant','chef','packer','teapost_head'].indexOf(r)<0)goto('');if(r==='teapost_head')goto('teapost-head');})();
 
 function initTabVisibility(){
   var allTabKeys = ['orders','approve','queue','summary','delivery','routes','customers','cust-orders','products','groups','drivers','gps','users','notify','cleanup','audit'];
@@ -2238,7 +2241,6 @@ function saveCustomer(){
       var loginBody={action:'updateShopLogin',shop_id:cid,product_group_ids:groupIds};
       if(loginUser) loginBody.login_username=loginUser;
       if(loginPass) loginBody.login_password=loginPass;
-      // For new customers both are set above; for edits only set if non-empty
       apiPost(loginBody).then(function(){
         msg.textContent='✅ Saved!';msg.className='msg ok';
         // Notify driver when shop is added or reassigned
@@ -2304,7 +2306,7 @@ function renderCustLoginsList(){
           '<span style="font-size:10px;color:#8a7a6a;font-family:monospace;width:56px;flex-shrink:0">USERNAME</span>'+
           '<span style="font-size:13px;font-weight:700;font-family:monospace;flex:1;word-break:break-all">'+(c.login_username?esc(c.login_username):'<span style="color:#c8382a">— not set —</span>')+'</span>'+
         '</div>'+
-        '<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">'+
+        '<div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">'+
           '<span style="font-size:10px;color:#8a7a6a;font-family:monospace;width:56px;flex-shrink:0">PASSWORD</span>'+
           '<span id="clpw-'+safeSid+'" style="font-size:13px;font-weight:700;font-family:monospace;flex:1;word-break:break-all;filter:blur(4px);cursor:pointer" onclick="togglePwBlur(\''+safeSid+'\')">'+(c.login_password?esc(c.login_password):'<span style="color:#c8382a">— not set —</span>')+'</span>'+
           '<span style="font-size:10px;color:#8a7a6a;font-family:monospace;cursor:pointer" onclick="togglePwBlur(\''+safeSid+'\')">👁</span>'+
@@ -2312,12 +2314,13 @@ function renderCustLoginsList(){
         '<button class="btn-sm btn-edit" onclick="editCustLogin(\''+safeSid+'\',\''+esc(sid)+'\')">✏️ Edit</button>'+
       '</div>'+
       '<div id="cledit-'+safeSid+'" style="display:none">'+
-        '<div class="lbl" style="margin-top:4px">Mobile</div>'+
+        '<div style="font-size:10px;font-weight:800;color:#4a2f14;letter-spacing:1px;margin-bottom:8px;margin-top:4px">CUSTOMER LOGIN</div>'+
+        '<div class="lbl">Mobile</div>'+
         '<input type="tel" id="cl-m-'+safeSid+'" value="'+esc(c.mobile||'')+'" placeholder="Mobile number" style="margin-bottom:8px">'+
         '<div class="lbl">Username</div>'+
         '<input type="text" id="cl-u-'+safeSid+'" value="'+esc(c.login_username||'')+'" placeholder="Username" style="margin-bottom:8px">'+
         '<div class="lbl">Password</div>'+
-        '<div style="display:flex;gap:6px;margin-bottom:8px">'+
+        '<div style="display:flex;gap:6px;margin-bottom:12px">'+
           '<input type="text" id="cl-p-'+safeSid+'" value="'+esc(c.login_password||'')+'" placeholder="Password" style="margin-bottom:0;flex:1">'+
           '<button class="btn-sm" onclick="document.getElementById(\'cl-p-'+safeSid+'\').value=genRandomPass()" style="flex-shrink:0;background:#f5ede0;border:1.5px solid #e8dfd2;border-radius:10px;padding:7px 10px;font-size:11px;font-weight:700;cursor:pointer;color:#4a2f14;font-family:-apple-system,sans-serif">🔀 Gen</button>'+
         '</div>'+
@@ -2359,18 +2362,21 @@ function saveCustLogin(safeSid, shopId){
   showMsg('Saving…','in');
   var c=allCustomers.find(function(x){return (x.customer_id||x.shop_id||'')===shopId;});
   var now=new Date().toLocaleString('en-IN');
-  // Save mobile + other shop fields if mobile changed
+  // Save mobile if changed
   var p1 = (newMobile !== (c&&c.mobile||''))
     ? apiPost({action:'updateShop', shop_id:shopId, mobile:newMobile, last_updated_by:'Admin', last_updated_at:now})
     : Promise.resolve({ok:true});
-  // Save login credentials
+  // Save customer login credentials
   var loginBody={action:'updateShopLogin', shop_id:shopId, login_username:newUser};
   if(newPass) loginBody.login_password=newPass;
   p1.then(function(){
     return apiPost(loginBody);
   }).then(function(){
     // Update local cache
-    if(c){c.mobile=newMobile;c.login_username=newUser;if(newPass)c.login_password=newPass;}
+    if(c){
+      c.mobile=newMobile; c.login_username=newUser;
+      if(newPass) c.login_password=newPass;
+    }
     showMsg('✅ Saved!','ok');
     setTimeout(function(){cancelCustLogin(safeSid);renderCustLoginsList();},700);
   }).catch(function(){showMsg('❌ Save failed.','er');});
@@ -3322,8 +3328,8 @@ function renderStaff(){
     '<div class="stat"><div class="stat-n" style="color:#2d7a4f">'+active+'</div><div class="stat-l">Active</div></div>'+
     '<div class="stat"><div class="stat-n" style="color:#c8382a">'+(allStaffList.length-active)+'</div><div class="stat-l">Inactive</div></div>';
   if(!allStaffList.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No staff users yet.</div>';return;}
-  var roleIcon = {super_admin:'👑',admin:'👤',chef:'👨‍🍳',packer:'📦'};
-  var roleLabel = {super_admin:'Super Admin',admin:'Admin',chef:'Bakery Chef',packer:'Packer'};
+  var roleIcon = {super_admin:'👑',admin:'👤',chef:'👨‍🍳',packer:'📦',assistant:'🤝',teapost_head:'☕'};
+  var roleLabel = {super_admin:'Super Admin',admin:'Admin',chef:'Bakery Chef',packer:'Packer',assistant:'Assistant',teapost_head:'Tea Post Head'};
   el.innerHTML = allStaffList.map(function(s){
     var tabs = s.role === 'super_admin' ? 'All tabs' : (JSON.parse(s.tabs||'[]').join(', ')||'None');
     var isSelf = (s.name === _staffName);

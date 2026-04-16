@@ -276,6 +276,8 @@ function doLogin(){
         } else if(s.role==='packer'){
           localStorage.setItem('packStaff', s.name);
           goto('packaging');
+        } else if(s.role==='teapost_head'){
+          goto('teapost-head');
         } else {
           goto('admin');
         }
@@ -299,7 +301,6 @@ function doLogin(){
             goto('order');
             return;
           }
-
           loginBtn.disabled=false;
           setChecking('');
           errMsg.style.display='block';
@@ -330,10 +331,12 @@ function doLogin(){
     _r=sr;
   }
 
-  if(_r==='driver')    goto('driver');
-  if(_r==='chef')      goto('kitchen');
-  if(_r==='packer')    goto('packaging');
+  if(_r==='driver')       goto('driver');
+  if(_r==='chef')         goto('kitchen');
+  if(_r==='packer')       goto('packaging');
+  if(_r==='teapost_head') goto('teapost-head');
   if(_r==='super_admin'||_r==='admin'||_r==='assistant') goto('admin');
+
 })();
 </script>
 </body>

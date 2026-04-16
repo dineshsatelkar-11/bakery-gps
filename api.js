@@ -241,6 +241,7 @@
           body: JSON.stringify({ p_name: p.name, p_password: p.password })
         }).then(function(r){ return r.ok ? r.json() : []; }).catch(function(){ return []; });
 
+
       case 'getShopByMobile': {
         // Use LIKE *digits to match any stored format (+91, 91, ', etc.)
         var url = BASE + '/shops?mobile=like.*' + encodeURIComponent(p.digits) + '&limit=5';

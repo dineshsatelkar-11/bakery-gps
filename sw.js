@@ -1,4 +1,4 @@
-var CACHE = 'baked-gps-v4';
+var CACHE = 'baked-gps-v6';
 var STATIC = [
   '/',
   '/index.html',
@@ -9,6 +9,7 @@ var STATIC = [
   '/packaging.html',
   '/tracking.html',
   '/superadmin.html',
+  '/teapost-head.html',
   '/config.js',
   '/api.js',
   '/icon-192.png',
