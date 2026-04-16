@@ -9,12 +9,6 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:440px;margin:0 auto;min-height:100vh}
-/* ── Login ── */
-.login-wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 20px}
-.login-logo{font-size:52px;margin-bottom:6px}
-.login-title{font-size:22px;font-weight:900;color:#4a2f14;text-align:center}
-.login-sub{font-size:12px;color:#8a7a6a;font-family:monospace;margin-bottom:28px;margin-top:2px;text-align:center}
-.login-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:20px;padding:22px;width:100%;max-width:360px}
 .lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:6px;text-transform:uppercase;display:block}
 input[type=text],input[type=password]{width:100%;padding:13px 14px;border:1.5px solid #e8dfd2;border-radius:12px;font-size:15px;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:12px}
 .btn{width:100%;padding:14px;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif}
@@ -78,21 +72,6 @@ textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:1
 </style>
 </head>
 <body>
-
-<!-- ── LOGIN SCREEN ── -->
-<div id="loginScreen" class="login-wrap">
-  <div class="login-logo">🥖</div>
-  <div class="login-title">It's Baked</div>
-  <div class="login-sub">Customer Order Portal</div>
-  <div class="login-card">
-    <label class="lbl">Username or Mobile Number</label>
-    <input type="text" id="loginUser" placeholder="Username or mobile number" autocomplete="username" autocapitalize="none" inputmode="text">
-    <label class="lbl">Password</label>
-    <input type="password" id="loginPass" placeholder="Enter password" autocomplete="current-password">
-    <button class="btn btn-brown" id="loginBtn" onclick="doLogin()">🔑 Login</button>
-    <div id="loginErr" class="err" style="display:none">Invalid username or password.</div>
-  </div>
-</div>
 
 <!-- ── APP SCREEN ── -->
 <div id="appScreen" style="display:none">
@@ -231,40 +210,18 @@ var products = [];  // active products for this customer's group
 var qty = {};       // { product_id: qty }
 var existingOrder = null; // existing order for tomorrow (if any)
 
-// Restore session from localStorage
+// Restore session from localStorage — redirect to login if no session
 (function(){
   var s = localStorage.getItem('custSession');
   if (s) { try { session = JSON.parse(s); } catch(e) {} }
-  if (session) showApp();
+  if (session) { showApp(); } else { goto(''); }
 })();
-
-// ── AUTH ──
-function doLogin(){
-  var user = document.getElementById('loginUser').value.trim();
-  var pass = document.getElementById('loginPass').value;
-  var btn  = document.getElementById('loginBtn');
-  var err  = document.getElementById('loginErr');
-  err.style.display = 'none';
-  if (!user || !pass) { err.style.display = 'block'; err.textContent = 'Enter username and password.'; return; }
-  btn.disabled = true; btn.textContent = '⏳ Logging in…';
-  api({ action: 'customerLogin', username: user, password: pass }).then(function(data){
-    btn.disabled = false; btn.textContent = '🔑 Login';
-    var s = Array.isArray(data) && data.length ? data[0] : null;
-    if (!s) { err.style.display = 'block'; err.textContent = 'Invalid username or password.'; return; }
-    session = s;
-    localStorage.setItem('custSession', JSON.stringify(session));
-    showApp();
-  }).catch(function(){ btn.disabled=false; btn.textContent='🔑 Login'; err.style.display='block'; });
-}
-
-document.getElementById('loginPass').addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
 
 function doLogout(){
   localStorage.removeItem('custSession');
   session = null; products = []; qty = {}; existingOrder = null;
   _editLocked = false; _orderClosed = false;
-  document.getElementById('appScreen').style.display = 'none';
-  document.getElementById('loginScreen').style.display = 'flex';
+  goto('');
 }
 
 // ── APP INIT ──
@@ -287,7 +244,6 @@ function showApp(){
   var ps = document.getElementById('prodSearch'); if(ps) ps.value = '';
   var pc = document.getElementById('prodCatFilter'); if(pc) pc.innerHTML = '<option value="">All</option>';
 
-  document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appScreen').style.display = 'block';
   document.getElementById('topShopName').textContent = session.shop_name;
 

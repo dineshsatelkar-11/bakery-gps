@@ -3,52 +3,163 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>It's Baked</title>
+<title>Satelkar's Logistics — Smart Delivery Platform</title>
 <script src="config.js"></script>
 <script src="api.js"></script>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#4a2f14">
+<meta name="theme-color" content="#1a3a5c">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Baked GPS">
+<meta name="apple-mobile-web-app-title" content="Satelkar Logistics">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px}
-.logo{font-size:56px;margin-bottom:6px;text-align:center}
-h1{font-size:24px;font-weight:900;color:#4a2f14;text-align:center}
-.sub{font-size:12px;color:#8a7a6a;font-family:monospace;text-align:center;margin-bottom:32px;margin-top:3px}
-.card{background:#fff;border:1.5px solid #e8dfd2;border-radius:20px;padding:24px;width:100%;max-width:360px}
-.lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:8px;text-transform:uppercase;display:block}
-input{width:100%;padding:14px;border:1.5px solid #e8dfd2;border-radius:12px;font-size:15px;font-weight:600;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:12px;transition:border-color .2s}
-input:focus{border-color:#e67e22}
-.btn{width:100%;padding:15px;border:none;border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;background:#4a2f14;color:#fff;transition:opacity .2s}
-.btn:disabled{opacity:.6;cursor:not-allowed}
-.err{color:#c8382a;font-size:12px;font-family:monospace;text-align:center;margin-top:10px;display:none;line-height:1.6}
-.hint{font-size:11px;color:#8a7a6a;font-family:monospace;text-align:center;margin-top:14px;line-height:1.8}
-.hint span{color:#4a2f14;font-weight:700}
-.checking{color:#1565c0;font-size:12px;font-family:monospace;text-align:center;margin-top:10px;display:none}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1e30;color:#fff;min-height:100vh;overflow-x:hidden}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(145deg,#0f1e30 0%,#1a3a5c 50%,#0d2a45 100%);padding:40px 24px 32px;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 70% 30%,rgba(41,182,246,.12) 0%,transparent 65%),radial-gradient(ellipse at 20% 80%,rgba(255,152,0,.08) 0%,transparent 55%);pointer-events:none}
+
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:36px}
+.brand-icon{width:44px;height:44px;background:linear-gradient(135deg,#29b6f6,#0288d1);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;box-shadow:0 4px 16px rgba(41,182,246,.35)}
+.brand-name{font-size:17px;font-weight:900;color:#fff;letter-spacing:.3px;line-height:1.2}
+.brand-tagline{font-size:10px;color:#90caf9;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase}
+
+.hero-headline{font-size:30px;font-weight:900;line-height:1.2;color:#fff;margin-bottom:10px;letter-spacing:-.4px}
+.hero-headline span{background:linear-gradient(90deg,#29b6f6,#4fc3f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-sub{font-size:14px;color:#90caf9;line-height:1.6;margin-bottom:28px;font-weight:400}
+
+/* ── CHIPS ── */
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:0}
+.chip{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:7px 12px;font-size:11px;font-weight:700;color:#e3f2fd;font-family:monospace;letter-spacing:.3px;backdrop-filter:blur(4px)}
+.chip .ci{font-size:13px}
+
+/* ── STATS BAR ── */
+.stats-bar{display:flex;background:rgba(255,255,255,.05);border-top:1px solid rgba(255,255,255,.08);border-bottom:1px solid rgba(255,255,255,.08);margin:0 -24px;padding:16px 24px;gap:0}
+.stat-item{flex:1;text-align:center}
+.stat-item+.stat-item{border-left:1px solid rgba(255,255,255,.08)}
+.stat-num{font-size:22px;font-weight:900;color:#29b6f6;line-height:1}
+.stat-lbl{font-size:9px;color:#78909c;font-family:monospace;letter-spacing:1px;text-transform:uppercase;margin-top:3px}
+
+/* ── LOGIN SECTION ── */
+.login-section{padding:28px 24px 48px}
+.section-label{font-size:10px;letter-spacing:2.5px;color:#546e7a;font-family:monospace;font-weight:700;text-transform:uppercase;margin-bottom:16px}
+
+.login-card{background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.1);border-radius:20px;padding:22px;backdrop-filter:blur(8px)}
+.lbl{font-size:10px;letter-spacing:2px;color:#78909c;font-family:monospace;font-weight:700;margin-bottom:7px;text-transform:uppercase;display:block}
+input{width:100%;padding:14px 15px;border:1.5px solid rgba(255,255,255,.1);border-radius:12px;font-size:15px;font-weight:600;color:#fff;background:rgba(255,255,255,.06);outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:12px;transition:border-color .2s;caret-color:#29b6f6}
+input::placeholder{color:rgba(255,255,255,.3);font-weight:400}
+input:focus{border-color:#29b6f6;background:rgba(41,182,246,.06)}
+.btn-login{width:100%;padding:15px;border:none;border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;background:linear-gradient(135deg,#29b6f6,#0288d1);color:#fff;transition:opacity .2s,transform .1s;box-shadow:0 4px 20px rgba(41,182,246,.35);letter-spacing:.3px}
+.btn-login:active{transform:scale(.98)}
+.btn-login:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.err{color:#ef9a9a;font-size:12px;font-family:monospace;text-align:center;margin-top:10px;display:none;line-height:1.6;background:rgba(198,40,40,.15);border:1px solid rgba(198,40,40,.25);border-radius:8px;padding:8px 12px}
+.checking{color:#90caf9;font-size:12px;font-family:monospace;text-align:center;margin-top:10px;display:none}
+
+.user-types{display:flex;gap:8px;margin-top:16px;justify-content:center}
+.utype{display:flex;align-items:center;gap:4px;font-size:10px;color:#546e7a;font-family:monospace;letter-spacing:.5px}
+.utype .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.dot-staff{background:#66bb6a}
+.dot-driver{background:#ffa726}
+.dot-cust{background:#29b6f6}
+
+/* ── FEATURES ── */
+.features{padding:0 24px 40px}
+.feat-title{font-size:13px;font-weight:800;color:#546e7a;letter-spacing:.5px;margin-bottom:16px;text-transform:uppercase;font-family:monospace}
+.feat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.feat-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:16px 14px}
+.feat-icon{font-size:22px;margin-bottom:8px}
+.feat-name{font-size:12px;font-weight:800;color:#e3f2fd;margin-bottom:3px}
+.feat-desc{font-size:10px;color:#546e7a;line-height:1.5;font-family:monospace}
+
+/* ── FOOTER ── */
+.footer{text-align:center;padding:20px 24px 36px;border-top:1px solid rgba(255,255,255,.06)}
+.footer-brand{font-size:13px;font-weight:800;color:#546e7a;margin-bottom:4px}
+.footer-copy{font-size:10px;color:#37474f;font-family:monospace}
 </style>
 </head>
 <body>
 
-<div class="logo">🥖</div>
-<h1>It's Baked</h1>
-<div class="sub">Delivery Management · Lohegaon</div>
+<!-- ── HERO SECTION ── -->
+<div class="hero">
+  <div class="brand">
+    <div class="brand-icon">🚚</div>
+    <div>
+      <div class="brand-name">Satelkar's Logistics</div>
+      <div class="brand-tagline">Delivery Management Platform</div>
+    </div>
+  </div>
 
-<div class="card">
-  <label class="lbl">Name / Username / Mobile</label>
-  <input type="text" id="loginId" placeholder="Enter your name or username" autocomplete="off" autocorrect="off" autocapitalize="off">
-  <label class="lbl">Password</label>
-  <input type="password" id="loginPass" placeholder="Password" autocomplete="current-password">
-  <button class="btn" id="loginBtn" onclick="doLogin()">🔑 Login</button>
-  <div class="checking" id="checkingMsg"></div>
-  <div class="err" id="errMsg">Wrong name / username / password.<br>Please check and try again.</div>
+  <div class="hero-headline">Smart Delivery,<br><span>On Every Route.</span></div>
+  <div class="hero-sub">Real-time GPS tracking, automated order management, and seamless route coordination — built for modern logistics operations.</div>
+
+  <div class="chips">
+    <div class="chip"><span class="ci">📍</span>Live GPS Tracking</div>
+    <div class="chip"><span class="ci">🗺️</span>Route Optimization</div>
+    <div class="chip"><span class="ci">📦</span>Order Management</div>
+    <div class="chip"><span class="ci">⚡</span>Real-time Updates</div>
+  </div>
 </div>
 
-<div class="hint">
-  Staff · Driver · Customer — <span>one login for all</span>
+<!-- ── STATS ── -->
+<div class="stats-bar" style="margin:0;padding:16px 0">
+  <div class="stat-item"><div class="stat-num">GPS</div><div class="stat-lbl">Live Tracking</div></div>
+  <div class="stat-item"><div class="stat-num">24/7</div><div class="stat-lbl">Operations</div></div>
+  <div class="stat-item"><div class="stat-num">100%</div><div class="stat-lbl">On-time Focus</div></div>
+</div>
+
+<!-- ── LOGIN ── -->
+<div class="login-section">
+  <div class="section-label">Access Portal</div>
+  <div class="login-card">
+    <label class="lbl">Username / Name / Mobile</label>
+    <input type="text" id="loginId" placeholder="Enter your credentials" autocomplete="off" autocorrect="off" autocapitalize="off">
+    <label class="lbl">Password</label>
+    <input type="password" id="loginPass" placeholder="Password" autocomplete="current-password">
+    <button class="btn-login" id="loginBtn" onclick="doLogin()">Login →</button>
+    <div class="checking" id="checkingMsg"></div>
+    <div class="err" id="errMsg">Wrong credentials. Please check and try again.</div>
+
+    <div class="user-types">
+      <div class="utype"><div class="dot dot-staff"></div>Staff</div>
+      <div class="utype"><div class="dot dot-driver"></div>Driver</div>
+      <div class="utype"><div class="dot dot-cust"></div>Customer</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── FEATURES ── -->
+<div class="features">
+  <div class="feat-title">Platform Capabilities</div>
+  <div class="feat-grid">
+    <div class="feat-card">
+      <div class="feat-icon">📍</div>
+      <div class="feat-name">GPS Tracking</div>
+      <div class="feat-desc">Live driver location with real-time map updates</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📦</div>
+      <div class="feat-name">Order Flow</div>
+      <div class="feat-desc">End-to-end order lifecycle from placement to delivery</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🗺️</div>
+      <div class="feat-name">Route Engine</div>
+      <div class="feat-desc">Optimised delivery routes with live status</div>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🔔</div>
+      <div class="feat-name">Notifications</div>
+      <div class="feat-desc">Instant alerts to customers and staff</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── FOOTER ── -->
+<div class="footer">
+  <div class="footer-brand">Satelkar's Logistics</div>
+  <div class="footer-copy">© 2026 · Logistics & Order Delivery Platform</div>
 </div>
 
 <script>
@@ -59,11 +170,10 @@ if('serviceWorker' in navigator){
   });
 }
 
-// Load staff + driver names for datalist autocomplete and case-insensitive matching
+// Load staff + driver names for case-insensitive matching
 var staffNames  = [];
 var driverNames = [];
 
-// namesReady resolves once both lists are fetched — doLogin waits for this
 var namesReady = Promise.all([
   api({action:'getStaff'}).then(function(data){
     staffNames = (Array.isArray(data)?data:[]).filter(function(s){return s.active;}).map(function(s){return s.name;});
@@ -73,7 +183,6 @@ var namesReady = Promise.all([
   })
 ]);
 
-// Find exact DB name with case-insensitive + trimmed match
 function exactName(input, list){
   var q = input.trim().toLowerCase();
   return list.find(function(n){ return n.trim().toLowerCase() === q; }) || null;
@@ -102,87 +211,74 @@ function doLogin(){
 
   loginBtn.disabled=true;
   errMsg.style.display='none';
-  setChecking('⏳ Checking…');
+  setChecking('⏳ Verifying…');
 
-  // Wait for names to load (instant if already done), then resolve exact casing
   namesReady.then(function(){
-  var staffExact  = exactName(id, staffNames);
-  var driverExact = exactName(id, driverNames);
+    var staffExact  = exactName(id, staffNames);
+    var driverExact = exactName(id, driverNames);
 
-  // Step 1: Try staff login (use exact DB name if found, else trimmed input)
-  api({action:'staffLogin', name:staffExact||id, password:pass}).then(function(data){
-    var s = Array.isArray(data)&&data.length ? data[0] : null;
-    if(s && s.role){
-      sessionStorage.setItem('role', s.role);
-      sessionStorage.setItem('tabs', s.tabs||'[]');
-      sessionStorage.setItem('staffName', s.name);
-      localStorage.setItem('staffRole', s.role);
-      localStorage.setItem('staffTabs', s.tabs||'[]');
-      localStorage.setItem('staffNamePersist', s.name);
-      if(s.role==='chef'){
-        localStorage.setItem('kitchenStaff', s.name);
-        goto('kitchen');
-      } else if(s.role==='packer'){
-        localStorage.setItem('packStaff', s.name);
-        goto('packaging');
-      } else {
-        goto('admin');
-      }
-      return;
-    }
-
-    // Step 2: Try driver login
-    return api({action:'driverLogin', name:driverExact||id, password:pass}).then(function(data){
-      var d = Array.isArray(data)&&data.length ? data[0] : null;
-      if(d && d.name){
-        sessionStorage.setItem('role','driver');
-        sessionStorage.setItem('driver', d.name);
-        localStorage.setItem('driverRole','driver');
-        localStorage.setItem('driverName', d.name);
-        goto('driver');
+    api({action:'staffLogin', name:staffExact||id, password:pass}).then(function(data){
+      var s = Array.isArray(data)&&data.length ? data[0] : null;
+      if(s && s.role){
+        sessionStorage.setItem('role', s.role);
+        sessionStorage.setItem('tabs', s.tabs||'[]');
+        sessionStorage.setItem('staffName', s.name);
+        localStorage.setItem('staffRole', s.role);
+        localStorage.setItem('staffTabs', s.tabs||'[]');
+        localStorage.setItem('staffNamePersist', s.name);
+        if(s.role==='chef'){
+          localStorage.setItem('kitchenStaff', s.name);
+          goto('kitchen');
+        } else if(s.role==='packer'){
+          localStorage.setItem('packStaff', s.name);
+          goto('packaging');
+        } else {
+          goto('admin');
+        }
         return;
       }
 
-      // Step 3: Try customer login (username or mobile — RPC already does LOWER+TRIM)
-      return api({action:'customerLogin', username:id, password:pass}).then(function(data){
-        var c = Array.isArray(data)&&data.length ? data[0] : null;
-        if(c && c.shop_id){
-          // Write full session to localStorage so order.html auto-restore picks it up correctly
-          localStorage.setItem('custSession', JSON.stringify(c));
-          goto('order');
+      return api({action:'driverLogin', name:driverExact||id, password:pass}).then(function(data){
+        var d = Array.isArray(data)&&data.length ? data[0] : null;
+        if(d && d.name){
+          sessionStorage.setItem('role','driver');
+          sessionStorage.setItem('driver', d.name);
+          localStorage.setItem('driverRole','driver');
+          localStorage.setItem('driverName', d.name);
+          goto('driver');
           return;
         }
 
-        // All failed
-        loginBtn.disabled=false;
-        setChecking('');
-        errMsg.style.display='block';
-      });
-    });
-  }).catch(function(){
-    loginBtn.disabled=false;
-    setChecking('');
-    errMsg.style.display='block';
-  });
-  }); // end namesReady.then
-}
+        return api({action:'customerLogin', username:id, password:pass}).then(function(data){
+          var c = Array.isArray(data)&&data.length ? data[0] : null;
+          if(c && c.shop_id){
+            localStorage.setItem('custSession', JSON.stringify(c));
+            goto('order');
+            return;
+          }
 
-function goto(page){
-  setChecking('✅ Logged in! Opening…');
-  window.location.href = page + '.html';
+          loginBtn.disabled=false;
+          setChecking('');
+          errMsg.style.display='block';
+        });
+      });
+    }).catch(function(){
+      loginBtn.disabled=false;
+      setChecking('');
+      errMsg.style.display='block';
+    });
+  });
 }
 
 // ── Auto-restore session ──
 (function(){
   var _r = sessionStorage.getItem('role');
 
-  // Restore driver
   if(!_r && localStorage.getItem('driverRole')==='driver'){
     sessionStorage.setItem('role','driver');
     sessionStorage.setItem('driver', localStorage.getItem('driverName'));
     _r='driver';
   }
-  // Restore staff
   if(!_r && localStorage.getItem('staffRole')){
     var sr=localStorage.getItem('staffRole');
     sessionStorage.setItem('role', sr);
@@ -195,7 +291,6 @@ function goto(page){
   if(_r==='chef')      goto('kitchen');
   if(_r==='packer')    goto('packaging');
   if(_r==='super_admin'||_r==='admin'||_r==='assistant') goto('admin');
-  // Note: customer sessions are not auto-restored (they must login each time for security)
 })();
 </script>
 </body>
