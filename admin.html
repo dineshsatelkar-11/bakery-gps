@@ -146,13 +146,23 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
 
 <!-- DASHBOARD -->
 <div class="page" id="pg-dashboard">
-  <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:10px">🏠 Today's Overview</div>
-  <div class="stats-grid" id="dash-stats" style="margin-bottom:14px"></div>
-  <div id="dash-alerts" style="margin-bottom:10px"></div>
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-    <div style="font-size:12px;font-weight:800;color:#4a2f14">⚠️ Issues to Fix</div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <div style="font-size:13px;font-weight:900;color:#4a2f14">🏠 Dashboard</div>
     <button class="btn-sm btn-grey" onclick="loadDashboard()">🔄 Refresh</button>
   </div>
+
+  <!-- Today delivery stats -->
+  <div style="font-size:10px;font-weight:800;color:#8a7a6a;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Today's Deliveries</div>
+  <div class="stats-grid" id="dash-stats" style="margin-bottom:14px"></div>
+  <div id="dash-alerts" style="margin-bottom:10px"></div>
+
+  <!-- Tomorrow customer order pipeline -->
+  <div style="font-size:10px;font-weight:800;color:#8a7a6a;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Tomorrow's Orders Pipeline</div>
+  <div class="stats-grid" id="dash-tmr-stats" style="grid-template-columns:repeat(3,1fr);margin-bottom:8px"></div>
+  <div id="dash-tmr-list" style="margin-bottom:14px"></div>
+
+  <!-- Issues -->
+  <div style="font-size:10px;font-weight:800;color:#8a7a6a;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">⚠️ Issues to Fix</div>
   <div id="dash-issues"></div>
 </div>
 
@@ -1198,29 +1208,37 @@ function showTab(t){
 
 /* ── DASHBOARD ── */
 function loadDashboard(){
-  var today = todayStr();
-  var stats = document.getElementById('dash-stats');
-  var alerts = document.getElementById('dash-alerts');
-  var issues = document.getElementById('dash-issues');
-  stats.innerHTML = '<div style="text-align:center;padding:8px;font-size:11px;color:#8a7a6a;font-family:monospace;grid-column:1/-1">Loading…</div>';
-  alerts.innerHTML=''; issues.innerHTML='';
+  var today    = todayStr();
+  var tomorrow = tomorrowStr();
+  var stats      = document.getElementById('dash-stats');
+  var alerts     = document.getElementById('dash-alerts');
+  var issues     = document.getElementById('dash-issues');
+  var tmrStats   = document.getElementById('dash-tmr-stats');
+  var tmrList    = document.getElementById('dash-tmr-list');
+
+  stats.innerHTML    = '<div style="text-align:center;padding:8px;font-size:11px;color:#8a7a6a;font-family:monospace;grid-column:1/-1">Loading…</div>';
+  tmrStats.innerHTML = '<div style="text-align:center;padding:8px;font-size:11px;color:#8a7a6a;font-family:monospace;grid-column:1/-1">Loading…</div>';
+  alerts.innerHTML = ''; issues.innerHTML = ''; tmrList.innerHTML = '';
 
   Promise.all([
-    api({action:'getOrders', date:today}),
-    api({action:'getDeliveries', date:today}),
+    api({action:'getOrders',          date: today}),
+    api({action:'getDeliveries',      date: today}),
+    api({action:'getCustomerOrders',  delivery_date: tomorrow, limit: 200}),
     loadCustomerMaster()
   ]).then(function(res){
-    var orders     = Array.isArray(res[0]) ? res[0] : [];
-    var deliveries = Array.isArray(res[1]) ? res[1] : [];
-    var customers  = allCustomers;
+    var orders      = Array.isArray(res[0]) ? res[0] : [];
+    var deliveries  = Array.isArray(res[1]) ? res[1] : [];
+    var custOrders  = Array.isArray(res[2]) ? res[2] : [];
+    var customers   = allCustomers;
 
-    var totalOrders   = orders.length;
-    var delivered     = deliveries.length;
-    var pending       = totalOrders - delivered;
-    var noDriver      = orders.filter(function(o){return !o.driver||o.driver==='—'||o.driver==='Logistics';}).length;
-    var noGroup       = customers.filter(function(c){return !c.product_group_ids||!c.product_group_ids.length;}).length;
-    var noMobile      = customers.filter(function(c){return !c.mobile||!c.mobile.trim();}).length;
-    var noGPS         = customers.filter(function(c){return !c.lat||!c.lng;}).length;
+    /* ── Today's delivery stats ── */
+    var totalOrders = orders.length;
+    var delivered   = deliveries.length;
+    var pending     = totalOrders - delivered;
+    var noDriver    = orders.filter(function(o){return !o.driver||o.driver==='—'||o.driver==='Logistics';}).length;
+    var noGroup     = customers.filter(function(c){return !c.product_group_ids||!c.product_group_ids.length;}).length;
+    var noMobile    = customers.filter(function(c){return !c.mobile||!c.mobile.trim();}).length;
+    var noGPS       = customers.filter(function(c){return !c.lat||!c.lng;}).length;
 
     stats.innerHTML =
       '<div class="stat"><div class="stat-n">'+totalOrders+'</div><div class="stat-l">Orders Today</div></div>'+
@@ -1235,12 +1253,64 @@ function loadDashboard(){
     if(pending>0&&delivered>0) alertHtml+='<div class="msg in" style="margin-bottom:6px">🚚 '+delivered+' of '+totalOrders+' deliveries done. '+pending+' remaining.</div>';
     alerts.innerHTML = alertHtml;
 
+    /* ── Tomorrow's customer order pipeline ── */
+    var STATUS_CFG = [
+      { key:'pending',   label:'⏳ Pending',   color:'#7a4800', bg:'#fff8e1' },
+      { key:'approved',  label:'✅ Approved',  color:'#1565c0', bg:'#e3f2fd' },
+      { key:'kitchen',   label:'👨‍🍳 Kitchen',   color:'#4a148c', bg:'#f3e8ff' },
+      { key:'packaging', label:'📦 Packaging', color:'#2d7a4f', bg:'#e8f5e9' },
+      { key:'dispatch',  label:'🚚 Dispatch',  color:'#c8382a', bg:'#fde8e8' },
+      { key:'delivered', label:'✔ Delivered',  color:'#4a2f14', bg:'#f5ede0' }
+    ];
+    var counts = {};
+    STATUS_CFG.forEach(function(s){ counts[s.key] = 0; });
+    custOrders.forEach(function(o){
+      var st = (o.status||'pending').toLowerCase();
+      if(counts[st] !== undefined) counts[st]++;
+      else counts['pending']++;
+    });
+    var total = custOrders.length;
+
+    tmrStats.innerHTML = STATUS_CFG.map(function(s){
+      var n = counts[s.key] || 0;
+      return '<div class="stat" style="background:'+s.bg+';border-color:'+s.color+'20">'
+        +'<div class="stat-n" style="color:'+s.color+';font-size:18px">'+n+'</div>'
+        +'<div class="stat-l" style="font-size:8px">'+s.label+'</div>'
+        +'</div>';
+    }).join('');
+
+    if(!total){
+      tmrList.innerHTML = '<div style="font-size:12px;color:#8a7a6a;font-family:monospace;padding:10px 0">No customer orders placed yet for '+tomorrow+'.</div>';
+    } else {
+      // Group by status, show pending + kitchen as actionable rows
+      var actionable = custOrders.filter(function(o){
+        return ['pending','approved','kitchen','packaging'].indexOf((o.status||'').toLowerCase()) >= 0;
+      });
+      if(actionable.length){
+        tmrList.innerHTML = actionable.slice(0,10).map(function(o){
+          var cfg = STATUS_CFG.find(function(s){return s.key===(o.status||'pending').toLowerCase();}) || STATUS_CFG[0];
+          return '<div class="item-card" style="margin-bottom:6px;padding:10px 12px">'
+            +'<div style="display:flex;justify-content:space-between;align-items:center">'
+              +'<div style="font-size:13px;font-weight:800;color:#4a2f14">'+esc(o.shop_name||'—')+'</div>'
+              +'<span style="font-size:10px;font-weight:800;font-family:monospace;color:'+cfg.color+';background:'+cfg.bg+';padding:2px 8px;border-radius:20px">'+cfg.label+'</span>'
+            +'</div>'
+            +'<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:3px">'+esc(o.items||'—')+'</div>'
+          +'</div>';
+        }).join('')
+        + (actionable.length > 10 ? '<div style="font-size:11px;font-family:monospace;color:#8a7a6a;padding:6px 0">…and '+(actionable.length-10)+' more — <button class="btn-sm btn-grey" style="font-size:10px;padding:4px 8px" onclick="showTab(\'cust-orders\')">View all →</button></div>' : '');
+      } else {
+        tmrList.innerHTML = '<div class="msg ok" style="font-size:12px">✅ All '+total+' orders are dispatched or delivered.</div>';
+      }
+    }
+
+    /* ── Issues ── */
     var issueRows = [];
-    if(noGroup>0) issueRows.push('<div class="item-card" style="margin-bottom:8px"><div style="font-size:12px;font-weight:800;color:#7a4800;margin-bottom:6px">📦 '+noGroup+' customer'+(noGroup>1?'s have':' has')+' no product group</div><button class="btn-sm" style="background:#7a4800;color:#fff" onclick="showTab(\'customers\')">Go to Customers →</button></div>');
+    if(noGroup>0)  issueRows.push('<div class="item-card" style="margin-bottom:8px"><div style="font-size:12px;font-weight:800;color:#7a4800;margin-bottom:6px">📦 '+noGroup+' customer'+(noGroup>1?'s have':' has')+' no product group</div><button class="btn-sm" style="background:#7a4800;color:#fff" onclick="showTab(\'customers\')">Go to Customers →</button></div>');
     if(noMobile>0) issueRows.push('<div class="item-card" style="margin-bottom:8px"><div style="font-size:12px;font-weight:800;color:#7a4800;margin-bottom:6px">📱 '+noMobile+' customer'+(noMobile>1?'s have':' has')+' no mobile number</div><button class="btn-sm" style="background:#7a4800;color:#fff" onclick="showTab(\'customers\')">Go to Customers →</button></div>');
-    if(noGPS>0) issueRows.push('<div class="item-card" style="margin-bottom:8px"><div style="font-size:12px;font-weight:800;color:#8a7a6a;margin-bottom:6px">📍 '+noGPS+' customer'+(noGPS>1?'s have':' has')+' no GPS coordinates</div><button class="btn-sm" style="background:#8a7a6a;color:#fff" onclick="showTab(\'gps\')">Go to GPS →</button></div>');
+    if(noGPS>0)    issueRows.push('<div class="item-card" style="margin-bottom:8px"><div style="font-size:12px;font-weight:800;color:#8a7a6a;margin-bottom:6px">📍 '+noGPS+' customer'+(noGPS>1?'s have':' has')+' no GPS coordinates</div><button class="btn-sm" style="background:#8a7a6a;color:#fff" onclick="showTab(\'gps\')">Go to GPS →</button></div>');
     if(!issueRows.length) issueRows.push('<div class="msg ok">✅ No issues found — all customers have groups, mobiles and GPS.</div>');
     issues.innerHTML = issueRows.join('');
+
   }).catch(function(e){
     stats.innerHTML='<div class="msg er" style="grid-column:1/-1">Failed to load dashboard.</div>';
     window.logError('admin', 'loadDashboard', e);
