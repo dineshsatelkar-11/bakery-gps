@@ -108,10 +108,24 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
 <body>
 <div class="topbar">
   <div><div class="topbar-title">🥖 IBCAB Admin</div><div class="topbar-sub" id="topDate"></div></div>
-  <div class="topbar-right"><button class="tbtn" id="logoutBtn">Logout</button></div>
+  <div class="topbar-right">
+    <button class="tbtn" onclick="openGlobalSearch()">🔍</button>
+    <button class="tbtn" id="logoutBtn">Logout</button>
+  </div>
+</div>
+<!-- Global Search Modal -->
+<div id="gs-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;padding:16px;align-items:flex-start;justify-content:center">
+  <div style="background:#fff;border-radius:16px;padding:16px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;margin-top:8px">
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <input type="text" id="gs-input" placeholder="🔍 Search customers, orders, products…" oninput="runGlobalSearch()" autocomplete="off" style="flex:1;margin-bottom:0">
+      <button class="btn-sm btn-grey" onclick="closeGlobalSearch()">✕</button>
+    </div>
+    <div id="gs-results"></div>
+  </div>
 </div>
 <div class="tabs">
-  <button class="tab on" id="tb-orders"      onclick="showTab('orders')">📋 Orders</button>
+  <button class="tab on" id="tb-dashboard"   onclick="showTab('dashboard')">🏠 Dashboard</button>
+  <button class="tab"    id="tb-orders"      onclick="showTab('orders')">📋 Orders</button>
   <button class="tab"    id="tb-cust-orders"   onclick="showTab('cust-orders')">🛒 Cust Orders</button>
   <button class="tab"    id="tb-manual-order"  onclick="showTab('manual-order')">📝 Manual Order</button>
   <button class="tab"    id="tb-approve"     onclick="showTab('approve')">⏳ New</button>
@@ -130,8 +144,20 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   <button class="tab"    id="tb-audit"     onclick="showTab('audit')">🔍 Trip Audit</button>
 </div>
 
+<!-- DASHBOARD -->
+<div class="page" id="pg-dashboard">
+  <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:10px">🏠 Today's Overview</div>
+  <div class="stats-grid" id="dash-stats" style="margin-bottom:14px"></div>
+  <div id="dash-alerts" style="margin-bottom:10px"></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <div style="font-size:12px;font-weight:800;color:#4a2f14">⚠️ Issues to Fix</div>
+    <button class="btn-sm btn-grey" onclick="loadDashboard()">🔄 Refresh</button>
+  </div>
+  <div id="dash-issues"></div>
+</div>
+
 <!-- ORDERS -->
-<div class="page on" id="pg-orders">
+<div class="page" id="pg-orders">
   <div class="card">
     <div class="lbl">Import Delivery Challan</div>
 
@@ -169,7 +195,25 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
 
   <div style="display:flex;align-items:center;justify-content:space-between;margin:12px 0 8px">
     <div style="font-size:13px;font-weight:800;color:#4a2f14">Saved Orders</div>
-    <button class="btn-sm btn-grey" onclick="loadOrders()">Refresh</button>
+    <div style="display:flex;gap:6px">
+      <button class="btn-sm" style="background:#4a2f14;color:#fff" id="ord-select-all-btn" onclick="ordToggleSelectAll()">☑ Select</button>
+      <button class="btn-sm btn-grey" onclick="loadOrders()">Refresh</button>
+    </div>
+  </div>
+  <!-- Bulk edit bar — shown when orders selected -->
+  <div id="ord-bulk-bar" style="display:none;background:#f0f8ff;border:1.5px solid #90caf9;border-radius:12px;padding:10px 12px;margin-bottom:10px">
+    <div style="font-size:10px;font-weight:800;color:#1565c0;font-family:monospace;margin-bottom:8px">✏️ BULK EDIT — <span id="ord-bulk-count">0</span> selected</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <select id="ord-bulk-driver" style="flex:1;margin-bottom:0;font-size:13px;padding:8px 10px;min-width:120px">
+        <option value="">— Change Driver —</option>
+      </select>
+      <input type="date" id="ord-bulk-date" style="flex:1;margin-bottom:0;font-size:13px;padding:8px 10px;min-width:120px" placeholder="Change Date">
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-sm" style="background:#1565c0;color:#fff;flex:1" onclick="applyBulkOrderEdit()">✅ Apply Changes</button>
+      <button class="btn-sm btn-grey" onclick="clearOrdSelection()">✕ Cancel</button>
+    </div>
+    <div id="ord-bulk-msg" style="display:none;margin-top:8px" class="msg ok"></div>
   </div>
   <div class="filter-row">
     <select id="f-ord-driver" onchange="loadOrders()">
@@ -307,6 +351,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   <div style="display:flex;gap:8px;margin-bottom:10px">
     <button class="btn btn-grey" style="margin-bottom:0;flex:1" onclick="loadSummary()">🔄 Refresh</button>
     <button class="btn btn-brown" style="margin-bottom:0;flex:1" onclick="printSummary()">🖨️ Print</button>
+    <button class="btn" style="margin-bottom:0;flex:1;background:#2d7a4f;color:#fff" onclick="exportSummaryCSV()">⬇ CSV</button>
   </div>
   <div id="summaryBody"></div>
 </div>
@@ -369,6 +414,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
     <button class="btn btn-brown" style="flex:1;margin-bottom:0" onclick="openAddCustomer()">➕ Add Customer</button>
     <button class="btn" style="flex:1;margin-bottom:0;background:#1565c0;color:#fff" onclick="openCustLoginsModal()">🔐 View Logins</button>
   </div>
+  <button class="btn-csv" onclick="exportCustomersCSV()" style="margin-top:8px">⬇ Export Customers CSV</button>
   <div class="card" style="margin-bottom:10px">
     <div class="lbl">🔀 Bulk Reassign Driver</div>
     <div style="display:flex;gap:8px;margin-bottom:8px">
@@ -456,6 +502,16 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
       <div style="display:flex;align-items:center;gap:10px">
         <span id="crate-status-lbl" style="font-size:11px;font-family:monospace;font-weight:700;color:#8a7a6a">…</span>
         <button id="crate-toggle-btn" onclick="toggleCrateTracking()" style="padding:8px 16px;border-radius:20px;border:none;font-size:12px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;background:#e8dfd2;color:#8a7a6a">…</button>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f0e8dc">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:800;color:#4a2f14">⏰ Order Cutoff Time</div>
+        <div style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-top:2px">Customers cannot place orders after this time</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:10px">
+        <input type="time" id="cutoff-time-input" style="width:110px;margin-bottom:0;padding:7px 10px;font-size:13px" onchange="saveCutoffTime()">
+        <span id="cutoff-save-lbl" style="font-size:10px;font-family:monospace;color:#2d7a4f"></span>
       </div>
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0">
@@ -998,7 +1054,7 @@ var _allowedTabs = _staffRole === 'super_admin' ? null : JSON.parse(sessionStora
 (function(){var r=sessionStorage.getItem('role');if(['super_admin','admin','assistant','chef','packer','teapost_head'].indexOf(r)<0)goto('');if(r==='teapost_head')goto('teapost-head');})();
 
 function initTabVisibility(){
-  var allTabKeys = ['orders','approve','queue','summary','delivery','routes','customers','cust-orders','manual-order','products','groups','drivers','gps','users','notify','cleanup','audit'];
+  var allTabKeys = ['dashboard','orders','approve','queue','summary','delivery','routes','customers','cust-orders','manual-order','products','groups','drivers','gps','users','notify','cleanup','audit'];
   allTabKeys.forEach(function(t){
     var btn = document.getElementById('tb-'+t);
     if(!btn) return;
@@ -1007,6 +1063,8 @@ function initTabVisibility(){
       show = (_staffRole === 'super_admin');
     } else if(t === 'notify' || t === 'manual-order') {
       show = (_staffRole === 'super_admin' || _staffRole === 'admin');
+    } else if(t === 'dashboard') {
+      show = (_staffRole === 'super_admin' || _staffRole === 'admin' || _staffRole === 'assistant');
     } else if(_allowedTabs === null) {
       show = true; // super_admin sees all
     } else if(t === 'cust-orders' || t === 'groups') {
@@ -1052,6 +1110,54 @@ function nextDay(dateStr){var d=new Date(dateStr);d.setDate(d.getDate()+1);retur
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function nrm(s){return(s||'').toLowerCase().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ').trim();}
 
+/* ── GLOBAL SEARCH ── */
+function openGlobalSearch(){
+  var m=document.getElementById('gs-modal'); m.style.display='flex';
+  setTimeout(function(){document.getElementById('gs-input').focus();},50);
+}
+function closeGlobalSearch(){
+  document.getElementById('gs-modal').style.display='none';
+  document.getElementById('gs-input').value='';
+  document.getElementById('gs-results').innerHTML='';
+}
+document.getElementById('gs-modal').addEventListener('click',function(e){if(e.target===this)closeGlobalSearch();});
+function runGlobalSearch(){
+  var q=(document.getElementById('gs-input').value||'').toLowerCase().trim();
+  var el=document.getElementById('gs-results');
+  if(!q||q.length<2){el.innerHTML='<div style="font-size:12px;color:#8a7a6a;font-family:monospace;padding:8px">Type at least 2 characters…</div>';return;}
+  var html='';
+  // Search customers
+  var custHits=allCustomers.filter(function(c){
+    return nrm(c.name).includes(q)||nrm(c.area).includes(q)||(c.mobile||'').includes(q)||(c.shop_id||'').toLowerCase().includes(q);
+  }).slice(0,8);
+  if(custHits.length){
+    html+='<div style="font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:6px;text-transform:uppercase">Customers</div>';
+    html+=custHits.map(function(c){
+      return '<div style="padding:8px 10px;border:1.5px solid #e8dfd2;border-radius:10px;margin-bottom:6px;cursor:pointer;background:#fff" onclick="closeGlobalSearch();showTab(\'customers\')">'
+        +'<div style="font-size:13px;font-weight:800;color:#4a2f14">'+esc(c.name)+'</div>'
+        +'<div style="font-size:10px;color:#8a7a6a;font-family:monospace">'+esc(c.area||'—')+' · '+esc(c.assigned_driver||'—')+(c.mobile?' · '+esc(c.mobile):'')+'</div>'
+        +'</div>';
+    }).join('');
+  }
+  // Search products
+  var prodHits=allProducts.filter(function(p){
+    return nrm(p.name).includes(q)||nrm(p.category||'').includes(q);
+  }).slice(0,5);
+  if(prodHits.length){
+    html+='<div style="font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin:10px 0 6px;text-transform:uppercase">Products</div>';
+    html+=prodHits.map(function(p){
+      return '<div style="padding:8px 10px;border:1.5px solid #e8dfd2;border-radius:10px;margin-bottom:6px;cursor:pointer;background:#fff" onclick="closeGlobalSearch();showTab(\'products\')">'
+        +'<div style="font-size:13px;font-weight:800;color:#4a2f14">'+esc(p.name)+'</div>'
+        +'<div style="font-size:10px;color:#8a7a6a;font-family:monospace">'+esc(p.category||'—')+'</div>'
+        +'</div>';
+    }).join('');
+  }
+  if(!custHits.length&&!prodHits.length){
+    html='<div style="font-size:12px;color:#8a7a6a;font-family:monospace;padding:16px;text-align:center">No matches found.</div>';
+  }
+  el.innerHTML=html;
+}
+
 document.getElementById('topDate').textContent=new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'});
 ['f-ord-date','f-rt-date','f-del-date','sub-date'].forEach(function(id){var el=document.getElementById(id);if(el)el.value=todayStr();});
 var _sumEl=document.getElementById('f-sum-date');if(_sumEl)_sumEl.value=tomorrowStr();
@@ -1068,10 +1174,11 @@ document.getElementById('logoutBtn').onclick=function(){
 
 /* ── TAB SWITCHER ── */
 function showTab(t){
-  ['orders','approve','queue','summary','delivery','routes','customers','cust-orders','manual-order','products','groups','drivers','gps','users','notify','cleanup','audit'].forEach(function(x){
+  ['dashboard','orders','approve','queue','summary','delivery','routes','customers','cust-orders','manual-order','products','groups','drivers','gps','users','notify','cleanup','audit'].forEach(function(x){
     var pg=document.getElementById('pg-'+x); if(pg) pg.classList.toggle('on',x===t);
     var tb=document.getElementById('tb-'+x); if(tb) tb.classList.toggle('on',x===t);
   });
+  if(t==='dashboard')    loadDashboard();
   if(t==='summary')      { document.getElementById('f-sum-date').value=tomorrowStr(); loadSummary(); }
   if(t==='delivery')     setLatestDate('f-del-date','deliveries',document.getElementById('f-del-driver').value,loadDeliveries);
   if(t==='routes')       setLatestDate('f-rt-date','routes',document.getElementById('f-rt-driver').value,loadRoutes);
@@ -1087,6 +1194,57 @@ function showTab(t){
   if(t==='users')        { loadStaff().then(renderStaff); loadFeatureSettings(); }
   if(t==='notify')       { loadNotifyDriverList(); loadOrderWindow(); loadBroadcast(); loadNotifyCustomerList(); }
   if(t==='audit')        initAuditTab();
+}
+
+/* ── DASHBOARD ── */
+function loadDashboard(){
+  var today = todayStr();
+  var stats = document.getElementById('dash-stats');
+  var alerts = document.getElementById('dash-alerts');
+  var issues = document.getElementById('dash-issues');
+  stats.innerHTML = '<div style="text-align:center;padding:8px;font-size:11px;color:#8a7a6a;font-family:monospace;grid-column:1/-1">Loading…</div>';
+  alerts.innerHTML=''; issues.innerHTML='';
+
+  Promise.all([
+    api({action:'getOrders', date:today}),
+    api({action:'getDeliveries', date:today}),
+    loadCustomerMaster()
+  ]).then(function(res){
+    var orders     = Array.isArray(res[0]) ? res[0] : [];
+    var deliveries = Array.isArray(res[1]) ? res[1] : [];
+    var customers  = allCustomers;
+
+    var totalOrders   = orders.length;
+    var delivered     = deliveries.length;
+    var pending       = totalOrders - delivered;
+    var noDriver      = orders.filter(function(o){return !o.driver||o.driver==='—'||o.driver==='Logistics';}).length;
+    var noGroup       = customers.filter(function(c){return !c.product_group_ids||!c.product_group_ids.length;}).length;
+    var noMobile      = customers.filter(function(c){return !c.mobile||!c.mobile.trim();}).length;
+    var noGPS         = customers.filter(function(c){return !c.lat||!c.lng;}).length;
+
+    stats.innerHTML =
+      '<div class="stat"><div class="stat-n">'+totalOrders+'</div><div class="stat-l">Orders Today</div></div>'+
+      '<div class="stat"><div class="stat-n" style="color:#2d7a4f">'+delivered+'</div><div class="stat-l">Delivered</div></div>'+
+      '<div class="stat"><div class="stat-n" style="color:'+(pending>0?'#c8382a':'#2d7a4f')+'">'+pending+'</div><div class="stat-l">Pending</div></div>'+
+      '<div class="stat"><div class="stat-n" style="color:'+(noDriver>0?'#c8382a':'#2d7a4f')+'">'+noDriver+'</div><div class="stat-l">No Driver</div></div>'+
+      '<div class="stat"><div class="stat-n" style="color:'+(noGroup>0?'#7a4800':'#2d7a4f')+'">'+noGroup+'</div><div class="stat-l">No Group</div></div>'+
+      '<div class="stat"><div class="stat-n" style="color:'+(noMobile>0?'#7a4800':'#2d7a4f')+'">'+noMobile+'</div><div class="stat-l">No Mobile</div></div>';
+
+    var alertHtml = '';
+    if(noDriver>0) alertHtml+='<div class="msg warn" style="margin-bottom:6px">⚠️ '+noDriver+' order'+(noDriver>1?'s have':' has')+' no driver assigned — go to Queue tab to assign.</div>';
+    if(pending>0&&delivered>0) alertHtml+='<div class="msg in" style="margin-bottom:6px">🚚 '+delivered+' of '+totalOrders+' deliveries done. '+pending+' remaining.</div>';
+    alerts.innerHTML = alertHtml;
+
+    var issueRows = [];
+    if(noGroup>0) issueRows.push('<div class="item-card" style="margin-bottom:8px"><div style="font-size:12px;font-weight:800;color:#7a4800;margin-bottom:6px">📦 '+noGroup+' customer'+(noGroup>1?'s have':' has')+' no product group</div><button class="btn-sm" style="background:#7a4800;color:#fff" onclick="showTab(\'customers\')">Go to Customers →</button></div>');
+    if(noMobile>0) issueRows.push('<div class="item-card" style="margin-bottom:8px"><div style="font-size:12px;font-weight:800;color:#7a4800;margin-bottom:6px">📱 '+noMobile+' customer'+(noMobile>1?'s have':' has')+' no mobile number</div><button class="btn-sm" style="background:#7a4800;color:#fff" onclick="showTab(\'customers\')">Go to Customers →</button></div>');
+    if(noGPS>0) issueRows.push('<div class="item-card" style="margin-bottom:8px"><div style="font-size:12px;font-weight:800;color:#8a7a6a;margin-bottom:6px">📍 '+noGPS+' customer'+(noGPS>1?'s have':' has')+' no GPS coordinates</div><button class="btn-sm" style="background:#8a7a6a;color:#fff" onclick="showTab(\'gps\')">Go to GPS →</button></div>');
+    if(!issueRows.length) issueRows.push('<div class="msg ok">✅ No issues found — all customers have groups, mobiles and GPS.</div>');
+    issues.innerHTML = issueRows.join('');
+  }).catch(function(e){
+    stats.innerHTML='<div class="msg er" style="grid-column:1/-1">Failed to load dashboard.</div>';
+    window.logError('admin', 'loadDashboard', e);
+  });
 }
 
 /* ── CUSTOMER MASTER (replaces allShops) ──
@@ -1482,6 +1640,7 @@ function loadOrders(){
       var isSpike=avg>0&&todayQty>=avg*1.5;
       if(isSpike) spikeCount++;
       return '<div class="item-card"'+(isSpike?' style="border-color:#f0b0b0;background:#fff8f8"':'')+'>'+
+        '<input type="checkbox" class="ord-bulk-cb" value="'+esc(o.order_id||'')+'" onchange="_updateOrdBulkBar()" style="display:none;position:absolute;top:10px;left:10px;width:16px;height:16px;accent-color:#1565c0">'+
         (_zohoEnabled?'<input type="checkbox" class="zoho-ord-cb" value="'+esc(o.order_id||'')+'" data-shop="'+esc(o.shop_name)+'" data-cid="'+esc(o.customer_id||'')+'" data-items="'+esc(o.items||'')+'" data-qty="'+esc(o.qty||'')+'" data-date="'+esc(o.date||'')+'" onchange="zohoUpdateOrdCount()" style="position:absolute;top:10px;right:10px;width:16px;height:16px;accent-color:#c8864a">':'')+
         '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
           '<div style="font-size:14px;font-weight:800;color:#4a2f14;flex:1;margin-right:6px">'+esc(o.shop_name)+
@@ -1506,6 +1665,50 @@ function loadOrders(){
   });
 }
 function delOrder(id){if(!confirm('Delete?'))return;apiPost({action:'deleteOrder',order_id:id}).then(loadOrders);}
+
+/* ── BULK ORDER EDIT ── */
+var _ordSelectMode = false;
+function ordToggleSelectAll(){
+  _ordSelectMode = !_ordSelectMode;
+  var btn = document.getElementById('ord-select-all-btn');
+  if(!_ordSelectMode){ clearOrdSelection(); btn.textContent='☑ Select'; return; }
+  btn.textContent='✕ Cancel';
+  document.querySelectorAll('.ord-bulk-cb').forEach(function(cb){ cb.style.display=''; });
+  _updateOrdBulkBar();
+}
+function clearOrdSelection(){
+  _ordSelectMode=false;
+  document.getElementById('ord-select-all-btn').textContent='☑ Select';
+  document.querySelectorAll('.ord-bulk-cb').forEach(function(cb){ cb.checked=false; cb.style.display='none'; });
+  document.getElementById('ord-bulk-bar').style.display='none';
+  document.getElementById('ord-bulk-msg').style.display='none';
+}
+function _updateOrdBulkBar(){
+  var checked=document.querySelectorAll('.ord-bulk-cb:checked').length;
+  document.getElementById('ord-bulk-count').textContent=checked;
+  document.getElementById('ord-bulk-bar').style.display=(_ordSelectMode&&checked>0)?'':'none';
+}
+function applyBulkOrderEdit(){
+  var ids=[].slice.call(document.querySelectorAll('.ord-bulk-cb:checked')).map(function(cb){return cb.value;});
+  if(!ids.length){return;}
+  var newDriver=document.getElementById('ord-bulk-driver').value;
+  var newDate=document.getElementById('ord-bulk-date').value;
+  if(!newDriver&&!newDate){alert('Select a new driver or date to apply.');return;}
+  var msg=document.getElementById('ord-bulk-msg');
+  msg.textContent='Updating '+ids.length+' order'+(ids.length>1?'s':'')+'…'; msg.className='msg in'; msg.style.display='block';
+  var patch={};
+  if(newDriver) patch.driver=newDriver;
+  if(newDate) patch.date=newDate;
+  Promise.all(ids.map(function(oid){
+    return apiPost({action:'updateOrder', order_id:oid, patch:patch});
+  })).then(function(){
+    msg.textContent='✅ Updated '+ids.length+' order'+(ids.length>1?'s')+'.'; msg.className='msg ok';
+    setTimeout(function(){ clearOrdSelection(); loadOrders(); },1200);
+  }).catch(function(e){
+    msg.textContent='Error updating orders.'; msg.className='msg er';
+    window.logError('admin','applyBulkOrderEdit',e);
+  });
+}
 
 /* ── APPROVE QUEUE (customers only) ── */
 function renderApproveQueue(){
@@ -2840,6 +3043,8 @@ function populateDriverSelects(list){
   if(st)st.innerHTML='<option value="">Substitute…</option>'+allOpt;
   var ad=document.getElementById('audit-driver');
   if(ad)ad.innerHTML='<option value="">Select driver…</option>'+allOpt;
+  var obd=document.getElementById('ord-bulk-driver');
+  if(obd)obd.innerHTML='<option value="">— Change Driver —</option>'+allOpt;
 }
 
 function loadDrivers(){
@@ -3895,6 +4100,25 @@ function shareRouteSummary(){
 /* ── EXPORTS ── */
 function exportRouteCSV(){dlCSV([['Date','Driver','Start','Shops','KM','Est']].concat(routesData.map(function(r){return[r.date,r.driver,r.start_time||'',r.total_shops,r.total_km,r.est_time];})),'routes-'+todayStr()+'.csv');}
 function exportGPSCSV(){dlCSV([['Customer ID','Name','Area','Driver','Lat','Lng']].concat(allCustomers.map(function(c){return[c.customer_id||c.shop_id,c.name,c.area,c.assigned_driver,c.lat||'',c.lng||''];})),'gps-'+todayStr()+'.csv');}
+function exportCustomersCSV(){
+  dlCSV(
+    [['Shop ID','Name','Area','Driver','Mobile','Address','GPS Lat','GPS Lng','Flag']].concat(
+      allCustomers.map(function(c){
+        return[c.shop_id||c.customer_id,c.name,c.area||'',c.assigned_driver||'',c.mobile||'',c.address||'',c.lat||'',c.lng||'',c.flag||''];
+      })
+    ),
+    'customers-'+todayStr()+'.csv'
+  );
+}
+function exportSummaryCSV(){
+  if(!_lastSummaryData||!_lastSummaryData.length){alert('Load summary first.');return;}
+  var rows=[['Category','Product','Total Qty']];
+  var byCat=groupByCat(_lastSummaryData);
+  Object.keys(byCat).sort().forEach(function(cat){
+    byCat[cat].forEach(function(p){rows.push([cat,p.name,p.qty]);});
+  });
+  dlCSV(rows,'summary-'+document.getElementById('f-sum-date').value+'.csv');
+}
 function dlCSV(rows,fn){var csv=rows.map(function(r){return r.map(function(c){return'"'+String(c||'').replace(/"/g,'""')+'"';}).join(',');}).join('\n');var a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download=fn;document.body.appendChild(a);a.click();document.body.removeChild(a);}
 
 /* ── STAFF (Users tab — super_admin only) ── */
@@ -3907,12 +4131,24 @@ var _zohoEnabled = false;
 function loadFeatureSettings(){
   Promise.all([
     api({action:'getSetting', key:'crate_tracking'}),
-    api({action:'getSetting', key:'zoho_integration'})
+    api({action:'getSetting', key:'zoho_integration'}),
+    api({action:'getSetting', key:'order_cutoff_time'})
   ]).then(function(res){
     _crateTrackingEnabled = !!(res[0] && res[0].value === '1');
     _zohoEnabled = !!(res[1] && res[1].value === '1');
     _updateCrateToggleUI();
     _updateZohoToggleUI();
+    var cutoffEl = document.getElementById('cutoff-time-input');
+    if(cutoffEl && res[2] && res[2].value) cutoffEl.value = res[2].value;
+  });
+}
+function saveCutoffTime(){
+  var val = document.getElementById('cutoff-time-input').value;
+  var lbl = document.getElementById('cutoff-save-lbl');
+  lbl.textContent='Saving…';
+  apiPost({action:'setSetting', key:'order_cutoff_time', value:val}).then(function(){
+    lbl.textContent='✅ Saved';
+    setTimeout(function(){lbl.textContent='';},2000);
   });
 }
 
@@ -4879,10 +5115,10 @@ loadGroups();        // cache product groups for selects
 // Navigate to the first tab this role can see
 (function(){
   var first;
-  if(_allowedTabs === null){ first='orders'; }
+  if(_allowedTabs === null){ first='dashboard'; }
   else { first = _allowedTabs.length ? _allowedTabs[0] : 'summary'; }
   // Hide all pages, then show the right one
-  ['orders','approve','queue','summary','delivery','routes','customers','cust-orders','manual-order','products','groups','drivers','gps','users','notify','cleanup','audit'].forEach(function(t){
+  ['dashboard','orders','approve','queue','summary','delivery','routes','customers','cust-orders','manual-order','products','groups','drivers','gps','users','notify','cleanup','audit'].forEach(function(t){
     var pg=document.getElementById('pg-'+t);if(pg)pg.classList.remove('on');
     var tb=document.getElementById('tb-'+t);if(tb)tb.classList.remove('on');
   });

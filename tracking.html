@@ -191,6 +191,12 @@ input[type=tel]:focus{border-color:#2d7a4f;background:#fff}
     <div class="btn-live-sub">Powered by Ajjas GPS · Tap to open</div>
   </a>
 
+  <!-- Order history (last 7 days) -->
+  <div class="card" id="tr-history-card" style="display:none">
+    <div class="section-title">Your Last 7 Days Orders</div>
+    <div id="tr-order-history"></div>
+  </div>
+
   <!-- Back button -->
   <div style="margin:12px 14px 0;text-align:center">
     <button onclick="resetTracking()" style="background:none;border:1.5px solid #e8dfd2;border-radius:10px;padding:9px 20px;font-size:12px;font-weight:700;color:#8a7a6a;cursor:pointer;font-family:-apple-system,sans-serif">← Check Another Number</button>
@@ -426,11 +432,41 @@ async function trackDelivery() {
     document.getElementById('loginSection').style.display = 'none';
     document.getElementById('trackingResult').style.display = 'block';
 
+    // Load last 7 days of order history for this shop
+    loadOrderHistory(shop.shop_id);
+
   } catch(e) {
     showLoginMsg('Something went wrong. Please try again.');
   }
 
   btn.innerHTML = '🔍 Track My Delivery'; btn.disabled = false;
+}
+
+function loadOrderHistory(shopId){
+  var card = document.getElementById('tr-history-card');
+  var el   = document.getElementById('tr-order-history');
+  card.style.display = 'none';
+  api({action:'getCustomerOrders', shop_id:shopId, limit:20}).then(function(orders){
+    if(!orders||!orders.length){ return; }
+    // Show last 7 days max
+    var cutoff = new Date(); cutoff.setDate(cutoff.getDate()-7);
+    var recent = orders.filter(function(o){
+      return o.delivery_date && new Date(o.delivery_date) >= cutoff;
+    });
+    if(!recent.length) return;
+    card.style.display = 'block';
+    el.innerHTML = recent.map(function(o){
+      var statusColor = o.status==='delivered'?'#2d7a4f':o.status==='approved'?'#1565c0':'#7a4800';
+      var statusLabel = o.status==='delivered'?'✅ Delivered':o.status==='approved'?'📋 Approved':'⏳ '+o.status;
+      return '<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:7px 0;border-bottom:1px solid #f0e8dc">'
+        +'<div>'
+          +'<div style="font-size:12px;font-weight:700;color:#4a2f14">'+esc(o.delivery_date||o.created_at||'')+'</div>'
+          +'<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px">'+esc(o.items||'—')+'</div>'
+        +'</div>'
+        +'<span style="font-size:10px;font-weight:800;font-family:monospace;color:'+statusColor+';white-space:nowrap;margin-left:8px">'+statusLabel+'</span>'
+        +'</div>';
+    }).join('');
+  }).catch(function(){});
 }
 
 var _phoneTimer = null;

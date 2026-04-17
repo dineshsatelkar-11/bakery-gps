@@ -395,6 +395,9 @@
       case 'deleteOrder':
         return sbDelete('orders', { order_id: b.order_id });
 
+      case 'updateOrder':
+        return sbPatch('orders', { order_id: b.order_id }, b.patch || {});
+
       case 'updateOrderDriver':
         return sbPatch('orders', { order_id: b.order_id }, { driver: b.driver });
 
@@ -742,8 +745,35 @@
         });
         return Promise.resolve({ ok: true, invoice_id: 'TEST-INV-' + Date.now() });
 
+      case 'logError':
+        return sbPost('error_log', {
+          page:      b.page      || '',
+          action:    b.action2   || '',
+          message:   b.message   || '',
+          stack:     b.stack     || '',
+          user_role: b.user_role || '',
+          user_name: b.user_name || ''
+        }).catch(function(){ return { ok: false }; });
+
       default:
         return Promise.resolve({ ok: false, error: 'Unknown action: ' + b.action });
     }
+  };
+
+  // ── Global error logger — call window.logError(page, action, err) from anywhere ──
+  window.logError = function(page, action, err) {
+    try {
+      var role = sessionStorage.getItem('role') || localStorage.getItem('staffRole') || '';
+      var name = sessionStorage.getItem('staffName') || localStorage.getItem('staffNamePersist') || '';
+      apiPost({
+        action:    'logError',
+        page:      page || window.location.pathname,
+        action2:   action || '',
+        message:   err ? (err.message || String(err)) : '',
+        stack:     err && err.stack ? err.stack.substring(0, 800) : '',
+        user_role: role,
+        user_name: name
+      }).catch(function(){});
+    } catch(e) {}
   };
 })();

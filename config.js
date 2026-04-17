@@ -44,7 +44,7 @@ const CONFIG = {
     }
   },
 
-  VERSION: '2.0',
+  VERSION: '3.0',
 
   // ── OneSignal Push Notifications ──────────────────────────────────────────
   // 1. Go to https://onesignal.com → Create account → New App

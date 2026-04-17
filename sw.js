@@ -1,4 +1,7 @@
-var CACHE = 'baked-gps-v6';
+// Cache version is tied to CONFIG.VERSION in config.js.
+// To force all clients to re-download, bump VERSION in config.js.
+try { importScripts('/config.js'); } catch(e) {}
+var CACHE = 'baked-gps-v' + (typeof CONFIG !== 'undefined' ? CONFIG.VERSION : '6');
 var STATIC = [
   '/',
   '/index.html',
