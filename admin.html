@@ -1702,7 +1702,7 @@ function applyBulkOrderEdit(){
   Promise.all(ids.map(function(oid){
     return apiPost({action:'updateOrder', order_id:oid, patch:patch});
   })).then(function(){
-    msg.textContent='✅ Updated '+ids.length+' order'+(ids.length>1?'s')+'.'; msg.className='msg ok';
+    msg.textContent='✅ Updated '+ids.length+' order'+(ids.length>1?'s':'')+'.'; msg.className='msg ok';
     setTimeout(function(){ clearOrdSelection(); loadOrders(); },1200);
   }).catch(function(e){
     msg.textContent='Error updating orders.'; msg.className='msg er';
