@@ -726,6 +726,22 @@
           {driver: b.driver, date: b.date, crates_returned: b.crates, returned_time: b.time},
           'driver,date');
 
+      // ── ZOHO BOOKS (TESTING MODE — replace with real API calls when credentials ready) ──
+      case 'zohoSyncCustomer':
+        console.log('[ZOHO TESTING] Sync customer →', { customer_id: b.customer_id, name: b.name });
+        return Promise.resolve({ ok: true, zoho_contact_id: 'TEST-CUST-' + b.customer_id });
+
+      case 'zohoSyncProduct':
+        console.log('[ZOHO TESTING] Sync product →', { product_id: b.product_id, name: b.name });
+        return Promise.resolve({ ok: true, zoho_item_id: 'TEST-ITEM-' + b.product_id });
+
+      case 'zohoCreateInvoice':
+        console.log('[ZOHO TESTING] Create invoice →', {
+          customer_id: b.customer_id, shop_name: b.shop_name,
+          date: b.date, line_items: b.line_items, order_id: b.order_id
+        });
+        return Promise.resolve({ ok: true, invoice_id: 'TEST-INV-' + Date.now() });
+
       default:
         return Promise.resolve({ ok: false, error: 'Unknown action: ' + b.action });
     }
