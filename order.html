@@ -744,22 +744,11 @@ function checkOrderWindow(){
     api({action:'getSetting', key:'order_message'}),
     api({action:'getSetting', key:'customer_broadcast'}),
     api({action:'getSetting', key:'customer_broadcast_at'}),
-    api({action:'getSetting', key:'customer_broadcast_enabled'}),
-    api({action:'getSetting', key:'order_cutoff_time'})
+    api({action:'getSetting', key:'customer_broadcast_enabled'})
   ]).then(function(results){
     // getSetting returns a single row object (or null), NOT an array
     var enabled       = !results[0] || results[0].value !== 'false';
     var owMsg         = results[1] ? (results[1].value||'') : '';
-
-    // Cutoff time check — auto-close if past cutoff
-    var cutoffTime = results[5] ? (results[5].value||'') : '';
-    if(enabled && cutoffTime){
-      var now = new Date();
-      var nowMins = now.getHours()*60 + now.getMinutes();
-      var parts = cutoffTime.split(':');
-      var cutoffMins = parseInt(parts[0]||0)*60 + parseInt(parts[1]||0);
-      if(nowMins >= cutoffMins){ enabled = false; owMsg = owMsg || ('Orders closed after '+cutoffTime+'.'); }
-    }
     var bcast         = results[2] ? (results[2].value||'') : '';
     var bcastAt       = results[3] ? (results[3].value||'') : '';
     var bcastOn       = results[4] ? results[4].value === 'true' : false;

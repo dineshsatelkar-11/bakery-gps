@@ -514,16 +514,6 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
         <button id="crate-toggle-btn" onclick="toggleCrateTracking()" style="padding:8px 16px;border-radius:20px;border:none;font-size:12px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;background:#e8dfd2;color:#8a7a6a">…</button>
       </div>
     </div>
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f0e8dc">
-      <div style="flex:1">
-        <div style="font-size:13px;font-weight:800;color:#4a2f14">⏰ Order Cutoff Time</div>
-        <div style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-top:2px">Customers cannot place orders after this time</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:10px">
-        <input type="time" id="cutoff-time-input" style="width:110px;margin-bottom:0;padding:7px 10px;font-size:13px" onchange="saveCutoffTime()">
-        <span id="cutoff-save-lbl" style="font-size:10px;font-family:monospace;color:#2d7a4f"></span>
-      </div>
-    </div>
     <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0">
       <div>
         <div style="font-size:13px;font-weight:800;color:#4a2f14">🔗 Zoho Books Integration</div>
@@ -4247,24 +4237,12 @@ var _zohoEnabled = false;
 function loadFeatureSettings(){
   Promise.all([
     api({action:'getSetting', key:'crate_tracking'}),
-    api({action:'getSetting', key:'zoho_integration'}),
-    api({action:'getSetting', key:'order_cutoff_time'})
+    api({action:'getSetting', key:'zoho_integration'})
   ]).then(function(res){
     _crateTrackingEnabled = !!(res[0] && res[0].value === '1');
     _zohoEnabled = !!(res[1] && res[1].value === '1');
     _updateCrateToggleUI();
     _updateZohoToggleUI();
-    var cutoffEl = document.getElementById('cutoff-time-input');
-    if(cutoffEl && res[2] && res[2].value) cutoffEl.value = res[2].value;
-  });
-}
-function saveCutoffTime(){
-  var val = document.getElementById('cutoff-time-input').value;
-  var lbl = document.getElementById('cutoff-save-lbl');
-  lbl.textContent='Saving…';
-  apiPost({action:'setSetting', key:'order_cutoff_time', value:val}).then(function(){
-    lbl.textContent='✅ Saved';
-    setTimeout(function(){lbl.textContent='';},2000);
   });
 }
 
