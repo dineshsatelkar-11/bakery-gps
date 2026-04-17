@@ -152,7 +152,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   </div>
 
   <!-- Today delivery stats -->
-  <div style="font-size:10px;font-weight:800;color:#8a7a6a;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Today's Deliveries</div>
+  <div class="dash-deliv-lbl" style="font-size:10px;font-weight:800;color:#8a7a6a;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Deliveries</div>
   <div class="stats-grid" id="dash-stats" style="margin-bottom:14px"></div>
   <div id="dash-alerts" style="margin-bottom:10px"></div>
 
@@ -1208,7 +1208,6 @@ function showTab(t){
 
 /* ── DASHBOARD ── */
 function loadDashboard(){
-  var today    = todayStr();
   var tomorrow = tomorrowStr();
   var stats      = document.getElementById('dash-stats');
   var alerts     = document.getElementById('dash-alerts');
@@ -1220,37 +1219,67 @@ function loadDashboard(){
   tmrStats.innerHTML = '<div style="text-align:center;padding:8px;font-size:11px;color:#8a7a6a;font-family:monospace;grid-column:1/-1">Loading…</div>';
   alerts.innerHTML = ''; issues.innerHTML = ''; tmrList.innerHTML = '';
 
-  Promise.all([
-    api({action:'getOrders',          date: today}),
-    api({action:'getDeliveries',      date: today}),
-    api({action:'getCustomerOrders',  delivery_date: tomorrow, limit: 200}),
-    loadCustomerMaster()
-  ]).then(function(res){
+  // Find the most recent date that has orders (could be today or tomorrow)
+  api({action:'getLatestDate', table:'orders'}).then(function(latestDate){
+    var delivDate = latestDate || tomorrowStr();
+    return Promise.all([
+      api({action:'getOrders',         date: delivDate}),
+      api({action:'getDeliveries',     date: delivDate}),
+      api({action:'getCustomerOrders', delivery_date: tomorrow, limit: 200}),
+      loadCustomerMaster(),
+      Promise.resolve(delivDate)
+    ]);
+  }).then(function(res){
     var orders      = Array.isArray(res[0]) ? res[0] : [];
     var deliveries  = Array.isArray(res[1]) ? res[1] : [];
     var custOrders  = Array.isArray(res[2]) ? res[2] : [];
     var customers   = allCustomers;
+    var delivDate   = res[4] || tomorrowStr();
 
-    /* ── Today's delivery stats ── */
-    var totalOrders = orders.length;
-    var delivered   = deliveries.length;
-    var pending     = totalOrders - delivered;
-    var noDriver    = orders.filter(function(o){return !o.driver||o.driver==='—'||o.driver==='Logistics';}).length;
-    var noGroup     = customers.filter(function(c){return !c.product_group_ids||!c.product_group_ids.length;}).length;
-    var noMobile    = customers.filter(function(c){return !c.mobile||!c.mobile.trim();}).length;
-    var noGPS       = customers.filter(function(c){return !c.lat||!c.lng;}).length;
+    // Update section heading to show which delivery date is being shown
+    var delivHeading = document.querySelector('#pg-dashboard [id="dash-stats"]');
+    var delivSection = document.querySelector('#pg-dashboard .dash-deliv-lbl');
+    if(delivSection) delivSection.textContent = 'Delivery Date: ' + delivDate;
 
+    /* ── Delivery stats for delivDate ── */
+    var totalOrders   = orders.length;
+    var delivered     = deliveries.length;
+    var pending       = totalOrders - delivered;
+    var activeDrivers = Object.keys(orders.reduce(function(m,o){
+      if(o.driver && o.driver!=='—' && o.driver!=='Logistics') m[o.driver]=1; return m;
+    },{})).length;
+    var noDriver      = orders.filter(function(o){return !o.driver||o.driver==='—';}).length;
+
+    // Match customers tab: GPS = has lat, no group = product_group_ids empty/null
+    var withGPS  = customers.filter(function(c){return !!c.lat;}).length;
+    var noGPS    = customers.length - withGPS;
+    var noGroup  = customers.filter(function(c){
+      var g = c.product_group_ids;
+      return !g || (Array.isArray(g) ? g.length===0 : false);
+    }).length;
+    var noMobile = customers.filter(function(c){return !c.mobile||!c.mobile.trim();}).length;
+
+    // Store delivery date for click handlers
+    _dashDelivDate = delivDate;
+
+    // Update section heading to show delivery date
+    var delivLbl = document.querySelector('#pg-dashboard .dash-deliv-lbl');
+    if(delivLbl) delivLbl.textContent = 'Deliveries · ' + delivDate;
+
+    // Stats: Orders | Drivers | Delivered | Pending | GPS ✅ | No GPS  — all clickable
+    var S = 'cursor:pointer;transition:box-shadow .15s' ;
     stats.innerHTML =
-      '<div class="stat"><div class="stat-n">'+totalOrders+'</div><div class="stat-l">Orders Today</div></div>'+
-      '<div class="stat"><div class="stat-n" style="color:#2d7a4f">'+delivered+'</div><div class="stat-l">Delivered</div></div>'+
-      '<div class="stat"><div class="stat-n" style="color:'+(pending>0?'#c8382a':'#2d7a4f')+'">'+pending+'</div><div class="stat-l">Pending</div></div>'+
-      '<div class="stat"><div class="stat-n" style="color:'+(noDriver>0?'#c8382a':'#2d7a4f')+'">'+noDriver+'</div><div class="stat-l">No Driver</div></div>'+
-      '<div class="stat"><div class="stat-n" style="color:'+(noGroup>0?'#7a4800':'#2d7a4f')+'">'+noGroup+'</div><div class="stat-l">No Group</div></div>'+
-      '<div class="stat"><div class="stat-n" style="color:'+(noMobile>0?'#7a4800':'#2d7a4f')+'">'+noMobile+'</div><div class="stat-l">No Mobile</div></div>';
+      '<div class="stat" style="'+S+'" onclick="dashGoOrders()" title="View orders"><div class="stat-n">'+totalOrders+'</div><div class="stat-l">Orders ↗</div></div>'+
+      '<div class="stat" style="'+S+'" onclick="dashGoRoutes()" title="View routes"><div class="stat-n" style="color:#1a5fa8">'+activeDrivers+'</div><div class="stat-l">Drivers ↗</div></div>'+
+      '<div class="stat" style="'+S+'" onclick="dashGoDelivery(\'done\')" title="View delivered"><div class="stat-n" style="color:#2d7a4f">'+delivered+'</div><div class="stat-l">Delivered ↗</div></div>'+
+      '<div class="stat" style="'+S+'" onclick="dashGoDelivery(\'pending\')" title="View pending"><div class="stat-n" style="color:'+(pending>0?'#c8382a':'#2d7a4f')+'">'+pending+'</div><div class="stat-l">Pending ↗</div></div>'+
+      '<div class="stat" style="'+S+'" onclick="showTab(\'gps\')" title="View GPS"><div class="stat-n" style="color:#2d7a4f">'+withGPS+'</div><div class="stat-l">GPS ✅ ↗</div></div>'+
+      '<div class="stat" style="'+S+'" onclick="showTab(\'gps\')" title="View missing GPS"><div class="stat-n" style="color:'+(noGPS>0?'#c8382a':'#2d7a4f')+'">'+noGPS+'</div><div class="stat-l">No GPS ↗</div></div>';
 
+    // Alerts (actionable warnings)
     var alertHtml = '';
-    if(noDriver>0) alertHtml+='<div class="msg warn" style="margin-bottom:6px">⚠️ '+noDriver+' order'+(noDriver>1?'s have':' has')+' no driver assigned — go to Queue tab to assign.</div>';
-    if(pending>0&&delivered>0) alertHtml+='<div class="msg in" style="margin-bottom:6px">🚚 '+delivered+' of '+totalOrders+' deliveries done. '+pending+' remaining.</div>';
+    if(noDriver>0) alertHtml+='<div class="msg warn" style="margin-bottom:6px">⚠️ '+noDriver+' order'+(noDriver>1?'s have':' has')+' no driver — go to Queue tab.</div>';
+    if(pending>0)  alertHtml+='<div class="msg in"   style="margin-bottom:6px">🚚 '+delivered+' of '+totalOrders+' delivered · '+pending+' still pending.</div>';
     alerts.innerHTML = alertHtml;
 
     /* ── Tomorrow's customer order pipeline ── */
@@ -1306,15 +1335,31 @@ function loadDashboard(){
     /* ── Issues ── */
     var issueRows = [];
     if(noGroup>0)  issueRows.push('<div class="item-card" style="margin-bottom:8px"><div style="font-size:12px;font-weight:800;color:#7a4800;margin-bottom:6px">📦 '+noGroup+' customer'+(noGroup>1?'s have':' has')+' no product group</div><button class="btn-sm" style="background:#7a4800;color:#fff" onclick="showTab(\'customers\')">Go to Customers →</button></div>');
-    if(noMobile>0) issueRows.push('<div class="item-card" style="margin-bottom:8px"><div style="font-size:12px;font-weight:800;color:#7a4800;margin-bottom:6px">📱 '+noMobile+' customer'+(noMobile>1?'s have':' has')+' no mobile number</div><button class="btn-sm" style="background:#7a4800;color:#fff" onclick="showTab(\'customers\')">Go to Customers →</button></div>');
-    if(noGPS>0)    issueRows.push('<div class="item-card" style="margin-bottom:8px"><div style="font-size:12px;font-weight:800;color:#8a7a6a;margin-bottom:6px">📍 '+noGPS+' customer'+(noGPS>1?'s have':' has')+' no GPS coordinates</div><button class="btn-sm" style="background:#8a7a6a;color:#fff" onclick="showTab(\'gps\')">Go to GPS →</button></div>');
-    if(!issueRows.length) issueRows.push('<div class="msg ok">✅ No issues found — all customers have groups, mobiles and GPS.</div>');
+    if(noMobile>0) issueRows.push('<div class="item-card" style="margin-bottom:8px"><div style="font-size:12px;font-weight:800;color:#7a4800;margin-bottom:6px">📱 '+noMobile+' customer'+(noMobile>1?'s have':' has')+' no mobile</div><button class="btn-sm" style="background:#7a4800;color:#fff" onclick="showTab(\'customers\')">Go to Customers →</button></div>');
+    if(noGPS>0)    issueRows.push('<div class="item-card" style="margin-bottom:8px"><div style="font-size:12px;font-weight:800;color:#8a7a6a;margin-bottom:6px">📍 '+noGPS+' customer'+(noGPS>1?'s have':' has')+' no GPS</div><button class="btn-sm" style="background:#8a7a6a;color:#fff" onclick="showTab(\'gps\')">Go to GPS →</button></div>');
+    if(!issueRows.length) issueRows.push('<div class="msg ok">✅ No issues — all customers have groups, mobiles and GPS.</div>');
     issues.innerHTML = issueRows.join('');
 
   }).catch(function(e){
-    stats.innerHTML='<div class="msg er" style="grid-column:1/-1">Failed to load dashboard.</div>';
+    if(stats) stats.innerHTML='<div class="msg er" style="grid-column:1/-1">Failed to load dashboard.</div>';
     window.logError('admin', 'loadDashboard', e);
   });
+}
+
+/* ── DASHBOARD NAV HELPERS ── */
+function dashGoOrders(){
+  dashGoDelivery('all');
+}
+function dashGoRoutes(){
+  var el = document.getElementById('f-rt-date');
+  if(el && _dashDelivDate) el.value = _dashDelivDate;
+  showTab('routes');
+}
+function dashGoDelivery(filter){
+  var el = document.getElementById('f-del-date');
+  if(el && _dashDelivDate) el.value = _dashDelivDate;
+  _delivFilter = filter || 'all';
+  showTab('delivery');
 }
 
 /* ── CUSTOMER MASTER (replaces allShops) ──
@@ -1972,6 +2017,7 @@ function getCat(name, prodMap){
 }
 
 var _lastSummaryData = [];
+var _dashDelivDate = '';
 
 /* Parse items+qty string into {itemName:qty} — module level so printSummary can use it */
 function parseIQ(o){
