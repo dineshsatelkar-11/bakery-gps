@@ -24,8 +24,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;
 .tbtn{background:rgba(255,255,255,.2);border:none;color:#fff;padding:6px 11px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif;text-decoration:none;display:inline-block}
 .tabs{display:flex;background:#fff;border-bottom:2px solid #e8dfd2;position:sticky;top:53px;z-index:98;overflow-x:auto;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
-.tab{flex:none;padding:11px 10px;border:none;background:none;font-size:10px;font-weight:700;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap}
+.tab{flex:1;padding:11px 6px;border:none;background:none;font-size:10px;font-weight:700;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;text-align:center}
 .tab.on{color:#4a2f14;border-bottom-color:#4a2f14}
+#subTabs{display:none;background:#f5ede0;border-bottom:1.5px solid #e8dfd2;position:sticky;top:96px;z-index:97;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+#subTabs::-webkit-scrollbar{display:none}
+.sub-tab{flex:none;padding:7px 14px;border:none;background:none;font-size:11px;font-weight:700;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;border-bottom:2.5px solid transparent;margin-bottom:-1.5px;white-space:nowrap}
+.sub-tab.on{color:#4a2f14;border-bottom-color:#4a2f14;background:rgba(74,47,20,.06)}
 .page{display:none;padding:12px 14px 80px}.page.on{display:block}
 .card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:14px;margin-bottom:10px}
 .lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:8px;text-transform:uppercase}
@@ -124,25 +128,14 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   </div>
 </div>
 <div class="tabs">
-  <button class="tab on" id="tb-dashboard"   onclick="showTab('dashboard')">🏠 Dashboard</button>
-  <button class="tab"    id="tb-orders"      onclick="showTab('orders')">📋 Orders</button>
-  <button class="tab"    id="tb-cust-orders"   onclick="showTab('cust-orders')">🛒 Cust Orders</button>
-  <button class="tab"    id="tb-manual-order"  onclick="showTab('manual-order')">📝 Manual Order</button>
-  <button class="tab"    id="tb-approve"     onclick="showTab('approve')">⏳ New</button>
-  <button class="tab"    id="tb-queue"       onclick="showTab('queue')">⚠️ Queue</button>
-  <button class="tab"    id="tb-summary"     onclick="showTab('summary')">📊 Summary</button>
-  <button class="tab"    id="tb-delivery"    onclick="showTab('delivery')">🚚 Delivery</button>
-  <button class="tab"    id="tb-routes"      onclick="showTab('routes')">🗺 Routes</button>
-  <button class="tab"    id="tb-customers"   onclick="showTab('customers')">🏪 Customers</button>
-  <button class="tab"    id="tb-products"    onclick="showTab('products')">📦 Products</button>
-  <button class="tab"    id="tb-groups"     onclick="showTab('groups')">🏷 Groups</button>
-  <button class="tab"    id="tb-drivers"    onclick="showTab('drivers')">🚗 Drivers</button>
-  <button class="tab"    id="tb-users"     onclick="showTab('users')">👥 Users</button>
-  <button class="tab"    id="tb-gps"       onclick="showTab('gps')">📍 GPS</button>
-  <button class="tab"    id="tb-notify"    onclick="showTab('notify')">🔔 Notify</button>
-  <button class="tab"    id="tb-cleanup"   onclick="showTab('cleanup')">🗑 Cleanup</button>
-  <button class="tab"    id="tb-audit"     onclick="showTab('audit')">🔍 Trip Audit</button>
+  <button class="tab on" id="mtb-home"      onclick="showGroup('home')">🏠 Home</button>
+  <button class="tab"    id="mtb-orders"    onclick="showGroup('orders')">📋 Orders</button>
+  <button class="tab"    id="mtb-delivery"  onclick="showGroup('delivery')">🚚 Delivery</button>
+  <button class="tab"    id="mtb-customers" onclick="showGroup('customers')">🏪 Customers</button>
+  <button class="tab"    id="mtb-manage"    onclick="showGroup('manage')">⚙️ Manage</button>
+  <button class="tab"    id="mtb-notify"    onclick="showGroup('notify')">🔔 Notify</button>
 </div>
+<div id="subTabs" style="display:flex"></div>
 
 <!-- DASHBOARD -->
 <div class="page" id="pg-dashboard">
@@ -1160,11 +1153,11 @@ var _allowedTabs = _staffRole === 'super_admin' ? null : JSON.parse(sessionStora
 
 (function(){var r=sessionStorage.getItem('role');if(['super_admin','admin','assistant','chef','packer','teapost_head'].indexOf(r)<0)goto('');if(r==='teapost_head')goto('teapost-head');})();
 
+var _visibleTabs = {}; // tab key → true if this role can see it
+
 function initTabVisibility(){
   var allTabKeys = ['dashboard','orders','approve','queue','summary','delivery','routes','customers','cust-orders','manual-order','products','groups','drivers','gps','users','notify','cleanup','audit'];
   allTabKeys.forEach(function(t){
-    var btn = document.getElementById('tb-'+t);
-    if(!btn) return;
     var show;
     if(t === 'users' || t === 'cleanup' || t === 'audit') {
       show = (_staffRole === 'super_admin');
@@ -1173,13 +1166,19 @@ function initTabVisibility(){
     } else if(t === 'dashboard') {
       show = (_staffRole === 'super_admin' || _staffRole === 'admin' || _staffRole === 'assistant');
     } else if(_allowedTabs === null) {
-      show = true; // super_admin sees all
+      show = true;
     } else if(t === 'cust-orders' || t === 'groups') {
       show = (_staffRole === 'admin' || _staffRole === 'assistant') || (_allowedTabs.indexOf(t) >= 0);
     } else {
       show = (_allowedTabs.indexOf(t) >= 0);
     }
-    btn.style.display = show ? '' : 'none';
+    _visibleTabs[t] = !!show;
+  });
+  // Hide group tabs where none of their sub-tabs are visible
+  Object.keys(GROUP_MAP).forEach(function(g){
+    var anyVisible = GROUP_MAP[g].some(function(item){ return _visibleTabs[item.key]; });
+    var btn = document.getElementById('mtb-'+g);
+    if(btn) btn.style.display = anyVisible ? '' : 'none';
   });
   // Show topbar name
   var sub = document.getElementById('topDate');
@@ -1280,12 +1279,60 @@ document.getElementById('logoutBtn').onclick=function(){
   goto('');
 };
 
-/* ── TAB SWITCHER ── */
+/* ── GROUP + SUB-TAB NAVIGATION ── */
+var GROUP_MAP = {
+  home:      [{key:'dashboard',   label:'🏠 Dashboard'}],
+  orders:    [{key:'orders',      label:'📋 Orders'},
+              {key:'cust-orders', label:'🛒 Cust Orders'},
+              {key:'manual-order',label:'📝 Manual'},
+              {key:'approve',     label:'⏳ New'},
+              {key:'queue',       label:'⚠️ Queue'},
+              {key:'summary',     label:'📊 Summary'}],
+  delivery:  [{key:'delivery',    label:'🚚 Delivery'},
+              {key:'routes',      label:'🗺 Routes'},
+              {key:'gps',         label:'📍 GPS'},
+              {key:'audit',       label:'🔍 Audit'}],
+  customers: [{key:'customers',   label:'🏪 Customers'}],
+  manage:    [{key:'products',    label:'📦 Products'},
+              {key:'groups',      label:'🏷 Groups'},
+              {key:'drivers',     label:'🚗 Drivers'},
+              {key:'users',       label:'👥 Users'},
+              {key:'cleanup',     label:'🗑 Cleanup'}],
+  notify:    [{key:'notify',      label:'🔔 Notify'}]
+};
+var TAB_TO_GROUP = {};
+Object.keys(GROUP_MAP).forEach(function(g){
+  GROUP_MAP[g].forEach(function(item){ TAB_TO_GROUP[item.key] = g; });
+});
+
+function showGroup(group){
+  var items = GROUP_MAP[group] || GROUP_MAP.home;
+  var first = items.find(function(item){ return _visibleTabs[item.key] !== false; });
+  if(first) showTab(first.key);
+}
+
 function showTab(t){
   ['dashboard','orders','approve','queue','summary','delivery','routes','customers','cust-orders','manual-order','products','groups','drivers','gps','users','notify','cleanup','audit'].forEach(function(x){
     var pg=document.getElementById('pg-'+x); if(pg) pg.classList.toggle('on',x===t);
-    var tb=document.getElementById('tb-'+x); if(tb) tb.classList.toggle('on',x===t);
   });
+  // Highlight active group tab
+  var group = TAB_TO_GROUP[t] || 'home';
+  ['home','orders','delivery','customers','manage','notify'].forEach(function(g){
+    var el=document.getElementById('mtb-'+g); if(el) el.classList.toggle('on',g===group);
+  });
+  // Build sub-tabs for this group
+  var subEl   = document.getElementById('subTabs');
+  var allItems = GROUP_MAP[group] || [];
+  var items    = allItems.filter(function(item){ return _visibleTabs[item.key] !== false; });
+  if(items.length > 1){
+    subEl.style.display = 'flex';
+    subEl.innerHTML = items.map(function(item){
+      return '<button class="sub-tab'+(item.key===t?' on':'')+'" onclick="showTab(\''+item.key+'\')">'+item.label+'</button>';
+    }).join('');
+  } else {
+    subEl.style.display = 'none';
+    subEl.innerHTML = '';
+  }
   if(t==='dashboard')    loadDashboard();
   if(t==='summary')      { document.getElementById('f-sum-date').value=tomorrowStr(); loadSummary(); }
   if(t==='delivery')     setLatestDate('f-del-date','deliveries',document.getElementById('f-del-driver').value,loadDeliveries);
@@ -5766,11 +5813,6 @@ loadGroups();        // cache product groups for selects
   var first;
   if(_allowedTabs === null){ first='dashboard'; }
   else { first = _allowedTabs.length ? _allowedTabs[0] : 'summary'; }
-  // Hide all pages, then show the right one
-  ['dashboard','orders','approve','queue','summary','delivery','routes','customers','cust-orders','manual-order','products','groups','drivers','gps','users','notify','cleanup','audit'].forEach(function(t){
-    var pg=document.getElementById('pg-'+t);if(pg)pg.classList.remove('on');
-    var tb=document.getElementById('tb-'+t);if(tb)tb.classList.remove('on');
-  });
   showTab(first);
 })();
 </script>
