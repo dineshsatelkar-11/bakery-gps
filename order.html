@@ -351,15 +351,29 @@ function enablePushNotifs(){
 
 function reRegisterPush(){
   var btn = document.getElementById('reRegisterBtn');
-  if(btn){ btn.disabled=true; btn.textContent='⏳ Registering…'; }
-  if(!('serviceWorker' in navigator) || !('PushManager' in window)){
+  if(btn){ btn.disabled=true; btn.textContent='⏳ Step 1: Checking browser…'; }
+
+  if(!('serviceWorker' in navigator)){
     if(btn){ btn.disabled=false; btn.textContent='🔄 Re-register Push'; }
-    alert('Push not supported in this browser.');
+    alert('❌ Step 1 failed: Service Worker not supported in this browser.');
     return;
   }
+  if(!('PushManager' in window)){
+    if(btn){ btn.disabled=false; btn.textContent='🔄 Re-register Push'; }
+    alert('❌ Step 1 failed: Push notifications not supported in this browser.');
+    return;
+  }
+  if(!CONFIG.VAPID_PUBLIC_KEY || CONFIG.VAPID_PUBLIC_KEY === 'YOUR_VAPID_PUBLIC_KEY_HERE'){
+    if(btn){ btn.disabled=false; btn.textContent='🔄 Re-register Push'; }
+    alert('❌ Step 1 failed: VAPID public key not set in config.js.');
+    return;
+  }
+
+  if(btn) btn.textContent='⏳ Step 2: Getting service worker…';
   navigator.serviceWorker.ready.then(function(reg){
-    // Unsubscribe existing then re-subscribe fresh
-    return reg.pushManager.getSubscription().then(function(s){ return s ? s.unsubscribe() : true; })
+    if(btn) btn.textContent='⏳ Step 3: Subscribing to push…';
+    return reg.pushManager.getSubscription()
+      .then(function(s){ return s ? s.unsubscribe() : true; })
       .then(function(){
         return reg.pushManager.subscribe({
           userVisibleOnly: true,
@@ -367,6 +381,7 @@ function reRegisterPush(){
         });
       });
   }).then(function(sub){
+    if(btn) btn.textContent='⏳ Step 4: Saving to database…';
     var j = sub.toJSON();
     return apiPost({
       action:   'savePushSubscription',
@@ -375,14 +390,15 @@ function reRegisterPush(){
       p256dh:   j.keys.p256dh,
       auth:     j.keys.auth
     }).then(function(res){
-      if(!res || !res.ok) throw new Error('DB save failed: ' + (res && res.error ? res.error : 'table may not exist'));
+      if(!res || !res.ok) throw new Error('DB save failed: ' + (res && res.error ? res.error : 'unknown'));
     });
   }).then(function(){
     if(btn){ btn.disabled=false; btn.textContent='✅ Registered!'; }
+    alert('✅ Push registered successfully! You will now receive notifications even when the app is closed.');
     setTimeout(function(){ renderNotifSettings(); }, 1500);
   }).catch(function(e){
     if(btn){ btn.disabled=false; btn.textContent='🔄 Re-register Push'; }
-    alert('Push registration failed:\n' + (e && e.message ? e.message : String(e)));
+    alert('❌ Failed at: ' + (btn ? btn.textContent : '?') + '\n\nError: ' + (e && e.message ? e.message : String(e)));
   });
 }
 
