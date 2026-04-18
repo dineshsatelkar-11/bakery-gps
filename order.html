@@ -224,6 +224,11 @@ textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:1
 </div>
 
 <script>
+// ── SERVICE WORKER (register here too in case APK skips index.html) ──
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function() {});
+}
+
 // ── SESSION STATE ──
 var session = null; // { shop_id, shop_name, mobile, product_group_ids[] }
 var products = [];  // active products for this customer's group
@@ -369,13 +374,15 @@ function reRegisterPush(){
       endpoint: sub.endpoint,
       p256dh:   j.keys.p256dh,
       auth:     j.keys.auth
+    }).then(function(res){
+      if(!res || !res.ok) throw new Error('DB save failed: ' + (res && res.error ? res.error : 'table may not exist'));
     });
   }).then(function(){
-    if(btn){ btn.disabled=false; btn.textContent='✅ Done!'; }
+    if(btn){ btn.disabled=false; btn.textContent='✅ Registered!'; }
     setTimeout(function(){ renderNotifSettings(); }, 1500);
   }).catch(function(e){
     if(btn){ btn.disabled=false; btn.textContent='🔄 Re-register Push'; }
-    alert('Failed: ' + (e && e.message ? e.message : 'unknown error'));
+    alert('Push registration failed:\n' + (e && e.message ? e.message : String(e)));
   });
 }
 

@@ -28,14 +28,15 @@ button{background:#c8a020;color:#1a1008;border:none;padding:14px 28px;border-rad
 <script>
 async function generate(){
   var kp = await crypto.subtle.generateKey({name:'ECDH',namedCurve:'P-256'},true,['deriveKey']);
-  var pub  = await crypto.subtle.exportKey('raw', kp.publicKey);
-  var priv = await crypto.subtle.exportKey('pkcs8', kp.privateKey);
+  var pub = await crypto.subtle.exportKey('raw', kp.publicKey);
+  // web-push needs the raw private scalar (the 'd' field from JWK), not PKCS8
+  var privJwk = await crypto.subtle.exportKey('jwk', kp.privateKey);
   function b64u(buf){
     return btoa(String.fromCharCode(...new Uint8Array(buf)))
       .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
   }
   document.getElementById('pub').value  = b64u(pub);
-  document.getElementById('priv').value = b64u(priv);
+  document.getElementById('priv').value = privJwk.d; // already base64url
   document.getElementById('output').style.display = 'block';
 }
 </script>
