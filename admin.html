@@ -464,26 +464,7 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
     </select>
   </div>
   <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
-    <button class="btn-sm" id="cust-select-btn" style="background:#e8f5e9;color:#2d7a4f;border:1.5px solid #a5d6a7;font-weight:800" onclick="toggleCustSelectMode()">☑ Select for Group Edit</button>
-  </div>
-  <!-- Bulk Group Edit bar -->
-  <div id="cust-bulk-bar" style="display:none;background:#f0faf4;border:1.5px solid #a5d6a7;border-radius:12px;padding:12px;margin-bottom:10px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <div style="font-size:10px;font-weight:800;color:#1a5a38;font-family:monospace">📦 BULK GROUP EDIT — <span id="cust-bulk-count">0</span> selected</div>
-      <button class="btn-sm btn-grey" onclick="clearCustSelection()" style="font-size:10px;padding:4px 8px">✕ Clear</button>
-    </div>
-    <div style="font-size:10px;font-weight:700;color:#4a2f14;margin-bottom:6px;font-family:monospace">Assign Groups:</div>
-    <div id="cust-bulk-group-list" style="border:1.5px solid #e8dfd2;border-radius:10px;max-height:130px;overflow-y:auto;background:#fff;margin-bottom:8px"></div>
-    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
-      <label style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:#4a2f14;cursor:pointer">
-        <input type="radio" name="cust-bulk-mode" value="replace" checked style="accent-color:#2d7a4f"> Replace existing groups
-      </label>
-      <label style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:#4a2f14;cursor:pointer">
-        <input type="radio" name="cust-bulk-mode" value="add" style="accent-color:#2d7a4f"> Add to existing groups
-      </label>
-    </div>
-    <button class="btn-sm" style="background:#2d7a4f;color:#fff;width:100%;padding:9px" onclick="applyBulkGroupEdit()">✅ Apply to Selected Customers</button>
-    <div id="cust-bulk-msg" style="display:none;margin-top:8px" class="msg ok"></div>
+    <button class="btn-sm" style="background:#e8f5e9;color:#2d7a4f;border:1.5px solid #a5d6a7;font-weight:800" onclick="openGroupAssignModal()">📋 Assign Groups</button>
   </div>
 
   <!-- Zoho sync bar — shown only when Zoho enabled & admin/super_admin -->
@@ -809,6 +790,25 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
 
 
 <!-- CUSTOMER LOGINS MODAL -->
+<!-- Group Assign Modal -->
+<div class="modal-bg" id="groupAssignModal" style="display:none" onclick="if(event.target===this)closeGroupAssignModal()">
+  <div class="modal" style="max-width:520px;width:96%;max-height:90vh;display:flex;flex-direction:column">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-shrink:0">
+      <div>
+        <div class="modal-title" style="margin-bottom:0">📋 Assign Groups to Customers</div>
+        <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px">Set a group for each customer, then tap Save All</div>
+      </div>
+      <button onclick="closeGroupAssignModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#8a7a6a;padding:0 4px">✖</button>
+    </div>
+    <input type="text" id="ga-search" placeholder="🔍 Search customer…" oninput="renderGAList()" style="margin-bottom:10px;flex-shrink:0">
+    <div id="ga-list" style="flex:1;overflow-y:auto;border:1.5px solid #e8dfd2;border-radius:10px;background:#fafaf8;margin-bottom:12px"></div>
+    <div style="flex-shrink:0">
+      <button class="btn" style="background:#2d7a4f;color:#fff;margin-bottom:0;padding:13px" onclick="saveAllGroupAssign()">💾 Save All Changes</button>
+      <div id="ga-msg" style="display:none;margin-top:8px" class="msg ok"></div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="custLoginsModal" style="display:none" onclick="if(event.target===this)closeCustLoginsModal()">
   <div class="modal">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
@@ -2634,106 +2634,104 @@ function renderRoutes(){
 }
 
 /* ── CUSTOMERS TAB ── */
-var _custExtraFilter  = ''; // 'nogroup' | 'nomobile' | ''
-var _custSelectMode   = false;
+var _custExtraFilter = ''; // 'nogroup' | 'nomobile' | ''
 
-function toggleCustSelectMode(){
-  _custSelectMode = !_custSelectMode;
-  var btn = document.getElementById('cust-select-btn');
-  if(btn){
-    btn.style.background  = _custSelectMode ? '#2d7a4f' : '#e8f5e9';
-    btn.style.color       = _custSelectMode ? '#fff'    : '#2d7a4f';
-    btn.textContent       = _custSelectMode ? '✕ Cancel Selection' : '☑ Select for Group Edit';
-  }
-  if(!_custSelectMode){
-    clearCustSelection();
-  } else {
-    // Populate group checkboxes in bulk bar
-    _renderCustBulkGroupList();
-  }
-  renderCustomers();
+/* ── GROUP ASSIGN MODAL ── */
+var _gaCustomers = []; // snapshot of allCustomers when modal opens
+var _gaPendingChanges = {}; // cid → [groupId, ...]
+
+function openGroupAssignModal(){
+  var loadGroups = allGroups.length ? Promise.resolve(allGroups)
+    : api({action:'getProductGroups'}).then(function(g){ allGroups=Array.isArray(g)?g:[]; return allGroups; });
+  var loadCusts = loadCustomerMaster();
+  Promise.all([loadGroups, loadCusts]).then(function(){
+    _gaCustomers = allCustomers.slice();
+    _gaPendingChanges = {};
+    document.getElementById('ga-search').value = '';
+    document.getElementById('ga-msg').style.display = 'none';
+    renderGAList();
+    document.getElementById('groupAssignModal').style.display = 'flex';
+  });
 }
 
-function _renderCustBulkGroupList(){
-  var el = document.getElementById('cust-bulk-group-list');
-  if(!el) return;
-  if(!allGroups.length){
-    el.innerHTML='<div style="padding:10px;font-size:11px;color:#8a7a6a;font-family:monospace">No groups yet.</div>';
-    return;
-  }
-  el.innerHTML = allGroups.map(function(g){
-    return '<label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid #f0e8dc;cursor:pointer">'
-      +'<input type="checkbox" class="cust-bulk-grp-cb" value="'+g.id+'" style="width:15px;height:15px;accent-color:#2d7a4f;flex-shrink:0">'
-      +'<span style="font-size:13px;font-weight:700;color:#1e1611">'+esc(g.name)+'</span>'
-      +'</label>';
+function closeGroupAssignModal(){
+  document.getElementById('groupAssignModal').style.display = 'none';
+  _gaPendingChanges = {};
+}
+
+function renderGAList(){
+  var q = (document.getElementById('ga-search').value || '').toLowerCase();
+  var list = q ? _gaCustomers.filter(function(c){ return (c.name||'').toLowerCase().indexOf(q) >= 0 || (c.area||'').toLowerCase().indexOf(q) >= 0; }) : _gaCustomers;
+  var el = document.getElementById('ga-list');
+  if(!list.length){ el.innerHTML='<div style="padding:16px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">No customers found.</div>'; return; }
+
+  var groupOpts = '<option value="">— No group —</option>' + allGroups.map(function(g){
+    return '<option value="'+g.id+'">'+esc(g.name)+'</option>';
+  }).join('');
+
+  el.innerHTML = list.map(function(c){
+    var cid = String(c.customer_id || c.shop_id || '');
+    // Current group: use pending change if already modified, else existing
+    var currentGids = _gaPendingChanges.hasOwnProperty(cid)
+      ? _gaPendingChanges[cid]
+      : (Array.isArray(c.product_group_ids) ? c.product_group_ids.map(Number) : (c.product_group_id ? [Number(c.product_group_id)] : []));
+    var firstGid = currentGids.length ? currentGids[0] : '';
+    var changed = _gaPendingChanges.hasOwnProperty(cid);
+
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #f0e8de;background:'+(changed?'#f0faf4':'#fff')+'">'
+      +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:13px;font-weight:800;color:#4a2f14;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(c.name)+'</div>'
+        +(c.area ? '<div style="font-size:10px;color:#8a7a6a;font-family:monospace">'+esc(c.area)+'</div>' : '')
+      +'</div>'
+      +'<select data-cid="'+cid+'" onchange="gaOnChange(this)" style="flex-shrink:0;width:140px;font-size:12px;padding:7px 8px;border:1.5px solid '+(changed?'#a5d6a7':'#e8dfd2')+';border-radius:8px;background:#fff;font-weight:700;color:#4a2f14">'
+        + groupOpts.replace('value="'+firstGid+'"', 'value="'+firstGid+'" selected')
+      +'</select>'
+    +'</div>';
   }).join('');
 }
 
-function _updateCustBulkBar(){
-  var checked = document.querySelectorAll('.cust-sel-cb:checked').length;
-  document.getElementById('cust-bulk-count').textContent = checked;
-  document.getElementById('cust-bulk-bar').style.display = (_custSelectMode && checked > 0) ? 'block' : 'none';
-  document.getElementById('cust-bulk-msg').style.display = 'none';
+function gaOnChange(sel){
+  var cid = sel.getAttribute('data-cid');
+  var gid = sel.value ? [parseInt(sel.value)] : [];
+  _gaPendingChanges[cid] = gid;
+  // Highlight the row
+  sel.style.borderColor = '#a5d6a7';
+  sel.closest('div').style.background = '#f0faf4';
 }
 
-function clearCustSelection(){
-  document.querySelectorAll('.cust-sel-cb').forEach(function(cb){ cb.checked = false; });
-  _updateCustBulkBar();
-}
+function saveAllGroupAssign(){
+  var cids = Object.keys(_gaPendingChanges);
+  if(!cids.length){ alert('No changes to save.'); return; }
+  var btn = document.querySelector('#groupAssignModal .btn');
+  var msg = document.getElementById('ga-msg');
+  btn.disabled = true; btn.textContent = '⏳ Saving…'; msg.style.display = 'none';
 
-function applyBulkGroupEdit(){
-  var selectedIds = [].slice.call(document.querySelectorAll('.cust-sel-cb:checked')).map(function(cb){ return cb.value; });
-  if(!selectedIds.length){ alert('Select at least one customer.'); return; }
-
-  var groupIds = [].slice.call(document.querySelectorAll('.cust-bulk-grp-cb:checked')).map(function(cb){ return parseInt(cb.value); });
-  var mode = document.querySelector('input[name="cust-bulk-mode"]:checked');
-  var isAdd = mode && mode.value === 'add';
-
-  var msg = document.getElementById('cust-bulk-msg');
-  msg.style.display = 'none';
-
-  // Build per-customer ops
-  var ops = selectedIds.map(function(cid){
-    var finalIds = groupIds;
-    if(isAdd){
-      // Merge with existing groups
-      var cust = allCustomers.find(function(c){ return String(c.customer_id||c.shop_id) === String(cid); });
-      var existing = Array.isArray(cust && cust.product_group_ids) ? cust.product_group_ids.map(Number) : [];
-      var merged = existing.slice();
-      groupIds.forEach(function(id){ if(merged.indexOf(id) < 0) merged.push(id); });
-      finalIds = merged;
-    }
-    return apiPost({action:'updateShopLogin', shop_id:cid, product_group_ids:finalIds});
+  var ops = cids.map(function(cid){
+    return apiPost({action:'updateShopLogin', shop_id:cid, product_group_ids:_gaPendingChanges[cid]});
   });
 
   Promise.all(ops).then(function(){
-    // Update allCustomers in memory
-    selectedIds.forEach(function(cid){
-      var cust = allCustomers.find(function(c){ return String(c.customer_id||c.shop_id) === String(cid); });
-      if(cust){
-        var finalIds = groupIds;
-        if(isAdd){
-          var existing = Array.isArray(cust.product_group_ids) ? cust.product_group_ids.map(Number) : [];
-          var merged = existing.slice();
-          groupIds.forEach(function(id){ if(merged.indexOf(id) < 0) merged.push(id); });
-          finalIds = merged;
-        }
-        cust.product_group_ids = finalIds;
-        if(finalIds.length){ cust.product_group_id = finalIds[0]; }
+    // Update in-memory allCustomers
+    cids.forEach(function(cid){
+      var c = allCustomers.find(function(x){ return String(x.customer_id||x.shop_id) === cid; });
+      if(c){
+        c.product_group_ids = _gaPendingChanges[cid];
+        c.product_group_id  = _gaPendingChanges[cid][0] || null;
       }
     });
+    _gaPendingChanges = {};
+    btn.disabled = false; btn.textContent = '💾 Save All Changes';
     msg.className = 'msg ok';
-    msg.textContent = '✅ Groups updated for '+selectedIds.length+' customer'+(selectedIds.length>1?'s':'')+'.';
+    msg.textContent = '✅ Saved '+cids.length+' customer'+(cids.length>1?'s':'')+' successfully.';
     msg.style.display = 'block';
-    // Clear selection and re-render stats
-    clearCustSelection();
-    renderCustStats();
-    renderCustomers();
+    renderCustStats(); renderCustomers();
+    renderGAList();   // reset highlights
   }).catch(function(e){
+    btn.disabled = false; btn.textContent = '💾 Save All Changes';
     msg.className = 'msg er';
-    msg.textContent = '❌ Failed to update. Please try again.';
+    msg.textContent = '❌ Save failed. Please try again.';
     msg.style.display = 'block';
-    window.logError('admin', 'applyBulkGroupEdit', e);
+    window.logError('admin', 'saveAllGroupAssign', e);
   });
 }
 
@@ -2798,13 +2796,9 @@ function renderCustomers(){
             }).join('')
           +'</div>'
       : '<div style="font-size:10px;color:#c8382a;font-family:monospace;margin-bottom:6px;font-style:italic">No group assigned</div>';
-    return '<div class="item-card" style="position:relative;'+ (_custSelectMode?'cursor:pointer;':'')+'" '
-        +(_custSelectMode ? 'onclick="var cb=this.querySelector(\'.cust-sel-cb\');cb.checked=!cb.checked;_updateCustBulkBar()"' : '') +'>'+
-      (_custSelectMode
-        ? '<input type="checkbox" class="cust-sel-cb" value="'+esc(cid)+'" onclick="event.stopPropagation();_updateCustBulkBar()" style="position:absolute;top:12px;right:12px;width:18px;height:18px;accent-color:#2d7a4f;cursor:pointer">'
-        : '')+
+    return '<div class="item-card" style="position:relative">'+
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">'+
-        '<div style="font-size:14px;font-weight:800;color:#4a2f14;flex:1;margin-right:'+ (_custSelectMode?'30':'6') +'px">'+esc(c.name)+'</div>'+
+        '<div style="font-size:14px;font-weight:800;color:#4a2f14;flex:1;margin-right:6px">'+esc(c.name)+'</div>'+
         '<span class="badge '+(c.lat?'b-ok':'b-warn')+'">'+(c.lat?'✅ GPS':'⚠ No GPS')+'</span>'+
       '</div>'+
       '<div style="margin-bottom:6px">'+
@@ -2820,15 +2814,13 @@ function renderCustomers(){
         (c.flag?'<div style="color:#7a4800">🏷 '+esc(c.flag)+'</div>':'')+
         (c.last_updated_at?'<div style="color:#b0a090;font-size:10px">Updated '+esc(c.last_updated_at)+(c.last_updated_by?' by '+esc(c.last_updated_by):'')+'</div>':'')+
       '</div>'+
-      (!_custSelectMode
-        ? '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
-            '<button class="btn-sm btn-edit" onclick=\'openEditCustomer('+esc(JSON.stringify(c))+')\'>✏️ Edit</button>'+
-            '<button class="btn-sm btn-del" onclick="delCustomer(\''+esc(cid)+'\',\''+esc(c.name)+'\')">🗑 Delete</button>'+
-            (c.lat?'<a href="https://www.google.com/maps?q='+c.lat+','+c.lng+'" target="_blank" class="btn-sm" style="background:#e3f2fd;color:#1565c0;text-decoration:none">🗺 Map</a>':'')+
-            (_zohoEnabled?'<button class="btn-sm" style="background:#fff8e1;border:1.5px solid #ffe082;color:#7a4800" onclick="zohoSyncCustomer(\''+esc(cid)+'\',\''+esc(c.name)+'\')">🔗 Zoho</button>':'')+
-          '</div>'
-        : '<div style="font-size:11px;font-family:monospace;color:#2d7a4f;font-weight:700">Tap to select / deselect</div>')+
-      (_zohoEnabled&&!_custSelectMode?'<input type="checkbox" class="zoho-cust-cb" value="'+esc(cid)+'" data-name="'+esc(c.name)+'" onchange="zohoUpdateCustCount()" style="position:absolute;top:10px;right:10px;width:16px;height:16px;accent-color:#c8864a">':'')+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+        '<button class="btn-sm btn-edit" onclick=\'openEditCustomer('+esc(JSON.stringify(c))+')\'>✏️ Edit</button>'+
+        '<button class="btn-sm btn-del" onclick="delCustomer(\''+esc(cid)+'\',\''+esc(c.name)+'\')">🗑 Delete</button>'+
+        (c.lat?'<a href="https://www.google.com/maps?q='+c.lat+','+c.lng+'" target="_blank" class="btn-sm" style="background:#e3f2fd;color:#1565c0;text-decoration:none">🗺 Map</a>':'')+
+        (_zohoEnabled?'<button class="btn-sm" style="background:#fff8e1;border:1.5px solid #ffe082;color:#7a4800" onclick="zohoSyncCustomer(\''+esc(cid)+'\',\''+esc(c.name)+'\')">🔗 Zoho</button>':'')+
+      '</div>'+
+      (_zohoEnabled?'<input type="checkbox" class="zoho-cust-cb" value="'+esc(cid)+'" data-name="'+esc(c.name)+'" onchange="zohoUpdateCustCount()" style="position:absolute;top:10px;right:10px;width:16px;height:16px;accent-color:#c8864a">':'')+
     '</div>';
   }).join('');
   // show/hide zoho bar
