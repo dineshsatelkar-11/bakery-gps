@@ -2034,7 +2034,7 @@ function rejectFromList(i){newCustQueue.splice(i,1);renderApproveQueue();}
 function loadQueue(){
   var el=document.getElementById('queueList');
   el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
-  api({action:'getOrders',driver:LOGISTICS,date:document.getElementById('f-ord-date').value||todayStr()})
+  api({action:'getQueueOrders',date:document.getElementById('f-ord-date').value||todayStr()})
   .then(function(data){
     var stats=document.getElementById('queueStats');
     if(!Array.isArray(data)||!data.length){

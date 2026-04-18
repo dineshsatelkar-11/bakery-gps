@@ -132,6 +132,16 @@
         return sbGet('orders', where, 'shop_name');
       }
 
+      // Queue: fetch all unassigned orders — driver null, empty, or any "logistic*" variant
+      case 'getQueueOrders': {
+        var url = BASE + '/orders?date=eq.' + encodeURIComponent(p.date) +
+          '&or=(driver.is.null,driver.eq.,driver.ilike.logistic*)' +
+          '&order=shop_name';
+        return fetch(url, { headers: hdrs() })
+          .then(function(r){ return r.ok ? r.json() : []; })
+          .catch(function(){ return []; });
+      }
+
       case 'checkDcNums': {
         // Returns existing dc_num values from the given list so caller can skip duplicates
         var inList = p.dc_nums.map(function(n){ return encodeURIComponent(n); }).join(',');
