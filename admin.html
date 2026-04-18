@@ -162,10 +162,9 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
     <div class="stats-grid" id="dash-tp-stats"></div>
   </div>
 
-  <!-- Tomorrow customer order pipeline -->
+  <!-- Tomorrow customer order pipeline — counts only -->
   <div style="font-size:10px;font-weight:800;color:#8a7a6a;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Tomorrow's Orders Pipeline</div>
-  <div class="stats-grid" id="dash-tmr-stats" style="grid-template-columns:repeat(3,1fr);margin-bottom:8px"></div>
-  <div id="dash-tmr-list" style="margin-bottom:14px"></div>
+  <div class="stats-grid" id="dash-tmr-stats" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px"></div>
 
   <!-- Tomorrow's orders — Tea Post row -->
   <div id="dash-tp-tmr-row" style="display:none;margin-bottom:14px">
@@ -1215,11 +1214,10 @@ function loadDashboard(){
   var alerts     = document.getElementById('dash-alerts');
   var issues     = document.getElementById('dash-issues');
   var tmrStats   = document.getElementById('dash-tmr-stats');
-  var tmrList    = document.getElementById('dash-tmr-list');
 
   stats.innerHTML    = '<div style="text-align:center;padding:8px;font-size:11px;color:#8a7a6a;font-family:monospace;grid-column:1/-1">Loading…</div>';
   tmrStats.innerHTML = '<div style="text-align:center;padding:8px;font-size:11px;color:#8a7a6a;font-family:monospace;grid-column:1/-1">Loading…</div>';
-  alerts.innerHTML = ''; issues.innerHTML = ''; tmrList.innerHTML = '';
+  alerts.innerHTML = ''; issues.innerHTML = '';
 
   // Find the most recent date that has orders (could be today or tomorrow)
   api({action:'getLatestDate', table:'orders'}).then(function(latestDate){
@@ -1306,14 +1304,12 @@ function loadDashboard(){
       }
     }
 
-    /* ── Tomorrow's customer order pipeline ── */
+    /* ── Tomorrow's customer order pipeline (counts only, correct statuses) ── */
     var STATUS_CFG = [
-      { key:'pending',   label:'⏳ Pending',   color:'#7a4800', bg:'#fff8e1' },
-      { key:'approved',  label:'✅ Approved',  color:'#1565c0', bg:'#e3f2fd' },
-      { key:'kitchen',   label:'👨‍🍳 Kitchen',   color:'#4a148c', bg:'#f3e8ff' },
-      { key:'packaging', label:'📦 Packaging', color:'#2d7a4f', bg:'#e8f5e9' },
-      { key:'dispatch',  label:'🚚 Dispatch',  color:'#c8382a', bg:'#fde8e8' },
-      { key:'delivered', label:'✔ Delivered',  color:'#4a2f14', bg:'#f5ede0' }
+      { key:'pending',    label:'⏳ Pending',   color:'#7a4800', bg:'#fff8e1' },
+      { key:'approved',   label:'👨‍🍳 Appr/Kitchen', color:'#4a148c', bg:'#f3e8ff' },
+      { key:'packaging',  label:'📦 Packaging', color:'#2d7a4f', bg:'#e8f5e9' },
+      { key:'dispatched', label:'🚚 Dispatched', color:'#c8382a', bg:'#fde8e8' }
     ];
     var counts = {};
     STATUS_CFG.forEach(function(s){ counts[s.key] = 0; });
@@ -1322,39 +1318,17 @@ function loadDashboard(){
       if(counts[st] !== undefined) counts[st]++;
       else counts['pending']++;
     });
-    var total = custOrders.length;
 
-    tmrStats.innerHTML = STATUS_CFG.map(function(s){
-      var n = counts[s.key] || 0;
-      return '<div class="stat" style="background:'+s.bg+';border-color:'+s.color+'20">'
-        +'<div class="stat-n" style="color:'+s.color+';font-size:18px">'+n+'</div>'
-        +'<div class="stat-l" style="font-size:8px">'+s.label+'</div>'
-        +'</div>';
-    }).join('');
-
-    if(!total){
-      tmrList.innerHTML = '<div style="font-size:12px;color:#8a7a6a;font-family:monospace;padding:10px 0">No customer orders placed yet for '+tomorrow+'.</div>';
-    } else {
-      // Group by status, show pending + kitchen as actionable rows
-      var actionable = custOrders.filter(function(o){
-        return ['pending','approved','kitchen','packaging'].indexOf((o.status||'').toLowerCase()) >= 0;
-      });
-      if(actionable.length){
-        tmrList.innerHTML = actionable.slice(0,10).map(function(o){
-          var cfg = STATUS_CFG.find(function(s){return s.key===(o.status||'pending').toLowerCase();}) || STATUS_CFG[0];
-          return '<div class="item-card" style="margin-bottom:6px;padding:10px 12px">'
-            +'<div style="display:flex;justify-content:space-between;align-items:center">'
-              +'<div style="font-size:13px;font-weight:800;color:#4a2f14">'+esc(o.shop_name||'—')+'</div>'
-              +'<span style="font-size:10px;font-weight:800;font-family:monospace;color:'+cfg.color+';background:'+cfg.bg+';padding:2px 8px;border-radius:20px">'+cfg.label+'</span>'
-            +'</div>'
-            +'<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:3px">'+esc(o.items||'—')+'</div>'
-          +'</div>';
+    tmrStats.innerHTML = (custOrders.length === 0
+      ? '<div style="font-size:12px;color:#8a7a6a;font-family:monospace;grid-column:1/-1;padding:8px 0">No customer orders placed yet for '+tomorrow+'.</div>'
+      : STATUS_CFG.map(function(s){
+          var n = counts[s.key] || 0;
+          return '<div class="stat" style="background:'+s.bg+';border-color:'+s.color+'20">'
+            +'<div class="stat-n" style="color:'+s.color+';font-size:18px">'+n+'</div>'
+            +'<div class="stat-l" style="font-size:8px">'+s.label+'</div>'
+            +'</div>';
         }).join('')
-        + (actionable.length > 10 ? '<div style="font-size:11px;font-family:monospace;color:#8a7a6a;padding:6px 0">…and '+(actionable.length-10)+' more — <button class="btn-sm btn-grey" style="font-size:10px;padding:4px 8px" onclick="showTab(\'cust-orders\')">View all →</button></div>' : '');
-      } else {
-        tmrList.innerHTML = '<div class="msg ok" style="font-size:12px">✅ All '+total+' orders are dispatched or delivered.</div>';
-      }
-    }
+    );
 
     /* ── Tea Post counts (tomorrow's orders) ── */
     var tpCustOrders = custOrders.filter(function(o){ return (o.shop_name||'').toLowerCase().indexOf('tea post')>=0; });
