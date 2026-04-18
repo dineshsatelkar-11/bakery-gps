@@ -613,6 +613,11 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
     <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">💬 Send to Specific Customer(s)</div>
     <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:10px;line-height:1.6">Send a private message to specific customers. They will see it as a blue notification banner in their order app.</div>
     <input type="text" id="custNotifSearch" placeholder="🔍 Filter by name or area…" oninput="filterNotifCustomers()" style="margin-bottom:8px;font-size:13px;padding:10px 12px">
+    <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+      <button class="btn-sm" style="background:#e8f5e9;color:#1a5a38;border:1.5px solid #a5d6a7;padding:6px 12px;font-size:11px" onclick="notifSelectAllCustomers()">✅ Select All</button>
+      <button class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1.5px solid #f0b0b0;padding:6px 12px;font-size:11px" onclick="notifSkipOrdered()">⏭ Skip Already Ordered</button>
+      <button class="btn-sm" style="background:#e8dfd2;color:#4a2f14;border:1.5px solid #d0c0aa;padding:6px 12px;font-size:11px" onclick="notifDeselectAll()">✖ Clear</button>
+    </div>
     <div id="custNotifList" style="max-height:220px;overflow-y:auto;border:1.5px solid #e8dfd2;border-radius:10px;margin-bottom:8px;background:#f9f6f1">
       <div style="padding:12px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">Loading customers…</div>
     </div>
@@ -5433,8 +5438,20 @@ function broadcastTemplate(msg){
 }
 
 // ── SEND TO SPECIFIC CUSTOMER(S) ──
+var _notifOrderedIds = {}; // shop_id → true, for customers who already ordered tomorrow
+
 function loadNotifyCustomerList(){
-  loadCustomerMaster().then(function(){
+  var tomorrow = tomorrowStr();
+  Promise.all([
+    loadCustomerMaster(),
+    api({ action:'getOrders', date: tomorrow })
+  ]).then(function(results){
+    var orders = Array.isArray(results[1]) ? results[1] : [];
+    _notifOrderedIds = {};
+    orders.forEach(function(o){
+      var sid = String(o.customer_id || o.shop_id || '');
+      if(sid) _notifOrderedIds[sid] = true;
+    });
     renderNotifCustomerList('');
   });
 }
@@ -5453,12 +5470,18 @@ function renderNotifCustomerList(filter){
     return;
   }
   el.innerHTML = list.map(function(c){
-    return '<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid #f5ede0;cursor:pointer">'+
-      '<input type="checkbox" class="custNotifCheck" value="'+esc(c.shop_id||c.customer_id)+'" data-name="'+esc(c.name)+'" style="width:16px;height:16px;accent-color:#4a2f14;flex-shrink:0" onchange="updateNotifSelected()">'+
+    var sid = String(c.shop_id||c.customer_id||'');
+    var ordered = !!_notifOrderedIds[sid];
+    var badge = ordered
+      ? '<span style="font-size:10px;font-weight:700;color:#2d7a4f;background:#e8f5e9;border-radius:6px;padding:2px 7px;font-family:monospace;flex-shrink:0">✅ Ordered</span>'
+      : '';
+    return '<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid #f5ede0;cursor:pointer;'+(ordered?'opacity:0.6':'')+'">'+
+      '<input type="checkbox" class="custNotifCheck" value="'+sid+'" data-name="'+esc(c.name)+'" data-ordered="'+(ordered?'1':'0')+'" style="width:16px;height:16px;accent-color:#4a2f14;flex-shrink:0" onchange="updateNotifSelected()">'+
       '<div style="flex:1;min-width:0">'+
         '<div style="font-size:13px;font-weight:700;color:#1e1611;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(c.name)+'</div>'+
         '<div style="font-size:10px;color:#8a7a6a;font-family:monospace">'+esc(c.area||'—')+(c.mobile?' · '+c.mobile:'')+'</div>'+
       '</div>'+
+      badge+
     '</label>';
   }).join('');
   updateNotifSelected();
@@ -5467,6 +5490,22 @@ function renderNotifCustomerList(filter){
 function filterNotifCustomers(){
   var f = (document.getElementById('custNotifSearch')||{value:''}).value;
   renderNotifCustomerList(f);
+}
+
+function notifSelectAllCustomers(){
+  document.querySelectorAll('.custNotifCheck').forEach(function(c){ c.checked=true; });
+  updateNotifSelected();
+}
+function notifDeselectAll(){
+  document.querySelectorAll('.custNotifCheck').forEach(function(c){ c.checked=false; });
+  updateNotifSelected();
+}
+function notifSkipOrdered(){
+  // Select all, then uncheck those who already ordered
+  document.querySelectorAll('.custNotifCheck').forEach(function(c){
+    c.checked = (c.getAttribute('data-ordered') !== '1');
+  });
+  updateNotifSelected();
 }
 
 function updateNotifSelected(){
