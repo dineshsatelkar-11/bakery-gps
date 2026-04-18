@@ -289,16 +289,42 @@ function showApp(){
   window._timerNotifs      = setInterval(loadCustomerNotifs, 10000);
 }
 
+// When phone unlocks / user switches back to tab — restart polling immediately
+if (!window._visibilityListenerAdded) {
+  window._visibilityListenerAdded = true;
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible' && session) {
+      loadCustomerNotifs();
+      // Restart interval in case browser throttled/cleared it
+      clearInterval(window._timerNotifs);
+      window._timerNotifs = setInterval(loadCustomerNotifs, 10000);
+    }
+  });
+}
+
 // ── ONESIGNAL PUSH FOR CUSTOMER ──
 window.OneSignalDeferred = window.OneSignalDeferred || [];
 var _osReady = false;
+
+// Force update old service worker (sw.js) to the new OneSignalSDKWorker.js
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(function(regs) {
+    regs.forEach(function(reg) {
+      // Unregister the old sw.js so the new combined worker can take over
+      if (reg.active && reg.active.scriptURL && reg.active.scriptURL.indexOf('sw.js') >= 0) {
+        reg.unregister();
+      }
+    });
+    // Register the correct combined worker
+    navigator.serviceWorker.register('/OneSignalSDKWorker.js', { scope: '/' }).catch(function() {});
+  }).catch(function() {});
+}
 
 if (CONFIG.ONESIGNAL_APP_ID && CONFIG.ONESIGNAL_APP_ID !== 'YOUR_APP_ID_HERE') {
   OneSignalDeferred.push(function(OneSignal) {
     OneSignal.init({ appId: CONFIG.ONESIGNAL_APP_ID, serviceWorkerPath: '/OneSignalSDKWorker.js' })
       .then(function() {
         _osReady = true;
-        // Auto-login if session already loaded and permission already granted
         if (session) _osLoginCustomer();
       })
       .catch(function() {});
