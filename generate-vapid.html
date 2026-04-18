@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Generate VAPID Keys</title>
+<style>
+body{font-family:monospace;background:#1a1008;color:#f5ede0;padding:30px;max-width:700px;margin:0 auto}
+h2{color:#c8a020}
+.box{background:#2a1a0a;border:1px solid #3a2a14;border-radius:10px;padding:16px;margin:12px 0}
+label{font-size:11px;color:#8a7a6a;letter-spacing:2px;text-transform:uppercase}
+textarea{width:100%;background:#120c04;color:#f5ede0;border:1px solid #3a2a14;border-radius:6px;padding:10px;font-size:12px;font-family:monospace;margin-top:6px;resize:none}
+button{background:#c8a020;color:#1a1008;border:none;padding:14px 28px;border-radius:10px;font-size:15px;font-weight:800;cursor:pointer;margin-top:10px}
+.note{font-size:11px;color:#c8382a;margin-top:16px;line-height:1.7}
+</style>
+</head>
+<body>
+<h2>🔑 VAPID Key Generator</h2>
+<p style="color:#8a7a6a;font-size:13px">Click the button to generate your unique push notification keys. Copy them — you only need to do this once.</p>
+<button onclick="generate()">Generate Keys</button>
+<div class="box" id="output" style="display:none">
+  <label>Public Key — add to config.js as VAPID_PUBLIC_KEY</label>
+  <textarea id="pub" rows="3" readonly></textarea>
+  <label style="margin-top:12px;display:block">Private Key — add to Supabase Edge Function secret as VAPID_PRIVATE_KEY</label>
+  <textarea id="priv" rows="3" readonly></textarea>
+</div>
+<div class="note">
+  ⚠️ After copying both keys, delete this file from your project.<br>
+  The private key must NEVER go into any HTML or JS file — only into Supabase secrets.
+</div>
+<script>
+async function generate(){
+  var kp = await crypto.subtle.generateKey({name:'ECDH',namedCurve:'P-256'},true,['deriveKey']);
+  var pub  = await crypto.subtle.exportKey('raw', kp.publicKey);
+  var priv = await crypto.subtle.exportKey('pkcs8', kp.privateKey);
+  function b64u(buf){
+    return btoa(String.fromCharCode(...new Uint8Array(buf)))
+      .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  }
+  document.getElementById('pub').value  = b64u(pub);
+  document.getElementById('priv').value = b64u(priv);
+  document.getElementById('output').style.display = 'block';
+}
+</script>
+</body>
+</html>

@@ -46,12 +46,10 @@ const CONFIG = {
 
   VERSION: '3.0',
 
-  // ── OneSignal Push Notifications ──────────────────────────────────────────
-  // 1. Go to https://onesignal.com → Create account → New App
-  // 2. Platform: Web Push → set your site URL (https://bakery-gps.vercel.app)
-  // 3. Paste App ID and REST API Key below
-  ONESIGNAL_APP_ID:       '675e2f16-661e-41f8-bace-d6353765d29e',       // ← Settings → Keys & IDs
-  ONESIGNAL_REST_API_KEY: 'os_v2_app_m5pc6ftgdza7rowo2y2tozost2ahrdphowcu2dv2qcgxaecybbe6rtk6a5kcon3bcafvmydg7qtahikdedcpwirfzpur3v3qm4ackja'  // ← Settings → Keys & IDs
+  // ── Web Push (VAPID) ───────────────────────────────────────────────────────
+  // 1. Open generate-vapid.html in your browser → click Generate → copy Public Key here
+  // 2. Private Key goes into Supabase Edge Function secrets (never here)
+  VAPID_PUBLIC_KEY: 'YOUR_VAPID_PUBLIC_KEY_HERE'   // ← paste public key from generate-vapid.html
 };
 
 // Smart redirect — uses clean URLs on Vercel, .html locally (IntelliJ / file server)

@@ -1,3 +1,26 @@
+// ── Push Notifications ───────────────────────────────────────────────────────
+self.addEventListener('push', function(e) {
+  var data = {};
+  try { data = e.data ? e.data.json() : {}; } catch(err) {}
+  var title = data.title || '🥖 Message from bakery';
+  var body  = data.body  || data.message || '';
+  e.waitUntil(
+    self.registration.showNotification(title, {
+      body:  body,
+      icon:  '/icon-192.png',
+      badge: '/icon-192.png',
+      data:  { url: '/order' }
+    })
+  );
+});
+
+self.addEventListener('notificationclick', function(e) {
+  e.notification.close();
+  var url = (e.notification.data && e.notification.data.url) ? e.notification.data.url : '/order';
+  e.waitUntil(clients.openWindow(url));
+});
+
+// ── App Cache ─────────────────────────────────────────────────────────────────
 // Cache version is tied to CONFIG.VERSION in config.js.
 // To force all clients to re-download, bump VERSION in config.js.
 try { importScripts('/config.js'); } catch(e) {}

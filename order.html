@@ -7,7 +7,6 @@
 <link rel="manifest" href="/manifest.json">
 <script src="config.js"></script>
 <script src="api.js"></script>
-<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:440px;margin:0 auto;min-height:100vh}
@@ -282,7 +281,7 @@ function showApp(){
   loadHistory();
   checkOrderWindow();
   loadCustomerNotifs();
-  _osLoginCustomer();
+  _subscribePush();
   if (window._timerOrderWindow) clearInterval(window._timerOrderWindow);
   if (window._timerNotifs)      clearInterval(window._timerNotifs);
   window._timerOrderWindow = setInterval(checkOrderWindow, 30000);
@@ -302,71 +301,81 @@ if (!window._visibilityListenerAdded) {
   });
 }
 
-// ── ONESIGNAL PUSH FOR CUSTOMER ──
-window.OneSignalDeferred = window.OneSignalDeferred || [];
-var _osReady = false;
-
-if (CONFIG.ONESIGNAL_APP_ID && CONFIG.ONESIGNAL_APP_ID !== 'YOUR_APP_ID_HERE') {
-  OneSignalDeferred.push(function(OneSignal) {
-    OneSignal.init({
-      appId: CONFIG.ONESIGNAL_APP_ID,
-      serviceWorkerPath: '/OneSignalSDKWorker.js',
-      serviceWorkerParam: { scope: '/' }
-    })
-      .then(function() {
-        _osReady = true;
-        if (session) _osLoginCustomer();
-      })
-      .catch(function() {});
-  });
+// ── NATIVE WEB PUSH (VAPID) ──────────────────────────────────────────────────
+function _urlB64ToUint8(b64){
+  var pad = '='.repeat((4 - b64.length % 4) % 4);
+  var raw = atob((b64 + pad).replace(/-/g,'+').replace(/_/g,'/'));
+  var out = new Uint8Array(raw.length);
+  for(var i=0;i<raw.length;i++) out[i] = raw.charCodeAt(i);
+  return out;
 }
 
-function _osLoginCustomer() {
-  if (!session || !_osReady) return;
-  OneSignalDeferred.push(function(OneSignal) {
-    // Permission FIRST — creates the push subscription; then login links it to this customer
-    OneSignal.Notifications.requestPermission()
-      .then(function() {
-        return OneSignal.login('cust_' + session.shop_id);
-      })
-      .catch(function() {});
-  });
+function _subscribePush(){
+  if(!session) return;
+  if(!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  var vapidKey = CONFIG.VAPID_PUBLIC_KEY;
+  if(!vapidKey || vapidKey === 'YOUR_VAPID_PUBLIC_KEY_HERE') return;
+  if(Notification.permission === 'denied') return;
+  navigator.serviceWorker.ready.then(function(reg){
+    return reg.pushManager.getSubscription().then(function(existing){
+      if(existing) return existing;
+      return reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: _urlB64ToUint8(vapidKey)
+      });
+    });
+  }).then(function(sub){
+    var j = sub.toJSON();
+    return apiPost({
+      action:   'savePushSubscription',
+      shop_id:  session.shop_id,
+      endpoint: sub.endpoint,
+      p256dh:   j.keys.p256dh,
+      auth:     j.keys.auth
+    });
+  }).catch(function(){});
 }
 
 function enablePushNotifs(){
-  if (!_osReady) {
-    if (!('Notification' in window)) { renderNotifSettings(); return; }
-    Notification.requestPermission().then(function() { renderNotifSettings(); });
-    return;
-  }
-  OneSignalDeferred.push(function(OneSignal) {
-    OneSignal.Notifications.requestPermission()
-      .then(function() {
-        if (session) return OneSignal.login('cust_' + session.shop_id);
-      })
-      .then(function() { renderNotifSettings(); })
-      .catch(function() { renderNotifSettings(); });
+  if(!('Notification' in window)){ renderNotifSettings(); return; }
+  Notification.requestPermission().then(function(){
+    _subscribePush();
+    renderNotifSettings();
   });
 }
 
-// Force re-register push — called from Settings tab button
 function reRegisterPush(){
   var btn = document.getElementById('reRegisterBtn');
-  if(btn){ btn.disabled = true; btn.textContent = '⏳ Registering…'; }
-  // Push the work into OneSignalDeferred — it will run when SDK is ready
-  OneSignalDeferred.push(function(OneSignal) {
-    OneSignal.Notifications.requestPermission()
-      .then(function() {
-        return OneSignal.login('cust_' + session.shop_id);
-      })
-      .then(function() {
-        if(btn){ btn.disabled = false; btn.textContent = '✅ Done!'; }
-        setTimeout(function(){ renderNotifSettings(); }, 1500);
-      })
-      .catch(function(e) {
-        if(btn){ btn.disabled = false; btn.textContent = '🔄 Re-register Push'; }
-        alert('Registration failed: ' + (e && e.message ? e.message : 'unknown error'));
+  if(btn){ btn.disabled=true; btn.textContent='⏳ Registering…'; }
+  if(!('serviceWorker' in navigator) || !('PushManager' in window)){
+    if(btn){ btn.disabled=false; btn.textContent='🔄 Re-register Push'; }
+    alert('Push not supported in this browser.');
+    return;
+  }
+  navigator.serviceWorker.ready.then(function(reg){
+    // Unsubscribe existing then re-subscribe fresh
+    return reg.pushManager.getSubscription().then(function(s){ return s ? s.unsubscribe() : true; })
+      .then(function(){
+        return reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: _urlB64ToUint8(CONFIG.VAPID_PUBLIC_KEY)
+        });
       });
+  }).then(function(sub){
+    var j = sub.toJSON();
+    return apiPost({
+      action:   'savePushSubscription',
+      shop_id:  session.shop_id,
+      endpoint: sub.endpoint,
+      p256dh:   j.keys.p256dh,
+      auth:     j.keys.auth
+    });
+  }).then(function(){
+    if(btn){ btn.disabled=false; btn.textContent='✅ Done!'; }
+    setTimeout(function(){ renderNotifSettings(); }, 1500);
+  }).catch(function(e){
+    if(btn){ btn.disabled=false; btn.textContent='🔄 Re-register Push'; }
+    alert('Failed: ' + (e && e.message ? e.message : 'unknown error'));
   });
 }
 

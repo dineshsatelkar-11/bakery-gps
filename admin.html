@@ -5545,23 +5545,15 @@ function sendToCustomers(){
 }
 
 function sendCustomerPush(shopIds, message){
-  var appId = CONFIG.ONESIGNAL_APP_ID;
-  var key   = CONFIG.ONESIGNAL_REST_API_KEY;
-  if(!appId || appId === 'YOUR_APP_ID_HERE') return;
-  var ids = (Array.isArray(shopIds) ? shopIds : [shopIds])
-              .map(function(id){ return 'cust_' + id; });
-  // external_id matches what order.html registers via OneSignal.login('cust_<shop_id>')
-  fetch('https://onesignal.com/api/v1/notifications', {
+  var ids = Array.isArray(shopIds) ? shopIds : [shopIds];
+  // Call Supabase Edge Function — it reads push_subscriptions table and sends Web Push
+  fetch(CONFIG.SUPABASE_URL + '/functions/v1/send-customer-push', {
     method: 'POST',
-    headers: { 'Authorization': 'Basic ' + key, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      app_id: appId,
-      include_aliases: { external_id: ids },
-      target_channel: 'push',
-      headings: { en: '🥖 Message from bakery' },
-      contents: { en: message },
-      url: 'https://bakery-gps.vercel.app/order'
-    })
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + CONFIG.SUPABASE_ANON_KEY
+    },
+    body: JSON.stringify({ shop_ids: ids, message: message })
   }).catch(function(){});
 }
 
