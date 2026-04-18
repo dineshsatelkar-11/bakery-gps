@@ -175,10 +175,17 @@ input:focus{border-color:#29b6f6;background:rgba(41,182,246,.06)}
 </div>
 
 <script>
-// Register Service Worker
+// Register Service Worker — unregister old sw.js first if still active
 if('serviceWorker' in navigator){
   window.addEventListener('load',function(){
-    navigator.serviceWorker.register('/OneSignalSDKWorker.js',{scope:'/'}).catch(function(){});
+    navigator.serviceWorker.getRegistrations().then(function(regs){
+      var old = regs.filter(function(r){
+        return r.active && r.active.scriptURL && r.active.scriptURL.indexOf('/sw.js') >= 0;
+      });
+      return Promise.all(old.map(function(r){ return r.unregister(); }));
+    }).catch(function(){}).then(function(){
+      navigator.serviceWorker.register('/OneSignalSDKWorker.js',{scope:'/'}).catch(function(){});
+    });
   });
 }
 

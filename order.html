@@ -306,23 +306,13 @@ if (!window._visibilityListenerAdded) {
 window.OneSignalDeferred = window.OneSignalDeferred || [];
 var _osReady = false;
 
-// Force update old service worker (sw.js) to the new OneSignalSDKWorker.js
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(function(regs) {
-    regs.forEach(function(reg) {
-      // Unregister the old sw.js so the new combined worker can take over
-      if (reg.active && reg.active.scriptURL && reg.active.scriptURL.indexOf('sw.js') >= 0) {
-        reg.unregister();
-      }
-    });
-    // Register the correct combined worker
-    navigator.serviceWorker.register('/OneSignalSDKWorker.js', { scope: '/' }).catch(function() {});
-  }).catch(function() {});
-}
-
 if (CONFIG.ONESIGNAL_APP_ID && CONFIG.ONESIGNAL_APP_ID !== 'YOUR_APP_ID_HERE') {
   OneSignalDeferred.push(function(OneSignal) {
-    OneSignal.init({ appId: CONFIG.ONESIGNAL_APP_ID, serviceWorkerPath: '/OneSignalSDKWorker.js' })
+    OneSignal.init({
+      appId: CONFIG.ONESIGNAL_APP_ID,
+      serviceWorkerPath: '/OneSignalSDKWorker.js',
+      serviceWorkerParam: { scope: '/' }
+    })
       .then(function() {
         _osReady = true;
         if (session) _osLoginCustomer();
@@ -363,11 +353,7 @@ function enablePushNotifs(){
 function reRegisterPush(){
   var btn = document.getElementById('reRegisterBtn');
   if(btn){ btn.disabled = true; btn.textContent = '⏳ Registering…'; }
-  if (!_osReady) {
-    if(btn){ btn.disabled = false; btn.textContent = '🔄 Re-register Push'; }
-    alert('OneSignal not ready yet — reload the page and try again.');
-    return;
-  }
+  // Push the work into OneSignalDeferred — it will run when SDK is ready
   OneSignalDeferred.push(function(OneSignal) {
     OneSignal.Notifications.requestPermission()
       .then(function() {
