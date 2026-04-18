@@ -132,15 +132,9 @@
         return sbGet('orders', where, 'shop_name');
       }
 
-      // Queue: fetch all unassigned orders — driver null, empty, or any "logistic*" variant
-      case 'getQueueOrders': {
-        var url = BASE + '/orders?date=eq.' + encodeURIComponent(p.date) +
-          '&or=(driver.is.null,driver.eq.,driver.ilike.logistic*)' +
-          '&order=shop_name';
-        return fetch(url, { headers: hdrs() })
-          .then(function(r){ return r.ok ? r.json() : []; })
-          .catch(function(){ return []; });
-      }
+      // Queue: fetch all orders for the date, caller filters unassigned
+      case 'getQueueOrders':
+        return sbGet('orders', { date: p.date }, 'shop_name');
 
       case 'checkDcNums': {
         // Returns existing dc_num values from the given list so caller can skip duplicates
