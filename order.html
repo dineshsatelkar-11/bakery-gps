@@ -290,57 +290,35 @@ function showApp(){
 }
 
 // ── ONESIGNAL PUSH FOR CUSTOMER ──
-// OneSignal SDK is loaded in <head> (defer). We init it once and let it manage push subscriptions.
-var _osReady = false;
-
+// Mirrors exactly how driver.html registers — init + login on load, requestPermission on tap.
 window.OneSignalDeferred = window.OneSignalDeferred || [];
-OneSignalDeferred.push(function(OneSignal){
-  var appId = (typeof CONFIG !== 'undefined') ? CONFIG.ONESIGNAL_APP_ID : null;
-  if(!appId || appId === 'YOUR_APP_ID_HERE') return;
-  OneSignal.init({
-    appId: appId,
-    autoResubscribe: true,
-    notifyButton: { enable: false }   // we use our own UI
-  }).then(function(){
-    _osReady = true;
-    // If permission already granted, tag the device immediately
-    if(session && Notification.permission === 'granted'){
-      OneSignal.User.addTag('cust_shop_id', String(session.shop_id));
-    }
-    // Show our modal if not yet asked
-    if(Notification.permission === 'default' && !sessionStorage.getItem('pushModalDismissed')){
-      document.getElementById('pushOptInModal').style.display = 'flex';
-    }
-  }).catch(function(){});
-});
 
 function initCustomerPush(){
-  if(!session) return;
-  // Tag device so push can reach this customer (works whether SDK loaded already or still loading)
-  if(Notification.permission === 'granted'){
-    OneSignalDeferred.push(function(OneSignal){
-      OneSignal.User.addTag('cust_shop_id', String(session.shop_id));
-    });
-  } else if(Notification.permission === 'default' && !sessionStorage.getItem('pushModalDismissed')){
-    // SDK still loading when page opened — show modal after it's ready
-    setTimeout(function(){
-      if(Notification.permission === 'default'){
-        document.getElementById('pushOptInModal').style.display = 'flex';
-      }
-    }, 2500);
-  }
+  var appId = (typeof CONFIG !== 'undefined') ? CONFIG.ONESIGNAL_APP_ID : null;
+  if(!appId || appId === 'YOUR_APP_ID_HERE' || !session) return;
+  OneSignalDeferred.push(function(OneSignal){
+    OneSignal.init({ appId: appId, serviceWorkerPath: '/OneSignalSDKWorker.js' })
+      .then(function(){
+        // Link this device to the customer's shop_id (same as driver uses their name)
+        return OneSignal.login('cust_' + session.shop_id);
+      })
+      .then(function(){
+        // Show opt-in modal if permission not yet decided
+        if(Notification.permission === 'default' && !sessionStorage.getItem('pushModalDismissed')){
+          document.getElementById('pushOptInModal').style.display = 'flex';
+        }
+      })
+      .catch(function(){});
+  });
 }
 
 function enablePushNotifs(){
   document.getElementById('pushOptInModal').style.display = 'none';
-  if(!('Notification' in window)){ renderNotifSettings(); return; }
-  // Let OneSignal handle permission + push subscription in one call
+  // OneSignal is already initialised (SDK in head, loaded before this tap)
+  // Calling push() here executes immediately — user gesture context is preserved
   OneSignalDeferred.push(function(OneSignal){
     OneSignal.Notifications.requestPermission()
-      .then(function(){
-        if(session) OneSignal.User.addTag('cust_shop_id', String(session.shop_id));
-        renderNotifSettings();
-      })
+      .then(function(){ renderNotifSettings(); })
       .catch(function(){ renderNotifSettings(); });
   });
 }
@@ -353,13 +331,12 @@ function dismissPushModal(){
 function reRegisterPush(btn){
   if(btn){ btn.textContent = '⏳ Registering…'; btn.disabled = true; }
   OneSignalDeferred.push(function(OneSignal){
-    Promise.resolve()
-      .then(function(){ return OneSignal.User.addTag('cust_shop_id', String(session.shop_id)); })
+    OneSignal.login('cust_' + session.shop_id)
       .then(function(){
-        if(btn){ btn.textContent = '✅ Registered! Push should now work.'; }
+        if(btn){ btn.textContent = '✅ Done — push re-registered.'; }
       })
       .catch(function(){
-        if(btn){ btn.textContent = '❌ Failed — try reopening the app.'; btn.disabled = false; }
+        if(btn){ btn.textContent = '❌ Failed. Try reopening app.'; btn.disabled = false; }
       });
   });
 }

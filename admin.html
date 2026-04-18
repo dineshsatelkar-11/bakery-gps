@@ -5548,21 +5548,21 @@ function sendCustomerPush(shopIds, message){
   var appId = CONFIG.ONESIGNAL_APP_ID;
   var key   = CONFIG.ONESIGNAL_REST_API_KEY;
   if(!appId || appId === 'YOUR_APP_ID_HERE') return;
-  var ids = Array.isArray(shopIds) ? shopIds : [shopIds];
-  // Send one push per customer using tag filter (cust_shop_id tag set on device during registration)
-  ids.forEach(function(shopId){
-    fetch('https://onesignal.com/api/v1/notifications', {
-      method: 'POST',
-      headers: { 'Authorization': 'Basic ' + key, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        app_id: appId,
-        filters: [{ field: 'tag', key: 'cust_shop_id', relation: '=', value: String(shopId) }],
-        headings: { en: '🥖 Message from bakery' },
-        contents: { en: message },
-        url: 'https://bakery-gps.vercel.app/order'
-      })
-    }).catch(function(){});
-  });
+  var ids = (Array.isArray(shopIds) ? shopIds : [shopIds])
+              .map(function(id){ return 'cust_' + id; });
+  // external_id matches what order.html registers via OneSignal.login('cust_<shop_id>')
+  fetch('https://onesignal.com/api/v1/notifications', {
+    method: 'POST',
+    headers: { 'Authorization': 'Basic ' + key, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      app_id: appId,
+      include_aliases: { external_id: ids },
+      target_channel: 'push',
+      headings: { en: '🥖 Message from bakery' },
+      contents: { en: message },
+      url: 'https://bakery-gps.vercel.app/order'
+    })
+  }).catch(function(){});
 }
 
 // ── BROWSER NOTIFICATION PERMISSION ──
