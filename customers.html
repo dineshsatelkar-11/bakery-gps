@@ -155,7 +155,15 @@ select,input[type=text],input[type=tel]{width:100%;padding:11px 14px;border:1.5p
 </div>
 
 <script>
-if(sessionStorage.getItem('role')!=='admin') goto('');
+// Restore session from localStorage if sessionStorage was cleared (phone lock / tab killed by OS)
+(function(){
+  if(!sessionStorage.getItem('role') && localStorage.getItem('staffRole')){
+    sessionStorage.setItem('role',  localStorage.getItem('staffRole'));
+    sessionStorage.setItem('tabs',  localStorage.getItem('staffTabs')||'[]');
+    sessionStorage.setItem('staffName', localStorage.getItem('staffNamePersist')||'');
+  }
+})();
+if(['super_admin','admin','assistant'].indexOf(sessionStorage.getItem('role'))<0) goto('');
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 

@@ -1101,6 +1101,15 @@ var ROLE_DEFAULT_TABS = {
   packer:       ['orders','summary'],
   teapost_head: []
 };
+// Restore session from localStorage if sessionStorage was cleared (phone lock / tab killed by OS)
+(function(){
+  if(!sessionStorage.getItem('role') && localStorage.getItem('staffRole')){
+    sessionStorage.setItem('role',  localStorage.getItem('staffRole'));
+    sessionStorage.setItem('tabs',  localStorage.getItem('staffTabs')||'[]');
+    sessionStorage.setItem('staffName', localStorage.getItem('staffNamePersist')||'');
+  }
+})();
+
 var _staffRole = sessionStorage.getItem('role') || 'admin';
 var _staffName = sessionStorage.getItem('staffName') || 'Admin';
 var _allowedTabs = _staffRole === 'super_admin' ? null : JSON.parse(sessionStorage.getItem('tabs') || '[]');
