@@ -26,6 +26,9 @@ const CONFIG = {
   // WhatsApp group link — opened when driver completes all deliveries
   WHATSAPP_GROUP: 'https://chat.whatsapp.com/Bjta1D8WDKe38qPCJGVigp',
 
+  // Customer support WhatsApp number (with country code, digits only e.g. 918956276855)
+  BAKERY_WHATSAPP: '918956276855',
+
   // Driver app translations
   LANG: {
     en: {

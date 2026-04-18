@@ -86,7 +86,7 @@ textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:1
         🔔
         <span id="custNotifBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:#e53935;color:#fff;border-radius:50%;width:17px;height:17px;font-size:10px;font-weight:900;display:none;align-items:center;justify-content:center;font-family:monospace">0</span>
       </button>
-      <button class="logout-btn" onclick="doLogout()">Logout</button>
+      <button class="logout-btn" onclick="showTab('settings')" title="Settings">⚙️</button>
     </div>
   </div>
 
@@ -173,27 +173,97 @@ textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:1
   </div>
 
   <!-- SETTINGS TAB -->
-  <div class="page" id="pg-settings">
+  <div class="page" id="pg-settings" style="padding:0 0 80px">
 
-    <!-- Notifications -->
-    <div class="card" style="margin-bottom:12px">
-      <div class="lbl">Notifications</div>
-      <div id="notifStatusBox" style="margin-bottom:12px"></div>
-      <div id="notifActionBox"></div>
-      <div id="notifInstructions" style="display:none;background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:12px;font-size:12px;font-family:monospace;color:#7a4800;line-height:1.8;margin-top:10px"></div>
+    <!-- Profile Card -->
+    <div style="background:#4a2f14;padding:28px 20px 24px;display:flex;flex-direction:column;align-items:center;gap:10px">
+      <div id="settingsAvatar" style="width:68px;height:68px;border-radius:50%;background:#c8a020;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;color:#fff;letter-spacing:-1px;flex-shrink:0"></div>
+      <div style="text-align:center">
+        <div id="settingsName" style="font-size:18px;font-weight:900;color:#fff;margin-bottom:3px"></div>
+        <div id="settingsMeta" style="font-size:11px;font-family:monospace;color:#c8a87a;line-height:1.8"></div>
+      </div>
+      <div id="settingsDriverBadge" style="display:none;background:rgba(255,255,255,.15);border-radius:20px;padding:5px 14px;font-size:11px;font-weight:700;color:#fff;font-family:monospace"></div>
     </div>
 
-    <div class="card">
-      <div class="lbl">Change Password</div>
-      <div style="font-size:12px;color:#8a7a6a;font-family:monospace;margin-bottom:12px">Enter your current password to set a new one.</div>
-      <label class="lbl">Current Password</label>
-      <input type="password" id="cpOld" placeholder="Current password" autocomplete="current-password">
-      <label class="lbl">New Password</label>
-      <input type="password" id="cpNew" placeholder="New password (min 4 chars)" autocomplete="new-password">
-      <label class="lbl">Confirm New Password</label>
-      <input type="password" id="cpConfirm" placeholder="Repeat new password" autocomplete="new-password">
-      <div id="cpMsg" style="display:none" class="msg ok"></div>
-      <button class="btn btn-brown" onclick="changePassword()">🔑 Change Password</button>
+    <div style="padding:14px">
+
+      <!-- Account Section -->
+      <div style="font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;text-transform:uppercase;margin:4px 0 8px">Account</div>
+
+      <!-- Change Password row -->
+      <div class="card" style="margin-bottom:2px;border-radius:16px 16px 4px 4px;cursor:pointer" onclick="toggleCpSection()">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:36px;height:36px;background:#f5ede0;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🔑</div>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:700;color:#1e1611">Change Password</div>
+            <div style="font-size:11px;color:#8a7a6a;font-family:monospace">Update your login password</div>
+          </div>
+          <div id="cpChevron" style="font-size:16px;color:#8a7a6a;transition:transform .2s">›</div>
+        </div>
+      </div>
+      <!-- Change Password form (hidden by default) -->
+      <div id="cpSection" style="display:none;background:#fff;border:1.5px solid #e8dfd2;border-top:none;border-radius:0 0 16px 16px;padding:14px 14px 6px;margin-bottom:10px">
+        <label class="lbl">Current Password</label>
+        <input type="password" id="cpOld" placeholder="Current password" autocomplete="current-password">
+        <label class="lbl">New Password</label>
+        <input type="password" id="cpNew" placeholder="New password (min 4 chars)" autocomplete="new-password">
+        <label class="lbl">Confirm New Password</label>
+        <input type="password" id="cpConfirm" placeholder="Repeat new password" autocomplete="new-password">
+        <div id="cpMsg" style="display:none" class="msg ok"></div>
+        <button class="btn btn-brown" onclick="changePassword()">🔑 Update Password</button>
+      </div>
+
+      <!-- Logout row -->
+      <div class="card" style="margin-bottom:10px;border-radius:4px 4px 16px 16px;cursor:pointer" onclick="doLogout()">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:36px;height:36px;background:#fde8e8;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🚪</div>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:700;color:#c8382a">Logout</div>
+            <div style="font-size:11px;color:#8a7a6a;font-family:monospace">Sign out of your account</div>
+          </div>
+          <div style="font-size:16px;color:#c8382a">›</div>
+        </div>
+      </div>
+
+      <!-- Notifications Section -->
+      <div style="font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;text-transform:uppercase;margin:4px 0 8px">Notifications</div>
+      <div class="card" style="margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <div style="width:36px;height:36px;background:#f5ede0;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🔔</div>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:700;color:#1e1611">Push Notifications</div>
+            <div style="font-size:11px;color:#8a7a6a;font-family:monospace">Get alerts even when app is closed</div>
+          </div>
+        </div>
+        <div id="notifStatusBox" style="margin-bottom:8px"></div>
+        <div id="notifActionBox"></div>
+        <div id="notifInstructions" style="display:none;background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:12px;font-size:12px;font-family:monospace;color:#7a4800;line-height:1.8;margin-top:8px"></div>
+      </div>
+
+      <!-- Support Section -->
+      <div style="font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;text-transform:uppercase;margin:4px 0 8px">Support</div>
+
+      <div class="card" style="margin-bottom:2px;border-radius:16px 16px 4px 4px;cursor:pointer" onclick="contactWhatsApp()">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:36px;height:36px;background:#e8f5e9;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">💬</div>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:700;color:#1e1611">Contact Bakery</div>
+            <div style="font-size:11px;color:#8a7a6a;font-family:monospace">Chat with us on WhatsApp</div>
+          </div>
+          <div style="font-size:16px;color:#8a7a6a">›</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:10px;border-radius:4px 4px 16px 16px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:36px;height:36px;background:#f5ede0;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🥖</div>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:700;color:#1e1611">IBCAB Bakery</div>
+            <div style="font-size:11px;color:#8a7a6a;font-family:monospace">Customer App · v1.0</div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -402,6 +472,51 @@ function reRegisterPush(){
   });
 }
 
+// ── SETTINGS PROFILE ──
+function renderSettingsProfile(){
+  if(!session) return;
+  var name  = session.shop_name || '';
+  var id    = session.shop_id   || '';
+  var mobile= session.mobile    || '';
+  var area  = session.area      || '';
+  var driver= session.assigned_driver || '';
+
+  // Avatar: first letters of each word (max 2)
+  var initials = name.split(' ').filter(Boolean).map(function(w){return w[0].toUpperCase();}).slice(0,2).join('');
+  document.getElementById('settingsAvatar').textContent = initials || '?';
+  document.getElementById('settingsName').textContent   = name;
+
+  var meta = [];
+  if(id)     meta.push('ID: ' + id);
+  if(mobile) meta.push('📞 ' + mobile);
+  if(area)   meta.push('📍 ' + area);
+  document.getElementById('settingsMeta').innerHTML = meta.join('<br>');
+
+  var badge = document.getElementById('settingsDriverBadge');
+  if(driver){
+    badge.textContent = '🚚 ' + driver;
+    badge.style.display = 'inline-block';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function toggleCpSection(){
+  var sec = document.getElementById('cpSection');
+  var chv = document.getElementById('cpChevron');
+  var open = sec.style.display !== 'none';
+  sec.style.display = open ? 'none' : 'block';
+  chv.style.transform = open ? '' : 'rotate(90deg)';
+  if(!open){ document.getElementById('cpOld').focus(); }
+}
+
+function contactWhatsApp(){
+  // Opens WhatsApp chat — update number in config if needed
+  var num = (CONFIG.BAKERY_WHATSAPP || '').replace(/\D/g,'');
+  if(!num){ alert('WhatsApp number not configured.'); return; }
+  window.open('https://wa.me/' + num, '_blank');
+}
+
 function renderNotifSettings(){
   var statusBox  = document.getElementById('notifStatusBox');
   var actionBox  = document.getElementById('notifActionBox');
@@ -457,8 +572,12 @@ function refreshSession(){
     var ids = Array.isArray(mine.product_group_ids) && mine.product_group_ids.length
       ? mine.product_group_ids
       : (mine.product_group_id ? [mine.product_group_id] : []);
-    session.product_group_ids = ids;
-    session.product_group_id  = ids.length ? ids[0] : null;
+    session.product_group_ids  = ids;
+    session.product_group_id   = ids.length ? ids[0] : null;
+    session.assigned_driver    = mine.assigned_driver || '';
+    session.area               = mine.area || '';
+    session.address            = mine.address || '';
+    session.mobile             = mine.mobile || session.mobile || '';
     localStorage.setItem('custSession', JSON.stringify(session));
     console.log('[order] refreshed group ids:', ids);
   }).catch(function(){ console.log('[order] refreshSession failed'); });
@@ -1138,7 +1257,7 @@ function showTab(t){
   document.getElementById('orderBar').style.display = (t==='order' && totalItemCount()>0 && !_orderClosed && (!_editLocked || _amendMode)) ? 'block' : 'none';
   if(t==='track') loadTrack();
   if(t==='history') loadHistory();
-  if(t==='settings') renderNotifSettings();
+  if(t==='settings'){ renderSettingsProfile(); renderNotifSettings(); }
 }
 
 // ── CHANGE PASSWORD ──
