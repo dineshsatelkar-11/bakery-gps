@@ -5546,7 +5546,6 @@ function sendToCustomers(){
 
 function sendCustomerPush(shopIds, message){
   var ids = Array.isArray(shopIds) ? shopIds : [shopIds];
-  // Call Supabase Edge Function — it reads push_subscriptions table and sends Web Push
   fetch(CONFIG.SUPABASE_URL + '/functions/v1/send-customer-push', {
     method: 'POST',
     headers: {
@@ -5554,7 +5553,11 @@ function sendCustomerPush(shopIds, message){
       'Authorization': 'Bearer ' + CONFIG.SUPABASE_ANON_KEY
     },
     body: JSON.stringify({ shop_ids: ids, message: message })
-  }).catch(function(){});
+  }).then(function(r){ return r.json(); }).then(function(data){
+    console.log('[Push] Edge Function response:', JSON.stringify(data));
+    if(data.error) console.error('[Push] Error:', data.error);
+    else console.log('[Push] Sent to', data.sent, 'of', data.total, 'devices');
+  }).catch(function(e){ console.error('[Push] Failed to call Edge Function:', e); });
 }
 
 // ── BROWSER NOTIFICATION PERMISSION ──
