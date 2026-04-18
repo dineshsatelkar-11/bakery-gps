@@ -589,29 +589,6 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   <!-- ═══ CUSTOMER SECTION ═══ -->
   <div id="nsec-customer">
 
-    <!-- Broadcast -->
-    <div class="card" style="margin-bottom:12px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <div style="font-size:13px;font-weight:900;color:#4a2f14">📢 Broadcast to All Customers</div>
-        <div id="broadcastStatusBadge" style="font-size:11px;font-weight:700;font-family:monospace;padding:3px 10px;border-radius:20px;background:#e8dfd2;color:#8a7a6a">⏳ Loading…</div>
-      </div>
-      <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:10px;line-height:1.6">Customers see this as a banner when they open the order page.</div>
-      <div id="broadcastActiveBar" style="display:none;background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:9px 12px;margin-bottom:10px;font-size:12px;font-weight:700;color:#7a4800;font-family:monospace;line-height:1.5"></div>
-      <div class="lbl" style="margin-bottom:6px">Quick Templates</div>
-      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
-        <button class="btn-sm" style="background:#f5ede0;color:#4a2f14;border:1.5px solid #e8dfd2;text-align:left;padding:9px 12px" onclick="broadcastTemplate('📢 Orders are now open! Place your order as early as possible.')">📢 Orders are now open! Place your order as early as possible.</button>
-        <button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082;text-align:left;padding:9px 12px" onclick="broadcastTemplate('⏰ Order window will close soon. Place your order now!')">⏰ Order window will close soon. Place your order now!</button>
-        <button class="btn-sm" style="background:#f5ede0;color:#4a2f14;border:1.5px solid #e8dfd2;text-align:left;padding:9px 12px" onclick="broadcastTemplate('✅ Already placed your order? You\'re all set — nothing more to do!')">✅ Already placed your order? You're all set — nothing more to do!</button>
-        <button class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1.5px solid #f0b0b0;text-align:left;padding:9px 12px" onclick="broadcastTemplate('🔒 Orders are now closed for today. See you tomorrow!')">🔒 Orders are now closed for today. See you tomorrow!</button>
-      </div>
-      <textarea id="broadcastMsg" rows="2" placeholder="Type a message or pick a template above…" style="resize:vertical;margin-bottom:8px"></textarea>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-        <button class="btn btn-brown" style="margin-bottom:0" onclick="sendBroadcast()">📢 Send / Update</button>
-        <button id="broadcastToggleBtn" class="btn" style="margin-bottom:0;background:#e8dfd2;color:#4a2f14" onclick="toggleBroadcast()">⏳ Loading…</button>
-      </div>
-      <div id="broadcast-msg" style="display:none;margin-top:8px" class="msg ok"></div>
-    </div>
-
     <!-- Send to Specific Customers -->
     <div class="card" style="margin-bottom:12px">
       <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">💬 Send to Specific Customer(s)</div>
@@ -641,6 +618,29 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
       <textarea id="custNotifMsg" rows="2" placeholder="Type your message or pick a template above…" style="resize:vertical;margin-bottom:8px"></textarea>
       <button class="btn btn-brown" style="margin-bottom:0" onclick="sendToCustomers()">💬 Send to Selected</button>
       <div id="custNotif-result" style="display:none;margin-top:8px" class="msg ok"></div>
+    </div>
+
+    <!-- Broadcast -->
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-size:13px;font-weight:900;color:#4a2f14">📢 Broadcast to All Customers</div>
+        <div id="broadcastStatusBadge" style="font-size:11px;font-weight:700;font-family:monospace;padding:3px 10px;border-radius:20px;background:#e8dfd2;color:#8a7a6a">⏳ Loading…</div>
+      </div>
+      <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:10px;line-height:1.6">Customers see this as a banner when they open the order page.</div>
+      <div id="broadcastActiveBar" style="display:none;background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:9px 12px;margin-bottom:10px;font-size:12px;font-weight:700;color:#7a4800;font-family:monospace;line-height:1.5"></div>
+      <div class="lbl" style="margin-bottom:6px">Quick Templates</div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+        <button class="btn-sm" style="background:#f5ede0;color:#4a2f14;border:1.5px solid #e8dfd2;text-align:left;padding:9px 12px" onclick="broadcastTemplate('📢 Orders are now open! Place your order as early as possible.')">📢 Orders are now open! Place your order as early as possible.</button>
+        <button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082;text-align:left;padding:9px 12px" onclick="broadcastTemplate('⏰ Order window will close soon. Place your order now!')">⏰ Order window will close soon. Place your order now!</button>
+        <button class="btn-sm" style="background:#f5ede0;color:#4a2f14;border:1.5px solid #e8dfd2;text-align:left;padding:9px 12px" onclick="broadcastTemplate('✅ Already placed your order? You\'re all set — nothing more to do!')">✅ Already placed your order? You're all set — nothing more to do!</button>
+        <button class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1.5px solid #f0b0b0;text-align:left;padding:9px 12px" onclick="broadcastTemplate('🔒 Orders are now closed for today. See you tomorrow!')">🔒 Orders are now closed for today. See you tomorrow!</button>
+      </div>
+      <textarea id="broadcastMsg" rows="2" placeholder="Type a message or pick a template above…" style="resize:vertical;margin-bottom:8px"></textarea>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <button class="btn btn-brown" style="margin-bottom:0" onclick="sendBroadcast()">📢 Send / Update</button>
+        <button id="broadcastToggleBtn" class="btn" style="margin-bottom:0;background:#e8dfd2;color:#4a2f14" onclick="toggleBroadcast()">⏳ Loading…</button>
+      </div>
+      <div id="broadcast-msg" style="display:none;margin-top:8px" class="msg ok"></div>
     </div>
 
   </div><!-- end customer section -->
