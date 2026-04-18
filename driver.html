@@ -1229,6 +1229,16 @@ async function markDelivered(shopId, shopName) {
     q.push(body);
     localStorage.setItem(qKey, JSON.stringify(q));
     // keep local deliveries state so UI shows it as done (already set above)
+  } else if (result.ok) {
+    // Notify customer — in-app + push
+    var delivMsg = '✅ Your order has been delivered at ' + time + '. Thank you! 🎉';
+    apiPost({action:'sendCustomerNotification', shop_id:shopId, shop_name:shopName, message:delivMsg});
+    // Fire-and-forget push notification
+    fetch(CONFIG.SUPABASE_URL + '/functions/v1/clever-function', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','Authorization':'Bearer '+CONFIG.SUPABASE_ANON_KEY},
+      body: JSON.stringify({shop_ids:[shopId], message:delivMsg})
+    }).catch(function(){});
   }
   buildRouteUI();
   renderOrdersList();
