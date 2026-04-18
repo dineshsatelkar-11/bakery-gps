@@ -334,9 +334,10 @@ if (CONFIG.ONESIGNAL_APP_ID && CONFIG.ONESIGNAL_APP_ID !== 'YOUR_APP_ID_HERE') {
 function _osLoginCustomer() {
   if (!session || !_osReady) return;
   OneSignalDeferred.push(function(OneSignal) {
-    OneSignal.login('cust_' + session.shop_id)
+    // Permission FIRST — creates the push subscription; then login links it to this customer
+    OneSignal.Notifications.requestPermission()
       .then(function() {
-        return OneSignal.Notifications.requestPermission();
+        return OneSignal.login('cust_' + session.shop_id);
       })
       .catch(function() {});
   });
@@ -344,7 +345,6 @@ function _osLoginCustomer() {
 
 function enablePushNotifs(){
   if (!_osReady) {
-    // SDK not ready yet — fall back to native prompt
     if (!('Notification' in window)) { renderNotifSettings(); return; }
     Notification.requestPermission().then(function() { renderNotifSettings(); });
     return;
@@ -352,10 +352,35 @@ function enablePushNotifs(){
   OneSignalDeferred.push(function(OneSignal) {
     OneSignal.Notifications.requestPermission()
       .then(function() {
-        if (session) OneSignal.login('cust_' + session.shop_id).catch(function() {});
-        renderNotifSettings();
+        if (session) return OneSignal.login('cust_' + session.shop_id);
       })
+      .then(function() { renderNotifSettings(); })
       .catch(function() { renderNotifSettings(); });
+  });
+}
+
+// Force re-register push — called from Settings tab button
+function reRegisterPush(){
+  var btn = document.getElementById('reRegisterBtn');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ Registering…'; }
+  if (!_osReady) {
+    if(btn){ btn.disabled = false; btn.textContent = '🔄 Re-register Push'; }
+    alert('OneSignal not ready yet — reload the page and try again.');
+    return;
+  }
+  OneSignalDeferred.push(function(OneSignal) {
+    OneSignal.Notifications.requestPermission()
+      .then(function() {
+        return OneSignal.login('cust_' + session.shop_id);
+      })
+      .then(function() {
+        if(btn){ btn.disabled = false; btn.textContent = '✅ Done!'; }
+        setTimeout(function(){ renderNotifSettings(); }, 1500);
+      })
+      .catch(function(e) {
+        if(btn){ btn.disabled = false; btn.textContent = '🔄 Re-register Push'; }
+        alert('Registration failed: ' + (e && e.message ? e.message : 'unknown error'));
+      });
   });
 }
 
@@ -369,7 +394,7 @@ function renderNotifSettings(){
 
   if(perm === 'granted'){
     statusBox.innerHTML = '<div style="display:flex;align-items:center;gap:10px;padding:10px;background:#e8f5e9;border-radius:10px"><span style="font-size:22px">✅</span><div><div style="font-size:13px;font-weight:800;color:#1a5a38">Notifications are ON</div><div style="font-size:11px;color:#2d7a4f;font-family:monospace">Messages from the bakery will appear on your phone.</div></div></div>';
-    actionBox.innerHTML = '';
+    actionBox.innerHTML = '<button id="reRegisterBtn" onclick="reRegisterPush()" style="width:100%;padding:11px;background:#e8dfd2;color:#4a2f14;border:none;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-top:8px">🔄 Re-register Push (if not receiving)</button>';
     instrBox.style.display = 'none';
 
   } else if(perm === 'denied'){
