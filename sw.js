@@ -58,6 +58,7 @@ self.addEventListener('fetch', function(e) {
   if(url.indexOf('supabase.co') >= 0) return;
   if(url.indexOf('ajjas.com') >= 0) return;
   if(url.indexOf('google.com') >= 0) return;
+  if(url.indexOf('onesignal.com') >= 0) return;
 
   e.respondWith(
     fetch(e.request)
