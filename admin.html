@@ -4872,19 +4872,26 @@ function deleteStaff(id, name){
 /* ── PRODUCT GROUPS ── */
 var allGroups = [];
 
-var gmCounts = {}; // group_id → member count (from junction table)
+var gmCounts   = {}; // group_id → member count (from junction table)
+var gmProducts = {}; // group_id → [product, ...] (from junction table, loaded in loadGroups)
 
 function loadGroups(){
   Promise.all([
     api({action:'getProductGroups'}),
-    api({action:'getGroupMemberCounts'}),
-    loadProductMaster()           // ensure allProducts is ready for inline chips
+    api({action:'getGroupMemberCounts'})
   ]).then(function(results){
     allGroups = Array.isArray(results[0]) ? results[0] : [];
     gmCounts  = {};
     (Array.isArray(results[1]) ? results[1] : []).forEach(function(r){ gmCounts[String(r.group_id)] = r.cnt; });
     document.getElementById('groupStats').innerHTML =
       '<div class="stat"><div class="stat-n">'+allGroups.length+'</div><div class="stat-l">Groups</div></div>';
+    // Fetch actual products for each group via junction table (same source as edit modal)
+    return Promise.all(allGroups.map(function(g){
+      return api({action:'getProducts', group_id: g.id}).then(function(prods){
+        gmProducts[String(g.id)] = Array.isArray(prods) ? prods : [];
+      });
+    }));
+  }).then(function(){
     renderGroups();
     populateGroupSelects();
   });
@@ -4898,8 +4905,8 @@ function renderGroups(){
   }
   el.innerHTML = allGroups.map(function(g){
     var prodCount = gmCounts[String(g.id)] || 0;
-    // Products belonging to this group (from loaded allProducts)
-    var groupProds = allProducts.filter(function(p){ return String(p.group_id) === String(g.id); });
+    // Products from junction table (loaded alongside groups)
+    var groupProds = gmProducts[String(g.id)] || [];
     var prodChips = groupProds.length
       ? '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">'
           + groupProds.map(function(p){
