@@ -82,7 +82,22 @@ textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:1
       <div class="topbar-title">🥖 <span id="topShopName"></span></div>
       <div class="topbar-sub" id="topDate"></div>
     </div>
-    <button class="logout-btn" onclick="doLogout()">Logout</button>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button onclick="toggleCustNotifPanel()" style="position:relative;background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 10px;border-radius:8px;font-size:16px;cursor:pointer;line-height:1">
+        🔔
+        <span id="custNotifBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:#e53935;color:#fff;border-radius:50%;width:17px;height:17px;font-size:10px;font-weight:900;display:none;align-items:center;justify-content:center;font-family:monospace">0</span>
+      </button>
+      <button class="logout-btn" onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+
+  <!-- Notification panel (same as driver) -->
+  <div id="custNotifPanel" style="display:none;position:fixed;top:53px;left:0;right:0;max-width:440px;margin:0 auto;background:#fff;border-bottom:2px solid #e8dfd2;z-index:200;max-height:60vh;overflow-y:auto;box-shadow:0 4px 20px rgba(0,0,0,.15)">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #f0e8e0;background:#f5ede0">
+      <span style="font-size:13px;font-weight:800;color:#4a2f14">🔔 Notifications</span>
+      <button onclick="markCustNotifsRead()" style="font-size:11px;color:#2d7a4f;background:none;border:none;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif">Mark all read ✓</button>
+    </div>
+    <div id="custNotifPanelList"><div style="padding:24px;text-align:center;color:#8a7a6a;font-size:13px;font-family:monospace">No new notifications</div></div>
   </div>
 
   <div class="tabs">
@@ -97,22 +112,6 @@ textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:1
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
       <div id="broadcastText" style="font-size:12px;font-weight:700;color:#7a4800;font-family:monospace;line-height:1.6;flex:1"></div>
       <button onclick="document.getElementById('broadcastBanner').style.display='none'" style="background:none;border:none;font-size:16px;color:#7a4800;cursor:pointer;flex-shrink:0;padding:0 2px;line-height:1">✖</button>
-    </div>
-  </div>
-  <div id="customerNotifBanner" onclick="dismissCustomerNotifs()" style="display:none;margin:10px 14px 0;background:#e3f2fd;border:1.5px solid #90caf9;border-radius:12px;padding:10px 12px;cursor:pointer">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-      <div id="customerNotifText" style="font-size:12px;font-weight:700;color:#1565c0;font-family:monospace;line-height:1.6;flex:1"></div>
-      <div style="font-size:11px;color:#1565c0;font-family:monospace;flex-shrink:0;opacity:0.7">Tap to dismiss ✓</div>
-    </div>
-  </div>
-  <!-- Push notification opt-in modal -->
-  <div id="pushOptInModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:999;align-items:center;justify-content:center;padding:24px">
-    <div style="background:#fff;border-radius:20px;padding:24px;max-width:320px;width:100%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
-      <div style="font-size:48px;margin-bottom:12px">🔔</div>
-      <div style="font-size:17px;font-weight:900;color:#1e1611;margin-bottom:8px">Enable Notifications</div>
-      <div style="font-size:13px;color:#5a4a3a;font-family:monospace;line-height:1.7;margin-bottom:20px">Get messages from the bakery directly on your phone — even when the app is closed.</div>
-      <button onclick="enablePushNotifs()" style="width:100%;padding:14px;background:#4a2f14;color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:10px">Allow Notifications</button>
-      <button onclick="dismissPushModal()" style="width:100%;padding:12px;background:#f0ece6;color:#5a4a3a;border:none;border-radius:14px;font-size:14px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif">Not now</button>
     </div>
   </div>
 
@@ -259,8 +258,9 @@ function showApp(){
   document.getElementById('orderBar').style.display = 'none';
   document.getElementById('orderClosedBanner').style.display = 'none';
   document.getElementById('broadcastBanner').style.display = 'none';
-  document.getElementById('customerNotifBanner').style.display = 'none';
-  document.getElementById('pushOptInModal').style.display = 'none';
+  document.getElementById('custNotifPanel').style.display = 'none';
+  _custNotifOpen = false;
+  _custNotifs = [];
   _lastBroadcastAt = '';
   document.getElementById('prodFilterBar').style.display = 'none';
   document.getElementById('productsList').innerHTML = '<div style="padding:10px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading products…</div>';
@@ -282,106 +282,55 @@ function showApp(){
   loadHistory();
   checkOrderWindow();
   loadCustomerNotifs();
+  _osLoginCustomer();
   if (window._timerOrderWindow) clearInterval(window._timerOrderWindow);
   if (window._timerNotifs)      clearInterval(window._timerNotifs);
   window._timerOrderWindow = setInterval(checkOrderWindow, 30000);
   window._timerNotifs      = setInterval(loadCustomerNotifs, 10000);
-  initCustomerPush();
 }
 
 // ── ONESIGNAL PUSH FOR CUSTOMER ──
 window.OneSignalDeferred = window.OneSignalDeferred || [];
 var _osReady = false;
-var _osError = '';
 
-// Init OneSignal once — runs when SDK script finishes loading (defer in <head>)
-OneSignalDeferred.push(function(OneSignal){
-  var appId = (typeof CONFIG !== 'undefined') ? CONFIG.ONESIGNAL_APP_ID : null;
-  if(!appId || appId === 'YOUR_APP_ID_HERE') return;
-  OneSignal.init({ appId: appId })
-    .then(function(){
-      _osReady = true;
-      _osError = '';
-    })
-    .catch(function(e){
-      _osError = (e && (e.message || e.toString())) || 'Init failed';
-    });
-});
-
-function initCustomerPush(){
-  if(!session) return;
-  // If already granted, register once OS init settles (poll briefly)
-  if(Notification.permission === 'granted'){
-    _osLogin();
-  } else if(Notification.permission === 'default' && !sessionStorage.getItem('pushModalDismissed')){
-    // Show modal after SDK has had time to init
-    setTimeout(function(){
-      if(Notification.permission === 'default'){
-        document.getElementById('pushOptInModal').style.display = 'flex';
-      }
-    }, 2000);
-  }
+if (CONFIG.ONESIGNAL_APP_ID && CONFIG.ONESIGNAL_APP_ID !== 'YOUR_APP_ID_HERE') {
+  OneSignalDeferred.push(function(OneSignal) {
+    OneSignal.init({ appId: CONFIG.ONESIGNAL_APP_ID, serviceWorkerPath: '/OneSignalSDKWorker.js' })
+      .then(function() {
+        _osReady = true;
+        // Auto-login if session already loaded and permission already granted
+        if (session) _osLoginCustomer();
+      })
+      .catch(function() {});
+  });
 }
 
-// Login to OneSignal with retries — waits for _osReady
-function _osLogin(attempts){
-  attempts = attempts || 0;
-  if(!session) return;
-  if(!_osReady){
-    if(attempts < 20){ setTimeout(function(){ _osLogin(attempts+1); }, 500); }
-    return;
-  }
-  OneSignalDeferred.push(function(OneSignal){
-    OneSignal.login('cust_' + session.shop_id).catch(function(){});
+function _osLoginCustomer() {
+  if (!session || !_osReady) return;
+  OneSignalDeferred.push(function(OneSignal) {
+    OneSignal.login('cust_' + session.shop_id)
+      .then(function() {
+        return OneSignal.Notifications.requestPermission();
+      })
+      .catch(function() {});
   });
 }
 
 function enablePushNotifs(){
-  document.getElementById('pushOptInModal').style.display = 'none';
-  if(!('Notification' in window)){ renderNotifSettings(); return; }
-  // Native requestPermission — guaranteed to show dialog and works in all browsers
-  Notification.requestPermission().then(function(perm){
-    if(perm === 'granted'){
-      _osLogin();
-    }
-    renderNotifSettings();
+  if (!_osReady) {
+    // SDK not ready yet — fall back to native prompt
+    if (!('Notification' in window)) { renderNotifSettings(); return; }
+    Notification.requestPermission().then(function() { renderNotifSettings(); });
+    return;
+  }
+  OneSignalDeferred.push(function(OneSignal) {
+    OneSignal.Notifications.requestPermission()
+      .then(function() {
+        if (session) OneSignal.login('cust_' + session.shop_id).catch(function() {});
+        renderNotifSettings();
+      })
+      .catch(function() { renderNotifSettings(); });
   });
-}
-
-function dismissPushModal(){
-  document.getElementById('pushOptInModal').style.display = 'none';
-  sessionStorage.setItem('pushModalDismissed', '1');
-}
-
-function reRegisterPush(btn){
-  if(btn){ btn.textContent = '⏳ Registering…'; btn.disabled = true; }
-  if(!_osReady){
-    // Wait up to 8s for OneSignal init
-    var waited = 0;
-    var wait = setInterval(function(){
-      waited += 500;
-      if(_osReady){ clearInterval(wait); doLogin(); }
-      else if(waited >= 8000){
-        clearInterval(wait);
-        if(btn){ btn.textContent = '❌ OneSignal not ready — reload the page and retry.'; btn.disabled = false; }
-      }
-    }, 500);
-  } else {
-    doLogin();
-  }
-
-  function doLogin(){
-    OneSignalDeferred.push(function(OneSignal){
-      OneSignal.login('cust_' + session.shop_id)
-        .then(function(){
-          if(btn){ btn.textContent = '✅ Registered! Push notifications active.'; }
-          renderNotifSettings();
-        })
-        .catch(function(e){
-          if(btn){ btn.textContent = '❌ ' + (e && e.message ? e.message.slice(0,60) : 'Login failed — reload and retry'); btn.disabled = false; }
-        });
-    });
-  }
 }
 
 function renderNotifSettings(){
@@ -393,8 +342,8 @@ function renderNotifSettings(){
   var perm = ('Notification' in window) ? Notification.permission : 'unsupported';
 
   if(perm === 'granted'){
-    statusBox.innerHTML = '<div style="display:flex;align-items:center;gap:10px;padding:10px;background:#e8f5e9;border-radius:10px"><span style="font-size:22px">✅</span><div><div style="font-size:13px;font-weight:800;color:#1a5a38">Notifications are ON</div><div style="font-size:11px;color:#2d7a4f;font-family:monospace">You will receive messages from the bakery on this device.</div></div></div>';
-    actionBox.innerHTML = '<button onclick="reRegisterPush(this)" style="width:100%;padding:11px;background:#f0ece6;color:#4a2f14;border:1.5px solid #d0c0aa;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif;margin-top:8px">🔄 Re-register push (tap if not receiving)</button>';
+    statusBox.innerHTML = '<div style="display:flex;align-items:center;gap:10px;padding:10px;background:#e8f5e9;border-radius:10px"><span style="font-size:22px">✅</span><div><div style="font-size:13px;font-weight:800;color:#1a5a38">Notifications are ON</div><div style="font-size:11px;color:#2d7a4f;font-family:monospace">Messages from the bakery will appear on your phone.</div></div></div>';
+    actionBox.innerHTML = '';
     instrBox.style.display = 'none';
 
   } else if(perm === 'denied'){
@@ -1147,53 +1096,73 @@ function changePassword(){
     });
 }
 
-// ── CUSTOMER NOTIFICATIONS (sent by admin to specific customer) ──
+// ── CUSTOMER NOTIFICATIONS — same pattern as driver ──
+var _custNotifs = [];
+var _custNotifOpen = false;
+
 function loadCustomerNotifs(){
   if(!session) return;
-  api({ action:'getCustomerNotifications', shop_id: session.shop_id }).then(function(notifs){
-    var list = Array.isArray(notifs) ? notifs : [];
-    if(!list.length) return;
-
-    // Check localStorage: skip any notifications dismissed/seen before their created_at
-    var dismissedAt = localStorage.getItem('notifDismissed_' + session.shop_id) || '';
-    var fresh = dismissedAt
-      ? list.filter(function(n){ return n.created_at > dismissedAt; })
-      : list;
-    if(!fresh.length) return;
-
-    // Mark as read in DB and in localStorage
-    apiPost({ action:'markCustomerNotifsRead', shop_id: session.shop_id });
-    var latest = fresh.reduce(function(max, n){ return n.created_at > max ? n.created_at : max; }, '');
-    localStorage.setItem('notifDismissed_' + session.shop_id, latest);
-
-    // Show in-app banner
-    var banner = document.getElementById('customerNotifBanner');
-    var textEl = document.getElementById('customerNotifText');
-    textEl.innerHTML = fresh.map(function(n){ return '💬 ' + esc(n.message); }).join('<br>');
-    banner.style.display = 'block';
-
-    // Fire a real system notification — works when tab is open OR browser is minimised
-    if('Notification' in window && Notification.permission === 'granted'){
-      fresh.forEach(function(n){
-        try {
-          new Notification('🥖 Message from bakery', {
-            body: n.message,
-            icon: '/icon-192.png',
-            tag: 'cust-notif-' + (n.id || Date.now()),
-            renotify: true
-          });
-        } catch(e){}
-      });
+  api({ action:'getCustomerNotifications', shop_id: session.shop_id }).then(function(data){
+    _custNotifs = Array.isArray(data) ? data : [];
+    var badge = document.getElementById('custNotifBadge');
+    if(_custNotifs.length > 0){
+      badge.textContent = _custNotifs.length > 9 ? '9+' : _custNotifs.length;
+      badge.style.display = 'flex';
+      // Fire browser notification if panel is closed
+      if(!_custNotifOpen) _showCustBrowserNotif(_custNotifs[0]);
+    } else {
+      badge.style.display = 'none';
     }
+    if(_custNotifOpen) _renderCustNotifPanel();
   }).catch(function(){});
 }
 
-function dismissCustomerNotifs(){
-  document.getElementById('customerNotifBanner').style.display = 'none';
-  // Store dismiss timestamp in localStorage — prevents re-showing on refresh
-  if(session){
-    localStorage.setItem('notifDismissed_' + session.shop_id, new Date().toISOString());
-    apiPost({ action:'markCustomerNotifsRead', shop_id: session.shop_id });
+function _renderCustNotifPanel(){
+  var el = document.getElementById('custNotifPanelList');
+  if(!el) return;
+  if(!_custNotifs.length){
+    el.innerHTML = '<div style="padding:24px;text-align:center;color:#8a7a6a;font-size:13px;font-family:monospace">No new notifications</div>';
+    return;
+  }
+  el.innerHTML = _custNotifs.map(function(n){
+    var time = n.created_at ? new Date(n.created_at).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+    return '<div style="padding:11px 14px;border-bottom:1px solid #f5ede0;display:flex;gap:10px;align-items:flex-start">'+
+      '<span style="font-size:18px;flex-shrink:0;margin-top:1px">💬</span>'+
+      '<div><div style="font-size:13px;font-weight:600;color:#1e1611;line-height:1.4">'+esc(n.message)+'</div>'+
+      '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:3px">'+time+'</div></div></div>';
+  }).join('');
+}
+
+function toggleCustNotifPanel(){
+  _custNotifOpen = !_custNotifOpen;
+  var panel = document.getElementById('custNotifPanel');
+  panel.style.display = _custNotifOpen ? 'block' : 'none';
+  if(_custNotifOpen) _renderCustNotifPanel();
+}
+
+// Close panel when tapping outside
+document.addEventListener('click', function(e){
+  var panel = document.getElementById('custNotifPanel');
+  if(panel && !panel.contains(e.target) && !e.target.closest('[onclick*="toggleCustNotifPanel"]')){
+    if(_custNotifOpen){ _custNotifOpen = false; panel.style.display = 'none'; }
+  }
+});
+
+function markCustNotifsRead(){
+  if(!_custNotifs.length || !session) return;
+  apiPost({ action:'markCustomerNotifsRead', shop_id: session.shop_id }).then(function(){
+    _custNotifs = [];
+    document.getElementById('custNotifBadge').style.display = 'none';
+    _renderCustNotifPanel();
+  });
+}
+
+function _showCustBrowserNotif(n){
+  if(!('Notification' in window)) return;
+  if(Notification.permission === 'granted'){
+    try { new Notification('🥖 Message from bakery', { body: n.message, icon: '/icon-192.png' }); } catch(e){}
+  } else if(Notification.permission !== 'denied'){
+    Notification.requestPermission();
   }
 }
 
