@@ -292,6 +292,7 @@ function showApp(){
 // ── ONESIGNAL PUSH FOR CUSTOMER ──
 window.OneSignalDeferred = window.OneSignalDeferred || [];
 var _osReady = false;
+var _osError = '';
 
 // Init OneSignal once — runs when SDK script finishes loading (defer in <head>)
 OneSignalDeferred.push(function(OneSignal){
@@ -300,8 +301,11 @@ OneSignalDeferred.push(function(OneSignal){
   OneSignal.init({ appId: appId })
     .then(function(){
       _osReady = true;
+      _osError = '';
     })
-    .catch(function(){});
+    .catch(function(e){
+      _osError = (e && (e.message || e.toString())) || 'Init failed';
+    });
 });
 
 function initCustomerPush(){
