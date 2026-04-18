@@ -463,8 +463,9 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
       <option value="">All Areas</option>
     </select>
   </div>
-  <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+  <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px">
     <button class="btn-sm" style="background:#e8f5e9;color:#2d7a4f;border:1.5px solid #a5d6a7;font-weight:800" onclick="openGroupAssignModal()">📋 Assign Groups</button>
+    <button class="btn-sm" style="background:#e3f2fd;color:#1565c0;border:1.5px solid #90caf9;font-weight:800" onclick="openMobileAssignModal()">📱 Update Mobiles</button>
   </div>
 
   <!-- Zoho sync bar — shown only when Zoho enabled & admin/super_admin -->
@@ -790,6 +791,25 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
 
 
 <!-- CUSTOMER LOGINS MODAL -->
+<!-- Mobile Assign Modal -->
+<div class="modal-bg" id="mobileAssignModal" style="display:none" onclick="if(event.target===this)closeMobileAssignModal()">
+  <div class="modal" style="max-width:520px;width:96%;max-height:90vh;display:flex;flex-direction:column">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-shrink:0">
+      <div>
+        <div class="modal-title" style="margin-bottom:0">📱 Update Customer Mobiles</div>
+        <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px">Edit mobile numbers, then tap Save All</div>
+      </div>
+      <button onclick="closeMobileAssignModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#8a7a6a;padding:0 4px">✖</button>
+    </div>
+    <input type="text" id="ma-search" placeholder="🔍 Search customer…" oninput="renderMAList()" style="margin-bottom:10px;flex-shrink:0">
+    <div id="ma-list" style="flex:1;overflow-y:auto;border:1.5px solid #e8dfd2;border-radius:10px;background:#fafaf8;margin-bottom:12px"></div>
+    <div style="flex-shrink:0">
+      <button class="btn" id="ma-save-btn" style="background:#1565c0;color:#fff;margin-bottom:0;padding:13px" onclick="saveAllMobileAssign()">💾 Save All Changes</button>
+      <div id="ma-msg" style="display:none;margin-top:8px" class="msg ok"></div>
+    </div>
+  </div>
+</div>
+
 <!-- Group Assign Modal -->
 <div class="modal-bg" id="groupAssignModal" style="display:none" onclick="if(event.target===this)closeGroupAssignModal()">
   <div class="modal" style="max-width:520px;width:96%;max-height:90vh;display:flex;flex-direction:column">
@@ -2732,6 +2752,104 @@ function saveAllGroupAssign(){
     msg.textContent = '❌ Save failed. Please try again.';
     msg.style.display = 'block';
     window.logError('admin', 'saveAllGroupAssign', e);
+  });
+}
+
+/* ── MOBILE ASSIGN MODAL ── */
+var _maCustomers = [];
+var _maPendingChanges = {}; // cid → mobile string
+
+function openMobileAssignModal(){
+  loadCustomerMaster().then(function(){
+    _maCustomers = allCustomers.slice();
+    _maPendingChanges = {};
+    document.getElementById('ma-search').value = '';
+    document.getElementById('ma-msg').style.display = 'none';
+    renderMAList();
+    document.getElementById('mobileAssignModal').style.display = 'flex';
+  });
+}
+
+function closeMobileAssignModal(){
+  document.getElementById('mobileAssignModal').style.display = 'none';
+  _maPendingChanges = {};
+}
+
+function renderMAList(){
+  var q = (document.getElementById('ma-search').value || '').toLowerCase();
+  var list = q ? _maCustomers.filter(function(c){ return (c.name||'').toLowerCase().indexOf(q) >= 0 || (c.area||'').toLowerCase().indexOf(q) >= 0; }) : _maCustomers;
+  var el = document.getElementById('ma-list');
+  if(!list.length){ el.innerHTML='<div style="padding:16px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">No customers found.</div>'; return; }
+
+  el.innerHTML = list.map(function(c){
+    var cid = String(c.customer_id || c.shop_id || '');
+    var currentMobile = _maPendingChanges.hasOwnProperty(cid) ? _maPendingChanges[cid] : (c.mobile || '');
+    var changed = _maPendingChanges.hasOwnProperty(cid);
+
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #f0e8de;background:'+(changed?'#e3f2fd':'#fff')+'">'
+      +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:13px;font-weight:800;color:#4a2f14;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(c.name)+'</div>'
+        +(c.area ? '<div style="font-size:10px;color:#8a7a6a;font-family:monospace">'+esc(c.area)+'</div>' : '')
+      +'</div>'
+      +'<input type="tel" data-cid="'+cid+'" value="'+esc(currentMobile)+'" oninput="maOnChange(this)" placeholder="Mobile no." '
+        +'style="flex-shrink:0;width:140px;font-size:12px;padding:7px 8px;border:1.5px solid '+(changed?'#90caf9':'#e8dfd2')+';border-radius:8px;font-weight:700;color:#1565c0;font-family:monospace">'
+    +'</div>';
+  }).join('');
+}
+
+function maOnChange(inp){
+  var cid = inp.getAttribute('data-cid');
+  var original = (allCustomers.find(function(c){ return String(c.customer_id||c.shop_id)===cid; })||{}).mobile || '';
+  var newVal = inp.value.trim();
+  if(newVal !== original){
+    _maPendingChanges[cid] = newVal;
+    inp.style.borderColor = '#90caf9';
+    inp.closest('div').style.background = '#e3f2fd';
+  } else {
+    delete _maPendingChanges[cid];
+    inp.style.borderColor = '#e8dfd2';
+    inp.closest('div').style.background = '#fff';
+  }
+}
+
+function saveAllMobileAssign(){
+  var cids = Object.keys(_maPendingChanges);
+  if(!cids.length){ alert('No changes to save.'); return; }
+  var btn = document.getElementById('ma-save-btn');
+  var msg = document.getElementById('ma-msg');
+  btn.disabled = true; btn.textContent = '⏳ Saving…'; msg.style.display = 'none';
+
+  var ops = cids.map(function(cid){
+    var c = allCustomers.find(function(x){ return String(x.customer_id||x.shop_id) === cid; }) || {};
+    return apiPost({action:'updateShop', shop_id:cid,
+      customer_id: c.customer_id || cid,
+      name: c.name||'', address: c.address||'', area: c.area||'',
+      assigned_driver: c.assigned_driver||'', flag: c.flag||'',
+      lat: c.lat||'', lng: c.lng||'',
+      mobile: _maPendingChanges[cid],
+      last_updated_by: sessionStorage.getItem('staffName')||'admin',
+      last_updated_at: new Date().toLocaleString('en-IN')
+    });
+  });
+
+  Promise.all(ops).then(function(){
+    cids.forEach(function(cid){
+      var c = allCustomers.find(function(x){ return String(x.customer_id||x.shop_id) === cid; });
+      if(c) c.mobile = _maPendingChanges[cid];
+    });
+    _maPendingChanges = {};
+    btn.disabled = false; btn.textContent = '💾 Save All Changes';
+    msg.className = 'msg ok';
+    msg.textContent = '✅ Saved '+cids.length+' customer'+(cids.length>1?'s':'')+' successfully.';
+    msg.style.display = 'block';
+    renderCustStats(); renderCustomers();
+    renderMAList();
+  }).catch(function(e){
+    btn.disabled = false; btn.textContent = '💾 Save All Changes';
+    msg.className = 'msg er';
+    msg.textContent = '❌ Save failed. Please try again.';
+    msg.style.display = 'block';
+    window.logError('admin', 'saveAllMobileAssign', e);
   });
 }
 
