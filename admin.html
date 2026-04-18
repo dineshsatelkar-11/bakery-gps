@@ -615,6 +615,8 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
       <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
         <button class="btn-sm" style="background:#e8f5e9;color:#1a5a38;border:1.5px solid #a5d6a7;padding:6px 12px;font-size:11px" onclick="notifSelectAllCustomers()">✅ Select All</button>
         <button class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1.5px solid #f0b0b0;padding:6px 12px;font-size:11px" onclick="notifSkipOrdered()">⏭ Skip Already Ordered</button>
+        <button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082;padding:6px 12px;font-size:11px" onclick="notifSelectTeaPost()">🍵 All Tea Post</button>
+        <button class="btn-sm" style="background:#fff3e0;color:#c8864a;border:1.5px solid #ffcc80;padding:6px 12px;font-size:11px" onclick="notifTeaPostSkipOrdered()">⏭ Skip Tea Post Ordered</button>
         <button class="btn-sm" style="background:#e8dfd2;color:#4a2f14;border:1.5px solid #d0c0aa;padding:6px 12px;font-size:11px" onclick="notifDeselectAll()">✖ Clear</button>
       </div>
       <div id="custNotifList" style="max-height:220px;overflow-y:auto;border:1.5px solid #e8dfd2;border-radius:10px;margin-bottom:8px;background:#f9f6f1">
@@ -5683,6 +5685,23 @@ function notifSkipOrdered(){
   // Select all, then uncheck those who already ordered
   document.querySelectorAll('.custNotifCheck').forEach(function(c){
     c.checked = (c.getAttribute('data-ordered') !== '1');
+  });
+  updateNotifSelected();
+}
+function notifSelectTeaPost(){
+  // Select only Tea Post customers (name contains "tea post", case-insensitive)
+  document.querySelectorAll('.custNotifCheck').forEach(function(c){
+    var name = (c.getAttribute('data-name') || '').toLowerCase();
+    c.checked = name.indexOf('tea post') >= 0;
+  });
+  updateNotifSelected();
+}
+function notifTeaPostSkipOrdered(){
+  // Select Tea Post customers who have NOT yet ordered
+  document.querySelectorAll('.custNotifCheck').forEach(function(c){
+    var name    = (c.getAttribute('data-name') || '').toLowerCase();
+    var ordered = c.getAttribute('data-ordered') === '1';
+    c.checked   = name.indexOf('tea post') >= 0 && !ordered;
   });
   updateNotifSelected();
 }
