@@ -7,7 +7,6 @@
 <link rel="manifest" href="/manifest.json">
 <script src="config.js"></script>
 <script src="api.js"></script>
-<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:440px;margin:0 auto;min-height:100vh}
@@ -291,37 +290,50 @@ function showApp(){
 
 // ── ONESIGNAL PUSH FOR CUSTOMER ──
 function initCustomerPush(){
-  var appId = CONFIG.ONESIGNAL_APP_ID;
-  if(!appId || appId === 'YOUR_APP_ID_HERE' || !session) return;
-  // If already denied, nothing we can do programmatically
-  if('Notification' in window && Notification.permission === 'denied') return;
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  OneSignalDeferred.push(function(OneSignal){
-    OneSignal.init({ appId: appId, serviceWorkerPath: '/OneSignalSDKWorker.js' })
-      .then(function(){
-        return OneSignal.login('cust_' + session.shop_id);
-      })
-      .then(function(){
-        if(Notification.permission === 'granted'){
-          // Already enabled — no modal needed
-          return;
-        }
-        // Show modal once per device (skip if user already said "not now" this session)
-        if(!sessionStorage.getItem('pushModalDismissed')){
-          document.getElementById('pushOptInModal').style.display = 'flex';
-        }
-      })
-      .catch(function(){});
-  });
+  if(!('Notification' in window)) return;
+  if(Notification.permission === 'granted'){
+    // Already allowed — silently register with OneSignal
+    _registerWithOneSignal();
+    return;
+  }
+  if(Notification.permission === 'denied') return; // blocked — user must fix in settings
+  // Show modal once per session to ask permission
+  if(!sessionStorage.getItem('pushModalDismissed')){
+    document.getElementById('pushOptInModal').style.display = 'flex';
+  }
 }
 
 function enablePushNotifs(){
   document.getElementById('pushOptInModal').style.display = 'none';
+  if(!('Notification' in window)){
+    alert('This browser does not support notifications.');
+    return;
+  }
+  // Use native browser API directly — works regardless of OneSignal state
+  Notification.requestPermission().then(function(permission){
+    renderNotifSettings();
+    // If granted, also register with OneSignal so push works when app is closed
+    if(permission === 'granted'){
+      _registerWithOneSignal();
+    }
+  });
+}
+
+function _registerWithOneSignal(){
+  var appId = (typeof CONFIG !== 'undefined') ? CONFIG.ONESIGNAL_APP_ID : null;
+  if(!appId || appId === 'YOUR_APP_ID_HERE' || !session) return;
   window.OneSignalDeferred = window.OneSignalDeferred || [];
+  // Load SDK if not already loaded
+  if(!document.querySelector('script[src*="OneSignalSDK"]')){
+    var s = document.createElement('script');
+    s.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
+    s.defer = true;
+    document.head.appendChild(s);
+  }
   OneSignalDeferred.push(function(OneSignal){
-    OneSignal.Notifications.requestPermission()
-      .then(function(){ renderNotifSettings(); })
-      .catch(function(){ renderNotifSettings(); });
+    OneSignal.init({ appId: appId, serviceWorkerPath: '/OneSignalSDKWorker.js' })
+      .then(function(){ return OneSignal.login('cust_' + session.shop_id); })
+      .catch(function(){});
   });
 }
 
