@@ -322,19 +322,29 @@ function enablePushNotifs(){
 function _registerWithOneSignal(){
   var appId = (typeof CONFIG !== 'undefined') ? CONFIG.ONESIGNAL_APP_ID : null;
   if(!appId || appId === 'YOUR_APP_ID_HERE' || !session) return;
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  // Load SDK if not already loaded
-  if(!document.querySelector('script[src*="OneSignalSDK"]')){
-    var s = document.createElement('script');
-    s.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
-    s.defer = true;
-    document.head.appendChild(s);
-  }
-  OneSignalDeferred.push(function(OneSignal){
-    OneSignal.init({ appId: appId, serviceWorkerPath: '/OneSignalSDKWorker.js' })
-      .then(function(){ return OneSignal.login('cust_' + session.shop_id); })
+
+  function doRegister(OneSignal){
+    OneSignal.init({ appId: appId })
+      .then(function(){
+        // Tag this device with the customer's shop_id for targeting
+        OneSignal.User.addTag('cust_shop_id', String(session.shop_id));
+      })
       .catch(function(){});
-  });
+  }
+
+  if(window.OneSignal && typeof window.OneSignal.init === 'function'){
+    // SDK already loaded — call directly
+    doRegister(window.OneSignal);
+  } else {
+    // Load SDK then call
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(doRegister);
+    if(!document.querySelector('script[src*="OneSignalSDK"]')){
+      var s = document.createElement('script');
+      s.src = 'https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
+      document.head.appendChild(s);
+    }
+  }
 }
 
 function dismissPushModal(){
@@ -1124,10 +1134,25 @@ function loadCustomerNotifs(){
     var latest = fresh.reduce(function(max, n){ return n.created_at > max ? n.created_at : max; }, '');
     localStorage.setItem('notifDismissed_' + session.shop_id, latest);
 
+    // Show in-app banner
     var banner = document.getElementById('customerNotifBanner');
     var textEl = document.getElementById('customerNotifText');
     textEl.innerHTML = fresh.map(function(n){ return '💬 ' + esc(n.message); }).join('<br>');
     banner.style.display = 'block';
+
+    // Fire a real system notification — works when tab is open OR browser is minimised
+    if('Notification' in window && Notification.permission === 'granted'){
+      fresh.forEach(function(n){
+        try {
+          new Notification('🥖 Message from bakery', {
+            body: n.message,
+            icon: '/icon-192.png',
+            tag: 'cust-notif-' + (n.id || Date.now()),
+            renotify: true
+          });
+        } catch(e){}
+      });
+    }
   }).catch(function(){});
 }
 
