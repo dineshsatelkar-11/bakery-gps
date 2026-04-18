@@ -105,12 +105,14 @@ textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:1
       <div style="font-size:11px;color:#1565c0;font-family:monospace;flex-shrink:0;opacity:0.7">Tap to dismiss ✓</div>
     </div>
   </div>
-  <!-- Push notification opt-in banner — shown once until customer enables -->
-  <div id="pushOptInBanner" style="display:none;margin:10px 14px 0;background:#f3e8ff;border:1.5px solid #ce93d8;border-radius:12px;padding:10px 12px">
-    <div style="display:flex;align-items:center;gap:10px">
-      <div style="font-size:12px;font-weight:700;color:#4a148c;font-family:monospace;line-height:1.5;flex:1">🔔 Enable notifications to receive messages from the bakery</div>
-      <button onclick="enablePushNotifs()" style="background:#4a148c;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;white-space:nowrap">Enable</button>
-      <button onclick="document.getElementById('pushOptInBanner').style.display='none'" style="background:none;border:none;font-size:16px;color:#4a148c;cursor:pointer;padding:0 2px;line-height:1">✖</button>
+  <!-- Push notification opt-in modal -->
+  <div id="pushOptInModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:999;align-items:center;justify-content:center;padding:24px">
+    <div style="background:#fff;border-radius:20px;padding:24px;max-width:320px;width:100%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
+      <div style="font-size:48px;margin-bottom:12px">🔔</div>
+      <div style="font-size:17px;font-weight:900;color:#1e1611;margin-bottom:8px">Enable Notifications</div>
+      <div style="font-size:13px;color:#5a4a3a;font-family:monospace;line-height:1.7;margin-bottom:20px">Get messages from the bakery directly on your phone — even when the app is closed.</div>
+      <button onclick="enablePushNotifs()" style="width:100%;padding:14px;background:#4a2f14;color:#fff;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:10px">Allow Notifications</button>
+      <button onclick="dismissPushModal()" style="width:100%;padding:12px;background:#f0ece6;color:#5a4a3a;border:none;border-radius:14px;font-size:14px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif">Not now</button>
     </div>
   </div>
 
@@ -249,7 +251,7 @@ function showApp(){
   document.getElementById('orderClosedBanner').style.display = 'none';
   document.getElementById('broadcastBanner').style.display = 'none';
   document.getElementById('customerNotifBanner').style.display = 'none';
-  document.getElementById('pushOptInBanner').style.display = 'none';
+  document.getElementById('pushOptInModal').style.display = 'none';
   _lastBroadcastAt = '';
   document.getElementById('prodFilterBar').style.display = 'none';
   document.getElementById('productsList').innerHTML = '<div style="padding:10px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading products…</div>';
@@ -274,7 +276,7 @@ function showApp(){
   if (window._timerOrderWindow) clearInterval(window._timerOrderWindow);
   if (window._timerNotifs)      clearInterval(window._timerNotifs);
   window._timerOrderWindow = setInterval(checkOrderWindow, 30000);
-  window._timerNotifs      = setInterval(loadCustomerNotifs, 60000);
+  window._timerNotifs      = setInterval(loadCustomerNotifs, 10000);
   initCustomerPush();
 }
 
@@ -282,6 +284,8 @@ function showApp(){
 function initCustomerPush(){
   var appId = CONFIG.ONESIGNAL_APP_ID;
   if(!appId || appId === 'YOUR_APP_ID_HERE' || !session) return;
+  // If already denied, nothing we can do programmatically
+  if('Notification' in window && Notification.permission === 'denied') return;
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   OneSignalDeferred.push(function(OneSignal){
     OneSignal.init({ appId: appId, serviceWorkerPath: '/OneSignalSDKWorker.js' })
@@ -289,10 +293,13 @@ function initCustomerPush(){
         return OneSignal.login('cust_' + session.shop_id);
       })
       .then(function(){
-        // Show opt-in banner only if permission not yet granted/denied
-        if(OneSignal.Notifications.permission !== true &&
-           ('Notification' in window) && Notification.permission === 'default'){
-          document.getElementById('pushOptInBanner').style.display = 'block';
+        if(Notification.permission === 'granted'){
+          // Already enabled — no modal needed
+          return;
+        }
+        // Show modal once per device (skip if user already said "not now" this session)
+        if(!sessionStorage.getItem('pushModalDismissed')){
+          document.getElementById('pushOptInModal').style.display = 'flex';
         }
       })
       .catch(function(){});
@@ -300,11 +307,16 @@ function initCustomerPush(){
 }
 
 function enablePushNotifs(){
-  document.getElementById('pushOptInBanner').style.display = 'none';
+  document.getElementById('pushOptInModal').style.display = 'none';
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   OneSignalDeferred.push(function(OneSignal){
     OneSignal.Notifications.requestPermission().catch(function(){});
   });
+}
+
+function dismissPushModal(){
+  document.getElementById('pushOptInModal').style.display = 'none';
+  sessionStorage.setItem('pushModalDismissed', '1');
 }
 
 // Re-fetch customer session from DB to pick up any group changes by admin
