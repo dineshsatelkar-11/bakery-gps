@@ -1266,7 +1266,8 @@ function runGlobalSearch(){
 }
 
 document.getElementById('topDate').textContent=new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'});
-['f-ord-date','f-rt-date','f-del-date','sub-date','mov-date'].forEach(function(id){var el=document.getElementById(id);if(el)el.value=todayStr();});
+['f-rt-date','f-del-date','sub-date','mov-date'].forEach(function(id){var el=document.getElementById(id);if(el)el.value=todayStr();});
+var _ordEl=document.getElementById('f-ord-date');if(_ordEl)_ordEl.value=tomorrowStr();
 var _sumEl=document.getElementById('f-sum-date');if(_sumEl)_sumEl.value=tomorrowStr();
 var _coEl=document.getElementById('co-date');if(_coEl)_coEl.value=tomorrowStr();
 document.getElementById('logoutBtn').onclick=function(){
@@ -1291,7 +1292,7 @@ function showTab(t){
   if(t==='routes')       setLatestDate('f-rt-date','routes',document.getElementById('f-rt-driver').value,loadRoutes);
   if(t==='gps')          loadGPS();
   if(t==='approve')      renderApproveQueue();
-  if(t==='queue')        loadQueue();
+  if(t==='queue')        { document.getElementById('f-ord-date').value=tomorrowStr(); loadQueue(); }
   if(t==='customers')    loadCustomers();
   if(t==='products')     loadProducts();
   if(t==='cust-orders')  { document.getElementById('co-date').value=tomorrowStr(); loadCustomerMaster().then(loadCustOrders); }
