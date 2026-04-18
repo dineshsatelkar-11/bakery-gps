@@ -290,41 +290,57 @@ function showApp(){
 }
 
 // ── ONESIGNAL PUSH FOR CUSTOMER ──
-// Mirrors exactly how driver.html registers — init + login on load, requestPermission on tap.
 window.OneSignalDeferred = window.OneSignalDeferred || [];
+var _osReady = false;
 
-function initCustomerPush(){
+// Init OneSignal once — runs when SDK script finishes loading (defer in <head>)
+OneSignalDeferred.push(function(OneSignal){
   var appId = (typeof CONFIG !== 'undefined') ? CONFIG.ONESIGNAL_APP_ID : null;
-  if(!appId || appId === 'YOUR_APP_ID_HERE' || !session) return;
-  OneSignalDeferred.push(function(OneSignal){
-    OneSignal.init({
-      appId: appId,
-      serviceWorkerPath: '/OneSignalSDKWorker.js',
-      autoResubscribe: true   // recreate push subscription silently if it was lost
-    })
+  if(!appId || appId === 'YOUR_APP_ID_HERE') return;
+  OneSignal.init({ appId: appId })
     .then(function(){
-      if(Notification.permission === 'granted'){
-        // Already allowed — ensure push subscription exists then link to this customer
-        return OneSignal.Notifications.requestPermission()
-          .then(function(){ return OneSignal.login('cust_' + session.shop_id); });
-      } else if(Notification.permission === 'default' && !sessionStorage.getItem('pushModalDismissed')){
-        document.getElementById('pushOptInModal').style.display = 'flex';
-      }
+      _osReady = true;
     })
     .catch(function(){});
+});
+
+function initCustomerPush(){
+  if(!session) return;
+  // If already granted, register once OS init settles (poll briefly)
+  if(Notification.permission === 'granted'){
+    _osLogin();
+  } else if(Notification.permission === 'default' && !sessionStorage.getItem('pushModalDismissed')){
+    // Show modal after SDK has had time to init
+    setTimeout(function(){
+      if(Notification.permission === 'default'){
+        document.getElementById('pushOptInModal').style.display = 'flex';
+      }
+    }, 2000);
+  }
+}
+
+// Login to OneSignal with retries — waits for _osReady
+function _osLogin(attempts){
+  attempts = attempts || 0;
+  if(!session) return;
+  if(!_osReady){
+    if(attempts < 20){ setTimeout(function(){ _osLogin(attempts+1); }, 500); }
+    return;
+  }
+  OneSignalDeferred.push(function(OneSignal){
+    OneSignal.login('cust_' + session.shop_id).catch(function(){});
   });
 }
 
 function enablePushNotifs(){
   document.getElementById('pushOptInModal').style.display = 'none';
-  OneSignalDeferred.push(function(OneSignal){
-    // requestPermission creates the push subscription AND asks for browser permission
-    OneSignal.Notifications.requestPermission()
-      .then(function(){
-        return OneSignal.login('cust_' + session.shop_id);
-      })
-      .then(function(){ renderNotifSettings(); })
-      .catch(function(){ renderNotifSettings(); });
+  if(!('Notification' in window)){ renderNotifSettings(); return; }
+  // Native requestPermission — guaranteed to show dialog and works in all browsers
+  Notification.requestPermission().then(function(perm){
+    if(perm === 'granted'){
+      _osLogin();
+    }
+    renderNotifSettings();
   });
 }
 
@@ -335,20 +351,33 @@ function dismissPushModal(){
 
 function reRegisterPush(btn){
   if(btn){ btn.textContent = '⏳ Registering…'; btn.disabled = true; }
-  OneSignalDeferred.push(function(OneSignal){
-    // requestPermission first — if already granted, silently creates push subscription
-    // login() then links that subscription to this customer's shop_id
-    OneSignal.Notifications.requestPermission()
-      .then(function(){ return OneSignal.login('cust_' + session.shop_id); })
-      .then(function(){
-        if(btn){ btn.textContent = '✅ Registered! You will now receive push notifications.'; }
-        renderNotifSettings();
-      })
-      .catch(function(){
-        if(btn){ btn.textContent = '❌ Failed — see instructions below.'; btn.disabled = false; }
-        showNotifInstructions();
-      });
-  });
+  if(!_osReady){
+    // Wait up to 8s for OneSignal init
+    var waited = 0;
+    var wait = setInterval(function(){
+      waited += 500;
+      if(_osReady){ clearInterval(wait); doLogin(); }
+      else if(waited >= 8000){
+        clearInterval(wait);
+        if(btn){ btn.textContent = '❌ OneSignal not ready — reload the page and retry.'; btn.disabled = false; }
+      }
+    }, 500);
+  } else {
+    doLogin();
+  }
+
+  function doLogin(){
+    OneSignalDeferred.push(function(OneSignal){
+      OneSignal.login('cust_' + session.shop_id)
+        .then(function(){
+          if(btn){ btn.textContent = '✅ Registered! Push notifications active.'; }
+          renderNotifSettings();
+        })
+        .catch(function(e){
+          if(btn){ btn.textContent = '❌ ' + (e && e.message ? e.message.slice(0,60) : 'Login failed — reload and retry'); btn.disabled = false; }
+        });
+    });
+  }
 }
 
 function renderNotifSettings(){
