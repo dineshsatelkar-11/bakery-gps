@@ -297,27 +297,32 @@ function initCustomerPush(){
   var appId = (typeof CONFIG !== 'undefined') ? CONFIG.ONESIGNAL_APP_ID : null;
   if(!appId || appId === 'YOUR_APP_ID_HERE' || !session) return;
   OneSignalDeferred.push(function(OneSignal){
-    OneSignal.init({ appId: appId, serviceWorkerPath: '/OneSignalSDKWorker.js' })
-      .then(function(){
-        // Link this device to the customer's shop_id (same as driver uses their name)
-        return OneSignal.login('cust_' + session.shop_id);
-      })
-      .then(function(){
-        // Show opt-in modal if permission not yet decided
-        if(Notification.permission === 'default' && !sessionStorage.getItem('pushModalDismissed')){
-          document.getElementById('pushOptInModal').style.display = 'flex';
-        }
-      })
-      .catch(function(){});
+    OneSignal.init({
+      appId: appId,
+      serviceWorkerPath: '/OneSignalSDKWorker.js',
+      autoResubscribe: true   // recreate push subscription silently if it was lost
+    })
+    .then(function(){
+      if(Notification.permission === 'granted'){
+        // Already allowed — ensure push subscription exists then link to this customer
+        return OneSignal.Notifications.requestPermission()
+          .then(function(){ return OneSignal.login('cust_' + session.shop_id); });
+      } else if(Notification.permission === 'default' && !sessionStorage.getItem('pushModalDismissed')){
+        document.getElementById('pushOptInModal').style.display = 'flex';
+      }
+    })
+    .catch(function(){});
   });
 }
 
 function enablePushNotifs(){
   document.getElementById('pushOptInModal').style.display = 'none';
-  // OneSignal is already initialised (SDK in head, loaded before this tap)
-  // Calling push() here executes immediately — user gesture context is preserved
   OneSignalDeferred.push(function(OneSignal){
+    // requestPermission creates the push subscription AND asks for browser permission
     OneSignal.Notifications.requestPermission()
+      .then(function(){
+        return OneSignal.login('cust_' + session.shop_id);
+      })
       .then(function(){ renderNotifSettings(); })
       .catch(function(){ renderNotifSettings(); });
   });
@@ -331,12 +336,17 @@ function dismissPushModal(){
 function reRegisterPush(btn){
   if(btn){ btn.textContent = '⏳ Registering…'; btn.disabled = true; }
   OneSignalDeferred.push(function(OneSignal){
-    OneSignal.login('cust_' + session.shop_id)
+    // requestPermission first — if already granted, silently creates push subscription
+    // login() then links that subscription to this customer's shop_id
+    OneSignal.Notifications.requestPermission()
+      .then(function(){ return OneSignal.login('cust_' + session.shop_id); })
       .then(function(){
-        if(btn){ btn.textContent = '✅ Done — push re-registered.'; }
+        if(btn){ btn.textContent = '✅ Registered! You will now receive push notifications.'; }
+        renderNotifSettings();
       })
       .catch(function(){
-        if(btn){ btn.textContent = '❌ Failed. Try reopening app.'; btn.disabled = false; }
+        if(btn){ btn.textContent = '❌ Failed — see instructions below.'; btn.disabled = false; }
+        showNotifInstructions();
       });
   });
 }
