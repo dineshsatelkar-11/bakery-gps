@@ -562,59 +562,82 @@ function contactWhatsApp(){
   window.open('https://wa.me/' + num, '_blank');
 }
 
-function renderNotifSettings(){
-  var toggle      = document.getElementById('notifToggle');
-  var slider      = document.getElementById('notifToggleSlider');
-  var thumb       = document.getElementById('notifToggleThumb');
-  var statusLbl   = document.getElementById('notifToggleStatus');
-  var reregBox    = document.getElementById('notifReregisterBox');
-  var blockedBox  = document.getElementById('notifBlockedBox');
+function _applyNotifToggleUI(isSubscribed){
+  var toggle     = document.getElementById('notifToggle');
+  var slider     = document.getElementById('notifToggleSlider');
+  var thumb      = document.getElementById('notifToggleThumb');
+  var statusLbl  = document.getElementById('notifToggleStatus');
+  var reregBox   = document.getElementById('notifReregisterBox');
+  var blockedBox = document.getElementById('notifBlockedBox');
   if(!toggle) return;
 
-  var perm = ('Notification' in window) ? Notification.permission : 'unsupported';
-
-  // Reset
   reregBox.style.display   = 'none';
   blockedBox.style.display = 'none';
   toggle.disabled = false;
 
-  if(perm === 'granted'){
-    toggle.checked = true;
-    slider.style.background = '#4a2f14';
-    thumb.style.transform   = 'translateX(22px)';
-    statusLbl.textContent   = 'ON — You will receive bakery alerts';
-    statusLbl.style.color   = '#2d7a4f';
-    reregBox.style.display  = 'block';
+  var perm = ('Notification' in window) ? Notification.permission : 'unsupported';
 
-  } else if(perm === 'denied'){
+  if(perm === 'denied'){
     toggle.checked  = false;
     toggle.disabled = true;
     slider.style.background = '#f0b0b0';
     thumb.style.transform   = '';
     statusLbl.textContent   = 'BLOCKED — Enable in browser settings';
     statusLbl.style.color   = '#c8382a';
+    blockedBox.style.display = 'block';
     var isAndroid = /android/i.test(navigator.userAgent);
     var isIOS     = /iphone|ipad/i.test(navigator.userAgent);
-    blockedBox.style.display = 'block';
     blockedBox.innerHTML = isAndroid
       ? '🔒 Tap Chrome address bar → Site settings → Notifications → Allow → Refresh'
       : isIOS
         ? '📱 Settings → Safari → Notifications → Allow for this site'
         : '🔒 Click the lock icon in browser address bar → Notifications → Allow → Refresh';
+    return;
+  }
 
-  } else if(perm === 'default'){
-    toggle.checked = false;
-    slider.style.background = '#e0d0c0';
-    thumb.style.transform   = '';
-    statusLbl.textContent   = 'OFF — Tap to enable';
-    statusLbl.style.color   = '#8a7a6a';
-
-  } else {
+  if(perm === 'unsupported'){
     toggle.checked  = false;
     toggle.disabled = true;
     slider.style.background = '#e0d0c0';
     statusLbl.textContent   = 'Not supported in this browser';
     statusLbl.style.color   = '#8a7a6a';
+    return;
+  }
+
+  // granted or default — use actual subscription presence
+  if(isSubscribed){
+    toggle.checked = true;
+    slider.style.background = '#4a2f14';
+    thumb.style.transform   = 'translateX(22px)';
+    statusLbl.textContent   = 'ON — You will receive bakery alerts';
+    statusLbl.style.color   = '#2d7a4f';
+    reregBox.style.display  = 'block';
+  } else {
+    toggle.checked = false;
+    slider.style.background = '#e0d0c0';
+    thumb.style.transform   = '';
+    statusLbl.textContent   = 'OFF — Tap to enable';
+    statusLbl.style.color   = '#8a7a6a';
+  }
+}
+
+function renderNotifSettings(){
+  var perm = ('Notification' in window) ? Notification.permission : 'unsupported';
+  if(perm === 'denied' || perm === 'unsupported'){
+    _applyNotifToggleUI(false);
+    return;
+  }
+  // Check real subscription state
+  if('serviceWorker' in navigator && 'PushManager' in window){
+    navigator.serviceWorker.ready.then(function(reg){
+      return reg.pushManager.getSubscription();
+    }).then(function(sub){
+      _applyNotifToggleUI(!!sub);
+    }).catch(function(){
+      _applyNotifToggleUI(false);
+    });
+  } else {
+    _applyNotifToggleUI(false);
   }
 }
 
@@ -622,18 +645,22 @@ function onNotifToggle(checked){
   if(checked){
     enablePushNotifs();
   } else {
-    // Unsubscribe
-    if('serviceWorker' in navigator){
-      navigator.serviceWorker.ready.then(function(reg){
-        return reg.pushManager.getSubscription();
-      }).then(function(sub){
-        if(sub) return sub.unsubscribe();
-      }).then(function(){
+    // Unsubscribe from browser AND delete from DB
+    var doUnsubscribe = function(){
+      if(session) apiPost({action:'deletePushSubscription', shop_id:session.shop_id});
+      if('serviceWorker' in navigator){
+        navigator.serviceWorker.ready.then(function(reg){
+          return reg.pushManager.getSubscription();
+        }).then(function(sub){
+          if(sub) return sub.unsubscribe();
+        }).then(function(){
+          renderNotifSettings();
+        }).catch(function(){ renderNotifSettings(); });
+      } else {
         renderNotifSettings();
-      }).catch(function(){ renderNotifSettings(); });
-    } else {
-      renderNotifSettings();
-    }
+      }
+    };
+    doUnsubscribe();
   }
 }
 

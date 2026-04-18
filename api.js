@@ -742,6 +742,11 @@
           });
         });
 
+      case 'deletePushSubscription':
+        return fetch(BASE + '/push_subscriptions?shop_id=eq.' + encodeURIComponent(b.shop_id), {
+          method: 'DELETE', headers: hdrs({ 'Prefer': 'return=minimal' })
+        }).then(function(r){ return {ok: r.ok}; }).catch(function(){ return {ok:false}; });
+
       case 'sendCustomerNotification':
         // Insert new notification, then trim to keep only the latest 10 for this customer
         return sbPost('customer_notifications', {
