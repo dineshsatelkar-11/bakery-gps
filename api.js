@@ -413,6 +413,32 @@
       case 'updateOrderDriverByCustomer':
         return sbPatch('orders', { customer_id: b.customer_id }, { driver: b.driver });
 
+      // Update undelivered orders for one customer from today onwards when their driver changes
+      case 'reassignOrdersForCustomer': {
+        var today0 = new Date().toISOString().slice(0, 10);
+        var url0 = BASE + '/orders?shop_id=eq.' + encodeURIComponent(b.shop_id) + '&date=gte.' + encodeURIComponent(today0);
+        return fetch(url0, {
+          method: 'PATCH',
+          headers: hdrs({ 'Prefer': 'return=minimal' }),
+          body: JSON.stringify({ driver: b.driver })
+        }).then(function(r) {
+          return r.ok ? { ok: true } : r.json().then(function(e) { return { ok: false, error: e.message || 'Error' }; });
+        }).catch(function() { return { ok: false, error: 'Network error' }; });
+      }
+
+      // Bulk: update all undelivered orders belonging to a driver from today onwards
+      case 'bulkReassignOrderDriver': {
+        var today1 = new Date().toISOString().slice(0, 10);
+        var url1 = BASE + '/orders?driver=eq.' + encodeURIComponent(b.from) + '&date=gte.' + encodeURIComponent(today1);
+        return fetch(url1, {
+          method: 'PATCH',
+          headers: hdrs({ 'Prefer': 'return=minimal' }),
+          body: JSON.stringify({ driver: b.to })
+        }).then(function(r) {
+          return r.ok ? { ok: true } : r.json().then(function(e) { return { ok: false, error: e.message || 'Error' }; });
+        }).catch(function() { return { ok: false, error: 'Network error' }; });
+      }
+
       case 'markDelivered': {
         var delRow = { driver: b.driver, shop_id: b.shop_id, shop_name: b.shop_name, date: b.date, time: b.time };
         if (b.lat != null) { delRow.lat = b.lat; delRow.lng = b.lng; }
