@@ -10,6 +10,9 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:440px;margin:0 auto;min-height:100vh}
+@keyframes slideIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes bellRing{0%,100%{transform:rotate(0)}15%{transform:rotate(18deg)}30%{transform:rotate(-14deg)}45%{transform:rotate(10deg)}60%{transform:rotate(-6deg)}75%{transform:rotate(3deg)}}
+.bell-ring{animation:bellRing .6s ease both}
 .lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:6px;text-transform:uppercase;display:block}
 input[type=text],input[type=password]{width:100%;padding:13px 14px;border:1.5px solid #e8dfd2;border-radius:12px;font-size:15px;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:12px}
 .btn{width:100%;padding:14px;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif}
@@ -90,13 +93,27 @@ textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:1
     </div>
   </div>
 
-  <!-- Notification panel (same as driver) -->
-  <div id="custNotifPanel" style="display:none;position:fixed;top:53px;left:0;right:0;max-width:440px;margin:0 auto;background:#fff;border-bottom:2px solid #e8dfd2;z-index:200;max-height:60vh;overflow-y:auto;box-shadow:0 4px 20px rgba(0,0,0,.15)">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #f0e8e0;background:#f5ede0">
-      <span style="font-size:13px;font-weight:800;color:#4a2f14">🔔 Notifications</span>
-      <button onclick="markCustNotifsRead()" style="font-size:11px;color:#2d7a4f;background:none;border:none;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif">Mark all read ✓</button>
+  <!-- Notification drawer — full screen overlay -->
+  <div id="custNotifPanel" style="display:none;position:fixed;inset:0;max-width:440px;margin:0 auto;z-index:300;pointer-events:none">
+    <!-- Backdrop -->
+    <div id="custNotifBackdrop" onclick="toggleCustNotifPanel()" style="position:absolute;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(2px);pointer-events:all;opacity:0;transition:opacity .25s"></div>
+    <!-- Drawer slides in from right -->
+    <div id="custNotifDrawer" style="position:absolute;top:0;right:0;bottom:0;width:88%;max-width:360px;background:#f5ede0;display:flex;flex-direction:column;pointer-events:all;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);box-shadow:-8px 0 32px rgba(0,0,0,.18)">
+
+      <!-- Drawer header -->
+      <div style="background:#4a2f14;padding:16px 16px 14px;display:flex;align-items:center;gap:12px;flex-shrink:0">
+        <button onclick="toggleCustNotifPanel()" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0">‹</button>
+        <div style="flex:1">
+          <div style="font-size:15px;font-weight:900;color:#fff">Notifications</div>
+          <div id="custNotifSubtitle" style="font-size:11px;color:#c8a87a;font-family:monospace"></div>
+        </div>
+        <button id="markAllReadBtn" onclick="markCustNotifsRead()" style="display:none;background:rgba(255,255,255,.15);border:none;color:#fff;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif;white-space:nowrap">✓ All read</button>
+      </div>
+
+      <!-- Notification list -->
+      <div id="custNotifPanelList" style="flex:1;overflow-y:auto;padding:10px 12px"></div>
+
     </div>
-    <div id="custNotifPanelList"><div style="padding:24px;text-align:center;color:#8a7a6a;font-size:13px;font-family:monospace">No new notifications</div></div>
   </div>
 
   <div class="tabs">
@@ -179,13 +196,43 @@ textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:1
     <div style="background:#4a2f14;padding:28px 20px 24px;display:flex;flex-direction:column;align-items:center;gap:10px">
       <div id="settingsAvatar" style="width:68px;height:68px;border-radius:50%;background:#c8a020;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;color:#fff;letter-spacing:-1px;flex-shrink:0"></div>
       <div style="text-align:center">
-        <div id="settingsName" style="font-size:18px;font-weight:900;color:#fff;margin-bottom:3px"></div>
+        <div id="settingsName" style="font-size:18px;font-weight:900;color:#fff;margin-bottom:6px"></div>
+        <!-- Driver info row -->
+        <div id="settingsDriverRow" style="display:none;background:rgba(255,255,255,.12);border-radius:12px;padding:8px 16px;margin-bottom:6px">
+          <div style="font-size:10px;letter-spacing:1px;color:#c8a87a;font-family:monospace;text-transform:uppercase;margin-bottom:3px">Your Delivery Driver</div>
+          <div id="settingsDriverName" style="font-size:14px;font-weight:800;color:#fff"></div>
+          <div id="settingsDriverMobile" style="font-size:12px;font-family:monospace;color:#c8a87a"></div>
+        </div>
         <div id="settingsMeta" style="font-size:11px;font-family:monospace;color:#c8a87a;line-height:1.8"></div>
       </div>
-      <div id="settingsDriverBadge" style="display:none;background:rgba(255,255,255,.15);border-radius:20px;padding:5px 14px;font-size:11px;font-weight:700;color:#fff;font-family:monospace"></div>
     </div>
 
     <div style="padding:14px">
+
+      <!-- Notifications Section -->
+      <div style="font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;text-transform:uppercase;margin:4px 0 8px">Notifications</div>
+      <div class="card" style="margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:36px;height:36px;background:#f5ede0;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🔔</div>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:700;color:#1e1611">Push Notifications</div>
+            <div id="notifToggleStatus" style="font-size:11px;color:#8a7a6a;font-family:monospace">Get alerts even when app is closed</div>
+          </div>
+          <label style="position:relative;display:inline-block;width:50px;height:28px;flex-shrink:0">
+            <input type="checkbox" id="notifToggle" style="opacity:0;width:0;height:0" onchange="onNotifToggle(this.checked)">
+            <span id="notifToggleSlider" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#e0d0c0;border-radius:28px;transition:.3s">
+              <span style="position:absolute;height:22px;width:22px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;box-shadow:0 1px 4px rgba(0,0,0,.2)" id="notifToggleThumb"></span>
+            </span>
+          </label>
+        </div>
+        <!-- Re-register button — shown only when granted but may not be working -->
+        <div id="notifReregisterBox" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid #f0e8dc">
+          <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:8px">Not receiving notifications? Re-register your device.</div>
+          <button onclick="reRegisterPush()" style="width:100%;padding:10px;background:#f5ede0;color:#4a2f14;border:1.5px solid #e8dfd2;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif">🔄 Re-register Device</button>
+        </div>
+        <!-- Blocked instructions -->
+        <div id="notifBlockedBox" style="display:none;margin-top:12px;padding:10px;background:#fde8e8;border-radius:10px;font-size:11px;font-family:monospace;color:#c8382a;line-height:1.8"></div>
+      </div>
 
       <!-- Account Section -->
       <div style="font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;text-transform:uppercase;margin:4px 0 8px">Account</div>
@@ -201,7 +248,6 @@ textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:1
           <div id="cpChevron" style="font-size:16px;color:#8a7a6a;transition:transform .2s">›</div>
         </div>
       </div>
-      <!-- Change Password form (hidden by default) -->
       <div id="cpSection" style="display:none;background:#fff;border:1.5px solid #e8dfd2;border-top:none;border-radius:0 0 16px 16px;padding:14px 14px 6px;margin-bottom:10px">
         <label class="lbl">Current Password</label>
         <input type="password" id="cpOld" placeholder="Current password" autocomplete="current-password">
@@ -211,33 +257,6 @@ textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:1
         <input type="password" id="cpConfirm" placeholder="Repeat new password" autocomplete="new-password">
         <div id="cpMsg" style="display:none" class="msg ok"></div>
         <button class="btn btn-brown" onclick="changePassword()">🔑 Update Password</button>
-      </div>
-
-      <!-- Logout row -->
-      <div class="card" style="margin-bottom:10px;border-radius:4px 4px 16px 16px;cursor:pointer" onclick="doLogout()">
-        <div style="display:flex;align-items:center;gap:12px">
-          <div style="width:36px;height:36px;background:#fde8e8;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🚪</div>
-          <div style="flex:1">
-            <div style="font-size:14px;font-weight:700;color:#c8382a">Logout</div>
-            <div style="font-size:11px;color:#8a7a6a;font-family:monospace">Sign out of your account</div>
-          </div>
-          <div style="font-size:16px;color:#c8382a">›</div>
-        </div>
-      </div>
-
-      <!-- Notifications Section -->
-      <div style="font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;text-transform:uppercase;margin:4px 0 8px">Notifications</div>
-      <div class="card" style="margin-bottom:10px">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
-          <div style="width:36px;height:36px;background:#f5ede0;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🔔</div>
-          <div style="flex:1">
-            <div style="font-size:14px;font-weight:700;color:#1e1611">Push Notifications</div>
-            <div style="font-size:11px;color:#8a7a6a;font-family:monospace">Get alerts even when app is closed</div>
-          </div>
-        </div>
-        <div id="notifStatusBox" style="margin-bottom:8px"></div>
-        <div id="notifActionBox"></div>
-        <div id="notifInstructions" style="display:none;background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:12px;font-size:12px;font-family:monospace;color:#7a4800;line-height:1.8;margin-top:8px"></div>
       </div>
 
       <!-- Support Section -->
@@ -254,7 +273,7 @@ textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:1
         </div>
       </div>
 
-      <div class="card" style="margin-bottom:10px;border-radius:4px 4px 16px 16px">
+      <div class="card" style="margin-bottom:24px;border-radius:4px 4px 16px 16px">
         <div style="display:flex;align-items:center;gap:12px">
           <div style="width:36px;height:36px;background:#f5ede0;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🥖</div>
           <div style="flex:1">
@@ -264,6 +283,30 @@ textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:1
         </div>
       </div>
 
+      <!-- Logout — last option -->
+      <div class="card" style="cursor:pointer;border-color:#f0b0b0" onclick="doLogout()">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:36px;height:36px;background:#fde8e8;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🚪</div>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:700;color:#c8382a">Logout</div>
+            <div style="font-size:11px;color:#8a7a6a;font-family:monospace">Sign out of your account</div>
+          </div>
+          <div style="font-size:16px;color:#c8382a">›</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Notification permission prompt banner (auto-shown on first visit) -->
+  <div id="notifPromptBanner" style="display:none;position:fixed;bottom:80px;left:0;right:0;max-width:440px;margin:0 auto;padding:0 12px;z-index:300">
+    <div style="background:#4a2f14;color:#fff;border-radius:16px;padding:16px;box-shadow:0 4px 24px rgba(0,0,0,.3)">
+      <div style="font-size:14px;font-weight:800;margin-bottom:4px">🔔 Stay updated on your orders</div>
+      <div style="font-size:12px;font-family:monospace;color:#c8a87a;margin-bottom:12px;line-height:1.6">Enable notifications to get order status updates even when the app is closed.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <button onclick="dismissNotifPrompt()" style="padding:10px;background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif">Later</button>
+        <button onclick="enablePushNotifs();dismissNotifPrompt()" style="padding:10px;background:#c8a020;color:#1a1008;border:none;border-radius:10px;font-size:13px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif">Enable Now</button>
+      </div>
     </div>
   </div>
 
@@ -356,7 +399,7 @@ function showApp(){
   loadHistory();
   checkOrderWindow();
   loadCustomerNotifs();
-  _subscribePush();
+  checkAndPromptNotifications();
   if (window._timerOrderWindow) clearInterval(window._timerOrderWindow);
   if (window._timerNotifs)      clearInterval(window._timerNotifs);
   window._timerOrderWindow = setInterval(checkOrderWindow, 30000);
@@ -475,30 +518,32 @@ function reRegisterPush(){
 // ── SETTINGS PROFILE ──
 function renderSettingsProfile(){
   if(!session) return;
-  var name  = session.shop_name || '';
-  var id    = session.shop_id   || '';
-  var mobile= session.mobile    || '';
-  var area  = session.area      || '';
-  var driver= session.assigned_driver || '';
+  var name   = session.shop_name || '';
+  var id     = session.shop_id   || '';
+  var mobile = session.mobile    || '';
+  var area   = session.area      || '';
+  var driver = session.assigned_driver || '';
 
-  // Avatar: first letters of each word (max 2)
   var initials = name.split(' ').filter(Boolean).map(function(w){return w[0].toUpperCase();}).slice(0,2).join('');
   document.getElementById('settingsAvatar').textContent = initials || '?';
   document.getElementById('settingsName').textContent   = name;
 
-  var meta = [];
-  if(id)     meta.push('ID: ' + id);
-  if(mobile) meta.push('📞 ' + mobile);
-  if(area)   meta.push('📍 ' + area);
-  document.getElementById('settingsMeta').innerHTML = meta.join('<br>');
-
-  var badge = document.getElementById('settingsDriverBadge');
+  // Driver info block
+  var driverRow = document.getElementById('settingsDriverRow');
   if(driver){
-    badge.textContent = '🚚 ' + driver;
-    badge.style.display = 'inline-block';
+    document.getElementById('settingsDriverName').textContent   = '🚚 ' + driver;
+    document.getElementById('settingsDriverMobile').textContent = mobile ? '📞 ' + mobile : '';
+    driverRow.style.display = 'block';
   } else {
-    badge.style.display = 'none';
+    driverRow.style.display = 'none';
   }
+
+  var meta = [];
+  if(area) meta.push('📍 ' + area);
+  if(id)   meta.push('ID: ' + id);
+  document.getElementById('settingsMeta').innerHTML = meta.join('  ');
+
+  renderNotifSettings();
 }
 
 function toggleCpSection(){
@@ -518,48 +563,102 @@ function contactWhatsApp(){
 }
 
 function renderNotifSettings(){
-  var statusBox  = document.getElementById('notifStatusBox');
-  var actionBox  = document.getElementById('notifActionBox');
-  var instrBox   = document.getElementById('notifInstructions');
-  if(!statusBox) return;
+  var toggle      = document.getElementById('notifToggle');
+  var slider      = document.getElementById('notifToggleSlider');
+  var thumb       = document.getElementById('notifToggleThumb');
+  var statusLbl   = document.getElementById('notifToggleStatus');
+  var reregBox    = document.getElementById('notifReregisterBox');
+  var blockedBox  = document.getElementById('notifBlockedBox');
+  if(!toggle) return;
 
   var perm = ('Notification' in window) ? Notification.permission : 'unsupported';
 
+  // Reset
+  reregBox.style.display   = 'none';
+  blockedBox.style.display = 'none';
+  toggle.disabled = false;
+
   if(perm === 'granted'){
-    statusBox.innerHTML = '<div style="display:flex;align-items:center;gap:10px;padding:10px;background:#e8f5e9;border-radius:10px"><span style="font-size:22px">✅</span><div><div style="font-size:13px;font-weight:800;color:#1a5a38">Notifications are ON</div><div style="font-size:11px;color:#2d7a4f;font-family:monospace">Messages from the bakery will appear on your phone.</div></div></div>';
-    actionBox.innerHTML = '<button id="reRegisterBtn" onclick="reRegisterPush()" style="width:100%;padding:11px;background:#e8dfd2;color:#4a2f14;border:none;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-top:8px">🔄 Re-register Push (if not receiving)</button>';
-    instrBox.style.display = 'none';
+    toggle.checked = true;
+    slider.style.background = '#4a2f14';
+    thumb.style.transform   = 'translateX(22px)';
+    statusLbl.textContent   = 'ON — You will receive bakery alerts';
+    statusLbl.style.color   = '#2d7a4f';
+    reregBox.style.display  = 'block';
 
   } else if(perm === 'denied'){
-    statusBox.innerHTML = '<div style="display:flex;align-items:center;gap:10px;padding:10px;background:#fde8e8;border-radius:10px"><span style="font-size:22px">🚫</span><div><div style="font-size:13px;font-weight:800;color:#c8382a">Notifications are BLOCKED</div><div style="font-size:11px;color:#c8382a;font-family:monospace">You blocked notifications for this site. Enable them in Chrome settings.</div></div></div>';
-    actionBox.innerHTML = '<button onclick="showNotifInstructions()" style="width:100%;padding:12px;background:#1a1a1a;color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif">📋 How to enable in Chrome</button>';
+    toggle.checked  = false;
+    toggle.disabled = true;
+    slider.style.background = '#f0b0b0';
+    thumb.style.transform   = '';
+    statusLbl.textContent   = 'BLOCKED — Enable in browser settings';
+    statusLbl.style.color   = '#c8382a';
+    var isAndroid = /android/i.test(navigator.userAgent);
+    var isIOS     = /iphone|ipad/i.test(navigator.userAgent);
+    blockedBox.style.display = 'block';
+    blockedBox.innerHTML = isAndroid
+      ? '🔒 Tap Chrome address bar → Site settings → Notifications → Allow → Refresh'
+      : isIOS
+        ? '📱 Settings → Safari → Notifications → Allow for this site'
+        : '🔒 Click the lock icon in browser address bar → Notifications → Allow → Refresh';
 
   } else if(perm === 'default'){
-    statusBox.innerHTML = '<div style="display:flex;align-items:center;gap:10px;padding:10px;background:#fff8e1;border-radius:10px"><span style="font-size:22px">🔔</span><div><div style="font-size:13px;font-weight:800;color:#7a4800">Notifications not enabled</div><div style="font-size:11px;color:#7a4800;font-family:monospace">Tap below to receive messages from the bakery.</div></div></div>';
-    actionBox.innerHTML = '<button onclick="enablePushNotifs()" style="width:100%;padding:13px;background:#4a2f14;color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif">🔔 Enable Notifications</button>';
-    instrBox.style.display = 'none';
+    toggle.checked = false;
+    slider.style.background = '#e0d0c0';
+    thumb.style.transform   = '';
+    statusLbl.textContent   = 'OFF — Tap to enable';
+    statusLbl.style.color   = '#8a7a6a';
 
   } else {
-    statusBox.innerHTML = '<div style="font-size:12px;color:#8a7a6a;font-family:monospace">Push notifications are not supported in this browser.</div>';
-    actionBox.innerHTML = '';
+    toggle.checked  = false;
+    toggle.disabled = true;
+    slider.style.background = '#e0d0c0';
+    statusLbl.textContent   = 'Not supported in this browser';
+    statusLbl.style.color   = '#8a7a6a';
   }
 }
 
-function showNotifInstructions(){
-  var instrBox = document.getElementById('notifInstructions');
-  var isAndroid = /android/i.test(navigator.userAgent);
-  var isIOS = /iphone|ipad/i.test(navigator.userAgent);
-
-  var steps = '';
-  if(isAndroid){
-    steps = '1. Tap the 🔒 lock icon in Chrome\'s address bar\n2. Tap "Site settings"\n3. Tap "Notifications"\n4. Change to "Allow"\n5. Come back and refresh the page';
-  } else if(isIOS){
-    steps = '1. Open Safari Settings (Settings app → Safari)\n2. Scroll to "Notifications"\n3. Find this site and set to "Allow"\n\nOr: Add this app to Home Screen for better notification support.';
+function onNotifToggle(checked){
+  if(checked){
+    enablePushNotifs();
   } else {
-    steps = '1. Click the 🔒 lock icon in Chrome\'s address bar\n2. Click "Site settings"\n3. Find "Notifications" and set to "Allow"\n4. Refresh the page';
+    // Unsubscribe
+    if('serviceWorker' in navigator){
+      navigator.serviceWorker.ready.then(function(reg){
+        return reg.pushManager.getSubscription();
+      }).then(function(sub){
+        if(sub) return sub.unsubscribe();
+      }).then(function(){
+        renderNotifSettings();
+      }).catch(function(){ renderNotifSettings(); });
+    } else {
+      renderNotifSettings();
+    }
   }
-  instrBox.textContent = steps;
-  instrBox.style.display = 'block';
+}
+
+// Auto-prompt: show if permission not yet decided OR no subscription in DB
+function checkAndPromptNotifications(){
+  if(!('Notification' in window) || !('PushManager' in window)) return;
+  if(Notification.permission === 'denied') return;
+  if(Notification.permission === 'granted'){
+    // Permission granted — ensure subscription is in DB
+    _subscribePush();
+    return;
+  }
+  // Permission is 'default' — check if we already asked this session
+  if(sessionStorage.getItem('notifPromptShown')) return;
+  sessionStorage.setItem('notifPromptShown', '1');
+  // Show the friendly banner after 3 seconds
+  setTimeout(function(){
+    var banner = document.getElementById('notifPromptBanner');
+    if(banner) banner.style.display = 'block';
+  }, 3000);
+}
+
+function dismissNotifPrompt(){
+  var banner = document.getElementById('notifPromptBanner');
+  if(banner) banner.style.display = 'none';
 }
 
 // Re-fetch customer session from DB to pick up any group changes by admin
@@ -1291,13 +1390,18 @@ var _custNotifOpen = false;
 function loadCustomerNotifs(){
   if(!session) return;
   api({ action:'getCustomerNotifications', shop_id: session.shop_id }).then(function(data){
+    var prev = _custNotifs.length;
     _custNotifs = Array.isArray(data) ? data : [];
-    var badge = document.getElementById('custNotifBadge');
+    var badge   = document.getElementById('custNotifBadge');
+    var bellBtn = document.querySelector('[onclick*="toggleCustNotifPanel"]');
     if(_custNotifs.length > 0){
       badge.textContent = _custNotifs.length > 9 ? '9+' : _custNotifs.length;
       badge.style.display = 'flex';
-      // Fire browser notification if panel is closed
-      if(!_custNotifOpen) _showCustBrowserNotif(_custNotifs[0]);
+      // Ring bell animation + browser notif when new ones arrive
+      if(_custNotifs.length > prev && !_custNotifOpen){
+        _showCustBrowserNotif(_custNotifs[0]);
+        if(bellBtn){ bellBtn.classList.remove('bell-ring'); void bellBtn.offsetWidth; bellBtn.classList.add('bell-ring'); }
+      }
     } else {
       badge.style.display = 'none';
     }
@@ -1305,53 +1409,105 @@ function loadCustomerNotifs(){
   }).catch(function(){});
 }
 
+function _notifIcon(msg){
+  var m = (msg||'').toLowerCase();
+  if(m.indexOf('deliver')>=0 || m.indexOf('dispatch')>=0) return {icon:'🚚',bg:'#e8f0ff',fg:'#1a3a8a'};
+  if(m.indexOf('order')>=0 || m.indexOf('place')>=0)      return {icon:'🛒',bg:'#e8f5e9',fg:'#1a5a38'};
+  if(m.indexOf('approv')>=0 || m.indexOf('confirm')>=0)   return {icon:'✅',bg:'#e8f5e9',fg:'#1a5a38'};
+  if(m.indexOf('payment')>=0 || m.indexOf('due')>=0 || m.indexOf('pay')>=0) return {icon:'💰',bg:'#fff8e1',fg:'#7a4800'};
+  if(m.indexOf('fail')>=0 || m.indexOf('could not')>=0)   return {icon:'⚠️',bg:'#fde8e8',fg:'#c8382a'};
+  if(m.indexOf('offer')>=0 || m.indexOf('special')>=0)    return {icon:'🎉',bg:'#f3e8ff',fg:'#6e3da8'};
+  if(m.indexOf('close')>=0 || m.indexOf('window')>=0)     return {icon:'⏰',bg:'#fff8e1',fg:'#7a4800'};
+  return {icon:'💬',bg:'#f5ede0',fg:'#4a2f14'};
+}
+
+function _timeAgo(iso){
+  if(!iso) return '';
+  var diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if(diff < 60)  return 'Just now';
+  if(diff < 3600) return Math.floor(diff/60) + 'm ago';
+  if(diff < 86400) return Math.floor(diff/3600) + 'h ago';
+  return new Date(iso).toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
+}
+
 function _renderCustNotifPanel(){
-  var el = document.getElementById('custNotifPanelList');
+  var el       = document.getElementById('custNotifPanelList');
+  var subtitle = document.getElementById('custNotifSubtitle');
+  var markBtn  = document.getElementById('markAllReadBtn');
   if(!el) return;
+
   if(!_custNotifs.length){
-    el.innerHTML = '<div style="padding:24px;text-align:center;color:#8a7a6a;font-size:13px;font-family:monospace">No new notifications</div>';
+    if(subtitle) subtitle.textContent = 'Nothing new';
+    if(markBtn)  markBtn.style.display = 'none';
+    el.innerHTML =
+      '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 24px;gap:14px">'+
+        '<div style="font-size:52px;opacity:.3">🔔</div>'+
+        '<div style="font-size:14px;font-weight:700;color:#8a7a6a">All caught up!</div>'+
+        '<div style="font-size:12px;color:#b0a090;font-family:monospace;text-align:center">Messages from the bakery will appear here</div>'+
+      '</div>';
     return;
   }
-  el.innerHTML = _custNotifs.map(function(n){
-    var time = n.created_at ? new Date(n.created_at).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
-    return '<div style="padding:11px 14px;border-bottom:1px solid #f5ede0;display:flex;gap:10px;align-items:flex-start">'+
-      '<span style="font-size:18px;flex-shrink:0;margin-top:1px">💬</span>'+
-      '<div><div style="font-size:13px;font-weight:600;color:#1e1611;line-height:1.4">'+esc(n.message)+'</div>'+
-      '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:3px">'+time+'</div></div></div>';
+
+  if(subtitle) subtitle.textContent = _custNotifs.length + ' message' + (_custNotifs.length>1?'s':'');
+  if(markBtn)  markBtn.style.display = 'block';
+
+  el.innerHTML = _custNotifs.map(function(n, i){
+    var t    = _notifIcon(n.message);
+    var time = _timeAgo(n.created_at);
+    var fullTime = n.created_at ? new Date(n.created_at).toLocaleString('en-IN',{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+    return '<div style="background:#fff;border-radius:16px;margin-bottom:8px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.07);animation:slideIn .2s ease both;animation-delay:'+Math.min(i*0.05,0.3)+'s">'+
+      '<div style="display:flex;gap:12px;padding:14px 14px 10px;align-items:flex-start">'+
+        '<div style="width:40px;height:40px;border-radius:12px;background:'+t.bg+';display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">'+t.icon+'</div>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-size:13px;font-weight:700;color:'+t.fg+';line-height:1.5;margin-bottom:4px">'+esc(n.message)+'</div>'+
+          '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">'+
+            '<div style="font-size:10px;color:#8a7a6a;font-family:monospace" title="'+esc(fullTime)+'">'+time+'</div>'+
+            '<div style="font-size:10px;color:#b0a090;font-family:monospace">IBCAB Bakery</div>'+
+          '</div>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
   }).join('');
 }
 
 function toggleCustNotifPanel(){
   _custNotifOpen = !_custNotifOpen;
-  var panel = document.getElementById('custNotifPanel');
-  panel.style.display = _custNotifOpen ? 'block' : 'none';
-  if(_custNotifOpen) _renderCustNotifPanel();
+  var panel    = document.getElementById('custNotifPanel');
+  var backdrop = document.getElementById('custNotifBackdrop');
+  var drawer   = document.getElementById('custNotifDrawer');
+  if(_custNotifOpen){
+    panel.style.display    = 'block';
+    panel.style.pointerEvents = 'all';
+    setTimeout(function(){
+      backdrop.style.opacity      = '1';
+      drawer.style.transform      = 'translateX(0)';
+    }, 10);
+    _renderCustNotifPanel();
+    // Auto mark as read after viewing
+    setTimeout(function(){ if(_custNotifOpen) markCustNotifsRead(); }, 2000);
+  } else {
+    backdrop.style.opacity   = '0';
+    drawer.style.transform   = 'translateX(100%)';
+    setTimeout(function(){
+      panel.style.display = 'none';
+      panel.style.pointerEvents = 'none';
+    }, 300);
+  }
 }
 
-// Close panel when tapping outside
-document.addEventListener('click', function(e){
-  var panel = document.getElementById('custNotifPanel');
-  if(panel && !panel.contains(e.target) && !e.target.closest('[onclick*="toggleCustNotifPanel"]')){
-    if(_custNotifOpen){ _custNotifOpen = false; panel.style.display = 'none'; }
-  }
-});
-
 function markCustNotifsRead(){
-  if(!_custNotifs.length || !session) return;
+  if(!session) return;
   apiPost({ action:'markCustomerNotifsRead', shop_id: session.shop_id }).then(function(){
     _custNotifs = [];
-    document.getElementById('custNotifBadge').style.display = 'none';
-    _renderCustNotifPanel();
+    var badge = document.getElementById('custNotifBadge');
+    if(badge) badge.style.display = 'none';
+    if(_custNotifOpen) _renderCustNotifPanel();
   });
 }
 
 function _showCustBrowserNotif(n){
-  if(!('Notification' in window)) return;
-  if(Notification.permission === 'granted'){
-    try { new Notification('🥖 Message from bakery', { body: n.message, icon: '/icon-192.png' }); } catch(e){}
-  } else if(Notification.permission !== 'denied'){
-    Notification.requestPermission();
-  }
+  if(!('Notification' in window) || Notification.permission !== 'granted') return;
+  try { new Notification('🥖 Message from bakery', { body: n.message, icon: '/icon-192.png' }); } catch(e){}
 }
 
 function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }

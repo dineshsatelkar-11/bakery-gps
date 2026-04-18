@@ -743,13 +743,22 @@
         });
 
       case 'sendCustomerNotification':
-        // Delete old notifications for this customer first, then insert fresh one
-        return fetch(BASE + '/customer_notifications?shop_id=eq.' + encodeURIComponent(b.shop_id), {
-          method: 'DELETE', headers: hdrs({ 'Prefer': 'return=minimal' })
-        }).catch(function(){}).then(function(){
-          return sbPost('customer_notifications', {
-            shop_id: b.shop_id, shop_name: b.shop_name || '', message: b.message
-          });
+        // Insert new notification, then trim to keep only the latest 10 for this customer
+        return sbPost('customer_notifications', {
+          shop_id: b.shop_id, shop_name: b.shop_name || '', message: b.message
+        }).then(function(res) {
+          if (!res.ok) return res;
+          // Find oldest notifications beyond the 10-most-recent and delete them
+          return fetch(BASE + '/customer_notifications?shop_id=eq.' + encodeURIComponent(b.shop_id) +
+            '&select=id&order=created_at.desc&offset=10', { headers: hdrs() })
+            .then(function(r){ return r.ok ? r.json() : []; })
+            .then(function(old){
+              if (!old.length) return;
+              var ids = old.map(function(r){ return r.id; }).join(',');
+              return fetch(BASE + '/customer_notifications?id=in.(' + ids + ')', {
+                method: 'DELETE', headers: hdrs({ 'Prefer': 'return=minimal' })
+              }).catch(function(){});
+            }).then(function(){ return res; });
         });
 
       case 'markCustomerNotifsRead':
