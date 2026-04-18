@@ -699,13 +699,18 @@
       }
 
       case 'savePushSubscription':
-        // Upsert push subscription — one row per shop_id+endpoint
-        return sbUpsert('push_subscriptions', {
-          shop_id:  b.shop_id,
-          endpoint: b.endpoint,
-          p256dh:   b.p256dh,
-          auth:     b.auth
-        }, 'shop_id,endpoint');
+        // Delete all old subscriptions for this customer first, then insert fresh
+        // This prevents duplicate rows when the endpoint changes after re-registration
+        return fetch(BASE + '/push_subscriptions?shop_id=eq.' + encodeURIComponent(b.shop_id), {
+          method: 'DELETE', headers: hdrs({ 'Prefer': 'return=minimal' })
+        }).catch(function(){}).then(function(){
+          return sbPost('push_subscriptions', {
+            shop_id:  b.shop_id,
+            endpoint: b.endpoint,
+            p256dh:   b.p256dh,
+            auth:     b.auth
+          });
+        });
 
       case 'sendCustomerNotification':
         // Delete old notifications for this customer first, then insert fresh one

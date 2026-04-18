@@ -58,7 +58,7 @@ Deno.serve(async (req: Request) => {
           payload
         ).catch((err: { statusCode?: number; message?: string }) => {
           console.log('[push] send failed for shop', sub.shop_id, 'status:', err.statusCode, 'msg:', err.message);
-          if (err.statusCode === 404 || err.statusCode === 410) {
+          if (err.statusCode === 403 || err.statusCode === 404 || err.statusCode === 410) {
             staleEndpoints.push(sub.endpoint);
           }
           throw err;
