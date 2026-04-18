@@ -3,7 +3,6 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3.6.7';
 
 Deno.serve(async (req: Request) => {
-  // Allow CORS from your site
   if (req.method === 'OPTIONS') {
     return new Response(null, {
       headers: {
@@ -15,18 +14,21 @@ Deno.serve(async (req: Request) => {
 
   try {
     const { shop_ids, message } = await req.json();
+    console.log('[push] shop_ids:', shop_ids, 'message:', message);
+
     if (!shop_ids || !shop_ids.length || !message) {
+      console.log('[push] missing params');
       return new Response(JSON.stringify({ error: 'Missing shop_ids or message' }), { status: 400 });
     }
 
-    // Set VAPID details from Supabase secrets
-    webpush.setVapidDetails(
-      `mailto:${Deno.env.get('VAPID_EMAIL') || 'admin@bakery.com'}`,
-      Deno.env.get('VAPID_PUBLIC_KEY')!,
-      Deno.env.get('VAPID_PRIVATE_KEY')!
-    );
+    const vapidPublic  = Deno.env.get('VAPID_PUBLIC_KEY');
+    const vapidPrivate = Deno.env.get('VAPID_PRIVATE_KEY');
+    const vapidEmail   = Deno.env.get('VAPID_EMAIL') || 'admin@bakery.com';
+    console.log('[push] vapid public present:', !!vapidPublic, 'private present:', !!vapidPrivate);
+    console.log('[push] private key length:', vapidPrivate ? vapidPrivate.length : 0);
 
-    // Fetch push subscriptions for the given shop_ids
+    webpush.setVapidDetails(`mailto:${vapidEmail}`, vapidPublic!, vapidPrivate!);
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
@@ -37,6 +39,8 @@ Deno.serve(async (req: Request) => {
       .select('*')
       .in('shop_id', shop_ids.map(String));
 
+    console.log('[push] subscriptions found:', subs ? subs.length : 0, 'error:', error);
+
     if (error) throw error;
     if (!subs || subs.length === 0) {
       return new Response(JSON.stringify({ sent: 0, note: 'No subscriptions found' }), {
@@ -44,20 +48,16 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const payload = JSON.stringify({
-      title: '🥖 Message from bakery',
-      body: message
-    });
+    const payload = JSON.stringify({ title: '🥖 Message from bakery', body: message });
 
-    // Send push to each subscription, remove expired ones
     const staleEndpoints: string[] = [];
     const results = await Promise.allSettled(
       subs.map((sub: { endpoint: string; p256dh: string; auth: string; shop_id: string }) =>
         webpush.sendNotification(
           { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
           payload
-        ).catch((err: { statusCode?: number }) => {
-          // 404/410 means subscription is expired — mark for removal
+        ).catch((err: { statusCode?: number; message?: string }) => {
+          console.log('[push] send failed for shop', sub.shop_id, 'status:', err.statusCode, 'msg:', err.message);
           if (err.statusCode === 404 || err.statusCode === 410) {
             staleEndpoints.push(sub.endpoint);
           }
@@ -66,20 +66,18 @@ Deno.serve(async (req: Request) => {
       )
     );
 
-    // Clean up expired subscriptions
     if (staleEndpoints.length > 0) {
-      await supabase
-        .from('push_subscriptions')
-        .delete()
-        .in('endpoint', staleEndpoints);
+      await supabase.from('push_subscriptions').delete().in('endpoint', staleEndpoints);
     }
 
     const sent = results.filter(r => r.status === 'fulfilled').length;
+    console.log('[push] sent:', sent, 'of', subs.length);
     return new Response(JSON.stringify({ sent, total: subs.length }), {
       headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
     });
 
   } catch (err) {
+    console.error('[push] error:', String(err));
     return new Response(JSON.stringify({ error: String(err) }), {
       status: 500,
       headers: { 'Access-Control-Allow-Origin': '*' }
