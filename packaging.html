@@ -216,7 +216,7 @@ var confirmOrderId = null;
       list.map(function(s){ return '<option value="'+esc(s.name)+'">📦 '+esc(s.name)+'</option>'; }).join('');
   });
   var sn = sessionStorage.getItem('packStaff') || localStorage.getItem('packStaff');
-  if (sn) { staffName = sn; showApp(); }
+  if (sn) { staffName = sn; showApp(); } else { goto(''); }
 })();
 
 function doLogin(){
@@ -246,8 +246,7 @@ function doLogout(){
   sessionStorage.removeItem('role'); sessionStorage.removeItem('staffName');
   localStorage.removeItem('staffRole'); localStorage.removeItem('staffNamePersist'); localStorage.removeItem('staffTabs');
   staffName=''; packOrders=[]; kitchenOrders=[]; dispatchOrders=[]; packedIds=new Set();
-  document.getElementById('appScreen').style.display='none';
-  document.getElementById('loginScreen').style.display='flex';
+  goto('');
 }
 
 // ── APP ──
