@@ -49,7 +49,7 @@ const CONFIG = {
   // ── Web Push (VAPID) ───────────────────────────────────────────────────────
   // 1. Open generate-vapid.html in your browser → click Generate → copy Public Key here
   // 2. Private Key goes into Supabase Edge Function secrets (never here)
-  VAPID_PUBLIC_KEY: 'YOUR_VAPID_PUBLIC_KEY_HERE'   // ← paste public key from generate-vapid.html
+  VAPID_PUBLIC_KEY: 'BJMscbCZJl17YUwHpLYutWwWNClG_xFdCQGZeZ6lD89sR3IDDseHtVCcUsIIsaHaGbPyoCaz4wuHNFBd2Jnp_Dw'   // ← paste public key from generate-vapid.html
 };
 
 // Smart redirect — uses clean URLs on Vercel, .html locally (IntelliJ / file server)
