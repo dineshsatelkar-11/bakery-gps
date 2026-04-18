@@ -521,7 +521,7 @@ async function init() {
   }
   document.getElementById('orderDate').value = selectedDate;
   const [shopsData, ordersData, delivData] = await Promise.all([
-    api({action:'getShops', driver}),
+    api({action:'getShops'}),   // fetch all shops — covers reassigned orders from other drivers
     selectedDate === today ? Promise.resolve(todayOrders) : api({action:'getOrders', driver, date:selectedDate}),
     api({action:'getDeliveries', driver, date:selectedDate})
   ]);

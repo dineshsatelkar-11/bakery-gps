@@ -156,10 +156,22 @@ textarea{resize:vertical;min-height:70px;font-size:13px;line-height:1.7}
   <div class="stats-grid" id="dash-stats" style="margin-bottom:14px"></div>
   <div id="dash-alerts" style="margin-bottom:10px"></div>
 
+  <!-- Today delivery stats — Tea Post row (shown below main stats) -->
+  <div id="dash-tp-row" style="display:none;margin-bottom:14px">
+    <div style="font-size:10px;font-weight:800;color:#7a4800;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">🍵 Tea Post · Today</div>
+    <div class="stats-grid" id="dash-tp-stats"></div>
+  </div>
+
   <!-- Tomorrow customer order pipeline -->
   <div style="font-size:10px;font-weight:800;color:#8a7a6a;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Tomorrow's Orders Pipeline</div>
   <div class="stats-grid" id="dash-tmr-stats" style="grid-template-columns:repeat(3,1fr);margin-bottom:8px"></div>
   <div id="dash-tmr-list" style="margin-bottom:14px"></div>
+
+  <!-- Tomorrow's orders — Tea Post row -->
+  <div id="dash-tp-tmr-row" style="display:none;margin-bottom:14px">
+    <div style="font-size:10px;font-weight:800;color:#7a4800;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">🍵 Tea Post · Tomorrow</div>
+    <div class="stats-grid" id="dash-tp-tmr-stats" style="grid-template-columns:repeat(3,1fr)"></div>
+  </div>
 
   <!-- Issues -->
   <div style="font-size:10px;font-weight:800;color:#8a7a6a;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">⚠️ Issues to Fix</div>
@@ -1233,6 +1245,10 @@ function loadDashboard(){
 
     /* ── Delivery stats for delivDate ── */
     var totalOrders   = orders.length;
+    // Build delivery lookup: shop_id → delivery record
+    var delivMap = {};
+    deliveries.forEach(function(d){ delivMap[d.shop_id] = d; });
+
     var delivered     = deliveries.length;
     var pending       = totalOrders - delivered;
     var activeDrivers = Object.keys(orders.reduce(function(m,o){
@@ -1263,14 +1279,32 @@ function loadDashboard(){
       '<div class="stat" style="'+S+'" onclick="dashGoRoutes()" title="View routes"><div class="stat-n" style="color:#1a5fa8">'+activeDrivers+'</div><div class="stat-l">Drivers ↗</div></div>'+
       '<div class="stat" style="'+S+'" onclick="dashGoDelivery(\'done\')" title="View delivered"><div class="stat-n" style="color:#2d7a4f">'+delivered+'</div><div class="stat-l">Delivered ↗</div></div>'+
       '<div class="stat" style="'+S+'" onclick="dashGoDelivery(\'pending\')" title="View pending"><div class="stat-n" style="color:'+(pending>0?'#c8382a':'#2d7a4f')+'">'+pending+'</div><div class="stat-l">Pending ↗</div></div>'+
-      '<div class="stat" style="'+S+'" onclick="showTab(\'gps\')" title="View GPS"><div class="stat-n" style="color:#2d7a4f">'+withGPS+'</div><div class="stat-l">GPS ✅ ↗</div></div>'+
-      '<div class="stat" style="'+S+'" onclick="showTab(\'gps\')" title="View missing GPS"><div class="stat-n" style="color:'+(noGPS>0?'#c8382a':'#2d7a4f')+'">'+noGPS+'</div><div class="stat-l">No GPS ↗</div></div>';
+      '<div class="stat" style="'+S+'" onclick="dashGoGPS(\'saved\')" title="View shops with GPS"><div class="stat-n" style="color:#2d7a4f">'+withGPS+'</div><div class="stat-l">GPS ✅ ↗</div></div>'+
+      '<div class="stat" style="'+S+'" onclick="dashGoGPS(\'missing\')" title="View shops missing GPS"><div class="stat-n" style="color:'+(noGPS>0?'#c8382a':'#2d7a4f')+'">'+noGPS+'</div><div class="stat-l">No GPS ↗</div></div>';
 
     // Alerts (actionable warnings)
     var alertHtml = '';
     if(noDriver>0) alertHtml+='<div class="msg warn" style="margin-bottom:6px">⚠️ '+noDriver+' order'+(noDriver>1?'s have':' has')+' no driver — go to Queue tab.</div>';
     if(pending>0)  alertHtml+='<div class="msg in"   style="margin-bottom:6px">🚚 '+delivered+' of '+totalOrders+' delivered · '+pending+' still pending.</div>';
     alerts.innerHTML = alertHtml;
+
+    /* ── Tea Post counts (today) ── */
+    var tpOrders    = orders.filter(function(o){ return (o.shop_name||'').toLowerCase().indexOf('tea post')>=0; });
+    var tpDelivered = tpOrders.filter(function(o){ return !!delivMap[o.customer_id||o.shop_id]; }).length;
+    var tpPending   = tpOrders.length - tpDelivered;
+    var tpRow       = document.getElementById('dash-tp-row');
+    var tpStats     = document.getElementById('dash-tp-stats');
+    if(tpRow && tpStats){
+      if(tpOrders.length){
+        tpRow.style.display = 'block';
+        tpStats.innerHTML =
+          '<div class="stat"><div class="stat-n">'+tpOrders.length+'</div><div class="stat-l">TP Orders</div></div>'+
+          '<div class="stat" style="background:#e8f5e9;border-color:#2d7a4f40"><div class="stat-n" style="color:#2d7a4f">'+tpDelivered+'</div><div class="stat-l">Delivered</div></div>'+
+          '<div class="stat" style="background:'+(tpPending>0?'#fde8e8':'#e8f5e9')+';border-color:'+(tpPending>0?'#c8382a40':'#2d7a4f40')+'"><div class="stat-n" style="color:'+(tpPending>0?'#c8382a':'#2d7a4f')+'">'+tpPending+'</div><div class="stat-l">Pending</div></div>';
+      } else {
+        tpRow.style.display = 'none';
+      }
+    }
 
     /* ── Tomorrow's customer order pipeline ── */
     var STATUS_CFG = [
@@ -1322,10 +1356,35 @@ function loadDashboard(){
       }
     }
 
+    /* ── Tea Post counts (tomorrow's orders) ── */
+    var tpCustOrders = custOrders.filter(function(o){ return (o.shop_name||'').toLowerCase().indexOf('tea post')>=0; });
+    var tpTmrRow     = document.getElementById('dash-tp-tmr-row');
+    var tpTmrStats   = document.getElementById('dash-tp-tmr-stats');
+    if(tpTmrRow && tpTmrStats){
+      if(tpCustOrders.length){
+        tpTmrRow.style.display = 'block';
+        var tpCounts = {};
+        STATUS_CFG.forEach(function(s){ tpCounts[s.key]=0; });
+        tpCustOrders.forEach(function(o){
+          var st=(o.status||'pending').toLowerCase();
+          if(tpCounts[st]!==undefined) tpCounts[st]++; else tpCounts['pending']++;
+        });
+        tpTmrStats.innerHTML = STATUS_CFG.map(function(s){
+          var n = tpCounts[s.key]||0;
+          return '<div class="stat" style="background:'+s.bg+';border-color:'+s.color+'20">'
+            +'<div class="stat-n" style="color:'+s.color+';font-size:18px">'+n+'</div>'
+            +'<div class="stat-l" style="font-size:8px">'+s.label+'</div>'
+            +'</div>';
+        }).join('');
+      } else {
+        tpTmrRow.style.display = 'none';
+      }
+    }
+
     /* ── Issues ── */
     var issueRows = [];
-    if(noGroup>0)  issueRows.push('<div class="item-card" style="margin-bottom:8px"><div style="font-size:12px;font-weight:800;color:#7a4800;margin-bottom:6px">📦 '+noGroup+' customer'+(noGroup>1?'s have':' has')+' no product group</div><button class="btn-sm" style="background:#7a4800;color:#fff" onclick="showTab(\'customers\')">Go to Customers →</button></div>');
-    if(noMobile>0) issueRows.push('<div class="item-card" style="margin-bottom:8px"><div style="font-size:12px;font-weight:800;color:#7a4800;margin-bottom:6px">📱 '+noMobile+' customer'+(noMobile>1?'s have':' has')+' no mobile</div><button class="btn-sm" style="background:#7a4800;color:#fff" onclick="showTab(\'customers\')">Go to Customers →</button></div>');
+    if(noGroup>0)  issueRows.push('<div class="item-card" style="margin-bottom:8px"><div style="font-size:12px;font-weight:800;color:#7a4800;margin-bottom:6px">📦 '+noGroup+' customer'+(noGroup>1?'s have':' has')+' no product group</div><button class="btn-sm" style="background:#7a4800;color:#fff" onclick="dashGoCustomers(\'nogroup\')">Go to Customers →</button></div>');
+    if(noMobile>0) issueRows.push('<div class="item-card" style="margin-bottom:8px"><div style="font-size:12px;font-weight:800;color:#7a4800;margin-bottom:6px">📱 '+noMobile+' customer'+(noMobile>1?'s have':' has')+' no mobile</div><button class="btn-sm" style="background:#7a4800;color:#fff" onclick="dashGoCustomers(\'nomobile\')">Go to Customers →</button></div>');
     if(noGPS>0)    issueRows.push('<div class="item-card" style="margin-bottom:8px"><div style="font-size:12px;font-weight:800;color:#8a7a6a;margin-bottom:6px">📍 '+noGPS+' customer'+(noGPS>1?'s have':' has')+' no GPS</div><button class="btn-sm" style="background:#8a7a6a;color:#fff" onclick="showTab(\'gps\')">Go to GPS →</button></div>');
     if(!issueRows.length) issueRows.push('<div class="msg ok">✅ No issues — all customers have groups, mobiles and GPS.</div>');
     issues.innerHTML = issueRows.join('');
@@ -1350,6 +1409,15 @@ function dashGoDelivery(filter){
   if(el && _dashDelivDate) el.value = _dashDelivDate;
   _delivFilter = filter || 'all';
   showTab('delivery');
+}
+function dashGoGPS(status){
+  var el = document.getElementById('f-gps-status');
+  if(el) el.value = status || '';
+  showTab('gps');
+}
+function dashGoCustomers(extraFilter){
+  _custExtraFilter = extraFilter || '';
+  showTab('customers');
 }
 
 /* ── CUSTOMER MASTER (replaces allShops) ──
@@ -2569,15 +2637,37 @@ function renderRoutes(){
 }
 
 /* ── CUSTOMERS TAB ── */
+var _custExtraFilter = ''; // 'nogroup' | 'nomobile' | ''
+
+function setCustExtraFilter(f){
+  _custExtraFilter = (_custExtraFilter === f) ? '' : f; // toggle off if same
+  renderCustStats();
+  renderCustomers();
+}
+
+function renderCustStats(){
+  var total   = allCustomers.length;
+  var gps     = allCustomers.filter(function(c){return !!c.lat;}).length;
+  var noGroup = allCustomers.filter(function(c){
+    var g = c.product_group_ids;
+    return !g || (Array.isArray(g) ? g.length===0 : false);
+  }).length;
+  var noMobile = allCustomers.filter(function(c){return !c.mobile||!c.mobile.trim();}).length;
+
+  var S = 'cursor:pointer;';
+  var active = 'background:#fde8e8;border-color:#e87a7a;';
+  document.getElementById('custStats').innerHTML=
+    '<div class="stat" style="'+S+(_custExtraFilter===''?'background:#e8f5e9;border-color:#2d7a4f':'')+'" onclick="setCustExtraFilter(\'\')"><div class="stat-n">'+total+'</div><div class="stat-l">Total</div></div>'+
+    '<div class="stat" style="'+S+(_custExtraFilter==='nogroup'?active:'')+'" onclick="setCustExtraFilter(\'nogroup\')"><div class="stat-n" style="color:'+(noGroup>0?'#c8382a':'#2d7a4f')+'">'+noGroup+'</div><div class="stat-l">No Group</div></div>'+
+    '<div class="stat" style="'+S+(_custExtraFilter==='nomobile'?active:'')+'" onclick="setCustExtraFilter(\'nomobile\')"><div class="stat-n" style="color:'+(noMobile>0?'#c8382a':'#2d7a4f')+'">'+noMobile+'</div><div class="stat-l">No Mobile</div></div>'+
+    '<div class="stat" style="'+S+'" onclick="var el=document.getElementById(\'f-cust-gps\');el.value=\'no\';_custExtraFilter=\'\';renderCustomers();renderCustStats()"><div class="stat-n" style="color:#c8382a">'+(total-gps)+'</div><div class="stat-l">No GPS</div></div>';
+}
+
 function loadCustomers(){
   loadCustomerMaster().then(function(){
     var areas=[...new Set(allCustomers.map(function(c){return c.area||'';}).filter(Boolean))].sort();
     document.getElementById('f-cust-area').innerHTML='<option value="">All Areas</option>'+areas.map(function(a){return '<option>'+esc(a)+'</option>';}).join('');
-    var gps=allCustomers.filter(function(c){return c.lat;}).length;
-    document.getElementById('custStats').innerHTML=
-      '<div class="stat"><div class="stat-n">'+allCustomers.length+'</div><div class="stat-l">Total</div></div>'+
-      '<div class="stat"><div class="stat-n" style="color:#2d7a4f">'+gps+'</div><div class="stat-l">GPS ✅</div></div>'+
-      '<div class="stat"><div class="stat-n" style="color:#c8382a">'+(allCustomers.length-gps)+'</div><div class="stat-l">No GPS</div></div>';
+    renderCustStats();
     renderCustomers();
   });
 }
@@ -2592,6 +2682,8 @@ function renderCustomers(){
   if(fg==='yes')list=list.filter(function(c){return c.lat;});
   if(fg==='no')list=list.filter(function(c){return!c.lat;});
   if(fa)list=list.filter(function(c){return c.area===fa;});
+  if(_custExtraFilter==='nogroup')list=list.filter(function(c){var g=c.product_group_ids;return !g||(Array.isArray(g)?g.length===0:false);});
+  if(_custExtraFilter==='nomobile')list=list.filter(function(c){return !c.mobile||!c.mobile.trim();});
   var el=document.getElementById('customersList');
   if(!list.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No customers found.</div>';return;}
   el.innerHTML=list.map(function(c){
@@ -3304,6 +3396,10 @@ function deleteDriver(id,name){
 
 /* ── GPS ── */
 function loadGPS(){loadCustomerMaster().then(renderGPS);}
+function setGPSFilter(val){
+  document.getElementById('f-gps-status').value = val;
+  renderGPS();
+}
 function renderGPS(){
   var drv=document.getElementById('f-gps-driver').value,st=document.getElementById('f-gps-status').value;
   var list=allCustomers;
@@ -3311,10 +3407,11 @@ function renderGPS(){
   if(st==='saved')list=list.filter(function(c){return c.lat;});
   if(st==='missing')list=list.filter(function(c){return!c.lat;});
   var sv=allCustomers.filter(function(c){return c.lat;}).length;
+  var ms=allCustomers.length-sv;
   document.getElementById('gpsStats').innerHTML=
-    '<div class="stat"><div class="stat-n">'+allCustomers.length+'</div><div class="stat-l">Total</div></div>'+
-    '<div class="stat"><div class="stat-n" style="color:#2d7a4f">'+sv+'</div><div class="stat-l">Saved</div></div>'+
-    '<div class="stat"><div class="stat-n" style="color:#c8382a">'+(allCustomers.length-sv)+'</div><div class="stat-l">Missing</div></div>';
+    '<div class="stat" style="cursor:pointer;'+(st===''?'background:#e8f5e9;border-color:#2d7a4f':'')+'" onclick="setGPSFilter(\'\')"><div class="stat-n">'+allCustomers.length+'</div><div class="stat-l">All</div></div>'+
+    '<div class="stat" style="cursor:pointer;'+(st==='saved'?'background:#e8f5e9;border-color:#2d7a4f':'')+'" onclick="setGPSFilter(\'saved\')"><div class="stat-n" style="color:#2d7a4f">'+sv+'</div><div class="stat-l">Saved ✅</div></div>'+
+    '<div class="stat" style="cursor:pointer;'+(st==='missing'?'background:#fde8e8;border-color:#e87a7a':'')+'" onclick="setGPSFilter(\'missing\')"><div class="stat-n" style="color:#c8382a">'+ms+'</div><div class="stat-l">No GPS ⚠️</div></div>';
   document.getElementById('gpsList').innerHTML=list.map(function(c){
     var drD=c.assigned_driver||'';
     var dc=DRIVERS.indexOf(drD)>=0?'DC-'+drD:'';
@@ -4555,7 +4652,8 @@ var gmCounts = {}; // group_id → member count (from junction table)
 function loadGroups(){
   Promise.all([
     api({action:'getProductGroups'}),
-    api({action:'getGroupMemberCounts'})
+    api({action:'getGroupMemberCounts'}),
+    loadProductMaster()           // ensure allProducts is ready for inline chips
   ]).then(function(results){
     allGroups = Array.isArray(results[0]) ? results[0] : [];
     gmCounts  = {};
@@ -4575,13 +4673,25 @@ function renderGroups(){
   }
   el.innerHTML = allGroups.map(function(g){
     var prodCount = gmCounts[String(g.id)] || 0;
+    // Products belonging to this group (from loaded allProducts)
+    var groupProds = allProducts.filter(function(p){ return String(p.group_id) === String(g.id); });
+    var prodChips = groupProds.length
+      ? '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">'
+          + groupProds.map(function(p){
+              return '<span style="font-size:10px;font-family:monospace;font-weight:700;color:#4a2f14;background:#f5ede0;border:1px solid #e0cdb8;padding:2px 8px;border-radius:20px">'
+                +esc(p.name)+'</span>';
+            }).join('')
+          +'</div>'
+      : '<div style="font-size:10px;color:#b0a090;font-family:monospace;margin-top:6px;font-style:italic">No products assigned yet</div>';
+
     return '<div class="item-card">'+
-      '<div style="display:flex;justify-content:space-between;align-items:center">'+
-        '<div>'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
+        '<div style="flex:1;min-width:0">'+
           '<div style="font-size:14px;font-weight:800;color:#4a2f14">'+esc(g.name)+'</div>'+
-          '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:3px">'+prodCount+' product'+(prodCount!==1?'s':'')+'</div>'+
+          '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:2px">'+prodCount+' product'+(prodCount!==1?'s':'')+'</div>'+
+          prodChips+
         '</div>'+
-        '<div style="display:flex;gap:8px">'+
+        '<div style="display:flex;gap:8px;flex-shrink:0;margin-left:10px">'+
           '<button class="btn-sm btn-edit" onclick=\'openEditGroup('+esc(JSON.stringify(g))+')\'>✏️ Edit</button>'+
           '<button class="btn-sm btn-del" onclick="delGroup(\''+g.id+'\',\''+esc(g.name)+'\')">🗑 Delete</button>'+
         '</div>'+
