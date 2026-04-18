@@ -5531,6 +5531,9 @@ function sendToCustomers(){
   Promise.all(checks.map(function(c){
     return apiPost({ action:'sendCustomerNotification', shop_id: c.value, shop_name: c.dataset.name, message: msg });
   })).then(function(){
+    // Also send push notification to each customer device
+    var shopIds = checks.map(function(c){ return c.value; });
+    sendCustomerPush(shopIds, msg);
     el.textContent='✅ Sent to '+checks.length+' customer(s)!'; el.className='msg ok';
     document.getElementById('custNotifMsg').value='';
     document.querySelectorAll('.custNotifCheck').forEach(function(c){ c.checked=false; });
@@ -5539,6 +5542,25 @@ function sendToCustomers(){
   }).catch(function(){
     el.textContent='❌ Failed to send. Try again.'; el.className='msg er';
   });
+}
+
+function sendCustomerPush(shopIds, message){
+  var appId = CONFIG.ONESIGNAL_APP_ID;
+  var key   = CONFIG.ONESIGNAL_REST_API_KEY;
+  if(!appId || appId === 'YOUR_APP_ID_HERE') return;
+  var ids = (Array.isArray(shopIds) ? shopIds : [shopIds]).map(function(id){ return 'cust_' + id; });
+  fetch('https://onesignal.com/api/v1/notifications', {
+    method: 'POST',
+    headers: { 'Authorization': 'Basic ' + key, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      app_id: appId,
+      include_aliases: { external_id: ids },
+      target_channel: 'push',
+      headings: { en: '🥖 IBCAB — Message from bakery' },
+      contents: { en: message },
+      url: 'https://bakery-gps.vercel.app/order'
+    })
+  }).catch(function(){});
 }
 
 // ── BROWSER NOTIFICATION PERMISSION ──

@@ -330,6 +330,13 @@ function doLogin(){
     sessionStorage.setItem('staffName', localStorage.getItem('staffNamePersist')||'');
     _r=sr;
   }
+  // Customer session — stored directly in localStorage
+  if(!_r){
+    try {
+      var _cs = localStorage.getItem('custSession');
+      if(_cs){ var _cp=JSON.parse(_cs); if(_cp&&_cp.shop_id){ goto('order'); } }
+    } catch(e){}
+  }
 
   if(_r==='driver')       goto('driver');
   if(_r==='chef')         goto('kitchen');
