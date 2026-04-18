@@ -176,6 +176,15 @@ textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:1
 
   <!-- SETTINGS TAB -->
   <div class="page" id="pg-settings">
+
+    <!-- Notifications -->
+    <div class="card" style="margin-bottom:12px">
+      <div class="lbl">Notifications</div>
+      <div id="notifStatusBox" style="margin-bottom:12px"></div>
+      <div id="notifActionBox"></div>
+      <div id="notifInstructions" style="display:none;background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:12px;font-size:12px;font-family:monospace;color:#7a4800;line-height:1.8;margin-top:10px"></div>
+    </div>
+
     <div class="card">
       <div class="lbl">Change Password</div>
       <div style="font-size:12px;color:#8a7a6a;font-family:monospace;margin-bottom:12px">Enter your current password to set a new one.</div>
@@ -310,13 +319,60 @@ function enablePushNotifs(){
   document.getElementById('pushOptInModal').style.display = 'none';
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   OneSignalDeferred.push(function(OneSignal){
-    OneSignal.Notifications.requestPermission().catch(function(){});
+    OneSignal.Notifications.requestPermission()
+      .then(function(){ renderNotifSettings(); })
+      .catch(function(){ renderNotifSettings(); });
   });
 }
 
 function dismissPushModal(){
   document.getElementById('pushOptInModal').style.display = 'none';
   sessionStorage.setItem('pushModalDismissed', '1');
+}
+
+function renderNotifSettings(){
+  var statusBox  = document.getElementById('notifStatusBox');
+  var actionBox  = document.getElementById('notifActionBox');
+  var instrBox   = document.getElementById('notifInstructions');
+  if(!statusBox) return;
+
+  var perm = ('Notification' in window) ? Notification.permission : 'unsupported';
+
+  if(perm === 'granted'){
+    statusBox.innerHTML = '<div style="display:flex;align-items:center;gap:10px;padding:10px;background:#e8f5e9;border-radius:10px"><span style="font-size:22px">✅</span><div><div style="font-size:13px;font-weight:800;color:#1a5a38">Notifications are ON</div><div style="font-size:11px;color:#2d7a4f;font-family:monospace">You will receive messages from the bakery on this device.</div></div></div>';
+    actionBox.innerHTML = '';
+    instrBox.style.display = 'none';
+
+  } else if(perm === 'denied'){
+    statusBox.innerHTML = '<div style="display:flex;align-items:center;gap:10px;padding:10px;background:#fde8e8;border-radius:10px"><span style="font-size:22px">🚫</span><div><div style="font-size:13px;font-weight:800;color:#c8382a">Notifications are BLOCKED</div><div style="font-size:11px;color:#c8382a;font-family:monospace">You blocked notifications for this site. Enable them in Chrome settings.</div></div></div>';
+    actionBox.innerHTML = '<button onclick="showNotifInstructions()" style="width:100%;padding:12px;background:#1a1a1a;color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif">📋 How to enable in Chrome</button>';
+
+  } else if(perm === 'default'){
+    statusBox.innerHTML = '<div style="display:flex;align-items:center;gap:10px;padding:10px;background:#fff8e1;border-radius:10px"><span style="font-size:22px">🔔</span><div><div style="font-size:13px;font-weight:800;color:#7a4800">Notifications not enabled</div><div style="font-size:11px;color:#7a4800;font-family:monospace">Tap below to receive messages from the bakery.</div></div></div>';
+    actionBox.innerHTML = '<button onclick="enablePushNotifs()" style="width:100%;padding:13px;background:#4a2f14;color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif">🔔 Enable Notifications</button>';
+    instrBox.style.display = 'none';
+
+  } else {
+    statusBox.innerHTML = '<div style="font-size:12px;color:#8a7a6a;font-family:monospace">Push notifications are not supported in this browser.</div>';
+    actionBox.innerHTML = '';
+  }
+}
+
+function showNotifInstructions(){
+  var instrBox = document.getElementById('notifInstructions');
+  var isAndroid = /android/i.test(navigator.userAgent);
+  var isIOS = /iphone|ipad/i.test(navigator.userAgent);
+
+  var steps = '';
+  if(isAndroid){
+    steps = '1. Tap the 🔒 lock icon in Chrome\'s address bar\n2. Tap "Site settings"\n3. Tap "Notifications"\n4. Change to "Allow"\n5. Come back and refresh the page';
+  } else if(isIOS){
+    steps = '1. Open Safari Settings (Settings app → Safari)\n2. Scroll to "Notifications"\n3. Find this site and set to "Allow"\n\nOr: Add this app to Home Screen for better notification support.';
+  } else {
+    steps = '1. Click the 🔒 lock icon in Chrome\'s address bar\n2. Click "Site settings"\n3. Find "Notifications" and set to "Allow"\n4. Refresh the page';
+  }
+  instrBox.textContent = steps;
+  instrBox.style.display = 'block';
 }
 
 // Re-fetch customer session from DB to pick up any group changes by admin
@@ -1010,6 +1066,7 @@ function showTab(t){
   document.getElementById('orderBar').style.display = (t==='order' && totalItemCount()>0 && !_orderClosed && (!_editLocked || _amendMode)) ? 'block' : 'none';
   if(t==='track') loadTrack();
   if(t==='history') loadHistory();
+  if(t==='settings') renderNotifSettings();
 }
 
 // ── CHANGE PASSWORD ──
