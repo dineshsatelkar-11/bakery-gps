@@ -1565,18 +1565,45 @@ function loadSalaryList(){
     // also fetch tempo rent record for this month
     sbGetQ('driver_tempo_rent','driver_name=eq.'+encodeURIComponent(drv)+'&month=eq.'+encodeURIComponent(mon)).then(function(trows){
       var tr=trows&&trows.length?trows[0]:null;
+      var isPaid=!!s.paid_date;
       el.innerHTML='<div class="item-card">'+
+        // Payment status banner
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
+        '<span class="badge '+(isPaid?'b-green':'b-red')+'" style="font-size:12px;padding:4px 10px">'+(isPaid?'✅ Paid on '+s.paid_date:'⏳ Not Paid Yet')+'</span>'+
+        (isPaid?'<button class="btn-sm btn-grey" onclick="markSalaryUnpaid('+s.id+')">Undo Paid</button>':'')+
+        '</div>'+
         '<div class="sum-row"><span class="sum-lbl">Base Salary</span><span class="sum-val">'+fmt(s.base_salary)+'</span></div>'+
         '<div class="sum-row"><span class="sum-lbl">Leave Deduction ('+s.leave_days+'d)</span><span class="sum-val" style="color:#c8382a">− '+fmt(s.leave_deduction)+'</span></div>'+
         (tr?'<div class="sum-row"><span class="sum-lbl">Tempo Rent ('+tr.tempo_name+' · '+tr.days_used+'/'+tr.days_in_month+'d)</span><span class="sum-val" style="color:#c8382a">− '+fmt(tr.rent_amount)+'</span></div>':'')+
         '<div class="sum-row"><span class="sum-lbl">Advance Deducted</span><span class="sum-val" style="color:#c8382a">− '+fmt(s.advance_deducted)+'</span></div>'+
         '<div class="sum-row"><span class="sum-lbl">Bonus</span><span class="sum-val" style="color:#1e7a4f">+ '+fmt(s.bonus)+'</span></div>'+
         '<hr class="divider">'+
-        '<div class="sum-row total"><span class="sum-lbl">Net Paid</span><span class="sum-val">'+fmt(s.net_paid)+'</span></div>'+
+        '<div class="sum-row total"><span class="sum-lbl">Net Payable</span><span class="sum-val">'+fmt(s.net_paid)+'</span></div>'+
         (s.note?'<div style="font-size:11px;color:#7a8fa6;margin-top:6px">📝 '+s.note+'</div>':'')+
-        '</div>';
+        // Mark as paid section
+        (!isPaid?
+          '<div style="margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0">'+
+          '<div style="font-size:12px;font-weight:700;color:#1a3a5c;margin-bottom:6px">💵 Mark as Paid</div>'+
+          '<div style="display:flex;gap:8px;align-items:center">'+
+          '<input type="date" id="sal-pay-date" value="'+todayStr()+'" style="flex:1;padding:6px;border:1px solid #cdd5e0;border-radius:6px;font-size:13px">'+
+          '<select id="sal-pay-mode" style="flex:1;padding:6px;border:1px solid #cdd5e0;border-radius:6px;font-size:13px">'+
+          '<option value="Cash">Cash</option><option value="Bank Transfer">Bank Transfer</option><option value="UPI">UPI</option>'+
+          '</select>'+
+          '<button class="btn-sm btn-blue" onclick="markSalaryPaid('+s.id+')">Mark Paid</button>'+
+          '</div></div>':'')
+        +'</div>';
     });
   });
+}
+
+function markSalaryPaid(id){
+  var date=v('sal-pay-date')||todayStr();
+  fetch(BASE+'/driver_salary?id=eq.'+id,{method:'PATCH',headers:hdrs({'Prefer':'return=minimal'}),
+    body:JSON.stringify({paid_date:date})}).then(function(){loadSalaryList();});
+}
+function markSalaryUnpaid(id){
+  fetch(BASE+'/driver_salary?id=eq.'+id,{method:'PATCH',headers:hdrs({'Prefer':'return=minimal'}),
+    body:JSON.stringify({paid_date:null})}).then(function(){loadSalaryList();});
 }
 
 // ── ADVANCE ──
