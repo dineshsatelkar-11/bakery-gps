@@ -72,11 +72,58 @@ textarea{resize:vertical;min-height:60px;font-size:13px;line-height:1.6}
 .sum-row.total .sum-val{font-size:16px;color:#1e7a4f}
 .empty{text-align:center;color:#7a8fa6;font-size:13px;padding:32px 0;font-family:monospace}
 
+/* ── CHAT ── */
+#chatBtn{position:fixed;bottom:22px;right:18px;z-index:300;width:52px;height:52px;border-radius:50%;background:#1a3a5c;color:#fff;font-size:22px;border:none;cursor:pointer;box-shadow:0 4px 18px rgba(26,58,92,.45);display:flex;align-items:center;justify-content:center}
+#chatPanel{position:fixed;bottom:0;right:0;left:0;z-index:299;max-width:520px;margin:0 auto;background:#fff;border-radius:20px 20px 0 0;box-shadow:0 -4px 24px rgba(0,0,0,.18);display:none;flex-direction:column;height:72vh}
+#chatPanel.open{display:flex}
+body.dark #chatPanel{background:#232b3e}
+#chatHead{padding:12px 16px;background:#1a3a5c;border-radius:20px 20px 0 0;display:flex;align-items:center;justify-content:space-between}
+#chatHead span{color:#fff;font-weight:800;font-size:14px}
+#chatClose{background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:0 4px}
+#chatMsgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+.cm-bot{align-self:flex-start;background:#e3f0fd;color:#1a3a5c;border-radius:0 14px 14px 14px;padding:10px 13px;font-size:13px;max-width:88%;line-height:1.6}
+.cm-user{align-self:flex-end;background:#1a3a5c;color:#fff;border-radius:14px 0 14px 14px;padding:10px 13px;font-size:13px;max-width:88%;line-height:1.6}
+.cm-bot.ok{background:#e8f5e9;color:#1e7a4f}
+.cm-bot.er{background:#fde8e8;color:#c8382a}
+body.dark .cm-bot{background:#2d3748;color:#e2e8f0}
+body.dark .cm-user{background:#3b5bdb}
+.chat-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.chip{background:#d8e4f0;color:#1a3a5c;border:none;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif}
+body.dark .chip{background:#3d4a5c;color:#e2e8f0}
+#chatInputRow{padding:10px 12px;border-top:1px solid #e4edf6;display:flex;gap:8px;align-items:center}
+body.dark #chatInputRow{border-color:#3d4a5c}
+#chatInput{flex:1;padding:10px 14px;border:1.5px solid #d8e4f0;border-radius:22px;font-size:14px;background:#f4f8fc;outline:none;font-family:-apple-system,sans-serif}
+body.dark #chatInput{background:#2d3748;color:#e2e8f0;border-color:#3d4a5c}
+#chatSend{background:#1a3a5c;color:#fff;border:none;border-radius:50%;width:40px;height:40px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 /* ── MODAL ── */
 #modalOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:flex-end;justify-content:center}
 #modalOverlay.open{display:flex}
 #modalBox{background:#fff;border-radius:20px 20px 0 0;padding:20px 16px 32px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto}
 #modalTitle{font-size:16px;font-weight:900;color:#1a3a5c;margin-bottom:14px}
+/* ── DARK MODE ── */
+body.dark{background:#1a1f2e;color:#e2e8f0}
+body.dark .card{background:#232b3e;border-color:#2d3748}
+body.dark .item-card{background:#2d3748;border-color:#3d4a5c}
+body.dark .tab{background:#2d3748;color:#a0aec0}
+body.dark .tab.on{background:#3b5bdb;color:#fff}
+body.dark input,body.dark select,body.dark textarea{background:#2d3748;color:#e2e8f0;border-color:#3d4a5c}
+body.dark .lbl{color:#a0aec0}
+body.dark .empty{color:#718096}
+body.dark .stat{background:#2d3748}
+body.dark .tabs{background:#1a1f2e;border-color:#2d3748}
+body.dark .topbar{background:#111827}
+body.dark #modalBox{background:#232b3e}
+body.dark #modalTitle{color:#e2e8f0}
+/* ── SEARCH ── */
+#searchBar{position:relative;padding:8px 14px;background:#fff;border-bottom:1px solid #d8e4f0}
+body.dark #searchBar{background:#1a1f2e;border-color:#2d3748}
+#searchInput{width:100%;padding:8px 12px;border:1.5px solid #d8e4f0;border-radius:10px;font-size:14px;background:#f4f8fc}
+body.dark #searchInput{background:#2d3748;color:#e2e8f0;border-color:#3d4a5c}
+#searchDropdown{position:absolute;left:14px;right:14px;background:#fff;border:1.5px solid #d8e4f0;border-radius:12px;z-index:200;max-height:260px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+body.dark #searchDropdown{background:#2d3748;border-color:#3d4a5c}
+.search-item{padding:10px 14px;cursor:pointer;border-bottom:1px solid #e4edf6;font-size:13px}
+.search-item:hover{background:#f4f8fc}
+body.dark .search-item:hover{background:#3d4a5c}
 </style>
 </head>
 <body>
@@ -97,7 +144,16 @@ textarea{resize:vertical;min-height:60px;font-size:13px;line-height:1.6}
       <div class="topbar-title">💼 Finance</div>
       <div class="topbar-sub" id="topMonth"></div>
     </div>
-    <button class="tbtn" onclick="doLogout()">Lock</button>
+    <div style="display:flex;gap:6px">
+      <button class="tbtn" id="darkBtn" onclick="toggleDark()">🌙</button>
+      <button class="tbtn" onclick="doLogout()">Lock</button>
+    </div>
+  </div>
+
+  <!-- ── SEARCH ── -->
+  <div id="searchBar">
+    <input type="text" id="searchInput" placeholder="🔍 Search drivers, expenses, payments…" oninput="globalSearchDebounce()" autocomplete="off">
+    <div id="searchDropdown" style="display:none"></div>
   </div>
 
   <div class="tabs" id="mainTabs">
@@ -109,6 +165,7 @@ textarea{resize:vertical;min-height:60px;font-size:13px;line-height:1.6}
     <button class="tab" onclick="showTab('bank')">🏦 Bank</button>
     <button class="tab" onclick="showTab('loans')">📋 Loans</button>
     <button class="tab" onclick="showTab('payments')">💰 Payments</button>
+    <button class="tab" onclick="showTab('report')">📊 Report</button>
   </div>
 
   <!-- ══ DASHBOARD ══ -->
@@ -135,6 +192,16 @@ textarea{resize:vertical;min-height:60px;font-size:13px;line-height:1.6}
     </div>
 
     <div class="card">
+      <div class="card-title">👷 Driver Summary</div>
+      <div id="dashDrivers"><div class="empty">Loading…</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">💰 Outstanding Customers</div>
+      <div id="dashOutstanding"><div class="empty">Loading…</div></div>
+    </div>
+
+    <div class="card">
       <div class="card-title">📅 Month</div>
       <input type="month" id="dashMonth" onchange="loadDashboard()">
     </div>
@@ -145,7 +212,7 @@ textarea{resize:vertical;min-height:60px;font-size:13px;line-height:1.6}
     <!-- Sub-tabs -->
     <div style="display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px">
       <button class="btn-sm btn-blue" id="ltab-all"      onclick="showLedgerTab('all')">📋 All Txn</button>
-      <button class="btn-sm btn-grey" id="ltab-rent_out" onclick="showLedgerTab('rent_out')">🚛 Rent Out</button>
+      <button class="btn-sm btn-grey" id="ltab-rent_out" onclick="showLedgerTab('rent_out')">👤 Client</button>
       <button class="btn-sm btn-grey" id="ltab-rent_in"  onclick="showLedgerTab('rent_in')">📥 Rent In</button>
       <button class="btn-sm btn-grey" id="ltab-manage"   onclick="showLedgerTab('manage')">⚙️ Manage</button>
     </div>
@@ -170,7 +237,7 @@ textarea{resize:vertical;min-height:60px;font-size:13px;line-height:1.6}
       <div id="lall-list"><div class="empty">Loading…</div></div>
     </div>
 
-    <!-- Rent Out list -->
+    <!-- Client list -->
     <div id="lsec-rent_out" style="display:none">
       <div id="ledger-rentout-list"><div class="empty">Loading…</div></div>
     </div>
@@ -210,9 +277,85 @@ textarea{resize:vertical;min-height:60px;font-size:13px;line-height:1.6}
     <div id="lsec-detail" style="display:none">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
         <button class="btn-sm btn-grey" onclick="closeLedgerDetail()">← Back</button>
-        <div style="font-weight:800;font-size:15px" id="ledgerDetailTitle"></div>
+        <div style="font-weight:800;font-size:15px;flex:1" id="ledgerDetailTitle"></div>
       </div>
-      <!-- Filters inside detail -->
+
+      <!-- Add Bill / Add Payment / Deduction toggle -->
+      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+        <button class="btn-sm btn-grey" id="ldg-btn-bill" onclick="showLedgerForm('bill')">🧾 Add Bill</button>
+        <button class="btn-sm btn-grey" id="ldg-btn-pay" onclick="showLedgerForm('pay')">💵 Add Payment</button>
+        <button class="btn-sm btn-grey" id="ldg-btn-deduct" onclick="showLedgerForm('deduct')">➖ Deduction</button>
+      </div>
+
+      <!-- Add Bill form -->
+      <div id="ldg-form-bill" style="display:none" class="card">
+        <div class="card-title">🧾 Raise Bill</div>
+        <div class="row2">
+          <div><label class="lbl">Date</label>
+            <input type="date" id="ldg-bill-date"></div>
+          <div><label class="lbl">Amount (₹)</label>
+            <input type="number" id="ldg-bill-amount" placeholder="0"></div>
+        </div>
+        <label class="lbl">Description</label>
+        <input type="text" id="ldg-bill-desc" placeholder="e.g. April delivery bill, Rent for April…">
+        <label class="lbl">Note</label>
+        <input type="text" id="ldg-bill-note" placeholder="">
+        <button class="btn btn-blue" onclick="saveLedgerBill()">💾 Save Bill</button>
+        <div id="ldg-bill-msg"></div>
+      </div>
+
+      <!-- Deduction / Credit Note form -->
+      <div id="ldg-form-deduct" style="display:none" class="card" style="border-left:4px solid #f59e0b">
+        <div class="card-title" style="color:#b45309">➖ Deduction / Credit Note</div>
+        <div style="font-size:12px;color:#92400e;margin-bottom:8px;background:#fef3c7;padding:6px 8px;border-radius:6px">
+          Use for discounts, returns, adjustments — reduces outstanding without being a cash payment.
+        </div>
+        <div class="row2">
+          <div><label class="lbl">Date</label>
+            <input type="date" id="ldg-deduct-date"></div>
+          <div><label class="lbl">Amount (₹)</label>
+            <input type="number" id="ldg-deduct-amount" placeholder="0"></div>
+        </div>
+        <label class="lbl">Reason</label>
+        <input type="text" id="ldg-deduct-reason" placeholder="e.g. Discount, Return, Rate adjustment…">
+        <label class="lbl">Note</label>
+        <input type="text" id="ldg-deduct-note" placeholder="">
+        <button class="btn" style="background:#f59e0b;color:#fff" onclick="saveLedgerDeduction()">💾 Save Deduction</button>
+        <div id="ldg-deduct-msg"></div>
+      </div>
+
+      <!-- Add Payment form -->
+      <div id="ldg-form-pay" style="display:none" class="card">
+        <div class="card-title">💵 Record Payment</div>
+        <div class="row2">
+          <div><label class="lbl">Date</label>
+            <input type="date" id="ldg-pay-date"></div>
+          <div><label class="lbl">Amount (₹)</label>
+            <input type="number" id="ldg-pay-amount" placeholder="0"></div>
+        </div>
+        <div class="row2">
+          <div><label class="lbl">Mode</label>
+            <select id="ldg-pay-mode">
+              <option value="cash">Cash</option>
+              <option value="upi">UPI</option>
+              <option value="bank">Bank Transfer</option>
+              <option value="cheque">Cheque</option>
+            </select></div>
+          <div><label class="lbl">Reference</label>
+            <input type="text" id="ldg-pay-ref" placeholder="UTR / Cheque no."></div>
+        </div>
+        <label class="lbl">Note</label>
+        <input type="text" id="ldg-pay-note" placeholder="">
+        <button class="btn btn-blue" onclick="saveLedgerPayment()">💾 Save Payment</button>
+        <div id="ldg-pay-msg"></div>
+      </div>
+
+      <!-- Balance summary -->
+      <div id="ledgerSummary" class="card" style="display:none">
+        <div id="ledgerSummaryBody"></div>
+      </div>
+
+      <!-- Date filters -->
       <div class="card" style="padding:10px">
         <div class="row2">
           <div><label class="lbl">From</label>
@@ -227,9 +370,7 @@ textarea{resize:vertical;min-height:60px;font-size:13px;line-height:1.6}
           <button class="btn-sm btn-grey" onclick="setLedgerDateFilter('all')">All Time</button>
         </div>
       </div>
-      <div id="ledgerSummary" class="card" style="display:none">
-        <div id="ledgerSummaryBody"></div>
-      </div>
+
       <div id="ledgerList"><div class="empty">Loading…</div></div>
     </div>
   </div>
@@ -239,14 +380,30 @@ textarea{resize:vertical;min-height:60px;font-size:13px;line-height:1.6}
     <!-- Sub-tabs -->
     <div style="display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px">
       <button class="btn-sm btn-blue" id="dstab-salary" onclick="showDriverTab('salary')">💰 Salary</button>
+      <button class="btn-sm btn-grey" id="dstab-parttime" onclick="showDriverTab('parttime')">🕐 Part-time</button>
       <button class="btn-sm btn-grey" id="dstab-advance" onclick="showDriverTab('advance')">📤 Advance</button>
       <button class="btn-sm btn-grey" id="dstab-deduct" onclick="showDriverTab('deduct')">⚠️ Deductions</button>
       <button class="btn-sm btn-grey" id="dstab-leaves" onclick="showDriverTab('leaves')">🏖 Leaves</button>
+      <button class="btn-sm btn-grey" id="dstab-tempopay" onclick="showDriverTab('tempopay')">🚐 Tempo Rent</button>
       <button class="btn-sm btn-grey" id="dstab-manage" onclick="showDriverTab('manage')">👤 Manage</button>
     </div>
 
     <!-- Salary -->
     <div id="dsec-salary">
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <button class="btn btn-green" style="flex:none;padding:10px 14px;font-size:13px" onclick="showGenSalCard()">⚡ Generate All</button>
+      </div>
+      <!-- Generate All Salaries card -->
+      <div id="gen-sal-card" style="display:none" class="card">
+        <div class="card-title">⚡ Generate All Salaries</div>
+        <label class="lbl">Month</label>
+        <input type="month" id="gen-sal-month">
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-blue" style="flex:1" onclick="generateAllSalaries()">Generate</button>
+          <button class="btn btn-grey" style="flex:none" onclick="document.getElementById('gen-sal-card').style.display='none'">Cancel</button>
+        </div>
+        <div id="gen-sal-msg"></div>
+      </div>
       <div class="card">
         <div class="card-title">💰 Monthly Salary</div>
         <div class="row2">
@@ -263,10 +420,10 @@ textarea{resize:vertical;min-height:60px;font-size:13px;line-height:1.6}
             <input type="number" id="sal-days-in-month" placeholder="30" readonly style="background:#f5f7fa;color:#7a8fa6"></div>
         </div>
         <div class="row2">
-          <div><label class="lbl">Leave Days <span style="font-size:10px;color:#7a8fa6">(auto)</span></label>
-            <input type="number" id="sal-leave-days" placeholder="0" oninput="calcNetSalary()"></div>
-          <div><label class="lbl">Leave Deduction (₹) <span style="font-size:10px;color:#7a8fa6">(auto)</span></label>
-            <input type="number" id="sal-leave-deduct" placeholder="0" oninput="calcNetSalary()"></div>
+          <div><label class="lbl">Leave Days <span style="font-size:10px;color:#7a8fa6">(from leave tab)</span></label>
+            <input type="number" id="sal-leave-days" placeholder="0" readonly style="background:#f5f7fa;color:#7a8fa6"></div>
+          <div><label class="lbl">Leave Deduction (₹) <span style="font-size:10px;color:#7a8fa6">(from leave tab)</span></label>
+            <input type="number" id="sal-leave-deduct" placeholder="0" readonly style="background:#f5f7fa;color:#7a8fa6"></div>
         </div>
         <!-- Tempo Rent Section -->
         <div id="sal-tempo-section" style="display:none;background:#f0f4f8;border-radius:8px;padding:10px;margin:8px 0">
@@ -291,11 +448,19 @@ textarea{resize:vertical;min-height:60px;font-size:13px;line-height:1.6}
             <input type="number" id="sal-adv-deduct" placeholder="0" oninput="calcNetSalary()"></div>
         </div>
         <div class="row2">
+          <div><label class="lbl">Other Deductions (₹) <span style="font-size:10px;color:#7a8fa6">(auto)</span></label>
+            <input type="number" id="sal-other-deduct" placeholder="0" oninput="calcNetSalary()"></div>
+          <div><label class="lbl">Substitute Cost (₹) <span style="font-size:10px;color:#e09000">reference only</span></label>
+            <input type="number" id="sal-sub-cost" placeholder="0" readonly style="background:#fffbe6;color:#9a6700"></div>
+        </div>
+        <div style="font-size:11px;color:#7a8fa6;margin:-4px 0 6px" id="sal-other-deduct-note"></div>
+        <div class="row2">
           <div><label class="lbl">Bonus</label>
             <input type="number" id="sal-bonus" placeholder="0" oninput="calcNetSalary()"></div>
-          <div><label class="lbl">Net Payable (₹)</label>
-            <input type="number" id="sal-net" placeholder="0" style="background:#e8f5e9;font-weight:800;color:#1e7a4f"></div>
+          <div></div>
         </div>
+        <div><label class="lbl">Net Payable (₹)</label>
+          <input type="number" id="sal-net" placeholder="0" style="background:#e8f5e9;font-weight:800;color:#1e7a4f;width:100%"></div>
         <label class="lbl">Note</label>
         <textarea id="sal-note" rows="2"></textarea>
         <button class="btn btn-blue" onclick="saveSalary()">💾 Save Salary Record</button>
@@ -311,10 +476,26 @@ textarea{resize:vertical;min-height:60px;font-size:13px;line-height:1.6}
       </div>
     </div>
 
+    <!-- Part-time -->
+    <div id="dsec-parttime" style="display:none">
+      <div class="card" style="padding:10px">
+        <div style="font-weight:700;font-size:13px;margin-bottom:8px">🕐 Part-time Driver Payments</div>
+        <div class="row2">
+          <div><label class="lbl">Month</label>
+            <input type="month" id="pt-month" onchange="loadParttimeList()"></div>
+          <div style="display:flex;align-items:flex-end">
+            <button class="btn btn-grey" style="width:100%" onclick="loadParttimeList()">🔄 Refresh</button>
+          </div>
+        </div>
+      </div>
+      <div id="parttimeList"><div class="empty">Select month</div></div>
+    </div>
+
     <!-- Advance -->
     <div id="dsec-advance" style="display:none">
       <div class="card">
-        <div class="card-title">📤 Give Advance</div>
+        <div class="card-title" id="adv-form-title">📤 Give Advance</div>
+        <input type="hidden" id="adv-edit-id" value="0">
         <label class="lbl">Driver</label>
         <select id="adv-driver"></select>
         <div class="row2">
@@ -325,7 +506,10 @@ textarea{resize:vertical;min-height:60px;font-size:13px;line-height:1.6}
         </div>
         <label class="lbl">Reason</label>
         <input type="text" id="adv-reason" placeholder="Medical, personal…">
-        <button class="btn btn-yellow" onclick="saveAdvance()">📤 Record Advance</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-yellow" id="adv-save-btn" style="flex:1" onclick="saveAdvance()">📤 Record Advance</button>
+          <button class="btn btn-grey" id="adv-cancel-btn" style="display:none;flex:none" onclick="cancelEditAdvance()">✕ Cancel</button>
+        </div>
         <div id="adv-msg"></div>
       </div>
       <div class="card">
@@ -338,7 +522,8 @@ textarea{resize:vertical;min-height:60px;font-size:13px;line-height:1.6}
     <!-- Deductions -->
     <div id="dsec-deduct" style="display:none">
       <div class="card">
-        <div class="card-title">⚠️ Charge Driver</div>
+        <div class="card-title" id="ded-form-title">⚠️ Charge Driver</div>
+        <input type="hidden" id="ded-edit-id" value="0">
         <label class="lbl">Driver</label>
         <select id="ded-driver"></select>
         <div class="row2">
@@ -349,7 +534,10 @@ textarea{resize:vertical;min-height:60px;font-size:13px;line-height:1.6}
         </div>
         <label class="lbl">Reason</label>
         <input type="text" id="ded-reason" placeholder="Material missing, damage, fuel misuse…">
-        <button class="btn btn-red" onclick="saveDeduction()">⚠️ Record Charge</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-red" id="ded-save-btn" style="flex:1" onclick="saveDeduction()">⚠️ Record Charge</button>
+          <button class="btn btn-grey" id="ded-cancel-btn" style="display:none;flex:none" onclick="cancelEditDeduction()">✕ Cancel</button>
+        </div>
         <div id="ded-msg"></div>
       </div>
       <div class="card">
@@ -365,9 +553,9 @@ textarea{resize:vertical;min-height:60px;font-size:13px;line-height:1.6}
         <div class="card-title">🏖 Record Leave</div>
         <div class="row2">
           <div><label class="lbl">Driver</label>
-            <select id="lv-driver"></select></div>
+            <select id="lv-driver" onchange="autoFillLeaveDeduction()"></select></div>
           <div><label class="lbl">Date</label>
-            <input type="date" id="lv-date"></div>
+            <input type="date" id="lv-date" onchange="autoFillLeaveDeduction()"></div>
         </div>
         <div class="row2">
           <div><label class="lbl">Type</label>
@@ -375,11 +563,17 @@ textarea{resize:vertical;min-height:60px;font-size:13px;line-height:1.6}
               <option value="unpaid">Unpaid</option>
               <option value="paid">Paid</option>
             </select></div>
+          <div>
+            <label class="lbl">Deduction Amount (₹) <span style="font-size:10px;color:#7a8fa6" id="lv-ded-hint"></span></label>
+            <input type="number" id="lv-deduction" placeholder="0">
+          </div>
+        </div>
+        <div class="row2">
           <div><label class="lbl">Substitute Driver</label>
             <input type="text" id="lv-sub" placeholder="Name (if any)"></div>
+          <div><label class="lbl">Substitute Cost (₹)</label>
+            <input type="number" id="lv-sub-cost" placeholder="0"></div>
         </div>
-        <label class="lbl">Substitute Cost (₹)</label>
-        <input type="number" id="lv-sub-cost" placeholder="0">
         <label class="lbl">Note</label>
         <input type="text" id="lv-note" placeholder="">
         <button class="btn btn-blue" onclick="saveLeave()">💾 Save Leave</button>
@@ -396,6 +590,77 @@ textarea{resize:vertical;min-height:60px;font-size:13px;line-height:1.6}
     </div>
 
     <!-- Manage Drivers -->
+    <!-- ── Tempo Advance Rent ── -->
+    <div id="dsec-tempopay" style="display:none">
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <button class="btn btn-grey" style="flex:none;padding:10px 14px;font-size:13px" onclick="showCarryForwardCard()">↩ Carry Forward</button>
+      </div>
+      <div id="carry-fwd-card" style="display:none" class="card">
+        <div class="card-title">↩ Carry Forward Tempo Rent</div>
+        <div class="row2">
+          <div><label class="lbl">Driver</label>
+            <select id="cf-driver"><option value="">— select —</option></select></div>
+          <div><label class="lbl">From Month</label>
+            <input type="month" id="cf-month"></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-blue" style="flex:1" onclick="carryForwardTempoRent()">Calculate &amp; Apply</button>
+          <button class="btn btn-grey" style="flex:none" onclick="document.getElementById('carry-fwd-card').style.display='none'">Cancel</button>
+        </div>
+        <div id="cf-msg"></div>
+      </div>
+      <!-- Record payment -->
+      <div class="card">
+        <div class="card-title">🚐 Record Tempo Rent Payment</div>
+        <div style="font-size:12px;color:#7a8fa6;margin-bottom:8px">Driver pays rent advance — daily / weekly / lump sum</div>
+        <div class="row2">
+          <div><label class="lbl">Date</label>
+            <input type="date" id="tp-date"></div>
+          <div><label class="lbl">Amount (₹)</label>
+            <input type="number" id="tp-amount" placeholder="0"></div>
+        </div>
+        <div class="row2">
+          <div><label class="lbl">Driver</label>
+            <select id="tp-driver" onchange="autoFillTempoPay()">
+              <option value="">— select —</option>
+            </select></div>
+          <div><label class="lbl">Tempo</label>
+            <input type="text" id="tp-tempo" placeholder="auto-filled or type"></div>
+        </div>
+        <div class="row2">
+          <div><label class="lbl">Period Type</label>
+            <select id="tp-period">
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly (full)</option>
+              <option value="advance">Advance (lump sum)</option>
+            </select></div>
+          <div><label class="lbl">Days Covered (optional)</label>
+            <input type="number" id="tp-days" placeholder="e.g. 7"></div>
+        </div>
+        <label class="lbl">Note</label>
+        <input type="text" id="tp-note" placeholder="">
+        <button class="btn btn-blue" onclick="saveTempoPay()">💾 Save Payment</button>
+        <div id="tp-msg"></div>
+      </div>
+
+      <!-- Filter + list -->
+      <div class="card" style="padding:10px">
+        <div class="row2">
+          <div><label class="lbl">Driver</label>
+            <select id="tp-filter-driver" onchange="loadTempoPayList()">
+              <option value="">All Drivers</option>
+            </select></div>
+          <div><label class="lbl">Month</label>
+            <input type="month" id="tp-filter-month" onchange="loadTempoPayList()"></div>
+        </div>
+      </div>
+      <div id="tempopay-summary" style="display:none" class="card">
+        <div id="tempopay-summary-body"></div>
+      </div>
+      <div id="tempoPayList"><div class="empty">Loading…</div></div>
+    </div>
+
     <div id="dsec-manage" style="display:none">
       <div class="card">
         <div class="card-title">➕ Add / Edit Driver</div>
@@ -406,8 +671,25 @@ textarea{resize:vertical;min-height:60px;font-size:13px;line-height:1.6}
           <div><label class="lbl">Mobile</label>
             <input type="text" id="drv-mobile" placeholder=""></div>
         </div>
-        <label class="lbl">Base Salary (₹)</label>
-        <input type="number" id="drv-base-sal" placeholder="0">
+        <div style="display:flex;align-items:center;gap:10px;margin:4px 0 8px">
+          <label class="lbl" style="margin:0">Driver Type</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="radio" name="drv-type" id="drv-type-full" value="full" checked onchange="toggleParttimeFields(false)" style="width:16px;height:16px">
+            <span style="font-size:13px">Full-time</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="radio" name="drv-type" id="drv-type-part" value="part" onchange="toggleParttimeFields(true)" style="width:16px;height:16px">
+            <span style="font-size:13px">Part-time</span>
+          </label>
+        </div>
+        <div id="drv-fulltime-fields">
+          <label class="lbl">Base Salary (₹)</label>
+          <input type="number" id="drv-base-sal" placeholder="0">
+        </div>
+        <div id="drv-parttime-fields" style="display:none">
+          <label class="lbl">Daily Rate (₹)</label>
+          <input type="number" id="drv-daily-rate" placeholder="0">
+        </div>
         <div style="display:flex;align-items:center;gap:10px;margin:8px 0 4px">
           <label class="lbl" style="margin:0">Uses Tempo on Rent?</label>
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
@@ -558,7 +840,8 @@ textarea{resize:vertical;min-height:60px;font-size:13px;line-height:1.6}
     <!-- Service -->
     <div id="flsec-service" style="display:none">
       <div class="card">
-        <div class="card-title">🔧 Log Service</div>
+        <div class="card-title" id="sv-form-title">🔧 Log Service</div>
+        <input type="hidden" id="sv-edit-id" value="0">
         <div class="row2">
           <div><label class="lbl">Tempo</label>
             <select id="sv-tempo"></select></div>
@@ -581,7 +864,10 @@ textarea{resize:vertical;min-height:60px;font-size:13px;line-height:1.6}
         </div>
         <label class="lbl">Note</label>
         <input type="text" id="sv-note" placeholder="">
-        <button class="btn btn-blue" onclick="saveService()">💾 Save Service</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-blue" id="sv-save-btn" style="flex:1" onclick="saveService()">💾 Save Service</button>
+          <button class="btn btn-grey" id="sv-cancel-btn" style="display:none;flex:none" onclick="cancelEditService()">✕ Cancel</button>
+        </div>
         <div id="sv-msg"></div>
       </div>
       <div class="card">
@@ -596,50 +882,81 @@ textarea{resize:vertical;min-height:60px;font-size:13px;line-height:1.6}
 
   <!-- ══ EXPENSES ══ -->
   <div class="page" id="tab-expenses">
-    <div class="card">
-      <div class="card-title">💸 Add Expense</div>
-      <div class="row2">
-        <div><label class="lbl">Date</label>
-          <input type="date" id="ex-date"></div>
-        <div><label class="lbl">Amount (₹)</label>
-          <input type="number" id="ex-amount" placeholder="0"></div>
-      </div>
-      <label class="lbl">Category</label>
-      <select id="ex-cat">
-        <option value="tempo_fuel">⛽ Tempo Fuel</option>
-        <option value="tempo_repair">🔧 Tempo Repair</option>
-        <option value="driver">👷 Driver Cost</option>
-        <option value="delivery">📦 Delivery</option>
-        <option value="office">🏢 Office</option>
-        <option value="other">📌 Other</option>
-      </select>
-      <div class="row2">
-        <div><label class="lbl">Tempo (if any)</label>
-          <select id="ex-tempo"><option value="">—</option></select></div>
-        <div><label class="lbl">Driver (if any)</label>
-          <select id="ex-driver"><option value="">—</option></select></div>
-      </div>
-      <label class="lbl">Note</label>
-      <input type="text" id="ex-note" placeholder="Description">
-      <button class="btn btn-yellow" onclick="saveExpense()">💾 Save Expense</button>
-      <div id="ex-msg"></div>
+    <!-- Sub-tabs -->
+    <div style="display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px">
+      <button class="btn-sm btn-blue" id="extab-all"  onclick="showExpenseTab('all')">📋 All</button>
+      <button class="btn-sm btn-grey" id="extab-add"  onclick="showExpenseTab('add')">➕ Add</button>
+      <button class="btn-sm btn-grey" id="extab-cats" onclick="showExpenseTab('cats')">🏷️ Categories</button>
     </div>
-    <div class="card">
-      <div class="card-title">📋 Expense History</div>
-      <div class="row2" style="margin-bottom:8px">
-        <input type="month" id="ex-list-month" onchange="loadExpenseList()">
-        <select id="ex-list-cat" onchange="loadExpenseList()">
-          <option value="">All Categories</option>
-          <option value="tempo_fuel">⛽ Fuel</option>
-          <option value="tempo_repair">🔧 Repair</option>
-          <option value="driver">👷 Driver</option>
-          <option value="delivery">📦 Delivery</option>
-          <option value="office">🏢 Office</option>
-          <option value="other">📌 Other</option>
-        </select>
+
+    <!-- ALL EXPENSES -->
+    <div id="exsec-all">
+      <div class="card" style="padding:10px">
+        <div class="row2">
+          <div><label class="lbl">From</label>
+            <input type="date" id="ex-from" onchange="loadExpenseList()"></div>
+          <div><label class="lbl">To</label>
+            <input type="date" id="ex-to" onchange="loadExpenseList()"></div>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+          <button class="btn-sm btn-grey" onclick="setExpenseFilter('month')">This Month</button>
+          <button class="btn-sm btn-grey" onclick="setExpenseFilter('quarter')">3 Months</button>
+          <button class="btn-sm btn-grey" onclick="setExpenseFilter('year')">This Year</button>
+          <button class="btn-sm btn-grey" onclick="setExpenseFilter('all')">All Time</button>
+        </div>
+        <div style="margin-top:8px">
+          <label class="lbl">Category</label>
+          <select id="ex-list-cat" onchange="loadExpenseList()">
+            <option value="">All Categories</option>
+          </select>
+        </div>
       </div>
-      <div id="expenseTotal" class="msg in" style="display:none"></div>
-      <div id="expenseList"><div class="empty">Select month</div></div>
+      <div id="expenseTotal" class="msg in" style="display:none;margin-bottom:8px"></div>
+      <div id="expenseList"><div class="empty">Loading…</div></div>
+    </div>
+
+    <!-- ADD EXPENSE -->
+    <div id="exsec-add" style="display:none">
+      <div class="card">
+        <div class="card-title" id="ex-form-title">💸 Add Expense</div>
+        <input type="hidden" id="ex-edit-id" value="0">
+        <div class="row2">
+          <div><label class="lbl">Date</label>
+            <input type="date" id="ex-date"></div>
+          <div><label class="lbl">Amount (₹)</label>
+            <input type="number" id="ex-amount" placeholder="0"></div>
+        </div>
+        <label class="lbl">Category</label>
+        <select id="ex-cat"></select>
+        <div class="row2">
+          <div><label class="lbl">Tempo (if any)</label>
+            <select id="ex-tempo"><option value="">—</option></select></div>
+          <div><label class="lbl">Driver (if any)</label>
+            <select id="ex-driver"><option value="">—</option></select></div>
+        </div>
+        <label class="lbl">Note</label>
+        <input type="text" id="ex-note" placeholder="Description">
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-yellow" id="ex-save-btn" style="flex:1" onclick="saveExpense()">💾 Save Expense</button>
+          <button class="btn btn-grey" id="ex-cancel-btn" style="display:none;flex:none" onclick="cancelEditExpense()">✕ Cancel</button>
+        </div>
+        <div id="ex-msg"></div>
+      </div>
+    </div>
+
+    <!-- CATEGORIES -->
+    <div id="exsec-cats" style="display:none">
+      <div class="card">
+        <div class="card-title">🏷️ Expense Categories</div>
+        <div style="font-size:12px;color:#7a8fa6;margin-bottom:10px">Built-in categories cannot be deleted. Custom categories are saved locally.</div>
+        <div class="row2" style="align-items:flex-end">
+          <div style="flex:1"><label class="lbl">New Category Name</label>
+            <input type="text" id="ex-newcat-name" placeholder="e.g. Insurance, Toll, Tea…"></div>
+          <button class="btn btn-blue" onclick="addExpenseCategory()" style="height:36px">➕ Add</button>
+        </div>
+        <div id="ex-newcat-msg"></div>
+        <div id="ex-cat-list" style="margin-top:12px"></div>
+      </div>
     </div>
   </div>
 
@@ -764,10 +1081,11 @@ textarea{resize:vertical;min-height:60px;font-size:13px;line-height:1.6}
 
   <!-- ══ LOANS ══ -->
   <div class="page" id="tab-loans">
-    <div style="display:flex;gap:8px;margin-bottom:12px">
+    <div style="display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px">
       <button class="btn-sm btn-blue" id="lntab-list" onclick="showLoanTab('list')">📋 My Loans</button>
       <button class="btn-sm btn-grey" id="lntab-add" onclick="showLoanTab('add')">➕ New Loan</button>
       <button class="btn-sm btn-grey" id="lntab-emis" onclick="showLoanTab('emis')">📅 EMIs</button>
+      <button class="btn-sm btn-grey" id="lntab-calendar" onclick="showLoanTab('calendar')">📅 Calendar</button>
     </div>
 
     <div id="lnsec-list">
@@ -828,6 +1146,57 @@ textarea{resize:vertical;min-height:60px;font-size:13px;line-height:1.6}
         </select>
         <div id="emiList"><div class="empty">Select a loan</div></div>
       </div>
+    </div>
+
+    <!-- EMI Calendar -->
+    <div id="lnsec-calendar" style="display:none">
+      <div class="card">
+        <div class="card-title">📅 EMI Calendar (Next 90 days)</div>
+        <div id="emiCalendar"><div class="empty">Loading…</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ REPORT ══ -->
+  <div class="page" id="tab-report">
+    <div style="display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px">
+      <button class="btn-sm btn-blue" id="rptab-pl" onclick="showReportTab('pl')">📈 P&amp;L</button>
+      <button class="btn-sm btn-grey" id="rptab-driver" onclick="showReportTab('driver')">👷 Driver Cost</button>
+      <button class="btn-sm btn-grey" id="rptab-tempo" onclick="showReportTab('tempo')">🚐 Tempo</button>
+    </div>
+
+    <!-- P&L -->
+    <div id="rpsec-pl">
+      <div class="card" style="padding:10px">
+        <div class="row2">
+          <div><label class="lbl">From</label><input type="date" id="rp-from" onchange="loadPL()"></div>
+          <div><label class="lbl">To</label><input type="date" id="rp-to" onchange="loadPL()"></div>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+          <button class="btn-sm btn-grey" onclick="setRPFilter('month')">This Month</button>
+          <button class="btn-sm btn-grey" onclick="setRPFilter('quarter')">3 Months</button>
+          <button class="btn-sm btn-grey" onclick="setRPFilter('year')">This Year</button>
+        </div>
+      </div>
+      <div id="plReport"><div class="empty">Select date range</div></div>
+    </div>
+
+    <!-- Driver Cost -->
+    <div id="rpsec-driver" style="display:none">
+      <div class="card" style="padding:10px">
+        <label class="lbl">Month</label>
+        <input type="month" id="rp-driver-month" onchange="loadDriverCostReport()">
+      </div>
+      <div id="driverCostReport"><div class="empty">Select month</div></div>
+    </div>
+
+    <!-- Tempo -->
+    <div id="rpsec-tempo" style="display:none">
+      <div class="card" style="padding:10px">
+        <label class="lbl">Month</label>
+        <input type="month" id="rp-tempo-month" onchange="loadTempoReport()">
+      </div>
+      <div id="tempoReport"><div class="empty">Select month</div></div>
     </div>
   </div>
 
@@ -931,7 +1300,25 @@ function showMsg(id,text,type){
 }
 function v(id){return(document.getElementById(id)||{}).value||'';}
 function setV(id,val){var el=document.getElementById(id);if(el)el.value=val;}
-function expCatLabel(c){return{tempo_fuel:'⛽ Fuel',tempo_repair:'🔧 Repair',driver:'👷 Driver',delivery:'📦 Delivery',office:'🏢 Office',other:'📌 Other'}[c]||c;}
+var EXP_BUILTIN=[
+  {value:'tempo_fuel',label:'⛽ Tempo Fuel'},
+  {value:'tempo_repair',label:'🔧 Tempo Repair'},
+  {value:'driver',label:'👷 Driver Cost'},
+  {value:'delivery',label:'📦 Delivery'},
+  {value:'office',label:'🏢 Office'},
+  {value:'other',label:'📌 Other'}
+];
+function expGetCustomCats(){try{return JSON.parse(localStorage.getItem('fin_exp_cats')||'[]');}catch(e){return[];}}
+function expSaveCustomCats(arr){localStorage.setItem('fin_exp_cats',JSON.stringify(arr));}
+function expAllCats(){return EXP_BUILTIN.concat(expGetCustomCats().map(function(n){return{value:n,label:'🔖 '+n,custom:true};}));}
+function expCatLabel(c){var found=expAllCats().find(function(x){return x.value===c;});return found?found.label:c;}
+function populateExpCatSelects(){
+  var cats=expAllCats();
+  var opts=cats.map(function(c){return'<option value="'+c.value+'">'+c.label+'</option>';}).join('');
+  var filterOpts='<option value="">All Categories</option>'+opts;
+  var addEl=document.getElementById('ex-cat'); if(addEl) addEl.innerHTML=opts;
+  var listEl=document.getElementById('ex-list-cat'); if(listEl) listEl.innerHTML=filterOpts;
+}
 function modeLabel(m){return{cash:'💵 Cash',upi:'📱 UPI',cheque:'📄 Cheque',bank:'🏦 Bank'}[m]||m;}
 
 // ── LOGIN ──
@@ -969,16 +1356,17 @@ function showTab(tab){
   var tabs=document.querySelectorAll('.tab');
   tabs.forEach(function(t){if(t.getAttribute('onclick').includes("'"+tab+"'")){t.classList.add('on');}});
   if(tab==='dashboard') loadDashboard();
-  if(tab==='fleet') loadTempoList();
+  if(tab==='fleet') { loadTempoList(); loadKMAlerts(); }
   if(tab==='loans'){ loadLoanList(); populateLoanSelect(); }
   if(tab==='bank'){ _currentBankAccount=''; loadBankAccounts(); showBankTab('accounts'); }
-  if(tab==='expenses') loadExpenseList();
+  if(tab==='expenses'){ populateExpCatSelects(); setExpenseFilter('month'); showExpenseTab('all'); }
   if(tab==='payments') loadPaymentList();
   if(tab==='ledger') { showLedgerTab(_currentLedgerTab||'all'); }
+  if(tab==='report') { showReportTab('pl'); }
 }
 function showDriverTab(t){
-  ['salary','advance','deduct','leaves','manage'].forEach(function(s){
-    document.getElementById('dsec-'+s).style.display=s===t?'block':'none';
+  ['salary','parttime','advance','deduct','leaves','tempopay','manage'].forEach(function(s){
+    var el=document.getElementById('dsec-'+s); if(el) el.style.display=s===t?'block':'none';
     var btn=document.getElementById('dstab-'+s);
     if(btn){btn.className='btn-sm '+(s===t?'btn-blue':'btn-grey');}
   });
@@ -987,6 +1375,8 @@ function showDriverTab(t){
   if(t==='leaves'){loadLeaveList();}
   if(t==='salary'){loadSalaryList();}
   if(t==='manage'){loadDriverManageList();}
+  if(t==='parttime'){setV('pt-month',thisMonth());loadParttimeList();}
+  if(t==='tempopay'){initTempoPayTab();}
 }
 function showFleetTab(t){
   ['tempos','rentin','rentout','service'].forEach(function(s){
@@ -999,11 +1389,12 @@ function showFleetTab(t){
   if(t==='service') loadServiceList();
 }
 function showLoanTab(t){
-  ['list','add','emis','detail'].forEach(function(s){
+  ['list','add','emis','detail','calendar'].forEach(function(s){
     var el=document.getElementById('lnsec-'+s); if(el) el.style.display=s===t?'block':'none';
     var btn=document.getElementById('lntab-'+s); if(btn) btn.className='btn-sm '+(s===t?'btn-blue':'btn-grey');
   });
   if(t==='list') loadLoanList();
+  if(t==='calendar') loadEMICalendar();
 }
 function openLoanDetail(loanId,loanName){
   showLoanTab('detail');
@@ -1245,7 +1636,7 @@ function loadAllPartiesManage(){
         '<button class="btn-sm btn-blue" onclick="editParty('+r.id+',\''+r.name.replace(/'/g,"\\'")+'\',\''+r.type+'\',\''+( r.note||'').replace(/'/g,"\\'")+'\')">Edit</button>'+
         '<button class="btn-sm btn-grey" onclick="togglePartyActive('+r.id+','+(!r.active)+')">'+
         (r.active?'Deactivate':'Activate')+'</button>'+
-        '<button class="btn-sm btn-del" onclick="deleteParty('+r.id+')">Del</button>'+
+        '<button class="btn-sm btn-del" onclick="delGuard(this,function(){deleteParty('+r.id+');})">Del</button>'+
         '</div></div></div>';
     }).join('');
   });
@@ -1263,7 +1654,6 @@ function cancelPartyEdit(){
   document.getElementById('lp-cancel-edit').style.display='none';
 }
 function deleteParty(id){
-  if(!confirm('Delete this party? This will NOT delete their transactions.')) return;
   fetch(BASE+'/fin_parties?id=eq.'+id,{method:'DELETE',headers:hdrs({'Prefer':'return=minimal'})})
     .then(function(){loadAllPartiesManage();});
 }
@@ -1271,11 +1661,61 @@ function togglePartyActive(id,active){
   fetch(BASE+'/fin_parties?id=eq.'+id,{method:'PATCH',headers:hdrs({'Prefer':'return=minimal'}),body:JSON.stringify({active:active})})
     .then(function(){loadAllPartiesManage();});
 }
+function showLedgerForm(which){
+  document.getElementById('ldg-form-bill').style.display=which==='bill'?'block':'none';
+  document.getElementById('ldg-form-pay').style.display=which==='pay'?'block':'none';
+  document.getElementById('ldg-form-deduct').style.display=which==='deduct'?'block':'none';
+  document.getElementById('ldg-btn-bill').className='btn-sm '+(which==='bill'?'btn-blue':'btn-grey');
+  document.getElementById('ldg-btn-pay').className='btn-sm '+(which==='pay'?'btn-blue':'btn-grey');
+  document.getElementById('ldg-btn-deduct').className='btn-sm '+(which==='deduct'?'btn-blue':'btn-grey');
+}
+function saveLedgerBill(){
+  var raw=_currentLedgerRaw;
+  var colon=raw.indexOf(':'); var party=raw.slice(colon+1);
+  var date=v('ldg-bill-date'); var amt=parseFloat(v('ldg-bill-amount'));
+  if(!date||!amt){showMsg('ldg-bill-msg','Fill date and amount','er');return;}
+  sbPost('customer_bills',{customer_name:party,date:date,amount:amt,
+    description:v('ldg-bill-desc'),note:v('ldg-bill-note')}).then(function(r){
+    if(r.ok){showMsg('ldg-bill-msg','Bill saved ✓','ok');
+      setV('ldg-bill-amount','');setV('ldg-bill-desc','');setV('ldg-bill-note','');
+      showLedgerForm('');loadLedger(raw);}
+    else r.text().then(function(t){showMsg('ldg-bill-msg','Error: '+t,'er');});
+  });
+}
+function saveLedgerPayment(){
+  var raw=_currentLedgerRaw;
+  var colon=raw.indexOf(':'); var party=raw.slice(colon+1);
+  var date=v('ldg-pay-date'); var amt=parseFloat(v('ldg-pay-amount'));
+  if(!date||!amt){showMsg('ldg-pay-msg','Fill date and amount','er');return;}
+  sbPost('customer_payments',{customer_name:party,date:date,amount:amt,
+    mode:v('ldg-pay-mode'),reference:v('ldg-pay-ref'),note:v('ldg-pay-note')}).then(function(r){
+    if(r.ok){showMsg('ldg-pay-msg','Payment saved ✓','ok');
+      setV('ldg-pay-amount','');setV('ldg-pay-ref','');setV('ldg-pay-note','');
+      showLedgerForm('');loadLedger(raw);}
+    else r.text().then(function(t){showMsg('ldg-pay-msg','Error: '+t,'er');});
+  });
+}
+function saveLedgerDeduction(){
+  var raw=_currentLedgerRaw;
+  var colon=raw.indexOf(':'); var party=raw.slice(colon+1);
+  var date=v('ldg-deduct-date'); var amt=parseFloat(v('ldg-deduct-amount'));
+  if(!date||!amt){showMsg('ldg-deduct-msg','Fill date and amount','er');return;}
+  sbPost('customer_payments',{customer_name:party,date:date,amount:amt,
+    mode:'deduction',reference:v('ldg-deduct-reason'),note:v('ldg-deduct-note')}).then(function(r){
+    if(r.ok){showMsg('ldg-deduct-msg','Deduction saved ✓','ok');
+      setV('ldg-deduct-amount','');setV('ldg-deduct-reason','');setV('ldg-deduct-note','');
+      showLedgerForm('');loadLedger(raw);}
+    else r.text().then(function(t){showMsg('ldg-deduct-msg','Error: '+t,'er');});
+  });
+}
 function openLedger(raw){
   ['all','rent_out','rent_in','manage'].forEach(function(s){
     var el=document.getElementById('lsec-'+s); if(el) el.style.display='none';
     var btn=document.getElementById('ltab-'+s); if(btn) btn.className='btn-sm btn-grey';
   });
+  // reset forms
+  showLedgerForm('');
+  setV('ldg-bill-date',todayStr()); setV('ldg-pay-date',todayStr()); setV('ldg-deduct-date',todayStr());
   _currentLedgerRaw=raw;
   document.getElementById('lsec-detail').style.display='block';
   var colon=raw.indexOf(':'); var party=raw.slice(colon+1);
@@ -1319,15 +1759,15 @@ function loadDriverManageList(){
         '<div><div style="font-weight:700">'+d.name+'</div>'+
         '<div style="font-size:11px;color:#7a8fa6">'+
         (d.mobile?d.mobile+' · ':'')+
-        'Base: '+fmt(d.base_salary)+
+        (d.is_parttime?'<span class="badge b-grey">Part-time</span> ₹'+d.daily_rate+'/day':'Base: '+fmt(d.base_salary))+
         (d.has_tempo?' · 🚛 '+d.tempo_name+' '+fmt(d.tempo_rent)+'/mo':'')+
         (d.note?' · '+d.note:'')+
         ' <span class="badge '+(d.active?'b-green':'b-red')+'">'+(d.active?'Active':'Inactive')+'</span>'+
         '</div></div>'+
         '<div style="display:flex;gap:6px">'+
-        '<button class="btn-sm btn-blue" onclick="editDriver('+d.id+',\''+d.name.replace(/'/g,"\\'")+'\','+d.base_salary+',\''+d.mobile+'\',\''+( d.note||'').replace(/'/g,"\\'")+'\','+!!d.has_tempo+',\''+( d.tempo_name||'').replace(/'/g,"\\'")+'\','+( d.tempo_rent||0)+')">Edit</button>'+
+        '<button class="btn-sm btn-blue" onclick="editDriver('+d.id+',\''+d.name.replace(/'/g,"\\'")+'\','+d.base_salary+',\''+d.mobile+'\',\''+( d.note||'').replace(/'/g,"\\'")+'\','+!!d.has_tempo+',\''+( d.tempo_name||'').replace(/'/g,"\\'")+'\','+( d.tempo_rent||0)+','+!!d.is_parttime+','+( d.daily_rate||0)+')">Edit</button>'+
         '<button class="btn-sm btn-grey" onclick="toggleDriverActive('+d.id+','+(d.active?'false':'true')+')">'+( d.active?'Deactivate':'Activate')+'</button>'+
-        '<button class="btn-sm btn-del" onclick="deleteDriver('+d.id+')">Del</button>'+
+        '<button class="btn-sm btn-del" onclick="delGuard(this,function(){deleteDriver('+d.id+');})">Del</button>'+
         '</div></div></div>';
     }).join('');
   });
@@ -1335,9 +1775,18 @@ function loadDriverManageList(){
 function toggleTempoFields(show){
   document.getElementById('drv-tempo-fields').style.display=show?'block':'none';
 }
-function editDriver(id,name,base,mobile,note,hasTempo,tempoName,tempoRent){
-  setV('drv-edit-id',id); setV('drv-name',name); setV('drv-base-sal',base);
+function toggleParttimeFields(isPart){
+  document.getElementById('drv-fulltime-fields').style.display=isPart?'none':'block';
+  document.getElementById('drv-parttime-fields').style.display=isPart?'block':'none';
+}
+function editDriver(id,name,base,mobile,note,hasTempo,tempoName,tempoRent,isPart,dailyRate){
+  setV('drv-edit-id',id); setV('drv-name',name);
   setV('drv-mobile',mobile); setV('drv-note',note);
+  var pt=isPart===true||isPart==='true';
+  document.getElementById('drv-type-full').checked=!pt;
+  document.getElementById('drv-type-part').checked=pt;
+  toggleParttimeFields(pt);
+  setV('drv-base-sal',pt?0:base); setV('drv-daily-rate',pt?dailyRate:0);
   var ht=hasTempo===true||hasTempo==='true';
   document.getElementById('drv-has-tempo').checked=ht;
   toggleTempoFields(ht);
@@ -1347,8 +1796,10 @@ function editDriver(id,name,base,mobile,note,hasTempo,tempoName,tempoRent){
   window.scrollTo(0,0);
 }
 function clearDriverForm(){
-  setV('drv-edit-id',''); setV('drv-name',''); setV('drv-base-sal','');
+  setV('drv-edit-id',''); setV('drv-name',''); setV('drv-base-sal',''); setV('drv-daily-rate','');
   setV('drv-mobile',''); setV('drv-note','');
+  document.getElementById('drv-type-full').checked=true;
+  toggleParttimeFields(false);
   document.getElementById('drv-has-tempo').checked=false;
   toggleTempoFields(false);
   setV('drv-tempo-name',''); setV('drv-tempo-rent','');
@@ -1356,8 +1807,12 @@ function clearDriverForm(){
 function saveDriver(){
   var id=v('drv-edit-id'); var name=v('drv-name').trim();
   if(!name){showMsg('drv-msg','Name required','er');return;}
+  var isPart=document.getElementById('drv-type-part').checked;
   var hasTempo=document.getElementById('drv-has-tempo').checked;
-  var body={name:name,mobile:v('drv-mobile'),base_salary:parseFloat(v('drv-base-sal'))||0,
+  var body={name:name,mobile:v('drv-mobile'),
+    is_parttime:isPart,
+    base_salary:isPart?0:parseFloat(v('drv-base-sal'))||0,
+    daily_rate:isPart?parseFloat(v('drv-daily-rate'))||0:0,
     has_tempo:hasTempo,tempo_name:hasTempo?v('drv-tempo-name'):'',
     tempo_rent:hasTempo?parseFloat(v('drv-tempo-rent'))||0:0,
     note:v('drv-note'),active:true};
@@ -1374,7 +1829,6 @@ function toggleDriverActive(id,active){
     .then(function(){loadDriverManageList();loadDriversFromDB(loadPartiesFromDB);});
 }
 function deleteDriver(id){
-  if(!confirm('Delete driver? This will not delete salary/advance records.'))return;
   sbDelete('fin_drivers',id).then(function(){loadDriverManageList();loadDriversFromDB(loadPartiesFromDB);});
 }
 // ── PARTY MANAGE ──
@@ -1399,7 +1853,7 @@ function initApp(){
   setV('lv-list-month',thisMonth());
   setV('ri-month',thisMonth()); setV('ri-list-month',thisMonth());
   setV('ro-month',thisMonth()); setV('ro-list-month',thisMonth());
-  setV('ex-date',todayStr()); setV('ex-list-month',thisMonth());
+  setV('ex-date',todayStr()); populateExpCatSelects();
   setV('bk-date',todayStr()); setV('bk-xfr-date',todayStr());
   setV('cp-date',todayStr()); setV('cp-list-month',thisMonth());
   setV('sv-date',todayStr()); setV('ln-start',todayStr());
@@ -1431,7 +1885,7 @@ function loadTempoList(){
     return'<div class="item-card"><div style="display:flex;justify-content:space-between;align-items:center">'+
       '<div><div style="font-weight:800;font-size:14px">🚛 '+t.name+'</div>'+
       '<div style="font-size:11px;color:#7a8fa6">'+[t.type,t.owner_name?'Owner: '+t.owner_name:''].filter(Boolean).join(' · ')+'</div></div>'+
-      '<button class="btn-sm btn-del" onclick="deleteTempo('+t.id+')">Delete</button></div></div>';
+      '<button class="btn-sm btn-del" onclick="delGuard(this,function(){deleteTempo('+t.id+');})">Delete</button></div></div>';
   }).join('');
 }
 function saveTempo(){
@@ -1443,7 +1897,6 @@ function saveTempo(){
   });
 }
 function deleteTempo(id){
-  if(!confirm('Delete this tempo?')) return;
   sbPatch('tempos','id=eq.'+id,{active:false}).then(function(){loadTempos();});
 }
 
@@ -1463,19 +1916,34 @@ function salaryAutoFill(){
   Promise.all([
     sbGetQ('fin_drivers','name=eq.'+encodeURIComponent(drv)),
     sbGetQ('driver_leaves','driver_name=eq.'+encodeURIComponent(drv)+'&date=gte.'+monthStart+'&date=lte.'+monthEnd),
-    sbGetQ('driver_tempo_rent','driver_name=eq.'+encodeURIComponent(drv)+'&month=eq.'+mon)
+    sbGetQ('driver_tempo_rent','driver_name=eq.'+encodeURIComponent(drv)+'&month=eq.'+mon),
+    sbGetQ('driver_advances','driver_name=eq.'+encodeURIComponent(drv)+'&type=eq.advance&date=gte.'+monthStart+'&date=lte.'+monthEnd+'&order=date.asc'),
+    sbGetQ('driver_advances','driver_name=eq.'+encodeURIComponent(drv)+'&type=eq.deduction&date=gte.'+monthStart+'&date=lte.'+monthEnd+'&order=date.asc')
   ]).then(function(res){
-    var driverRows=res[0]||[]; var leaves=res[1]||[]; var tempoRows=res[2]||[];
+    var driverRows=res[0]||[]; var leaves=res[1]||[]; var tempoRows=res[2]||[]; var advances=res[3]||[]; var deductions=res[4]||[];
     var d=driverRows[0]; if(!d) return;
     _salDriverData=d;
     // base salary
     setV('sal-base',d.base_salary||0);
-    // leave days
+    // leave days + deduction total (from leave records directly)
     var leaveDays=leaves.length;
-    setV('sal-leave-days',leaveDays);
-    // leave deduction: (base / days_in_month) * leave_days
-    var perDay=(parseFloat(d.base_salary)||0)/daysInMonth;
-    setV('sal-leave-deduct', Math.round(perDay*leaveDays));
+    var leaveDeduct=leaves.reduce(function(s,l){return s+(parseFloat(l.deduction_amount)||0);},0);
+    setV('sal-leave-days', leaveDays);
+    setV('sal-leave-deduct', leaveDeduct);
+    // substitute cost from leave records
+    var totalSubCost=leaves.reduce(function(s,l){return s+(parseFloat(l.substitute_cost)||0);},0);
+    setV('sal-sub-cost', totalSubCost);
+    // advances given this month
+    var totalAdvance=advances.reduce(function(s,a){return s+(parseFloat(a.amount)||0);},0);
+    setV('sal-adv-given', totalAdvance);
+    setV('sal-adv-deduct', totalAdvance);  // default: deduct full advance this month (user can edit)
+    // deductions this month (damage, material, etc.)
+    var totalDeduction=deductions.reduce(function(s,a){return s+(parseFloat(a.amount)||0);},0);
+    setV('sal-other-deduct', totalDeduction);
+    var noteEl=document.getElementById('sal-other-deduct-note');
+    if(noteEl) noteEl.textContent=deductions.length>0
+      ? deductions.map(function(a){return a.reason||'Deduction';}).join(', ')+' ('+deductions.length+' item'+(deductions.length>1?'s':'')+')'
+      : '';
     // tempo rent section
     var tempoSec=document.getElementById('sal-tempo-section');
     if(d.has_tempo){
@@ -1500,7 +1968,10 @@ function salaryAutoFill(){
       setV('sal-tempo-deduct',0);
     }
     calcNetSalary();
-    statusEl.textContent='✓ Auto-filled: '+leaveDays+' leave day(s) · '+daysInMonth+' days in month'+(d.has_tempo?' · Tempo rent loaded':'');
+    var advMsg=totalAdvance>0?' · Advance '+fmt(totalAdvance):'';
+    var dedMsg=totalDeduction>0?' · Deductions '+fmt(totalDeduction):'';
+    var subMsg=totalSubCost>0?' · Substitute cost (ref) '+fmt(totalSubCost):'';
+    statusEl.textContent='✓ Auto-filled: '+leaveDays+' leave day(s) · '+daysInMonth+' days in month'+(d.has_tempo?' · Tempo rent loaded':'')+advMsg+dedMsg+subMsg;
   });
 }
 function calcTempoRent(){
@@ -1516,8 +1987,9 @@ function calcNetSalary(){
   var advD=parseFloat(v('sal-adv-deduct'))||0;
   var lvD=parseFloat(v('sal-leave-deduct'))||0;
   var tempoD=parseFloat(v('sal-tempo-deduct'))||0;
+  var otherD=parseFloat(v('sal-other-deduct'))||0;
   var bonus=parseFloat(v('sal-bonus'))||0;
-  setV('sal-net', Math.max(0, base - advD - lvD - tempoD + bonus));
+  setV('sal-net', Math.max(0, base - advD - lvD - tempoD - otherD + bonus));
 }
 function saveSalary(){
   var drv=v('sal-driver'); var mon=v('sal-month');
@@ -1529,6 +2001,8 @@ function saveSalary(){
     advance_deducted:parseFloat(v('sal-adv-deduct'))||0,
     leave_days:parseInt(v('sal-leave-days'))||0,
     leave_deduction:parseFloat(v('sal-leave-deduct'))||0,
+    substitute_cost:parseFloat(v('sal-sub-cost'))||0,
+    other_deduction:parseFloat(v('sal-other-deduct'))||0,
     bonus:parseFloat(v('sal-bonus'))||0,
     net_paid:net,note:v('sal-note')};
   // Save tempo rent record for this month (snapshot the rate)
@@ -1574,12 +2048,21 @@ function loadSalaryList(){
         '</div>'+
         '<div class="sum-row"><span class="sum-lbl">Base Salary</span><span class="sum-val">'+fmt(s.base_salary)+'</span></div>'+
         '<div class="sum-row"><span class="sum-lbl">Leave Deduction ('+s.leave_days+'d)</span><span class="sum-val" style="color:#c8382a">− '+fmt(s.leave_deduction)+'</span></div>'+
+        (s.substitute_cost?'<div class="sum-row"><span class="sum-lbl" style="color:#9a6700">⚠ Substitute Cost (company loss)</span><span class="sum-val" style="color:#9a6700">'+fmt(s.substitute_cost)+'</span></div>':'')+
         (tr?'<div class="sum-row"><span class="sum-lbl">Tempo Rent ('+tr.tempo_name+' · '+tr.days_used+'/'+tr.days_in_month+'d)</span><span class="sum-val" style="color:#c8382a">− '+fmt(tr.rent_amount)+'</span></div>':'')+
         '<div class="sum-row"><span class="sum-lbl">Advance Deducted</span><span class="sum-val" style="color:#c8382a">− '+fmt(s.advance_deducted)+'</span></div>'+
+        (s.other_deduction?'<div class="sum-row"><span class="sum-lbl">Other Deductions</span><span class="sum-val" style="color:#c8382a">− '+fmt(s.other_deduction)+'</span></div>':'')+
         '<div class="sum-row"><span class="sum-lbl">Bonus</span><span class="sum-val" style="color:#1e7a4f">+ '+fmt(s.bonus)+'</span></div>'+
         '<hr class="divider">'+
         '<div class="sum-row total"><span class="sum-lbl">Net Payable</span><span class="sum-val">'+fmt(s.net_paid)+'</span></div>'+
         (s.note?'<div style="font-size:11px;color:#7a8fa6;margin-top:6px">📝 '+s.note+'</div>':'')+
+        // Print + WhatsApp buttons (store s/tr in global cache keyed by salary id)
+        (function(){window._salCache=window._salCache||{};window._salCache[s.id]={s:s,tr:tr};return'';})() +
+        '<div style="display:flex;gap:8px;margin-top:10px">'+
+        '<button class="btn-sm btn-grey" onclick="var c=window._salCache['+s.id+'];if(c)printSalarySlip(c.s,c.tr)">🖨 Print Slip</button>'+
+        '<button class="btn-sm btn-grey" onclick="var c=window._salCache['+s.id+'];if(c)copySalaryForWhatsapp(c.s,c.tr)">📱 Copy for WhatsApp</button>'+
+        '</div>'+
+        '<div id="sal-wa-toast" style="display:none;background:#e8f5e9;color:#1e7a4f;padding:6px 10px;border-radius:8px;font-size:12px;margin-top:6px">Copied ✓</div>'+
         // Mark as paid section
         (!isPaid?
           '<div style="margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0">'+
@@ -1596,22 +2079,79 @@ function loadSalaryList(){
   });
 }
 
+// ── PART-TIME DRIVERS ──
+function loadParttimeList(){
+  var mon=v('pt-month'); var el=document.getElementById('parttimeList');
+  if(!mon){el.innerHTML='<div class="empty">Select month</div>';return;}
+  var y=mon.slice(0,4); var m=mon.slice(5,7);
+  var from=y+'-'+m+'-01'; var to=y+'-'+m+'-'+new Date(parseInt(y),parseInt(m),0).getDate();
+  // fetch part-time drivers + all leave records that month (to find substitute work)
+  Promise.all([
+    sbGetQ('fin_drivers','is_parttime=eq.true&active=eq.true&order=name.asc'),
+    sbGetQ('driver_leaves','date=gte.'+from+'&date=lte.'+to+'&order=date.asc')
+  ]).then(function(res){
+    var drivers=res[0]||[]; var leaves=res[1]||[];
+    if(!drivers.length){el.innerHTML='<div class="empty">No part-time drivers — add them in 👤 Manage</div>';return;}
+    el.innerHTML=drivers.map(function(d){
+      // find leaves where this driver was the substitute
+      var worked=leaves.filter(function(l){return l.substitute_driver&&l.substitute_driver.trim().toLowerCase()===d.name.trim().toLowerCase();});
+      var days=worked.length;
+      var totalEarned=worked.reduce(function(s,l){return s+(parseFloat(l.substitute_cost)||0);},0);
+      // if substitute_cost is 0 in leaves, fall back to daily_rate * days
+      if(!totalEarned && days>0) totalEarned=(parseFloat(d.daily_rate)||0)*days;
+      return'<div class="item-card">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center">'+
+        '<div>'+
+        '<div style="font-weight:700">'+d.name+' <span class="badge b-grey">Part-time</span></div>'+
+        '<div style="font-size:11px;color:#7a8fa6">₹'+d.daily_rate+'/day · '+days+' day(s) worked</div>'+
+        (days>0?'<div style="font-size:11px;color:#7a8fa6;margin-top:2px">'+worked.map(function(l){return l.date+(l.driver_name?' (sub for '+l.driver_name+')':'');}).join(', ')+'</div>':'')+
+        '</div>'+
+        '<div style="text-align:right">'+
+        '<div style="font-weight:900;font-size:16px;color:#1e7a4f">'+fmt(totalEarned)+'</div>'+
+        (days>0?'<button class="btn-sm btn-blue" style="margin-top:4px" onclick="markParttimePaid(\''+d.name.replace(/'/g,"\\'")+'\','+totalEarned+',\''+mon+'\')">Mark Paid</button>':'')+
+        '</div>'+
+        '</div></div>';
+    }).join('');
+  });
+}
+function markParttimePaid(name,amount,mon){
+  var date=todayStr();
+  sbPost('fin_expenses',{date:date,category:'Driver Payment',amount:amount,driver_name:name,
+    note:'Part-time payment for '+mon}).then(function(r){
+    if(r.ok) alert('Payment recorded ✓');
+    else alert('Error recording payment');
+  });
+}
+
 function markSalaryPaid(id){
   var date=v('sal-pay-date')||todayStr();
-  fetch(BASE+'/driver_salary?id=eq.'+id,{method:'PATCH',headers:hdrs({'Prefer':'return=minimal'}),
-    body:JSON.stringify({paid_date:date})}).then(function(){loadSalaryList();});
+  var mode=v('sal-pay-mode')||'Cash';
+  // fetch current note to append audit trail
+  sbGetQ('driver_salary','id=eq.'+id).then(function(rows){
+    var cur=rows&&rows.length?rows[0]:{};
+    var note=(cur.note||'')+' | Paid '+date+' via '+mode;
+    fetch(BASE+'/driver_salary?id=eq.'+id,{method:'PATCH',headers:hdrs({'Prefer':'return=minimal'}),
+      body:JSON.stringify({paid_date:date,note:note})}).then(function(){loadSalaryList();});
+  });
 }
 function markSalaryUnpaid(id){
-  fetch(BASE+'/driver_salary?id=eq.'+id,{method:'PATCH',headers:hdrs({'Prefer':'return=minimal'}),
-    body:JSON.stringify({paid_date:null})}).then(function(){loadSalaryList();});
+  sbGetQ('driver_salary','id=eq.'+id).then(function(rows){
+    var cur=rows&&rows.length?rows[0]:{};
+    var note=(cur.note||'')+' | Unpaid marked '+todayStr();
+    fetch(BASE+'/driver_salary?id=eq.'+id,{method:'PATCH',headers:hdrs({'Prefer':'return=minimal'}),
+      body:JSON.stringify({paid_date:null,note:note})}).then(function(){loadSalaryList();});
+  });
 }
 
 // ── ADVANCE ──
 function saveAdvance(){
   var drv=v('adv-driver'); var amt=parseFloat(v('adv-amount'));
   if(!drv||!amt){showMsg('adv-msg','Fill driver and amount','er');return;}
-  sbPost('driver_advances',{driver_name:drv,date:v('adv-date'),amount:amt,type:'advance',reason:v('adv-reason')}).then(function(r){
-    if(r.ok){showMsg('adv-msg','Advance recorded ✓','ok');setV('adv-amount','');setV('adv-reason','');loadAdvanceList();}
+  var body={driver_name:drv,date:v('adv-date'),amount:amt,type:'advance',reason:v('adv-reason')};
+  var editId=parseInt(v('adv-edit-id'))||0;
+  var promise=editId>0 ? sbPatch('driver_advances','id=eq.'+editId,body) : sbPost('driver_advances',body);
+  promise.then(function(r){
+    if(r.ok){showMsg('adv-msg',(editId>0?'Updated':'Advance recorded')+' ✓','ok');setV('adv-amount','');setV('adv-reason','');cancelEditAdvance();loadAdvanceList();}
     else showMsg('adv-msg','Error saving','er');
   });
 }
@@ -1624,15 +2164,17 @@ function loadAdvanceList(){
     var total=rows.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
     el.innerHTML='<div class="msg in" style="margin-bottom:8px">Total Advances: '+fmt(total)+'</div>'+
       rows.map(function(a){
-        return'<div class="item-card"><div style="display:flex;justify-content:space-between">'+
+        return'<div class="item-card"><div style="display:flex;justify-content:space-between;align-items:center">'+
           '<div><div style="font-weight:700">'+fmt(a.amount)+'</div>'+
           '<div style="font-size:11px;color:#7a8fa6">'+a.date+(a.reason?' · '+a.reason:'')+'</div></div>'+
-          '<button class="btn-sm btn-del" onclick="deleteAdvance('+a.id+')">Del</button></div></div>';
+          '<div style="display:flex;gap:4px">'+
+          '<button class="btn-sm btn-edit" onclick="editAdvanceById('+a.id+')">✏</button>'+
+          '<button class="btn-sm btn-del" onclick="delGuard(this,function(){deleteAdvance('+a.id+');})">Del</button>'+
+          '</div></div></div>';
       }).join('');
   });
 }
 function deleteAdvance(id){
-  if(!confirm('Delete this advance record?')) return;
   sbDelete('driver_advances',id).then(function(){loadAdvanceList();});
 }
 
@@ -1642,8 +2184,11 @@ function saveDeduction(){
   if(!drv||!amt){showMsg('ded-msg','Fill driver and amount','er');return;}
   var reason=v('ded-reason');
   if(!reason){showMsg('ded-msg','Reason is required for charges','er');return;}
-  sbPost('driver_advances',{driver_name:drv,date:v('ded-date'),amount:amt,type:'deduction',reason:reason}).then(function(r){
-    if(r.ok){showMsg('ded-msg','Charge recorded ✓','ok');setV('ded-amount','');setV('ded-reason','');loadDeductionList();}
+  var body={driver_name:drv,date:v('ded-date'),amount:amt,type:'deduction',reason:reason};
+  var editId=parseInt(v('ded-edit-id'))||0;
+  var promise=editId>0 ? sbPatch('driver_advances','id=eq.'+editId,body) : sbPost('driver_advances',body);
+  promise.then(function(r){
+    if(r.ok){showMsg('ded-msg',(editId>0?'Updated':'Charge recorded')+' ✓','ok');setV('ded-amount','');setV('ded-reason','');cancelEditDeduction();loadDeductionList();}
     else showMsg('ded-msg','Error saving','er');
   });
 }
@@ -1659,23 +2204,122 @@ function loadDeductionList(){
         return'<div class="item-card"><div style="display:flex;justify-content:space-between;align-items:center">'+
           '<div><div style="font-weight:700;color:#c8382a">− '+fmt(a.amount)+'</div>'+
           '<div style="font-size:11px;color:#7a8fa6">'+a.date+' · '+a.reason+'</div></div>'+
-          '<button class="btn-sm btn-del" onclick="deleteDeduction('+a.id+')">Del</button>'+
-          '</div></div>';
+          '<div style="display:flex;gap:4px">'+
+          '<button class="btn-sm btn-edit" onclick="editDeductionById('+a.id+')">✏</button>'+
+          '<button class="btn-sm btn-del" onclick="delGuard(this,function(){deleteDeduction('+a.id+');})">Del</button>'+
+          '</div></div></div>';
       }).join('');
   });
 }
 function deleteDeduction(id){
-  if(!confirm('Delete this charge record?')) return;
   sbDelete('driver_advances',id).then(function(){loadDeductionList();});
 }
 
+// ── TEMPO ADVANCE RENT PAYMENTS ──
+function initTempoPayTab(){
+  setV('tp-date',todayStr());
+  setV('tp-filter-month',thisMonth());
+  // populate driver selects from fin_drivers where has_tempo=true
+  sbGetQ('fin_drivers','active=eq.true&has_tempo=eq.true&order=name.asc').then(function(rows){
+    var opts=rows.map(function(d){return'<option value="'+d.name+'">'+d.name+'</option>';}).join('');
+    document.getElementById('tp-driver').innerHTML='<option value="">— select —</option>'+opts;
+    document.getElementById('tp-filter-driver').innerHTML='<option value="">All Drivers</option>'+opts;
+  });
+  loadTempoPayList();
+}
+function autoFillTempoPay(){
+  var drv=v('tp-driver');
+  if(!drv) return;
+  sbGetQ('fin_drivers','name=eq.'+encodeURIComponent(drv)).then(function(rows){
+    if(rows.length && rows[0].tempo_name) setV('tp-tempo', rows[0].tempo_name);
+  });
+}
+function saveTempoPay(){
+  var drv=v('tp-driver'); var date=v('tp-date'); var amt=parseFloat(v('tp-amount'));
+  if(!drv||!date||!amt){showMsg('tp-msg','Fill driver, date and amount','er');return;}
+  sbPost('driver_tempo_advance',{
+    driver_name:drv, tempo_name:v('tp-tempo'), date:date, amount:amt,
+    period:v('tp-period'), days_covered:parseInt(v('tp-days'))||0, note:v('tp-note')
+  }).then(function(r){
+    if(r.ok){
+      showMsg('tp-msg','Payment recorded ✓','ok');
+      setV('tp-amount',''); setV('tp-days',''); setV('tp-note','');
+      loadTempoPayList();
+    } else r.text().then(function(t){showMsg('tp-msg','Error: '+t,'er');});
+  });
+}
+function loadTempoPayList(){
+  var drv=v('tp-filter-driver'); var mon=v('tp-filter-month');
+  var el=document.getElementById('tempoPayList');
+  var sumEl=document.getElementById('tempopay-summary');
+  var sumBody=document.getElementById('tempopay-summary-body');
+  el.innerHTML='<div class="empty">Loading…</div>';
+  var parts=['order=date.desc','limit=500'];
+  if(drv) parts.push('driver_name=eq.'+encodeURIComponent(drv));
+  if(mon){
+    var y=mon.slice(0,4); var m=mon.slice(5,7);
+    var last=new Date(parseInt(y),parseInt(m),0).getDate();
+    parts.push('date=gte.'+y+'-'+m+'-01');
+    parts.push('date=lte.'+y+'-'+m+'-'+last);
+  }
+  Promise.all([
+    sbGetQ('driver_tempo_advance', parts.join('&')),
+    drv ? sbGetQ('driver_tempo_rent','driver_name=eq.'+encodeURIComponent(drv)+(mon?'&month=eq.'+mon:'')+'&order=month.desc') : Promise.resolve([])
+  ]).then(function(res){
+    var rows=res[0]||[]; var rentRows=res[1]||[];
+    var totalPaid=rows.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
+    var monthlyRent=rentRows.reduce(function(a,r){return a+(parseFloat(r.rent_amount)||0);},0);
+    var balance=monthlyRent-totalPaid;
+    sumEl.style.display=rows.length?'block':'none';
+    sumBody.innerHTML='<div style="display:flex;gap:10px;flex-wrap:wrap">'+
+      '<div class="stat" style="flex:1"><div class="stat-n" style="color:#1e7a4f">'+fmt(totalPaid)+'</div><div class="stat-l">Paid by Driver</div></div>'+
+      (monthlyRent?'<div class="stat" style="flex:1"><div class="stat-n">'+fmt(monthlyRent)+'</div><div class="stat-l">Monthly Rent Due</div></div>'+
+        '<div class="stat" style="flex:1"><div class="stat-n" style="color:'+(balance>0?'#c8382a':balance<0?'#1e7a4f':'#7a8fa6')+'">'+fmt(Math.abs(balance))+'</div>'+
+        '<div class="stat-l">'+(balance>0?'Still Pending':balance<0?'Excess Paid':'Settled')+'</div></div>':'')+
+      '</div>';
+    if(!rows.length){el.innerHTML='<div class="empty">No tempo rent payments for selected filter</div>';return;}
+    el.innerHTML=rows.map(function(r){
+      return'<div class="item-card"><div style="display:flex;justify-content:space-between;align-items:center">'+
+        '<div>'+
+        '<div style="font-weight:800;color:#1e7a4f">+ '+fmt(r.amount)+
+        ' <span class="badge b-blue">'+({daily:'Daily',weekly:'Weekly',monthly:'Monthly',advance:'Advance'}[r.period]||r.period)+'</span></div>'+
+        '<div style="font-size:11px;color:#7a8fa6">'+r.date+' · '+r.driver_name+(r.tempo_name?' · '+r.tempo_name:'')+(r.days_covered?' · '+r.days_covered+' days':'')+'</div>'+
+        (r.note?'<div style="font-size:11px;color:#7a8fa6">'+r.note+'</div>':'')+
+        '</div>'+
+        '<button class="btn-sm btn-del" onclick="delGuard(this,function(){deleteTempoPay('+r.id+');})">Del</button>'+
+        '</div></div>';
+    }).join('');
+  });
+}
+function deleteTempoPay(id){
+  sbDelete('driver_tempo_advance',id).then(function(){loadTempoPayList();});
+}
+
 // ── LEAVES ──
+function autoFillLeaveDeduction(){
+  var drv=v('lv-driver'); var date=v('lv-date');
+  if(!drv||!date) return;
+  // find driver base salary from already-loaded _bankAccounts equivalent — use fin_drivers
+  sbGetQ('fin_drivers','name=eq.'+encodeURIComponent(drv)).then(function(rows){
+    if(!rows.length) return;
+    var base=parseFloat(rows[0].base_salary)||0;
+    if(!base) return;
+    // days in that month
+    var y=parseInt(date.slice(0,4)); var m=parseInt(date.slice(5,7));
+    var daysInMonth=new Date(y,m,0).getDate();
+    var perDay=+(base/daysInMonth).toFixed(2);
+    // only auto-fill if user hasn't manually entered a value
+    if(!v('lv-deduction')) setV('lv-deduction', perDay);
+    document.getElementById('lv-ded-hint').textContent='₹'+base+' ÷ '+daysInMonth+'d = ₹'+perDay;
+  });
+}
 function saveLeave(){
   var drv=v('lv-driver'); var date=v('lv-date');
   if(!drv||!date){showMsg('lv-msg','Select driver and date','er');return;}
   sbPost('driver_leaves',{driver_name:drv,date:date,type:v('lv-type'),
+    deduction_amount:parseFloat(v('lv-deduction'))||0,
     substitute_driver:v('lv-sub'),substitute_cost:parseFloat(v('lv-sub-cost'))||0,note:v('lv-note')}).then(function(r){
-    if(r.ok){showMsg('lv-msg','Leave recorded ✓','ok');setV('lv-sub','');setV('lv-sub-cost','');setV('lv-note','');loadLeaveList();}
+    if(r.ok){showMsg('lv-msg','Leave recorded ✓','ok');setV('lv-deduction','');setV('lv-sub','');setV('lv-sub-cost','');setV('lv-note','');loadLeaveList();}
     else showMsg('lv-msg','Error saving','er');
   });
 }
@@ -1687,19 +2331,40 @@ function loadLeaveList(){
   var from=y+'-'+m+'-01'; var to=y+'-'+m+'-'+new Date(parseInt(y),parseInt(m),0).getDate();
   sbGetQ('driver_leaves','driver_name=eq.'+encodeURIComponent(drv)+'&date=gte.'+from+'&date=lte.'+to+'&order=date.desc').then(function(rows){
     if(!rows.length){el.innerHTML='<div class="empty">No leaves this month</div>';return;}
-    var total=rows.length; var subCost=rows.reduce(function(a,r){return a+(parseFloat(r.substitute_cost)||0);},0);
-    el.innerHTML='<div class="msg in" style="margin-bottom:8px">'+total+' leave day(s) · Substitute cost: '+fmt(subCost)+'</div>'+
+    var total=rows.length;
+    var totalDeduct=rows.reduce(function(a,r){return a+(parseFloat(r.deduction_amount)||0);},0);
+    var totalSub=rows.reduce(function(a,r){return a+(parseFloat(r.substitute_cost)||0);},0);
+    el.innerHTML=
+      '<div style="display:flex;gap:8px;margin-bottom:8px">'+
+      '<div class="stat" style="flex:1"><div class="stat-n">'+total+'</div><div class="stat-l">Leave Days</div></div>'+
+      '<div class="stat" style="flex:1"><div class="stat-n" style="color:#c8382a">'+fmt(totalDeduct)+'</div><div class="stat-l">Total Deduction</div></div>'+
+      (totalSub?'<div class="stat" style="flex:1"><div class="stat-n" style="color:#e09000">'+fmt(totalSub)+'</div><div class="stat-l">Substitute Cost</div></div>':'')+
+      '</div>'+
       rows.map(function(l){
-        return'<div class="item-card"><div style="display:flex;justify-content:space-between">'+
-          '<div><div style="font-weight:700">'+l.date+' <span class="badge '+(l.type==='paid'?'b-green':'b-red')+'">'+l.type+'</span></div>'+
-          '<div style="font-size:11px;color:#7a8fa6">'+(l.substitute_driver?'Sub: '+l.substitute_driver+' ('+fmt(l.substitute_cost)+')':'')+
-          (l.note?' · '+l.note:'')+'</div></div>'+
-          '<button class="btn-sm btn-del" onclick="deleteLeave('+l.id+')">Del</button></div></div>';
+        return'<div class="item-card">'+
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
+          '<div>'+
+          '<div style="font-weight:700">'+l.date+' <span class="badge '+(l.type==='paid'?'b-green':'b-red')+'">'+l.type+'</span></div>'+
+          (l.substitute_driver?'<div style="font-size:11px;color:#7a8fa6">Sub: '+l.substitute_driver+(l.substitute_cost?' · '+fmt(l.substitute_cost):'')+'</div>':'')+
+          (l.note?'<div style="font-size:11px;color:#7a8fa6">'+l.note+'</div>':'')+
+          '</div>'+
+          '<button class="btn-sm btn-del" onclick="delGuard(this,function(){deleteLeave('+l.id+');})">Del</button>'+
+          '</div>'+
+          // inline deduction edit
+          '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid #e2e8f0">'+
+          '<span style="font-size:11px;color:#7a8fa6;flex:1">Deduction:</span>'+
+          '<input type="number" id="lv-ded-'+l.id+'" value="'+(l.deduction_amount||0)+'" style="width:90px;padding:4px 6px;border:1px solid #cdd5e0;border-radius:6px;font-size:13px;text-align:right">'+
+          '<button class="btn-sm btn-blue" onclick="updateLeaveDeduction('+l.id+')">✓ Save</button>'+
+          '</div>'+
+          '</div>';
       }).join('');
   });
 }
+function updateLeaveDeduction(id){
+  var amt=parseFloat(document.getElementById('lv-ded-'+id).value)||0;
+  sbPatch('driver_leaves','id=eq.'+id,{deduction_amount:amt}).then(function(){loadLeaveList();});
+}
 function deleteLeave(id){
-  if(!confirm('Delete leave record?')) return;
   sbDelete('driver_leaves',id).then(function(){loadLeaveList();});
 }
 
@@ -1791,31 +2456,41 @@ function loadRentOutList(){
     var totalBal=rows.reduce(function(a,r){return a+(parseFloat(r.balance)||0);},0);
     el.innerHTML='<div class="msg in" style="margin-bottom:8px">Rent: '+fmt(totalFinal)+' · Received: '+fmt(totalRec)+' · Due: '+fmt(totalBal)+'</div>'+
       rows.map(function(r){
-        return'<div class="item-card"><div style="display:flex;justify-content:space-between;align-items:flex-start">'+
+        return'<div class="item-card">'+
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
           '<div><div style="font-weight:800">'+r.tempo_name+' → '+r.customer_name+'</div>'+
           '<div style="font-size:11px;color:#7a8fa6">'+r.month+(r.customer_mobile?' · '+r.customer_mobile:'')+'</div>'+
           '<div style="font-size:12px">Final: '+fmt(r.final_rent)+' | Rcvd: '+fmt(r.received)+'</div>'+
           '<div style="font-weight:700;color:'+(r.balance>0?'#c8382a':'#1e7a4f')+'">'+
-          (r.balance>0?'Due: '+fmt(r.balance):'✅ Cleared')+'</div></div>'+
-          '<button class="btn-sm btn-del" onclick="deleteRentOut('+r.id+')">Del</button></div>'+
-          (r.note?'<div style="font-size:11px;color:#7a8fa6;margin-top:4px">'+r.note+'</div>':'')+
+          (r.balance>0?'Due: '+fmt(r.balance):'✅ Cleared')+'</div>'+
+          (r.note?'<div style="font-size:11px;color:#7a8fa6">'+r.note+'</div>':'')+
+          '</div>'+
+          '<button class="btn-sm btn-del" onclick="delGuard(this,function(){deleteRentOut('+r.id+');})">Del</button>'+
+          '</div>'+
+          '<div style="display:flex;gap:6px;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid #e4edf6">'+
+          '<span style="font-size:11px;color:#7a8fa6">Update Received:</span>'+
+          '<input type="number" id="ro-recv-'+r.id+'" value="'+(r.received||0)+'" style="flex:1;padding:4px 8px;border:1px solid #cdd5e0;border-radius:6px;font-size:13px">'+
+          '<button class="btn-sm btn-green" onclick="updateRentOutReceived('+r.id+',document.getElementById(\'ro-recv-'+r.id+'\').value,'+r.final_rent+')">💰 Save</button>'+
+          '</div>'+
           '</div>';
       }).join('');
   });
 }
-function deleteRentOut(id){if(!confirm('Delete?'))return;sbDelete('tempo_rent_out',id).then(function(){loadRentOutList();});}
+function deleteRentOut(id){sbDelete('tempo_rent_out',id).then(function(){loadRentOutList();});}
 
 // ── SERVICE ──
 function saveService(){
   var tid=v('sv-tempo'); var date=v('sv-date');
   if(!tid||!date){showMsg('sv-msg','Select tempo and date','er');return;}
   var tempo=tempos.find(function(t){return String(t.id)===String(tid);})||{};
-  sbPost('tempo_service',{tempo_id:tid,tempo_name:tempo.name||'',service_date:date,
+  var body={tempo_id:tid,tempo_name:tempo.name||'',service_date:date,
     km_at_service:parseInt(v('sv-km'))||0,next_service_km:parseInt(v('sv-next-km'))||0,
     service_type:v('sv-type'),cost:parseFloat(v('sv-cost'))||0,
-    workshop:v('sv-workshop'),note:v('sv-note')}).then(function(r){
-    if(r.ok){showMsg('sv-msg','Service logged ✓','ok');setV('sv-km','');setV('sv-next-km','');
-      setV('sv-type','');setV('sv-cost','');setV('sv-workshop','');loadServiceList();}
+    workshop:v('sv-workshop'),note:v('sv-note')};
+  var editId=parseInt(v('sv-edit-id'))||0;
+  var promise=editId>0 ? sbPatch('tempo_service','id=eq.'+editId,body) : sbPost('tempo_service',body);
+  promise.then(function(r){
+    if(r.ok){showMsg('sv-msg',(editId>0?'Updated':'Service logged')+' ✓','ok');cancelEditService();loadServiceList();}
     else showMsg('sv-msg','Error','er');
   });
 }
@@ -1827,53 +2502,120 @@ function loadServiceList(){
     if(!rows.length){el.innerHTML='<div class="empty">No service records</div>';return;}
     el.innerHTML=rows.map(function(s){
       var alert=s.next_service_km>0&&s.km_at_service>=s.next_service_km-500;
-      return'<div class="item-card'+(alert?' '+' style="border-color:#ffc87a;background:#fffaf4"':'">')+
-        '<div style="display:flex;justify-content:space-between">'+
+      return'<div class="item-card" style="'+(alert?'border-color:#ffc87a;background:#fffaf4':'')+'">'+
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
         '<div><div style="font-weight:800">'+s.tempo_name+' · '+s.service_date+'</div>'+
         '<div style="font-size:12px;color:#1a3a5c">'+s.service_type+'</div>'+
         '<div style="font-size:11px;color:#7a8fa6">KM: '+s.km_at_service+' | Next: '+s.next_service_km+' km | Cost: '+fmt(s.cost)+'</div>'+
         (s.workshop?'<div style="font-size:11px;color:#7a8fa6">🔧 '+s.workshop+'</div>':'')+
         (alert?'<div class="badge b-yellow">⚠️ Service Due Soon</div>':'')+
-        '</div><button class="btn-sm btn-del" onclick="deleteService('+s.id+')">Del</button></div></div>';
+        '</div><div style="display:flex;gap:4px">'+
+        '<button class="btn-sm btn-edit" onclick="editServiceById('+s.id+')">✏</button>'+
+        '<button class="btn-sm btn-del" onclick="delGuard(this,function(){deleteService('+s.id+');})">Del</button>'+
+        '</div></div></div>';
     }).join('');
   });
 }
-function deleteService(id){if(!confirm('Delete service record?'))return;sbDelete('tempo_service',id).then(function(){loadServiceList();});}
+function deleteService(id){sbDelete('tempo_service',id).then(function(){loadServiceList();});}
 
 // ── EXPENSES ──
+// ── Expense sub-tabs ──
+function showExpenseTab(t){
+  ['all','add','cats'].forEach(function(s){
+    var el=document.getElementById('exsec-'+s); if(el) el.style.display=s===t?'block':'none';
+    var btn=document.getElementById('extab-'+s); if(btn) btn.className='btn-sm '+(s===t?'btn-blue':'btn-grey');
+  });
+  if(t==='all') loadExpenseList();
+  if(t==='cats') renderExpCatList();
+}
+function setExpenseFilter(p){
+  var now=new Date(); var y=now.getFullYear(); var m=now.getMonth();
+  var from,to;
+  if(p==='month'){from=new Date(y,m,1);to=new Date(y,m+1,0);}
+  else if(p==='quarter'){from=new Date(y,m-2,1);to=new Date(y,m+1,0);}
+  else if(p==='year'){from=new Date(y,0,1);to=new Date(y,11,31);}
+  else{setV('ex-from','');setV('ex-to','');loadExpenseList();return;}
+  setV('ex-from',from.toISOString().slice(0,10));
+  setV('ex-to',to.toISOString().slice(0,10));
+  loadExpenseList();
+}
 function saveExpense(){
   var date=v('ex-date'); var amt=parseFloat(v('ex-amount'));
   if(!date||!amt){showMsg('ex-msg','Fill date and amount','er');return;}
   var tid=v('ex-tempo');
   var tempo=tid?tempos.find(function(t){return String(t.id)===String(tid);}):null;
-  sbPost('fin_expenses',{date:date,category:v('ex-cat'),amount:amt,
-    tempo_name:tempo?tempo.name:'',driver_name:v('ex-driver'),note:v('ex-note')}).then(function(r){
-    if(r.ok){showMsg('ex-msg','Expense saved ✓','ok');setV('ex-amount','');setV('ex-note','');loadExpenseList();}
+  var body={date:date,category:v('ex-cat'),amount:amt,tempo_name:tempo?tempo.name:'',driver_name:v('ex-driver'),note:v('ex-note')};
+  var editId=parseInt(v('ex-edit-id'))||0;
+  var promise=editId>0
+    ? sbPatch('fin_expenses','id=eq.'+editId,body)
+    : sbPost('fin_expenses',body);
+  promise.then(function(r){
+    if(r.ok){showMsg('ex-msg',(editId>0?'Updated':'Expense saved')+' ✓','ok');setV('ex-amount','');setV('ex-note','');cancelEditExpense();showExpenseTab('all');}
     else showMsg('ex-msg','Error','er');
   });
 }
 function loadExpenseList(){
-  var mon=v('ex-list-month'); var cat=v('ex-list-cat');
+  var from=v('ex-from'); var to=v('ex-to'); var cat=v('ex-list-cat');
   var el=document.getElementById('expenseList');
-  var qs = mon
-    ? 'date=gte.'+mon.slice(0,4)+'-'+mon.slice(5,7)+'-01&date=lte.'+mon.slice(0,4)+'-'+mon.slice(5,7)+'-'+new Date(parseInt(mon.slice(0,4)),parseInt(mon.slice(5,7)),0).getDate()+'&order=date.desc'+(cat?'&category=eq.'+cat:'')
-    : 'order=date.desc&limit=200'+(cat?'&category=eq.'+cat:'');
-  sbGetQ('fin_expenses',qs).then(function(rows){
+  el.innerHTML='<div class="empty">Loading…</div>';
+  var parts=['order=date.desc','limit=500'];
+  if(from) parts.push('date=gte.'+from);
+  if(to)   parts.push('date=lte.'+to);
+  if(cat)  parts.push('category=eq.'+encodeURIComponent(cat));
+  sbGetQ('fin_expenses',parts.join('&')).then(function(rows){
     var total=rows.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
     var tot=document.getElementById('expenseTotal');
     if(rows.length){tot.style.display='block';tot.textContent='Total: '+fmt(total)+' ('+rows.length+' entries)';}
     else{tot.style.display='none';}
-    if(!rows.length){el.innerHTML='<div class="empty">No expenses</div>';return;}
+    if(!rows.length){el.innerHTML='<div class="empty">No expenses for selected range</div>';return;}
     el.innerHTML=rows.map(function(e){
       return'<div class="item-card"><div style="display:flex;justify-content:space-between;align-items:center">'+
         '<div><div style="font-weight:800">'+fmt(e.amount)+'  <span class="badge b-blue">'+expCatLabel(e.category)+'</span></div>'+
         '<div style="font-size:11px;color:#7a8fa6">'+e.date+(e.tempo_name?' · '+e.tempo_name:'')+(e.driver_name?' · '+e.driver_name:'')+'</div>'+
         (e.note?'<div style="font-size:11px;color:#7a8fa6">'+e.note+'</div>':'')+
-        '</div><button class="btn-sm btn-del" onclick="deleteExpense('+e.id+')">Del</button></div></div>';
+        '</div><div style="display:flex;gap:4px">'+
+        '<button class="btn-sm btn-edit" onclick="editExpenseById('+e.id+')">✏</button>'+
+        '<button class="btn-sm btn-del" onclick="delGuard(this,function(){deleteExpense('+e.id+');})">Del</button>'+
+        '</div></div></div>';
     }).join('');
   });
 }
-function deleteExpense(id){if(!confirm('Delete expense?'))return;sbDelete('fin_expenses',id).then(function(){loadExpenseList();});}
+function deleteExpense(id){sbDelete('fin_expenses',id).then(function(){loadExpenseList();});}
+// ── Category management ──
+function addExpenseCategory(){
+  var name=v('ex-newcat-name').trim();
+  if(!name){showMsg('ex-newcat-msg','Enter a category name','er');return;}
+  var existing=expAllCats().find(function(c){return c.label.toLowerCase()===name.toLowerCase()||c.value===name.toLowerCase().replace(/\s+/g,'_');});
+  if(existing){showMsg('ex-newcat-msg','Category already exists','er');return;}
+  var custom=expGetCustomCats();
+  custom.push(name);
+  expSaveCustomCats(custom);
+  setV('ex-newcat-name','');
+  showMsg('ex-newcat-msg','Category added ✓','ok');
+  populateExpCatSelects();
+  renderExpCatList();
+}
+function deleteExpenseCategory(name){
+  var custom=expGetCustomCats().filter(function(n){return n!==name;});
+  expSaveCustomCats(custom);
+  populateExpCatSelects();
+  renderExpCatList();
+}
+function renderExpCatList(){
+  var el=document.getElementById('ex-cat-list');
+  var builtin=EXP_BUILTIN.map(function(c){
+    return'<div class="item-card" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px">'+
+      '<span>'+c.label+'</span><span style="font-size:11px;color:#7a8fa6">built-in</span></div>';
+  }).join('');
+  var custom=expGetCustomCats();
+  var customHtml=custom.length?custom.map(function(n){
+    return'<div class="item-card" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px">'+
+      '<span>🔖 '+n+'</span>'+
+      '<button class="btn-sm btn-del" onclick="deleteExpenseCategory(\''+n.replace(/'/g,"\\'")+"')\">Del</button></div>";
+  }).join(''):'<div style="font-size:12px;color:#7a8fa6;padding:8px 0">No custom categories yet.</div>';
+  el.innerHTML='<div style="font-size:12px;font-weight:700;color:#7a8fa6;margin-bottom:4px">Built-in</div>'+builtin+
+    '<div style="font-size:12px;font-weight:700;color:#7a8fa6;margin:10px 0 4px">Custom</div>'+customHtml;
+}
 
 // ── BANK ──
 var _bankAccounts=[];
@@ -2129,7 +2871,7 @@ function loadLoanList(){
         '<div class="sum-row"><span class="sum-lbl">Interest Rate</span><span class="sum-val">'+l.interest_rate+'% p.a.</span></div>'+
         '<div style="display:flex;gap:8px;margin-top:8px">'+
         '<button class="btn-sm btn-blue" onclick="openLoanDetail('+l.id+',\''+l.lender_name.replace(/'/g,"\\'")+'\')">📅 View EMIs</button>'+
-        '<button class="btn-sm btn-del" onclick="deleteLoan('+l.id+')">Delete</button></div></div>';
+        '<button class="btn-sm btn-del" onclick="delGuard(this,function(){deleteLoan('+l.id+');})">Delete</button></div></div>';
     }).join('');
   });
 }
@@ -2156,7 +2898,7 @@ function saveLoan(){
     else showMsg('ln-msg','Error','er');
   });
 }
-function deleteLoan(id){if(!confirm('Delete loan?'))return;sbDelete('loans',id).then(function(){loadLoanList();});}
+function deleteLoan(id){sbDelete('loans',id).then(function(){loadLoanList();});}
 function viewLoanEMIs(id){showLoanTab('emis');setV('emi-loan-select',id);loadEMIList();}
 function loadEMIList(){
   var lid=v('emi-loan-select');
@@ -2196,7 +2938,6 @@ function loadEMIList(){
   });
 }
 function generateEMIs(loanId,emiAmt,startDate,totalEmis){
-  if(!confirm('Generate '+totalEmis+' EMI records?')) return;
   var dt=new Date(startDate);
   var tasks=[];
   for(var i=0;i<totalEmis;i++){
@@ -2266,25 +3007,56 @@ function loadLedger(raw){
 
   if(prefix==='cp'){
     var dqs=ledgerDateQS('date');
-    var qs=['customer_name=eq.'+encodeURIComponent(party)].concat(dqs).concat(['order=date.desc','limit=300']).join('&');
-    sbGetQ('customer_payments',qs).then(function(rows){
-      var total=rows.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
+    var qsBills=['customer_name=eq.'+encodeURIComponent(party)].concat(dqs).concat(['order=date.asc']).join('&');
+    var qsPays=['customer_name=eq.'+encodeURIComponent(party)].concat(dqs).concat(['order=date.asc']).join('&');
+    Promise.all([
+      sbGetQ('customer_bills', qsBills),
+      sbGetQ('customer_payments', qsPays)
+    ]).then(function(res){
+      var bills=res[0]||[]; var pays=res[1]||[];
+      var totalBilled=bills.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
+      var cashPays=pays.filter(function(p){return p.mode!=='deduction';});
+      var deducts=pays.filter(function(p){return p.mode==='deduction';});
+      var totalPaid=cashPays.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
+      var totalDeduct=deducts.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
+      var balance=totalBilled-totalPaid-totalDeduct;
       sumEl.style.display='block';
-      sumBody.innerHTML='<div style="display:flex;gap:24px;flex-wrap:wrap">'+
-        '<div><div style="font-size:11px;color:#7a8fa6">Total Received</div><div style="font-size:20px;font-weight:900;color:#1e7a4f">'+fmt(total)+'</div></div>'+
-        '<div><div style="font-size:11px;color:#7a8fa6">Payments</div><div style="font-size:20px;font-weight:900">'+rows.length+'</div></div>'+
+      sumBody.innerHTML=
+        '<div style="display:flex;gap:10px;flex-wrap:wrap">'+
+        '<div class="stat" style="flex:1"><div class="stat-n">'+fmt(totalBilled)+'</div><div class="stat-l">Total Billed</div></div>'+
+        '<div class="stat" style="flex:1"><div class="stat-n" style="color:#1e7a4f">'+fmt(totalPaid)+'</div><div class="stat-l">Received</div></div>'+
+        (totalDeduct>0?'<div class="stat" style="flex:1"><div class="stat-n" style="color:#b45309">'+fmt(totalDeduct)+'</div><div class="stat-l">Deductions</div></div>':'')+
+        '<div class="stat" style="flex:1"><div class="stat-n" style="color:'+(balance>0?'#c8382a':'#1e7a4f')+'">'+fmt(balance)+'</div><div class="stat-l">'+(balance>0?'Outstanding':'Advance')+'</div></div>'+
         '</div>';
-      if(!rows.length){listEl.innerHTML='<div class="empty">No payments found for '+party+'</div>';return;}
-      listEl.innerHTML=rows.map(function(p){
+      // merge bills + payments into single timeline
+      var entries=[];
+      bills.forEach(function(b){entries.push({date:b.date,type:'bill',amount:b.amount,desc:b.description,note:b.note,id:b.id});});
+      pays.forEach(function(p){
+        var isDeduct=p.mode==='deduction';
+        entries.push({date:p.date,type:isDeduct?'deduct':'pay',amount:p.amount,
+          desc:isDeduct?(p.reference||'Deduction'):modeLabel(p.mode),
+          note:(p.reference&&!isDeduct?'Ref: '+p.reference+' ':'')+( p.note||''),id:p.id});
+      });
+      entries.sort(function(a,b){return a.date>b.date?1:a.date<b.date?-1:0;});
+      if(!entries.length){listEl.innerHTML='<div class="empty">No bills or payments yet — use the buttons above</div>';return;}
+      var running=0;
+      listEl.innerHTML=entries.map(function(e){
+        running+=(e.type==='bill'?e.amount:-e.amount);
+        var color=e.type==='bill'?'#c8382a':e.type==='deduct'?'#b45309':'#1e7a4f';
+        var icon=e.type==='bill'?'🧾 Bill':e.type==='deduct'?'➖ Deduction':'💵 Payment';
         return'<div class="item-card"><div style="display:flex;justify-content:space-between;align-items:center">'+
-          '<div><div style="font-weight:700">'+p.date+'</div>'+
-          '<div style="font-size:11px;color:#7a8fa6"><span class="badge b-blue">'+modeLabel(p.mode)+'</span>'+
-          (p.reference?' · Ref: '+p.reference:'')+
-          (p.note?' · '+p.note:'')+
-          '</div></div>'+
-          '<div style="font-weight:900;font-size:15px;color:#1e7a4f">'+fmt(p.amount)+'</div>'+
+          '<div>'+
+          '<div style="font-weight:700;color:'+color+'">'+icon+' · '+fmt(e.amount)+'</div>'+
+          '<div style="font-size:11px;color:#7a8fa6">'+e.date+(e.desc?' · '+e.desc:'')+(e.note?' · '+e.note:'')+'</div>'+
+          '</div>'+
+          '<div style="text-align:right">'+
+          '<div style="font-size:12px;color:#7a8fa6">Balance</div>'+
+          '<div style="font-weight:800;font-size:14px;color:'+(running>0?'#c8382a':running<0?'#1e7a4f':'#7a8fa6')+'">'+fmt(Math.abs(running))+(running>0?' DR':running<0?' CR':'')+'</div>'+
+          '</div>'+
           '</div></div>';
-      }).join('');
+      }).join('')+
+      '<div style="text-align:right;padding:8px;font-size:12px;font-weight:700;color:'+(balance>0?'#c8382a':'#1e7a4f')+'">'+
+      'Closing Balance: '+fmt(Math.abs(balance))+(balance>0?' (Outstanding)':balance<0?' (Advance)':' (Clear)')+'</div>';
     });
   } else if(prefix==='ro'){
     // Tempo rented OUT to this party — we earn
@@ -2396,11 +3168,16 @@ function loadDashboard(){
     // EMIs due this month
     sbGetQ('loan_emis','due_date=gte.'+from+'&due_date=lte.'+to),
     // Service alerts
-    sbGetQ('tempo_service','order=service_date.desc')
+    sbGetQ('tempo_service','order=service_date.desc'),
+    // Driver summary
+    sbGetQ('fin_drivers','is_parttime=eq.false&active=eq.true&order=name.asc'),
+    sbGetQ('driver_advances','order=date.asc'),
+    sbGetQ('driver_salary','order=month.asc')
   ]).then(function(res){
     var payments=res[0]; var rentOut=res[1];
     var expenses=res[2]; var salaries=res[3];
     var rentIn=res[4]; var emis=res[5]; var services=res[6];
+    var allDrivers=res[7]||[]; var allAdvances=res[8]||[]; var allSalaries=res[9]||[];
 
     var totalPayments=payments.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
     var totalRentOut=rentOut.reduce(function(a,r){return a+(parseFloat(r.received)||0);},0);
@@ -2450,8 +3227,631 @@ function loadDashboard(){
       return'<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #e4edf6">'+
         '<span style="font-size:18px">'+a.icon+'</span><span style="font-size:13px">'+a.text+'</span></div>';
     }).join('');}
+
+    // Driver summary
+    loadOutstanding();
+    var drvEl=document.getElementById('dashDrivers');
+    if(!allDrivers.length){drvEl.innerHTML='<div class="empty">No drivers</div>';}
+    else{
+      drvEl.innerHTML=allDrivers.map(function(d){
+        // Outstanding advance = total advances given (all time) − total advance_deducted (all salary records)
+        var totalGiven=allAdvances.filter(function(a){return a.driver_name===d.name&&a.type==='advance';})
+          .reduce(function(s,a){return s+(parseFloat(a.amount)||0);},0);
+        var totalDeducted=allSalaries.filter(function(s){return s.driver_name===d.name;})
+          .reduce(function(s,r){return s+(parseFloat(r.advance_deducted)||0);},0);
+        var outstanding=totalGiven-totalDeducted;
+
+        // This month salary
+        var thisSal=salaries.find(function(s){return s.driver_name===d.name;});
+        var salStatus, salColor;
+        if(!thisSal){salStatus='Not calculated'; salColor='#7a8fa6';}
+        else if(thisSal.paid_date){salStatus='✅ Paid '+thisSal.paid_date; salColor='#1e7a4f';}
+        else{salStatus='⏳ Pending '+fmt(thisSal.net_paid); salColor='#c8382a';}
+
+        return'<div style="padding:10px 0;border-bottom:1px solid #e4edf6;display:flex;justify-content:space-between;align-items:center">'+
+          '<div>'+
+          '<div style="font-weight:700;font-size:13px">'+d.name+'</div>'+
+          '<div style="font-size:11px;color:'+salColor+';margin-top:2px">'+salStatus+'</div>'+
+          '</div>'+
+          '<div style="text-align:right">'+
+          '<div style="font-size:11px;color:#7a8fa6">Advance Outstanding</div>'+
+          '<div style="font-weight:800;font-size:14px;color:'+(outstanding>0?'#c8382a':outstanding<0?'#1e7a4f':'#7a8fa6')+'">'+(outstanding>0?'− '+fmt(outstanding):outstanding<0?'+ '+fmt(Math.abs(outstanding)):'₹ 0')+'</div>'+
+          '</div>'+
+          '</div>';
+      }).join('');
+    }
   });
 }
+
+// ══════════════════════════════════════════════
+//  STEP 12: delGuard — inline delete confirm
+// ══════════════════════════════════════════════
+function delGuard(btn,fn){
+  if(btn.getAttribute('data-step')==='2'){fn();}
+  else{
+    btn.setAttribute('data-step','2');
+    var orig=btn.textContent;
+    btn.textContent='Sure?';
+    btn.style.background='#c8382a';btn.style.color='#fff';
+    setTimeout(function(){btn.setAttribute('data-step','1');btn.textContent=orig;btn.style.background='';btn.style.color='';},3000);
+  }
+}
+
+// ══════════════════════════════════════════════
+//  STEP 1: Edit records
+// ══════════════════════════════════════════════
+
+// ── Expense edit ──
+var _exEditId=0;
+function editExpenseById(id){
+  sbGetQ('fin_expenses','id=eq.'+id).then(function(rows){
+    if(!rows||!rows.length) return;
+    var e=rows[0];
+    setV('ex-date',e.date||''); setV('ex-amount',e.amount||'');
+    setV('ex-cat',e.category||''); setV('ex-note',e.note||'');
+    // set tempo
+    if(e.tempo_name){
+      var sel=document.getElementById('ex-tempo');
+      if(sel){for(var i=0;i<sel.options.length;i++){var t=tempos.find(function(t){return t.name===e.tempo_name;});if(t&&sel.options[i].value===String(t.id)){sel.value=sel.options[i].value;break;}}}
+    } else setV('ex-tempo','');
+    setV('ex-driver',e.driver_name||'');
+    _exEditId=e.id;
+    setV('ex-edit-id',e.id);
+    var titleEl=document.getElementById('ex-form-title'); if(titleEl) titleEl.textContent='✏ Edit Expense';
+    var saveBtn=document.getElementById('ex-save-btn'); if(saveBtn) saveBtn.textContent='✏ Update Expense';
+    var cancelBtn=document.getElementById('ex-cancel-btn'); if(cancelBtn) cancelBtn.style.display='inline-block';
+    showExpenseTab('add');
+  });
+}
+function cancelEditExpense(){
+  _exEditId=0; setV('ex-edit-id','0');
+  var titleEl=document.getElementById('ex-form-title'); if(titleEl) titleEl.textContent='💸 Add Expense';
+  var saveBtn=document.getElementById('ex-save-btn'); if(saveBtn) saveBtn.textContent='💾 Save Expense';
+  var cancelBtn=document.getElementById('ex-cancel-btn'); if(cancelBtn) cancelBtn.style.display='none';
+  setV('ex-date',todayStr()); setV('ex-amount',''); setV('ex-note','');
+}
+
+// ── Advance edit ──
+var _advEditId=0;
+function editAdvanceById(id){
+  sbGetQ('driver_advances','id=eq.'+id).then(function(rows){
+    if(!rows||!rows.length) return;
+    var a=rows[0];
+    setV('adv-driver',a.driver_name||''); setV('adv-date',a.date||'');
+    setV('adv-amount',a.amount||''); setV('adv-reason',a.reason||'');
+    _advEditId=a.id; setV('adv-edit-id',a.id);
+    var titleEl=document.getElementById('adv-form-title'); if(titleEl) titleEl.textContent='✏ Edit Advance';
+    var saveBtn=document.getElementById('adv-save-btn'); if(saveBtn) saveBtn.textContent='✏ Update Advance';
+    var cancelBtn=document.getElementById('adv-cancel-btn'); if(cancelBtn) cancelBtn.style.display='inline-block';
+    showDriverTab('advance');
+  });
+}
+function cancelEditAdvance(){
+  _advEditId=0; setV('adv-edit-id','0');
+  var titleEl=document.getElementById('adv-form-title'); if(titleEl) titleEl.textContent='📤 Give Advance';
+  var saveBtn=document.getElementById('adv-save-btn'); if(saveBtn) saveBtn.textContent='📤 Record Advance';
+  var cancelBtn=document.getElementById('adv-cancel-btn'); if(cancelBtn) cancelBtn.style.display='none';
+  setV('adv-amount',''); setV('adv-reason','');
+}
+
+// ── Deduction edit ──
+var _dedEditId=0;
+function editDeductionById(id){
+  sbGetQ('driver_advances','id=eq.'+id).then(function(rows){
+    if(!rows||!rows.length) return;
+    var a=rows[0];
+    setV('ded-driver',a.driver_name||''); setV('ded-date',a.date||'');
+    setV('ded-amount',a.amount||''); setV('ded-reason',a.reason||'');
+    _dedEditId=a.id; setV('ded-edit-id',a.id);
+    var titleEl=document.getElementById('ded-form-title'); if(titleEl) titleEl.textContent='✏ Edit Deduction';
+    var saveBtn=document.getElementById('ded-save-btn'); if(saveBtn) saveBtn.textContent='✏ Update Charge';
+    var cancelBtn=document.getElementById('ded-cancel-btn'); if(cancelBtn) cancelBtn.style.display='inline-block';
+    showDriverTab('deduct');
+  });
+}
+function cancelEditDeduction(){
+  _dedEditId=0; setV('ded-edit-id','0');
+  var titleEl=document.getElementById('ded-form-title'); if(titleEl) titleEl.textContent='⚠️ Charge Driver';
+  var saveBtn=document.getElementById('ded-save-btn'); if(saveBtn) saveBtn.textContent='⚠️ Record Charge';
+  var cancelBtn=document.getElementById('ded-cancel-btn'); if(cancelBtn) cancelBtn.style.display='none';
+  setV('ded-amount',''); setV('ded-reason','');
+}
+
+// ── Service edit ──
+var _svEditId=0;
+function editServiceById(id){
+  sbGetQ('tempo_service','id=eq.'+id).then(function(rows){
+    if(!rows||!rows.length) return;
+    var s=rows[0];
+    setV('sv-tempo',s.tempo_id||''); setV('sv-date',s.service_date||'');
+    setV('sv-km',s.km_at_service||''); setV('sv-next-km',s.next_service_km||'');
+    setV('sv-type',s.service_type||''); setV('sv-cost',s.cost||'');
+    setV('sv-workshop',s.workshop||''); setV('sv-note',s.note||'');
+    _svEditId=s.id; setV('sv-edit-id',s.id);
+    var titleEl=document.getElementById('sv-form-title'); if(titleEl) titleEl.textContent='✏ Edit Service';
+    var saveBtn=document.getElementById('sv-save-btn'); if(saveBtn) saveBtn.textContent='✏ Update Service';
+    var cancelBtn=document.getElementById('sv-cancel-btn'); if(cancelBtn) cancelBtn.style.display='inline-block';
+    showFleetTab('service');
+  });
+}
+function cancelEditService(){
+  _svEditId=0; setV('sv-edit-id','0');
+  var titleEl=document.getElementById('sv-form-title'); if(titleEl) titleEl.textContent='🔧 Log Service';
+  var saveBtn=document.getElementById('sv-save-btn'); if(saveBtn) saveBtn.textContent='💾 Save Service';
+  var cancelBtn=document.getElementById('sv-cancel-btn'); if(cancelBtn) cancelBtn.style.display='none';
+  setV('sv-km',''); setV('sv-next-km',''); setV('sv-type',''); setV('sv-cost',''); setV('sv-workshop',''); setV('sv-note','');
+}
+
+// ── Rent Out inline received update ──
+function updateRentOutReceived(id, newAmt, finalRent){
+  var received=parseFloat(newAmt)||0;
+  var balance=Math.max(0,parseFloat(finalRent)-received);
+  sbPatch('tempo_rent_out','id=eq.'+id,{received:received,balance:balance}).then(function(r){
+    if(r.ok) loadRentOutList();
+    else alert('Error updating');
+  });
+}
+
+// ══════════════════════════════════════════════
+//  STEP 2: Report tab
+// ══════════════════════════════════════════════
+function showReportTab(t){
+  ['pl','driver','tempo'].forEach(function(s){
+    var el=document.getElementById('rpsec-'+s); if(el) el.style.display=s===t?'block':'none';
+    var btn=document.getElementById('rptab-'+s); if(btn) btn.className='btn-sm '+(s===t?'btn-blue':'btn-grey');
+  });
+  if(t==='pl') { setRPFilter('month'); }
+  if(t==='driver') { setV('rp-driver-month',thisMonth()); loadDriverCostReport(); }
+  if(t==='tempo') { setV('rp-tempo-month',thisMonth()); loadTempoReport(); }
+}
+function setRPFilter(range){
+  var now=new Date(); var y=now.getFullYear(); var m=now.getMonth();
+  var from='',to='';
+  if(range==='month'){from=y+'-'+String(m+1).padStart(2,'0')+'-01';to=y+'-'+String(m+1).padStart(2,'0')+'-'+new Date(y,m+1,0).getDate();}
+  else if(range==='quarter'){var qFrom=new Date(y,m-2,1);from=qFrom.getFullYear()+'-'+String(qFrom.getMonth()+1).padStart(2,'0')+'-01';to=y+'-'+String(m+1).padStart(2,'0')+'-'+new Date(y,m+1,0).getDate();}
+  else if(range==='year'){from=y+'-01-01';to=y+'-12-31';}
+  setV('rp-from',from); setV('rp-to',to); loadPL();
+}
+function loadPL(){
+  var from=v('rp-from'); var to=v('rp-to');
+  if(!from||!to){document.getElementById('plReport').innerHTML='<div class="empty">Select date range</div>';return;}
+  var el=document.getElementById('plReport'); el.innerHTML='<div class="empty">Loading…</div>';
+  var mon1=from.slice(0,7); var mon2=to.slice(0,7);
+  Promise.all([
+    sbGetQ('customer_bills','date=gte.'+from+'&date=lte.'+to+'&order=date.asc'),
+    sbGetQ('customer_payments','date=gte.'+from+'&date=lte.'+to+'&mode=neq.deduction'),
+    sbGetQ('tempo_rent_out','month=gte.'+mon1+'&month=lte.'+mon2),
+    sbGetQ('fin_expenses','date=gte.'+from+'&date=lte.'+to),
+    sbGetQ('driver_salary','month=gte.'+mon1+'&month=lte.'+mon2),
+    sbGetQ('tempo_rent_in','month=gte.'+mon1+'&month=lte.'+mon2),
+    sbGetQ('loan_emis','status=eq.paid&paid_date=gte.'+from+'&paid_date=lte.'+to)
+  ]).then(function(res){
+    var bills=res[0]||[]; var cashPays=res[1]||[]; var rentOut=res[2]||[];
+    var expenses=res[3]||[]; var salaries=res[4]||[]; var rentIn=res[5]||[]; var emis=res[6]||[];
+    var totalBills=bills.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
+    var totalPays=cashPays.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
+    var totalRentOut=rentOut.reduce(function(a,r){return a+(parseFloat(r.final_rent)||0);},0);
+    var income=totalBills+totalRentOut;
+    var totalExp=expenses.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
+    var totalSal=salaries.reduce(function(a,r){return a+(parseFloat(r.net_paid)||0);},0);
+    var totalRentIn=rentIn.reduce(function(a,r){return a+(parseFloat(r.final_rent)||0);},0);
+    var totalEMI=emis.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
+    var outgo=totalExp+totalSal+totalRentIn+totalEMI;
+    var net=income-outgo;
+    el.innerHTML='<div class="card">'+
+      '<div class="card-title">📈 P&L Summary ('+from+' → '+to+')</div>'+
+      '<div style="font-size:12px;font-weight:700;color:#1e7a4f;margin:8px 0 4px">INCOME</div>'+
+      '<div class="sum-row"><span class="sum-lbl">Customer Bills</span><span class="sum-val" style="color:#1e7a4f">'+fmt(totalBills)+'</span></div>'+
+      '<div class="sum-row"><span class="sum-lbl">Cash Received (Payments)</span><span class="sum-val" style="color:#1e7a4f">'+fmt(totalPays)+'</span></div>'+
+      '<div class="sum-row"><span class="sum-lbl">Tempo Rent Out</span><span class="sum-val" style="color:#1e7a4f">'+fmt(totalRentOut)+'</span></div>'+
+      '<div class="sum-row" style="border-top:2px solid #e4edf6;font-weight:900;margin-top:4px;padding-top:8px"><span class="sum-lbl">Total Income</span><span class="sum-val" style="color:#1e7a4f">'+fmt(income)+'</span></div>'+
+      '<div style="font-size:12px;font-weight:700;color:#c8382a;margin:12px 0 4px">OUTGO</div>'+
+      '<div class="sum-row"><span class="sum-lbl">Expenses</span><span class="sum-val" style="color:#c8382a">'+fmt(totalExp)+'</span></div>'+
+      '<div class="sum-row"><span class="sum-lbl">Salaries Net Paid</span><span class="sum-val" style="color:#c8382a">'+fmt(totalSal)+'</span></div>'+
+      '<div class="sum-row"><span class="sum-lbl">Tempo Rent In (paid)</span><span class="sum-val" style="color:#c8382a">'+fmt(totalRentIn)+'</span></div>'+
+      '<div class="sum-row"><span class="sum-lbl">EMIs Paid</span><span class="sum-val" style="color:#c8382a">'+fmt(totalEMI)+'</span></div>'+
+      '<div class="sum-row" style="border-top:2px solid #e4edf6;font-weight:900;margin-top:4px;padding-top:8px"><span class="sum-lbl">Total Outgo</span><span class="sum-val" style="color:#c8382a">'+fmt(outgo)+'</span></div>'+
+      '<hr class="divider">'+
+      '<div class="sum-row total"><span class="sum-lbl">Net Profit / Loss</span><span class="sum-val" style="color:'+(net>=0?'#1e7a4f':'#c8382a')+'">'+fmt(net)+'</span></div>'+
+      '</div>';
+  });
+}
+function loadDriverCostReport(){
+  var mon=v('rp-driver-month'); var el=document.getElementById('driverCostReport');
+  if(!mon){el.innerHTML='<div class="empty">Select month</div>';return;}
+  el.innerHTML='<div class="empty">Loading…</div>';
+  var y=mon.slice(0,4); var m=mon.slice(5,7); var last=new Date(parseInt(y),parseInt(m),0).getDate();
+  var from=y+'-'+m+'-01'; var to=y+'-'+m+'-'+last;
+  Promise.all([
+    sbGetQ('driver_salary','month=eq.'+encodeURIComponent(mon)),
+    sbGetQ('driver_tempo_rent','month=eq.'+encodeURIComponent(mon)),
+    sbGetQ('driver_advances','date=gte.'+from+'&date=lte.'+to+'&type=eq.advance'),
+    sbGetQ('driver_advances','date=gte.'+from+'&date=lte.'+to+'&type=eq.deduction'),
+    sbGetQ('driver_leaves','date=gte.'+from+'&date=lte.'+to)
+  ]).then(function(res){
+    var sals=res[0]||[]; var tempoRents=res[1]||[]; var advances=res[2]||[]; var deductions=res[3]||[]; var leaves=res[4]||[];
+    if(!sals.length){el.innerHTML='<div class="empty">No salary records for '+mon+'</div>';return;}
+    el.innerHTML='<div class="card"><div class="card-title">👷 Driver Cost — '+mon+'</div>'+
+      sals.map(function(s){
+        var tr=tempoRents.find(function(r){return r.driver_name===s.driver_name;});
+        var adv=advances.filter(function(r){return r.driver_name===s.driver_name;}).reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
+        var ded=deductions.filter(function(r){return r.driver_name===s.driver_name;}).reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
+        var lvDays=leaves.filter(function(r){return r.driver_name===s.driver_name;}).length;
+        var total=(parseFloat(s.base_salary)||0);
+        return'<div class="item-card">'+
+          '<div style="font-weight:700;font-size:14px">'+s.driver_name+'</div>'+
+          '<div class="sum-row"><span class="sum-lbl">Base Salary</span><span class="sum-val">'+fmt(s.base_salary)+'</span></div>'+
+          '<div class="sum-row"><span class="sum-lbl">Leave Days</span><span class="sum-val">'+lvDays+'d (−'+fmt(s.leave_deduction)+')</span></div>'+
+          (tr?'<div class="sum-row"><span class="sum-lbl">Tempo Rent</span><span class="sum-val" style="color:#c8382a">−'+fmt(tr.rent_amount)+'</span></div>':'')+
+          '<div class="sum-row"><span class="sum-lbl">Advances</span><span class="sum-val">'+fmt(adv)+'</span></div>'+
+          '<div class="sum-row"><span class="sum-lbl">Deductions</span><span class="sum-val" style="color:#c8382a">−'+fmt(ded)+'</span></div>'+
+          '<div class="sum-row" style="border-top:1px solid #e4edf6;margin-top:4px;padding-top:6px;font-weight:900"><span class="sum-lbl">Net Paid</span><span class="sum-val" style="color:#1e7a4f">'+fmt(s.net_paid)+'</span></div>'+
+          (s.paid_date?'<span class="badge b-green">Paid '+s.paid_date+'</span>':'<span class="badge b-red">Not Paid</span>')+
+          '</div>';
+      }).join('')+'</div>';
+  });
+}
+function loadTempoReport(){
+  var mon=v('rp-tempo-month'); var el=document.getElementById('tempoReport');
+  if(!mon){el.innerHTML='<div class="empty">Select month</div>';return;}
+  el.innerHTML='<div class="empty">Loading…</div>';
+  var y=mon.slice(0,4); var m=mon.slice(5,7); var last=new Date(parseInt(y),parseInt(m),0).getDate();
+  var from=y+'-'+m+'-01'; var to=y+'-'+m+'-'+last;
+  Promise.all([
+    sbGetQ('tempo_rent_out','month=eq.'+encodeURIComponent(mon)),
+    sbGetQ('tempo_rent_in','month=eq.'+encodeURIComponent(mon)),
+    sbGetQ('tempo_service','service_date=gte.'+from+'&service_date=lte.'+to)
+  ]).then(function(res){
+    var rentOut=res[0]||[]; var rentIn=res[1]||[]; var services=res[2]||[];
+    var tempoMap={};
+    rentOut.forEach(function(r){
+      if(!tempoMap[r.tempo_name]) tempoMap[r.tempo_name]={rentOut:0,rentIn:0,service:0};
+      tempoMap[r.tempo_name].rentOut+=(parseFloat(r.final_rent)||0);
+    });
+    rentIn.forEach(function(r){
+      if(!tempoMap[r.tempo_name]) tempoMap[r.tempo_name]={rentOut:0,rentIn:0,service:0};
+      tempoMap[r.tempo_name].rentIn+=(parseFloat(r.final_rent)||0);
+    });
+    services.forEach(function(r){
+      if(!tempoMap[r.tempo_name]) tempoMap[r.tempo_name]={rentOut:0,rentIn:0,service:0};
+      tempoMap[r.tempo_name].service+=(parseFloat(r.cost)||0);
+    });
+    var names=Object.keys(tempoMap);
+    if(!names.length){el.innerHTML='<div class="empty">No tempo records for '+mon+'</div>';return;}
+    el.innerHTML='<div class="card"><div class="card-title">🚐 Tempo Report — '+mon+'</div>'+
+      names.map(function(n){
+        var t=tempoMap[n]; var net=t.rentOut-t.rentIn-t.service;
+        return'<div class="item-card">'+
+          '<div style="font-weight:700;font-size:14px">🚛 '+n+'</div>'+
+          '<div class="sum-row"><span class="sum-lbl">Rent Out (Earned)</span><span class="sum-val" style="color:#1e7a4f">'+fmt(t.rentOut)+'</span></div>'+
+          '<div class="sum-row"><span class="sum-lbl">Rent In (Paid)</span><span class="sum-val" style="color:#c8382a">−'+fmt(t.rentIn)+'</span></div>'+
+          '<div class="sum-row"><span class="sum-lbl">Service Cost</span><span class="sum-val" style="color:#c8382a">−'+fmt(t.service)+'</span></div>'+
+          '<div class="sum-row" style="border-top:1px solid #e4edf6;margin-top:4px;padding-top:6px;font-weight:900"><span class="sum-lbl">Net</span><span class="sum-val" style="color:'+(net>=0?'#1e7a4f':'#c8382a')+'">'+fmt(net)+'</span></div>'+
+          '</div>';
+      }).join('')+'</div>';
+  });
+}
+
+// ══════════════════════════════════════════════
+//  STEP 3: Bulk Salary Generation
+// ══════════════════════════════════════════════
+function showGenSalCard(){
+  var el=document.getElementById('gen-sal-card');
+  if(el){ el.style.display=el.style.display==='none'?'block':'none'; setV('gen-sal-month',thisMonth()); }
+}
+function generateAllSalaries(){
+  var mon=v('gen-sal-month');
+  if(!mon){showMsg('gen-sal-msg','Select month','er');return;}
+  showMsg('gen-sal-msg','Fetching drivers…','in');
+  sbGetQ('fin_drivers','is_parttime=eq.false&active=eq.true&order=name.asc').then(function(drivers){
+    if(!drivers.length){showMsg('gen-sal-msg','No full-time active drivers found','er');return;}
+    sbGetQ('driver_salary','month=eq.'+encodeURIComponent(mon)).then(function(existing){
+      var existingNames=existing.map(function(s){return s.driver_name;});
+      var toGenerate=drivers.filter(function(d){return existingNames.indexOf(d.name)<0;});
+      if(!toGenerate.length){showMsg('gen-sal-msg','All drivers already have salary records for '+mon,'ok');return;}
+      showMsg('gen-sal-msg','Generating for '+toGenerate.length+' driver(s)…','in');
+      var y=parseInt(mon.slice(0,4)); var m=parseInt(mon.slice(5,7));
+      var daysInMonth=new Date(y,m,0).getDate();
+      var monthStart=mon+'-01'; var monthEnd=mon+'-'+daysInMonth;
+      var tasks=toGenerate.map(function(d){
+        return Promise.all([
+          sbGetQ('driver_leaves','driver_name=eq.'+encodeURIComponent(d.name)+'&date=gte.'+monthStart+'&date=lte.'+monthEnd),
+          sbGetQ('driver_advances','driver_name=eq.'+encodeURIComponent(d.name)+'&type=eq.advance&date=gte.'+monthStart+'&date=lte.'+monthEnd),
+          sbGetQ('driver_advances','driver_name=eq.'+encodeURIComponent(d.name)+'&type=eq.deduction&date=gte.'+monthStart+'&date=lte.'+monthEnd)
+        ]).then(function(res){
+          var leaves=res[0]||[]; var advances=res[1]||[]; var deductions=res[2]||[];
+          var leaveDays=leaves.length;
+          var leaveDeduct=leaves.reduce(function(s,l){return s+(parseFloat(l.deduction_amount)||0);},0);
+          var advGiven=advances.reduce(function(s,a){return s+(parseFloat(a.amount)||0);},0);
+          var advDeduct=advGiven;
+          var otherDeduct=deductions.reduce(function(s,a){return s+(parseFloat(a.amount)||0);},0);
+          var base=parseFloat(d.base_salary)||0;
+          var net=Math.max(0,base-leaveDeduct-advDeduct-otherDeduct);
+          return sbPost('driver_salary',{driver_name:d.name,month:mon,base_salary:base,
+            advance_given:advGiven,advance_deducted:advDeduct,
+            leave_days:leaveDays,leave_deduction:leaveDeduct,
+            substitute_cost:0,other_deduction:otherDeduct,bonus:0,net_paid:net,
+            note:'Auto-generated'});
+        });
+      });
+      Promise.all(tasks).then(function(results){
+        var ok=results.filter(function(r){return r.ok;}).length;
+        showMsg('gen-sal-msg','Generated '+ok+' / '+toGenerate.length+' salary records ✓','ok');
+        loadSalaryList();
+      });
+    });
+  });
+}
+
+// ══════════════════════════════════════════════
+//  STEP 4: Carry Forward Tempo Rent
+// ══════════════════════════════════════════════
+function showCarryForwardCard(){
+  var el=document.getElementById('carry-fwd-card');
+  if(el){
+    el.style.display=el.style.display==='none'?'block':'none';
+    setV('cf-month',thisMonth());
+    // populate driver select
+    sbGetQ('fin_drivers','active=eq.true&has_tempo=eq.true&order=name.asc').then(function(rows){
+      var sel=document.getElementById('cf-driver');
+      if(sel) sel.innerHTML='<option value="">— select —</option>'+rows.map(function(d){return'<option value="'+d.name+'">'+d.name+'</option>';}).join('');
+    });
+  }
+}
+function carryForwardTempoRent(){
+  var drv=v('cf-driver'); var fromMon=v('cf-month');
+  if(!drv||!fromMon){showMsg('cf-msg','Select driver and month','er');return;}
+  var y=parseInt(fromMon.slice(0,4)); var m=parseInt(fromMon.slice(5,7));
+  var fromStart=fromMon+'-01'; var fromEnd=fromMon+'-'+new Date(y,m,0).getDate();
+  // next month
+  var nextDate=new Date(y,m,1);
+  var nextMon=nextDate.getFullYear()+'-'+String(nextDate.getMonth()+1).padStart(2,'0');
+  Promise.all([
+    sbGetQ('driver_tempo_rent','driver_name=eq.'+encodeURIComponent(drv)+'&month=eq.'+fromMon),
+    sbGetQ('driver_tempo_advance','driver_name=eq.'+encodeURIComponent(drv)+'&date=gte.'+fromStart+'&date=lte.'+fromEnd)
+  ]).then(function(res){
+    var rentRows=res[0]||[]; var advances=res[1]||[];
+    var monthlyRent=rentRows.reduce(function(a,r){return a+(parseFloat(r.rent_amount)||0);},0);
+    var totalPaid=advances.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
+    var diff=totalPaid-monthlyRent;
+    if(diff>0){
+      // excess paid — create carry forward credit in next month
+      sbPost('driver_tempo_advance',{driver_name:drv,tempo_name:rentRows.length?rentRows[0].tempo_name:'',
+        date:nextMon+'-01',amount:-diff,period:'carry_forward',days_covered:0,
+        note:'Carry forward from '+fromMon}).then(function(r){
+        if(r.ok) showMsg('cf-msg','Carry forward of '+fmt(diff)+' applied to '+nextMon,'ok');
+        else showMsg('cf-msg','Error saving carry forward','er');
+      });
+    } else if(diff<0){
+      showMsg('cf-msg','Balance due: '+fmt(Math.abs(diff))+' still unpaid for '+fromMon+'. No carry forward created.','in');
+    } else {
+      showMsg('cf-msg','Settled! No carry forward needed for '+fromMon,'ok');
+    }
+  });
+}
+
+// ══════════════════════════════════════════════
+//  STEP 5: KM Alerts on Fleet page
+// ══════════════════════════════════════════════
+function loadKMAlerts(){
+  sbGetQ('tempo_service','order=service_date.desc&limit=200').then(function(rows){
+    var latest={};
+    rows.forEach(function(s){if(!latest[s.tempo_id]) latest[s.tempo_id]=s;});
+    var alerts=Object.values(latest).filter(function(s){return s.next_service_km>0;});
+    var alertsEl=document.createElement('div');
+    if(alerts.length){
+      alertsEl.id='km-alerts-bar';
+      alertsEl.style.cssText='background:#fff8e1;border:1.5px solid #ffe082;border-radius:12px;padding:10px 14px;margin-bottom:10px';
+      alertsEl.innerHTML='<div style="font-size:12px;font-weight:700;color:#7a4800;margin-bottom:6px">🔧 Service Reminders</div>'+
+        alerts.map(function(s){return'<div style="font-size:12px;color:#7a4800;padding:2px 0">'+s.tempo_name+': Next service at '+s.next_service_km+' km (last: '+s.service_date+')</div>';}).join('');
+    }
+    var flsec=document.getElementById('flsec-tempos');
+    var existing=document.getElementById('km-alerts-bar');
+    if(existing) existing.remove();
+    if(flsec&&alerts.length) flsec.insertBefore(alertsEl,flsec.firstChild);
+  });
+}
+
+// ══════════════════════════════════════════════
+//  STEP 6: EMI Calendar
+// ══════════════════════════════════════════════
+function loadEMICalendar(){
+  var el=document.getElementById('emiCalendar');
+  el.innerHTML='<div class="empty">Loading…</div>';
+  var today=new Date(); var future=new Date(); future.setDate(future.getDate()+90);
+  var from=today.toISOString().slice(0,10); var to=future.toISOString().slice(0,10);
+  Promise.all([
+    sbGetQ('loan_emis','status=eq.pending&due_date=gte.'+from+'&due_date=lte.'+to+'&order=due_date.asc'),
+    sbGetQ('loans','order=created_at.asc')
+  ]).then(function(res){
+    var emis=res[0]||[]; var loanList=res[1]||[];
+    var loanMap={};
+    loanList.forEach(function(l){loanMap[l.id]=l.lender_name+' ('+l.purpose+')';});
+    if(!emis.length){el.innerHTML='<div class="empty">No EMIs due in next 90 days</div>';return;}
+    // group by month
+    var byMonth={};
+    emis.forEach(function(e){
+      var mon=e.due_date.slice(0,7);
+      if(!byMonth[mon]) byMonth[mon]=[];
+      byMonth[mon].push(e);
+    });
+    var todayStr2=today.toISOString().slice(0,10);
+    var weekAhead=new Date(); weekAhead.setDate(weekAhead.getDate()+7);
+    var weekStr=weekAhead.toISOString().slice(0,10);
+    el.innerHTML=Object.keys(byMonth).map(function(mon){
+      var monDate=new Date(mon+'-01');
+      var monLabel=monDate.toLocaleString('en-IN',{month:'long',year:'numeric'});
+      return'<div class="card"><div class="card-title">'+monLabel+'</div>'+
+        byMonth[mon].map(function(e){
+          var color='#1565c0'; var badge='b-blue'; var tag='Upcoming';
+          if(e.due_date<todayStr2){color='#c8382a';badge='b-red';tag='Overdue';}
+          else if(e.due_date<=weekStr){color='#e09000';badge='b-yellow';tag='Due Soon';}
+          return'<div class="item-card" style="border-left:4px solid '+color+'">'+
+            '<div style="display:flex;justify-content:space-between;align-items:center">'+
+            '<div><div style="font-weight:700">'+fmt(e.amount)+'</div>'+
+            '<div style="font-size:11px;color:#7a8fa6">Due: '+e.due_date+(e.loan_id&&loanMap[e.loan_id]?' · '+loanMap[e.loan_id]:'')+'</div></div>'+
+            '<span class="badge '+badge+'">'+tag+'</span></div></div>';
+        }).join('')+'</div>';
+    }).join('');
+  });
+}
+
+// ══════════════════════════════════════════════
+//  STEP 7: Outstanding Summary
+// ══════════════════════════════════════════════
+function loadOutstanding(){
+  var el=document.getElementById('dashOutstanding');
+  if(!el) return;
+  Promise.all([
+    sbGetQ('customer_bills','order=date.asc&limit=2000'),
+    sbGetQ('customer_payments','order=date.asc&limit=2000')
+  ]).then(function(res){
+    var bills=res[0]||[]; var pays=res[1]||[];
+    var custMap={};
+    bills.forEach(function(b){
+      if(!custMap[b.customer_name]) custMap[b.customer_name]={billed:0,received:0};
+      custMap[b.customer_name].billed+=(parseFloat(b.amount)||0);
+    });
+    pays.forEach(function(p){
+      if(p.mode==='deduction') return;
+      if(!custMap[p.customer_name]) custMap[p.customer_name]={billed:0,received:0};
+      custMap[p.customer_name].received+=(parseFloat(p.amount)||0);
+    });
+    var outstanding=Object.keys(custMap).map(function(n){return{name:n,bal:custMap[n].billed-custMap[n].received};})
+      .filter(function(x){return x.bal>0;}).sort(function(a,b){return b.bal-a.bal;}).slice(0,5);
+    if(!outstanding.length){el.innerHTML='<div class="empty" style="padding:8px">✅ No outstanding customers</div>';return;}
+    el.innerHTML=outstanding.map(function(c){
+      return'<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #e4edf6">'+
+        '<div style="font-weight:700;font-size:13px">'+c.name+'</div>'+
+        '<div style="font-weight:900;color:#c8382a">'+fmt(c.bal)+'</div></div>';
+    }).join('')+'<div style="font-size:11px;color:#7a8fa6;margin-top:6px">Top 5 outstanding</div>';
+  });
+}
+
+// ══════════════════════════════════════════════
+//  STEP 8: Global Search
+// ══════════════════════════════════════════════
+var _searchTimer=null;
+function globalSearchDebounce(){
+  clearTimeout(_searchTimer);
+  _searchTimer=setTimeout(function(){globalSearch(v('searchInput'));},300);
+}
+function globalSearch(q){
+  var dd=document.getElementById('searchDropdown');
+  if(!q||q.length<3){dd.style.display='none';return;}
+  Promise.all([
+    sbGetQ('fin_drivers','name=ilike.*'+encodeURIComponent(q)+'*&limit=3'),
+    sbGetQ('fin_expenses','note=ilike.*'+encodeURIComponent(q)+'*&limit=3&order=date.desc'),
+    sbGetQ('customer_payments','customer_name=ilike.*'+encodeURIComponent(q)+'*&limit=3&order=date.desc')
+  ]).then(function(res){
+    var drivers=res[0]||[]; var expenses=res[1]||[]; var payments=res[2]||[];
+    var items=[];
+    drivers.forEach(function(d){items.push({icon:'👷',label:d.name,sub:'Driver',action:"showTab('drivers');showDriverTab('manage')"});});
+    expenses.forEach(function(e){items.push({icon:'💸',label:fmt(e.amount)+' — '+e.note,sub:e.date+' · '+e.category,action:"showTab('expenses')"});});
+    payments.forEach(function(p){items.push({icon:'💰',label:p.customer_name+' — '+fmt(p.amount),sub:p.date+' · '+p.mode,action:"showTab('payments')"});});
+    if(!items.length){dd.innerHTML='<div class="search-item" style="color:#7a8fa6">No results found</div>';dd.style.display='block';return;}
+    dd.innerHTML=items.map(function(it){
+      return'<div class="search-item" onclick="document.getElementById(\'searchInput\').value=\'\';document.getElementById(\'searchDropdown\').style.display=\'none\';'+it.action+'">'+
+        '<span style="margin-right:6px">'+it.icon+'</span><strong>'+it.label+'</strong><br><span style="font-size:10px;color:#7a8fa6">'+it.sub+'</span></div>';
+    }).join('');
+    dd.style.display='block';
+  });
+}
+// Close search on outside click
+document.addEventListener('click',function(e){
+  var dd=document.getElementById('searchDropdown');
+  var bar=document.getElementById('searchInput');
+  if(dd&&bar&&!bar.contains(e.target)&&!dd.contains(e.target)) dd.style.display='none';
+});
+
+// ══════════════════════════════════════════════
+//  STEP 11: Print Salary Slip
+// ══════════════════════════════════════════════
+function printSalarySlip(s,tr){
+  var monthLabel=s.month;
+  try{var d=new Date(s.month+'-01');monthLabel=d.toLocaleString('en-IN',{month:'long',year:'numeric'});}catch(e){}
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Salary Slip</title>'+
+    '<style>body{font-family:Arial,sans-serif;max-width:500px;margin:20px auto;padding:20px;color:#1a2535}'+
+    'h1{text-align:center;font-size:18px;margin-bottom:0}h2{text-align:center;font-size:13px;color:#7a8fa6;margin-top:4px}'+
+    '.hdr{background:#1a3a5c;color:#fff;padding:8px 14px;border-radius:8px;text-align:center;margin-bottom:12px}'+
+    'table{width:100%;border-collapse:collapse;margin:12px 0}'+
+    'td{padding:8px 10px;border-bottom:1px solid #e4edf6;font-size:13px}'+
+    'td:last-child{text-align:right;font-weight:700}'+
+    '.total td{font-size:15px;font-weight:900;border-top:2px solid #1a3a5c;color:#1e7a4f}'+
+    '.sig{display:flex;justify-content:space-between;margin-top:48px}'+
+    '.sig div{text-align:center;border-top:1px solid #1a3a5c;padding-top:4px;width:40%;font-size:11px}'+
+    '</style></head><body>'+
+    '<div class="hdr"><div style="font-size:20px;font-weight:900">SATELKAR LOGISTICS</div>'+
+    '<div style="font-size:11px;opacity:.8">SALARY SLIP</div></div>'+
+    '<p><strong>Driver:</strong> '+s.driver_name+'</p>'+
+    '<p><strong>Month:</strong> '+monthLabel+'</p>'+
+    (s.paid_date?'<p><strong>Payment Status:</strong> ✅ Paid on '+s.paid_date+'</p>':'<p><strong>Payment Status:</strong> ⏳ Pending</p>')+
+    '<table>'+
+    '<tr><td>Base Salary</td><td>₹'+Number(s.base_salary).toLocaleString('en-IN')+'</td></tr>'+
+    '<tr><td>Leave Deduction ('+s.leave_days+' days)</td><td style="color:#c8382a">− ₹'+Number(s.leave_deduction).toLocaleString('en-IN')+'</td></tr>'+
+    (tr?'<tr><td>Tempo Rent ('+tr.tempo_name+')</td><td style="color:#c8382a">− ₹'+Number(tr.rent_amount).toLocaleString('en-IN')+'</td></tr>':'')+
+    '<tr><td>Advance Deducted</td><td style="color:#c8382a">− ₹'+Number(s.advance_deducted||0).toLocaleString('en-IN')+'</td></tr>'+
+    (s.other_deduction?'<tr><td>Other Deductions</td><td style="color:#c8382a">− ₹'+Number(s.other_deduction).toLocaleString('en-IN')+'</td></tr>':'')+
+    (s.bonus?'<tr><td>Bonus</td><td style="color:#1e7a4f">+ ₹'+Number(s.bonus).toLocaleString('en-IN')+'</td></tr>':'')+
+    '<tr class="total"><td>NET PAYABLE</td><td>₹'+Number(s.net_paid).toLocaleString('en-IN')+'</td></tr>'+
+    '</table>'+
+    (s.note?'<p style="font-size:12px;color:#7a8fa6">Note: '+s.note+'</p>':'')+
+    '<div class="sig"><div>Driver Signature</div><div>Authorised By</div></div>'+
+    '</body></html>';
+  var win=window.open('','_blank');
+  if(win){win.document.write(html);win.document.close();win.print();}
+}
+
+// ══════════════════════════════════════════════
+//  STEP 13: Audit Trail for Salary
+// ══════════════════════════════════════════════
+// (patched into markSalaryPaid / markSalaryUnpaid below)
+
+// ══════════════════════════════════════════════
+//  STEP 14: WhatsApp Salary Summary
+// ══════════════════════════════════════════════
+function copySalaryForWhatsapp(s,tr){
+  var monthLabel=s.month;
+  try{var d=new Date(s.month+'-01');monthLabel=d.toLocaleString('en-IN',{month:'long',year:'numeric'});}catch(e){}
+  var pad=function(lbl,val,sign){
+    var l=lbl.length; var v=val; var spaces='';
+    for(var i=l;i<24;i++) spaces+=' ';
+    return lbl+':'+spaces+(sign||'')+val;
+  };
+  var text='*SATELKAR LOGISTICS — Salary Slip*\n'+
+    'Driver: '+s.driver_name+' | Month: '+monthLabel+'\n'+
+    '─────────────────────────\n'+
+    pad('Base Salary','₹'+Number(s.base_salary).toLocaleString('en-IN'))+'\n'+
+    pad('Leave ('+s.leave_days+' days)','₹'+Number(s.leave_deduction).toLocaleString('en-IN'),'-')+'\n'+
+    (tr?pad('Tempo Rent','₹'+Number(tr.rent_amount).toLocaleString('en-IN'),'-')+'\n':'')+
+    pad('Advance Ded.','₹'+Number(s.advance_deducted||0).toLocaleString('en-IN'),'-')+'\n'+
+    (s.other_deduction?pad('Other Ded.','₹'+Number(s.other_deduction).toLocaleString('en-IN'),'-')+'\n':'')+
+    (s.bonus?pad('Bonus','₹'+Number(s.bonus).toLocaleString('en-IN'),'+')+'\n':'')+
+    '─────────────────────────\n'+
+    '*Net Payable:   ₹'+Number(s.net_paid).toLocaleString('en-IN')+'*\n'+
+    (s.paid_date?'✅ Paid on '+s.paid_date:'⏳ Payment Pending');
+  navigator.clipboard.writeText(text).then(function(){
+    var el=document.getElementById('sal-wa-toast');
+    if(el){el.style.display='block';setTimeout(function(){el.style.display='none';},2000);}
+  }).catch(function(){alert(text);});
+}
+
+// ══════════════════════════════════════════════
+//  STEP 15: Dark Mode
+// ══════════════════════════════════════════════
+function toggleDark(){
+  var isDark=document.body.classList.toggle('dark');
+  localStorage.setItem('fin_dark',isDark?'1':'0');
+  document.getElementById('darkBtn').textContent=isDark?'☀️':'🌙';
+}
+// Apply on load
+(function(){
+  if(localStorage.getItem('fin_dark')==='1'){
+    document.body.classList.add('dark');
+    var btn=document.getElementById('darkBtn');
+    if(btn) btn.textContent='☀️';
+  }
+})();
 
 // ── START ──
 if(sessionStorage.getItem('fin_auth')==='1') initApp();

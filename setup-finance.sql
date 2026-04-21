@@ -10,7 +10,7 @@ BEGIN
     'tempos','driver_salary','driver_advances','driver_leaves',
     'tempo_rent_in','tempo_rent_out','tempo_service','fin_expenses',
     'bank_accounts','bank_transactions','loans','loan_charges','loan_emis',
-    'customer_payments','fin_drivers','driver_tempo_rent','fin_parties'
+    'customer_payments','customer_bills','fin_drivers','driver_tempo_rent','driver_tempo_advance','fin_parties'
   ]) LOOP
     IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname='public' AND tablename=t) THEN
       EXECUTE format('DROP POLICY IF EXISTS anon_all ON %I', t);
@@ -272,6 +272,34 @@ CREATE POLICY "anon_all" ON driver_tempo_rent FOR ALL USING (TRUE) WITH CHECK (T
 ALTER TABLE fin_drivers ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "anon_all" ON fin_drivers FOR ALL USING (TRUE) WITH CHECK (TRUE);
 
+-- 15a. Customer Bills (invoices raised to clients)
+CREATE TABLE IF NOT EXISTS customer_bills (
+  id            BIGSERIAL PRIMARY KEY,
+  customer_name TEXT NOT NULL,
+  date          DATE NOT NULL,
+  amount        NUMERIC NOT NULL,
+  description   TEXT DEFAULT '',
+  note          TEXT DEFAULT '',
+  created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE customer_bills ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "anon_all" ON customer_bills FOR ALL USING (TRUE) WITH CHECK (TRUE);
+
+-- 16. Driver Tempo Advance Rent Payments (driver pays rent day/week/lump sum)
+CREATE TABLE IF NOT EXISTS driver_tempo_advance (
+  id           BIGSERIAL PRIMARY KEY,
+  driver_name  TEXT NOT NULL,
+  tempo_name   TEXT NOT NULL DEFAULT '',
+  date         DATE NOT NULL,
+  amount       NUMERIC NOT NULL,
+  period       TEXT DEFAULT 'daily',   -- 'daily' | 'weekly' | 'monthly' | 'advance'
+  days_covered INTEGER DEFAULT 0,
+  note         TEXT DEFAULT '',
+  created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE driver_tempo_advance ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "anon_all" ON driver_tempo_advance FOR ALL USING (TRUE) WITH CHECK (TRUE);
+
 -- 15. Parties master list (for Ledger tab)
 CREATE TABLE IF NOT EXISTS fin_parties (
   id         BIGSERIAL PRIMARY KEY,
@@ -292,9 +320,14 @@ ALTER TABLE bank_transactions ADD COLUMN IF NOT EXISTS account_name TEXT NOT NUL
 ALTER TABLE driver_advances   ADD COLUMN IF NOT EXISTS type TEXT NOT NULL DEFAULT 'advance';
 ALTER TABLE loans ADD COLUMN IF NOT EXISTS down_payment  NUMERIC DEFAULT 0;
 ALTER TABLE loans ADD COLUMN IF NOT EXISTS vehicle_cost  NUMERIC DEFAULT 0;
-ALTER TABLE fin_drivers ADD COLUMN IF NOT EXISTS has_tempo  BOOLEAN DEFAULT FALSE;
-ALTER TABLE fin_drivers ADD COLUMN IF NOT EXISTS tempo_name TEXT DEFAULT '';
-ALTER TABLE fin_drivers ADD COLUMN IF NOT EXISTS tempo_rent NUMERIC DEFAULT 0;
+ALTER TABLE fin_drivers ADD COLUMN IF NOT EXISTS has_tempo   BOOLEAN DEFAULT FALSE;
+ALTER TABLE fin_drivers ADD COLUMN IF NOT EXISTS tempo_name  TEXT DEFAULT '';
+ALTER TABLE fin_drivers ADD COLUMN IF NOT EXISTS tempo_rent  NUMERIC DEFAULT 0;
+ALTER TABLE fin_drivers ADD COLUMN IF NOT EXISTS is_parttime BOOLEAN DEFAULT FALSE;
+ALTER TABLE fin_drivers ADD COLUMN IF NOT EXISTS daily_rate  NUMERIC DEFAULT 0;
+ALTER TABLE driver_salary ADD COLUMN IF NOT EXISTS other_deduction NUMERIC DEFAULT 0;
+ALTER TABLE driver_salary ADD COLUMN IF NOT EXISTS substitute_cost NUMERIC DEFAULT 0;
+ALTER TABLE driver_leaves ADD COLUMN IF NOT EXISTS deduction_amount NUMERIC DEFAULT 0;
 
 -- ================================================================
 -- Indexes for fast queries
@@ -307,7 +340,35 @@ CREATE INDEX IF NOT EXISTS idx_bank_txn_date          ON bank_transactions(date)
 CREATE INDEX IF NOT EXISTS idx_loan_emis_due          ON loan_emis(due_date, status);
 CREATE INDEX IF NOT EXISTS idx_customer_pay_date      ON customer_payments(date);
 CREATE INDEX IF NOT EXISTS idx_tempo_service_tempo    ON tempo_service(tempo_id);
+CREATE INDEX IF NOT EXISTS idx_driver_tempo_adv       ON driver_tempo_advance(driver_name, date);
 
 -- ================================================================
--- DONE. Now run import-finance-history.sql, then open finance.html
+-- DONE. Now open finance.html and start adding entries.
 -- ================================================================
+
+-- ================================================================
+-- CLEAR ALL DATA (run this to reset — keeps table structure intact)
+-- WARNING: permanently deletes all records, resets IDs to 1
+-- ================================================================
+
+-- TRUNCATE TABLE
+--   driver_tempo_advance,
+--   driver_tempo_rent,
+--   driver_salary,
+--   driver_advances,
+--   driver_leaves,
+--   fin_drivers,
+--   tempo_service,
+--   tempo_rent_out,
+--   tempo_rent_in,
+--   tempos,
+--   fin_expenses,
+--   bank_transactions,
+--   bank_accounts,
+--   loan_emis,
+--   loan_charges,
+--   loans,
+--   customer_payments,
+--   customer_bills,
+--   fin_parties
+-- RESTART IDENTITY CASCADE;
