@@ -3855,6 +3855,318 @@ function toggleDark(){
 
 // ── START ──
 if(sessionStorage.getItem('fin_auth')==='1') initApp();
+
+// ════════════════════════════════════════════
+// CHAT ASSISTANT — natural language entry
+// ════════════════════════════════════════════
+var _chatState={};  // holds conversation context between turns
+
+function toggleChat(){
+  var p=document.getElementById('chatPanel');
+  var b=document.getElementById('chatBtn');
+  var isOpen=p.classList.contains('open');
+  p.classList.toggle('open',!isOpen);
+  b.textContent=isOpen?'💬':'✕';
+  if(!isOpen && document.getElementById('chatMsgs').children.length===0) chatWelcome();
+}
+function closeChat(){
+  document.getElementById('chatPanel').classList.remove('open');
+  document.getElementById('chatBtn').textContent='💬';
+}
+function chatWelcome(){
+  botMsg('👋 Hi! I can help you add entries quickly.\n\nTry:\n• <b>add driver Raju salary 12000</b>\n• <b>add tempo MH09AB1234</b>\n• <b>expense 500 fuel today</b>\n• <b>advance 2000 to Raju</b>\n• <b>leave Raju today unpaid</b>\n• <b>add bank Warna 50000</b>\n• <b>bill ABC Traders 5000</b>\n• <b>payment 3000 from ABC Traders</b>\n\nType <b>help</b> to see all commands.');
+}
+function botMsg(html,type){
+  var el=document.createElement('div');
+  el.className='cm-bot'+(type?' '+type:'');
+  el.innerHTML=html;
+  var msgs=document.getElementById('chatMsgs');
+  msgs.appendChild(el);
+  msgs.scrollTop=msgs.scrollHeight;
+  return el;
+}
+function userMsg(text){
+  var el=document.createElement('div');
+  el.className='cm-user';
+  el.textContent=text;
+  var msgs=document.getElementById('chatMsgs');
+  msgs.appendChild(el);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+function chatChips(labels, onClicks){
+  var div=document.createElement('div');
+  div.className='chat-chips';
+  labels.forEach(function(lbl,i){
+    var btn=document.createElement('button');
+    btn.className='chip';
+    btn.textContent=lbl;
+    btn.onclick=onClicks[i];
+    div.appendChild(btn);
+  });
+  var msgs=document.getElementById('chatMsgs');
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+function chatSend(){
+  var inp=document.getElementById('chatInput');
+  var text=inp.value.trim();
+  if(!text) return;
+  inp.value='';
+  userMsg(text);
+  processChat(text.toLowerCase());
+}
+function chatKey(e){if(e.key==='Enter') chatSend();}
+
+// ── PARSER ──
+function processChat(raw){
+  var t=raw.trim();
+
+  // If we're in a pending confirm state
+  if(_chatState.pending){
+    var st=_chatState.pending;
+    if(/^(yes|y|ha|haan|confirm|ok|okay)$/i.test(t)){
+      _chatState.pending=null;
+      st.onConfirm();
+    } else if(/^(no|n|nahi|cancel)$/i.test(t)){
+      _chatState.pending=null;
+      botMsg('❌ Cancelled.','er');
+    } else {
+      botMsg('Please reply <b>Yes</b> or <b>No</b>.');
+    }
+    return;
+  }
+
+  // help
+  if(/^help/.test(t)){
+    botMsg('📋 <b>Commands:</b><br>'+
+      '<b>add driver</b> [name] salary [amount]<br>'+
+      '<b>add tempo</b> [name] owner [owner]<br>'+
+      '<b>expense</b> [amount] [category] [date?]<br>'+
+      '<b>advance</b> [amount] to [driver]<br>'+
+      '<b>deduction</b> [amount] [driver] [reason]<br>'+
+      '<b>leave</b> [driver] [date] [paid/unpaid]<br>'+
+      '<b>add bank</b> [name] [opening balance]<br>'+
+      '<b>bill</b> [customer] [amount] [desc?]<br>'+
+      '<b>payment</b> [amount] from [customer]<br>'+
+      '<b>add loan</b> [lender] [amount] emi [emi]<br>'+
+      '<b>add party</b> [name] [client/supplier]');
+    return;
+  }
+
+  // ── ADD DRIVER ──
+  var m;
+  if((m=t.match(/(?:add\s+)?driver\s+([a-z\s]+?)\s+(?:salary|sal)\s+([\d,]+)/i))){
+    var name=titleCase(m[1].trim()); var sal=parseNum(m[2]);
+    askConfirm('Add driver <b>'+name+'</b> with salary <b>'+fmt(sal)+'</b>?', function(){
+      sbPost('fin_drivers',{name:name,base_salary:sal,active:true,is_parttime:false}).then(function(r){
+        if(r.ok) botMsg('✅ Driver <b>'+name+'</b> added! Base salary: '+fmt(sal),'ok');
+        else botMsg('❌ Error — driver name may already exist.','er');
+      });
+    });
+    return;
+  }
+  if((m=t.match(/(?:add\s+)?driver\s+([a-z\s]+)/i))){
+    var name=titleCase(m[1].trim());
+    _chatState.driverName=name;
+    botMsg('What is <b>'+name+'</b>\'s monthly base salary? (type amount)');
+    _chatState.pending=null;
+    _chatState.awaitSalary=name;
+    return;
+  }
+
+  // follow-up: salary amount for driver
+  if(_chatState.awaitSalary && /^\d[\d,]*$/.test(t.replace(/\s/g,''))){
+    var name=_chatState.awaitSalary; var sal=parseNum(t);
+    _chatState.awaitSalary=null;
+    askConfirm('Add driver <b>'+name+'</b> salary <b>'+fmt(sal)+'</b>?', function(){
+      sbPost('fin_drivers',{name:name,base_salary:sal,active:true,is_parttime:false}).then(function(r){
+        if(r.ok) botMsg('✅ Driver <b>'+name+'</b> added!','ok');
+        else botMsg('❌ Error saving.','er');
+      });
+    });
+    return;
+  }
+
+  // ── ADD TEMPO ──
+  if((m=t.match(/(?:add\s+)?tempo\s+([\w-]+)(?:\s+(?:owner|malik)\s+([a-z\s]+))?/i))){
+    var tname=m[1].trim().toUpperCase(); var owner=m[2]?titleCase(m[2].trim()):'';
+    askConfirm('Add tempo <b>'+tname+'</b>'+(owner?' owner <b>'+owner+'</b>':'')+'?', function(){
+      sbPost('tempos',{name:tname,owner_name:owner,active:true}).then(function(r){
+        if(r.ok) botMsg('✅ Tempo <b>'+tname+'</b> added!','ok');
+        else botMsg('❌ Error saving.','er');
+      });
+    });
+    return;
+  }
+
+  // ── EXPENSE ──
+  if((m=t.match(/(?:expense|खर्च|kharch)\s+([\d,]+)\s+([a-z_\s]+?)(?:\s+(today|yesterday|\d{4}-\d{2}-\d{2}|\d{1,2}[-\/]\d{1,2}))?$/i))){
+    var amt=parseNum(m[1]); var catRaw=m[2].trim(); var dateStr=parseDate(m[3]||'today');
+    var cat=matchExpCat(catRaw);
+    askConfirm('Save expense <b>'+fmt(amt)+'</b> · <b>'+expCatLabel(cat)+'</b> · <b>'+dateStr+'</b>?', function(){
+      sbPost('fin_expenses',{date:dateStr,category:cat,amount:amt,note:catRaw}).then(function(r){
+        if(r.ok) botMsg('✅ Expense saved!','ok');
+        else botMsg('❌ Error saving.','er');
+      });
+    });
+    return;
+  }
+
+  // ── ADVANCE ──
+  if((m=t.match(/advance\s+([\d,]+)\s+(?:to\s+)?([a-z\s]+)/i))){
+    var amt=parseNum(m[1]); var drv=titleCase(m[2].trim());
+    askConfirm('Give advance <b>'+fmt(amt)+'</b> to <b>'+drv+'</b>?', function(){
+      sbPost('driver_advances',{driver_name:drv,date:todayStr(),amount:amt,type:'advance',reason:'Chat entry'}).then(function(r){
+        if(r.ok) botMsg('✅ Advance of '+fmt(amt)+' recorded for <b>'+drv+'</b>!','ok');
+        else botMsg('❌ Error — check driver name.','er');
+      });
+    });
+    return;
+  }
+
+  // ── DEDUCTION ──
+  if((m=t.match(/(?:deduction|deduct|charge)\s+([\d,]+)\s+(?:from\s+|to\s+)?([a-z\s]+?)(?:\s+(?:for\s+)?(.+))?$/i))){
+    var amt=parseNum(m[1]); var drv=titleCase(m[2].trim()); var reason=m[3]||'Deduction';
+    askConfirm('Charge <b>'+fmt(amt)+'</b> deduction to <b>'+drv+'</b> — <i>'+reason+'</i>?', function(){
+      sbPost('driver_advances',{driver_name:drv,date:todayStr(),amount:amt,type:'deduction',reason:reason}).then(function(r){
+        if(r.ok) botMsg('✅ Deduction recorded for <b>'+drv+'</b>!','ok');
+        else botMsg('❌ Error saving.','er');
+      });
+    });
+    return;
+  }
+
+  // ── LEAVE ──
+  if((m=t.match(/leave\s+([a-z\s]+?)\s+(today|yesterday|\d{4}-\d{2}-\d{2})(?:\s+(paid|unpaid))?/i))){
+    var drv=titleCase(m[1].trim()); var dateStr=parseDate(m[2]); var type=m[3]||'unpaid';
+    askConfirm('Record <b>'+type+'</b> leave for <b>'+drv+'</b> on <b>'+dateStr+'</b>?', function(){
+      sbPost('driver_leaves',{driver_name:drv,date:dateStr,type:type,deduction_amount:0}).then(function(r){
+        if(r.ok) botMsg('✅ Leave recorded! Go to Leaves tab to set deduction amount.','ok');
+        else botMsg('❌ Error saving.','er');
+      });
+    });
+    return;
+  }
+
+  // ── ADD BANK ACCOUNT ──
+  if((m=t.match(/(?:add\s+)?bank\s+([a-z\s]+?)\s+([\d,]+)/i))){
+    var bname=titleCase(m[1].trim()); var opening=parseNum(m[2]);
+    askConfirm('Add bank account <b>'+bname+'</b> opening balance <b>'+fmt(opening)+'</b>?', function(){
+      sbPost('bank_accounts',{name:bname,opening_balance:opening,active:true}).then(function(r){
+        if(r.ok) botMsg('✅ Bank account <b>'+bname+'</b> added!','ok');
+        else botMsg('❌ Error — account name may already exist.','er');
+      });
+    });
+    return;
+  }
+  if((m=t.match(/(?:add\s+)?bank\s+([a-z\s]+)/i))){
+    var bname=titleCase(m[1].trim());
+    askConfirm('Add bank account <b>'+bname+'</b> with ₹0 opening balance?', function(){
+      sbPost('bank_accounts',{name:bname,opening_balance:0,active:true}).then(function(r){
+        if(r.ok) botMsg('✅ Bank account added!','ok');
+        else botMsg('❌ Error saving.','er');
+      });
+    });
+    return;
+  }
+
+  // ── BILL (customer invoice) ──
+  if((m=t.match(/bill\s+([a-z\s]+?)\s+([\d,]+)(?:\s+(.+))?$/i))){
+    var cust=titleCase(m[1].trim()); var amt=parseNum(m[2]); var desc=m[3]||'';
+    askConfirm('Raise bill <b>'+fmt(amt)+'</b> for <b>'+cust+'</b>'+(desc?' — '+desc:'')+'?', function(){
+      sbPost('customer_bills',{customer_name:cust,date:todayStr(),amount:amt,description:desc}).then(function(r){
+        if(r.ok) botMsg('✅ Bill saved for <b>'+cust+'</b>!','ok');
+        else botMsg('❌ Error saving.','er');
+      });
+    });
+    return;
+  }
+
+  // ── PAYMENT received from customer ──
+  if((m=t.match(/payment\s+([\d,]+)\s+(?:from\s+)?([a-z\s]+)/i))){
+    var amt=parseNum(m[1]); var cust=titleCase(m[2].trim());
+    askConfirm('Record payment <b>'+fmt(amt)+'</b> received from <b>'+cust+'</b>?', function(){
+      sbPost('customer_payments',{customer_name:cust,date:todayStr(),amount:amt,mode:'cash'}).then(function(r){
+        if(r.ok) botMsg('✅ Payment recorded from <b>'+cust+'</b>!','ok');
+        else botMsg('❌ Error saving.','er');
+      });
+    });
+    return;
+  }
+
+  // ── ADD PARTY (Ledger) ──
+  if((m=t.match(/(?:add\s+)?party\s+([a-z\s]+?)\s+(client|supplier|vendor|customer)/i))){
+    var pname=titleCase(m[1].trim()); var ptype=m[2].toLowerCase()==='client'||m[2].toLowerCase()==='customer'?'client':'supplier';
+    askConfirm('Add <b>'+ptype+'</b> party <b>'+pname+'</b>?', function(){
+      sbPost('fin_parties',{name:pname,type:ptype,active:true}).then(function(r){
+        if(r.ok) botMsg('✅ Party <b>'+pname+'</b> added!','ok');
+        else botMsg('❌ Error — may already exist.','er');
+      });
+    });
+    return;
+  }
+
+  // ── ADD LOAN ──
+  if((m=t.match(/(?:add\s+)?loan\s+([a-z\s]+?)\s+([\d,]+)\s+emi\s+([\d,]+)/i))){
+    var lender=titleCase(m[1].trim()); var principal=parseNum(m[2]); var emi=parseNum(m[3]);
+    askConfirm('Add loan from <b>'+lender+'</b> — principal <b>'+fmt(principal)+'</b>, EMI <b>'+fmt(emi)+'</b>?', function(){
+      sbPost('loans',{lender_name:lender,principal:principal,emi_amount:emi,total_emis:Math.ceil(principal/emi),start_date:todayStr(),interest_rate:0,active:true}).then(function(r){
+        if(r.ok) botMsg('✅ Loan from <b>'+lender+'</b> added! Go to Loans tab to generate EMI schedule.','ok');
+        else botMsg('❌ Error saving.','er');
+      });
+    });
+    return;
+  }
+
+  // ── fallback ──
+  botMsg('🤔 I didn\'t understand that. Type <b>help</b> to see available commands.');
+}
+
+// ── CHAT HELPERS ──
+function askConfirm(html, onConfirm){
+  botMsg(html+'<br><small style="color:#7a8fa6">Reply <b>yes</b> or <b>no</b></small>');
+  chatChips(['✅ Yes','❌ No'],[
+    function(){_chatState.pending=null; onConfirm();},
+    function(){_chatState.pending=null; botMsg('❌ Cancelled.','er');}
+  ]);
+  _chatState.pending={onConfirm:onConfirm};
+}
+function titleCase(s){return s.replace(/\b\w/g,function(c){return c.toUpperCase();});}
+function parseNum(s){return parseFloat((s||'0').toString().replace(/,/g,''))||0;}
+function parseDate(s){
+  if(!s||s==='today') return todayStr();
+  if(s==='yesterday'){var d=new Date();d.setDate(d.getDate()-1);return d.toISOString().slice(0,10);}
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // dd/mm or dd-mm → assume current year
+  var p=s.split(/[-\/]/);
+  if(p.length===2){var now=new Date();return now.getFullYear()+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');}
+  return todayStr();
+}
+function matchExpCat(raw){
+  var map={fuel:'tempo_fuel',petrol:'tempo_fuel',diesel:'tempo_fuel',
+    repair:'tempo_repair',service:'tempo_repair',mechanic:'tempo_repair',
+    driver:'driver',salary:'driver',
+    delivery:'delivery',courier:'delivery',
+    office:'office',rent:'office',
+    other:'other',misc:'other'};
+  var r=raw.toLowerCase();
+  for(var k in map){if(r.includes(k)) return map[k];}
+  return 'other';
+}
 </script>
+
+<!-- ── CHAT WIDGET ── -->
+<button id="chatBtn" onclick="toggleChat()">💬</button>
+<div id="chatPanel">
+  <div id="chatHead">
+    <span>💬 Chat Assistant</span>
+    <button id="chatClose" onclick="closeChat()">✕</button>
+  </div>
+  <div id="chatMsgs"></div>
+  <div id="chatInputRow">
+    <input id="chatInput" type="text" placeholder="Type a command… (try: expense 500 fuel)" onkeydown="chatKey(event)" autocomplete="off">
+    <button id="chatSend" onclick="chatSend()">➤</button>
+  </div>
+</div>
 </body>
 </html>
