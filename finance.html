@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -239,6 +240,10 @@ body.dark .search-item:hover{background:#3d4a5c}
 
     <!-- Client list -->
     <div id="lsec-rent_out" style="display:none">
+      <div style="display:flex;gap:8px;margin-bottom:8px">
+        <button class="btn-sm btn-blue"  id="lcl-active"   onclick="setClientFilter(true)">Active</button>
+        <button class="btn-sm btn-grey"  id="lcl-inactive" onclick="setClientFilter(false)">Inactive</button>
+      </div>
       <div id="ledger-rentout-list"><div class="empty">Loading…</div></div>
     </div>
 
@@ -344,6 +349,10 @@ body.dark .search-item:hover{background:#3d4a5c}
           <div><label class="lbl">Reference</label>
             <input type="text" id="ldg-pay-ref" placeholder="UTR / Cheque no."></div>
         </div>
+        <label class="lbl">Received in Account</label>
+        <select id="ldg-pay-bank">
+          <option value="">— No bank entry —</option>
+        </select>
         <label class="lbl">Note</label>
         <input type="text" id="ldg-pay-note" placeholder="">
         <button class="btn btn-blue" onclick="saveLedgerPayment()">💾 Save Payment</button>
@@ -379,7 +388,8 @@ body.dark .search-item:hover{background:#3d4a5c}
   <div class="page" id="tab-drivers">
     <!-- Sub-tabs -->
     <div style="display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px">
-      <button class="btn-sm btn-blue" id="dstab-salary" onclick="showDriverTab('salary')">💰 Salary</button>
+      <button class="btn-sm btn-blue" id="dstab-txns" onclick="showDriverTab('txns')">📋 All Txns</button>
+      <button class="btn-sm btn-grey" id="dstab-salary" onclick="showDriverTab('salary')">💰 Salary</button>
       <button class="btn-sm btn-grey" id="dstab-parttime" onclick="showDriverTab('parttime')">🕐 Part-time</button>
       <button class="btn-sm btn-grey" id="dstab-advance" onclick="showDriverTab('advance')">📤 Advance</button>
       <button class="btn-sm btn-grey" id="dstab-deduct" onclick="showDriverTab('deduct')">⚠️ Deductions</button>
@@ -388,8 +398,31 @@ body.dark .search-item:hover{background:#3d4a5c}
       <button class="btn-sm btn-grey" id="dstab-manage" onclick="showDriverTab('manage')">👤 Manage</button>
     </div>
 
+    <!-- All Transactions -->
+    <div id="dsec-txns">
+      <div class="card" style="padding:10px">
+        <select id="dtxn-driver" onchange="loadDriverTxns()" style="margin-bottom:8px;width:100%">
+          <option value="">— All Drivers —</option>
+        </select>
+        <div class="row2">
+          <div><label class="lbl">From</label>
+            <input type="date" id="dtxn-from" onchange="loadDriverTxns()"></div>
+          <div><label class="lbl">To</label>
+            <input type="date" id="dtxn-to" onchange="loadDriverTxns()"></div>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+          <button class="btn-sm btn-grey" onclick="setDriverTxnFilter('month')">This Month</button>
+          <button class="btn-sm btn-grey" onclick="setDriverTxnFilter('quarter')">3 Months</button>
+          <button class="btn-sm btn-grey" onclick="setDriverTxnFilter('year')">This Year</button>
+          <button class="btn-sm btn-grey" onclick="setDriverTxnFilter('all')">All Time</button>
+        </div>
+      </div>
+      <div id="driverSummary" style="display:none;margin-bottom:8px"></div>
+      <div id="driverTxnList"><div class="empty">Loading…</div></div>
+    </div>
+
     <!-- Salary -->
-    <div id="dsec-salary">
+    <div id="dsec-salary" style="display:none">
       <div style="display:flex;gap:8px;margin-bottom:8px">
         <button class="btn btn-green" style="flex:none;padding:10px 14px;font-size:13px" onclick="showGenSalCard()">⚡ Generate All</button>
       </div>
@@ -504,6 +537,10 @@ body.dark .search-item:hover{background:#3d4a5c}
           <div><label class="lbl">Amount (₹)</label>
             <input type="number" id="adv-amount" placeholder="0"></div>
         </div>
+        <label class="lbl">Paid From Account</label>
+        <select id="adv-bank-account">
+          <option value="">— No bank entry —</option>
+        </select>
         <label class="lbl">Reason</label>
         <input type="text" id="adv-reason" placeholder="Medical, personal…">
         <div style="display:flex;gap:8px">
@@ -910,6 +947,10 @@ body.dark .search-item:hover{background:#3d4a5c}
             <option value="">All Categories</option>
           </select>
         </div>
+        <div style="margin-top:8px">
+          <label class="lbl">Search</label>
+          <input type="text" id="ex-search" placeholder="Note, tempo, amount…" oninput="filterExpenseList()" style="width:100%;box-sizing:border-box">
+        </div>
       </div>
       <div id="expenseTotal" class="msg in" style="display:none;margin-bottom:8px"></div>
       <div id="expenseList"><div class="empty">Loading…</div></div>
@@ -934,6 +975,10 @@ body.dark .search-item:hover{background:#3d4a5c}
           <div><label class="lbl">Driver (if any)</label>
             <select id="ex-driver"><option value="">—</option></select></div>
         </div>
+        <label class="lbl">Paid From Account</label>
+        <select id="ex-bank-account">
+          <option value="">— No bank entry —</option>
+        </select>
         <label class="lbl">Note</label>
         <input type="text" id="ex-note" placeholder="Description">
         <div style="display:flex;gap:8px">
@@ -1000,7 +1045,8 @@ body.dark .search-item:hover{background:#3d4a5c}
     <!-- Add Transaction -->
     <div id="bksec-add" style="display:none">
       <div class="card">
-        <div class="card-title">➕ Add Transaction</div>
+        <div class="card-title" id="bk-form-title">➕ Add Transaction</div>
+        <input type="hidden" id="bk-edit-id" value="0">
         <div class="row2">
           <div><label class="lbl">Account</label>
             <select id="bk-account"></select></div>
@@ -1008,23 +1054,40 @@ body.dark .search-item:hover{background:#3d4a5c}
             <input type="date" id="bk-date"></div>
         </div>
         <div class="row2">
-          <div><label class="lbl">Type</label>
-            <select id="bk-type">
-              <option value="credit">✅ Credit</option>
-              <option value="debit">💸 Debit</option>
+          <div><label class="lbl">Direction</label>
+            <select id="bk-type" onchange="updateBkCategories()">
+              <option value="credit">✅ Money In</option>
+              <option value="debit">💸 Money Out</option>
               <option value="charge">🏦 Bank Charge</option>
               <option value="emi">📋 EMI</option>
             </select></div>
           <div><label class="lbl">Amount (₹)</label>
             <input type="number" id="bk-amount" placeholder="0"></div>
         </div>
+        <label class="lbl">Category</label>
+        <select id="bk-category">
+          <option value="">— Select Category —</option>
+          <option value="Salary">💰 Salary</option>
+          <option value="Advance">📤 Advance</option>
+          <option value="Expense">🔧 Expense</option>
+          <option value="Rent">🚐 Rent</option>
+          <option value="Sale">💼 Sale / Revenue</option>
+          <option value="Flipkart">📦 Flipkart Payment</option>
+          <option value="Insurance">🛡 Insurance</option>
+          <option value="Loan">🏦 Loan</option>
+          <option value="Transfer">🔄 Transfer</option>
+          <option value="Other">📝 Other</option>
+        </select>
         <label class="lbl">Description</label>
-        <input type="text" id="bk-desc" placeholder="Salary paid, Rent received…">
+        <input type="text" id="bk-desc" placeholder="Details…">
         <label class="lbl">Reference (Cheque / UTR)</label>
         <input type="text" id="bk-ref" placeholder="">
         <label class="lbl">Balance After (₹)</label>
         <input type="number" id="bk-balance-after" placeholder="Optional">
-        <button class="btn btn-blue" onclick="saveBankTxn()">💾 Save Transaction</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-blue" id="bk-save-btn" style="flex:1" onclick="saveBankTxn()">💾 Save Transaction</button>
+          <button class="btn btn-grey" id="bk-cancel-btn" style="display:none;flex:none" onclick="cancelEditBankTxn()">✕ Cancel</button>
+        </div>
         <div id="bk-msg"></div>
       </div>
     </div>
@@ -1068,6 +1131,15 @@ body.dark .search-item:hover{background:#3d4a5c}
         <input type="text" id="bk-acc-note" placeholder="">
         <button class="btn btn-blue" onclick="saveBankAccount()">➕ Add Account</button>
         <div id="bk-acc-msg"></div>
+      </div>
+      <div class="card" style="margin-top:10px">
+        <div class="card-title">⭐ Default Bank Account</div>
+        <div style="font-size:11px;color:#7a8fa6;margin-bottom:8px">Pre-selected when recording advances, expenses, salary payments</div>
+        <select id="bk-default-select">
+          <option value="">— None —</option>
+        </select>
+        <button class="btn btn-blue" onclick="saveDefaultBank()">💾 Save Default</button>
+        <div id="bk-default-msg"></div>
       </div>
       <div id="bkManageList"><div class="empty">Loading…</div></div>
     </div>
@@ -1203,7 +1275,8 @@ body.dark .search-item:hover{background:#3d4a5c}
   <!-- ══ CUSTOMER PAYMENTS ══ -->
   <div class="page" id="tab-payments">
     <div class="card">
-      <div class="card-title">💰 Record Payment</div>
+      <div class="card-title" id="cp-form-title">💰 Record Payment</div>
+      <input type="hidden" id="cp-edit-id" value="0">
       <div class="row2">
         <div><label class="lbl">Customer Name</label>
           <input type="text" id="cp-cust" placeholder="Name"></div>
@@ -1221,11 +1294,18 @@ body.dark .search-item:hover{background:#3d4a5c}
             <option value="bank">🏦 Bank Transfer</option>
           </select></div>
       </div>
+      <label class="lbl">Received in Account</label>
+      <select id="cp-bank-account">
+        <option value="">— No bank entry —</option>
+      </select>
       <label class="lbl">Reference / UTR</label>
       <input type="text" id="cp-ref" placeholder="">
       <label class="lbl">Note</label>
       <input type="text" id="cp-note" placeholder="">
-      <button class="btn btn-green" onclick="savePayment()">💾 Save Payment</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-green" id="cp-save-btn" style="flex:1" onclick="savePayment()">💾 Save Payment</button>
+        <button class="btn btn-grey" id="cp-cancel-btn" style="display:none;flex:none" onclick="cancelEditPayment()">✕ Cancel</button>
+      </div>
       <div id="cp-msg"></div>
     </div>
     <div class="card">
@@ -1308,6 +1388,15 @@ var EXP_BUILTIN=[
   {value:'office',label:'🏢 Office'},
   {value:'other',label:'📌 Other'}
 ];
+function getDefaultBank(){return localStorage.getItem('fin_default_bank')||'';}
+function saveDefaultBank(){
+  var val=v('bk-default-select');
+  localStorage.setItem('fin_default_bank',val);
+  showMsg('bk-default-msg',val?('Default set to '+val+' ✓'):'Default cleared','ok');
+  // apply immediately to all bank dropdowns
+  var advBank=document.getElementById('adv-bank-account');
+  if(advBank&&val) advBank.value=val;
+}
 function expGetCustomCats(){try{return JSON.parse(localStorage.getItem('fin_exp_cats')||'[]');}catch(e){return[];}}
 function expSaveCustomCats(arr){localStorage.setItem('fin_exp_cats',JSON.stringify(arr));}
 function expAllCats(){return EXP_BUILTIN.concat(expGetCustomCats().map(function(n){return{value:n,label:'🔖 '+n,custom:true};}));}
@@ -1361,15 +1450,17 @@ function showTab(tab){
   if(tab==='bank'){ _currentBankAccount=''; loadBankAccounts(); showBankTab('accounts'); }
   if(tab==='expenses'){ populateExpCatSelects(); setExpenseFilter('month'); showExpenseTab('all'); }
   if(tab==='payments') loadPaymentList();
+  if(tab==='drivers') { showDriverTab('txns'); }
   if(tab==='ledger') { showLedgerTab(_currentLedgerTab||'all'); }
   if(tab==='report') { showReportTab('pl'); }
 }
 function showDriverTab(t){
-  ['salary','parttime','advance','deduct','leaves','tempopay','manage'].forEach(function(s){
+  ['txns','salary','parttime','advance','deduct','leaves','tempopay','manage'].forEach(function(s){
     var el=document.getElementById('dsec-'+s); if(el) el.style.display=s===t?'block':'none';
     var btn=document.getElementById('dstab-'+s);
     if(btn){btn.className='btn-sm '+(s===t?'btn-blue':'btn-grey');}
   });
+  if(t==='txns'){if(!v('dtxn-from')&&!v('dtxn-to'))setDriverTxnFilter('all');else loadDriverTxns();}
   if(t==='advance'){loadAdvanceList();}
   if(t==='deduct'){loadDeductionList();}
   if(t==='leaves'){loadLeaveList();}
@@ -1377,6 +1468,151 @@ function showDriverTab(t){
   if(t==='manage'){loadDriverManageList();}
   if(t==='parttime'){setV('pt-month',thisMonth());loadParttimeList();}
   if(t==='tempopay'){initTempoPayTab();}
+}
+function setDriverTxnFilter(range){
+  var now=new Date(); var y=now.getFullYear(); var m=now.getMonth();
+  var from='',to='';
+  if(range==='month'){
+    from=y+'-'+String(m+1).padStart(2,'0')+'-01';
+    to=y+'-'+String(m+1).padStart(2,'0')+'-'+new Date(y,m+1,0).getDate();
+  } else if(range==='quarter'){
+    var qFrom=new Date(y,m-2,1);
+    from=qFrom.getFullYear()+'-'+String(qFrom.getMonth()+1).padStart(2,'0')+'-01';
+    to=y+'-'+String(m+1).padStart(2,'0')+'-'+new Date(y,m+1,0).getDate();
+  } else if(range==='year'){
+    from=y+'-01-01'; to=y+'-12-31';
+  }
+  setV('dtxn-from',from); setV('dtxn-to',to);
+  loadDriverTxns();
+}
+function loadDriverTxns(){
+  var drv=v('dtxn-driver');
+  var from=v('dtxn-from');
+  var to=v('dtxn-to');
+  var el=document.getElementById('driverTxnList');
+  el.innerHTML='<div class="empty">Loading…</div>';
+  var salParts=['order=month.desc'];
+  var advParts=['order=date.desc'];
+  if(drv){salParts.push('driver_name=eq.'+encodeURIComponent(drv));advParts.push('driver_name=eq.'+encodeURIComponent(drv));}
+  if(from&&to){
+    // filter salary by month range (month is YYYY-MM, compare as string)
+    salParts.push('month=gte.'+from.slice(0,7)+'&month=lte.'+to.slice(0,7));
+    advParts.push('date=gte.'+from+'&date=lte.'+to);
+  } else if(from){
+    salParts.push('month=gte.'+from.slice(0,7));
+    advParts.push('date=gte.'+from);
+  } else if(to){
+    salParts.push('month=lte.'+to.slice(0,7));
+    advParts.push('date=lte.'+to);
+  }
+  Promise.all([
+    sbGetQ('driver_salary',salParts.join('&')),
+    sbGetQ('driver_advances',advParts.join('&'))
+  ]).then(function(res){
+    var sals=res[0]||[]; var advs=res[1]||[];
+    var rows=[];
+    sals.forEach(function(r){
+      var paid=parseFloat(r.net_paid)||0;
+      var isPending=paid===0;
+      rows.push({id:r.id,date:r.paid_date||r.month+'-01',driver:r.driver_name,
+        label:isPending?'📋 Salary Pending':'💰 Salary Paid',sub:r.month,
+        amount:isPending?(parseFloat(r.base_salary)||0):paid,
+        type:isPending?'salary-pending':'salary',note:r.note||''});
+    });
+    advs.forEach(function(r){
+      var isAdv=r.type==='advance';
+      rows.push({id:r.id,date:r.date,driver:r.driver_name,label:isAdv?'📤 Advance':'⚠️ Deduction',sub:r.reason||'',amount:r.amount,type:r.type,note:''});
+    });
+    rows.sort(function(a,b){return b.date.localeCompare(a.date);});
+
+    // ── Driver summary (use sals + advs directly — no bank double-count) ──
+    var sumEl=document.getElementById('driverSummary');
+    var driverNames=[];
+    sals.forEach(function(r){if(driverNames.indexOf(r.driver_name)<0)driverNames.push(r.driver_name);});
+    advs.forEach(function(r){if(driverNames.indexOf(r.driver_name)<0)driverNames.push(r.driver_name);});
+    if(driverNames.length){
+      sumEl.style.display='block';
+      sumEl.innerHTML=driverNames.map(function(d){
+        var dSals=sals.filter(function(r){return r.driver_name===d;});
+        var dAdvs=advs.filter(function(r){return r.driver_name===d;});
+        var totalBase    =dSals.reduce(function(s,r){return s+(parseFloat(r.base_salary)||0);},0);
+        var totalAdvGiven=dSals.reduce(function(s,r){return s+(parseFloat(r.advance_given)||0);},0);
+        var totalNetPaid =dSals.reduce(function(s,r){return s+(parseFloat(r.net_paid)||0);},0);
+        var totalSepAdv  =dAdvs.filter(function(r){return r.type==='advance';}).reduce(function(s,r){return s+(parseFloat(r.amount)||0);},0);
+        var totalDeduct  =dAdvs.filter(function(r){return r.type==='deduction';}).reduce(function(s,r){return s+(parseFloat(r.amount)||0);},0);
+        var totalPaid    =totalAdvGiven+totalNetPaid;
+        var outstanding  =totalBase-totalPaid-totalDeduct;
+        var isOwed=outstanding>0;
+        return'<div class="card" style="margin-bottom:6px;padding:12px;border-left:4px solid '+(isOwed?'#c8382a':'#1e7a4f')+'">'+
+          '<div style="font-weight:800;font-size:14px;margin-bottom:10px;color:#1a3a5c">👤 '+d+'</div>'+
+          '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:10px">'+
+            '<div style="background:#f0fdf4;border-radius:8px;padding:8px;text-align:center">'+
+              '<div style="font-size:13px;font-weight:800;color:#1e7a4f">₹'+fmt(totalBase)+'</div>'+
+              '<div style="font-size:9px;color:#7a8fa6;text-transform:uppercase;font-family:monospace;margin-top:2px">Base Salary</div></div>'+
+            (totalAdvGiven>0?
+            '<div style="background:#fff8e1;border-radius:8px;padding:8px;text-align:center">'+
+              '<div style="font-size:13px;font-weight:800;color:#c07000">₹'+fmt(totalAdvGiven)+'</div>'+
+              '<div style="font-size:9px;color:#7a8fa6;text-transform:uppercase;font-family:monospace;margin-top:2px">Salary Advance</div></div>':
+            '<div></div>')+
+            '<div style="background:#e8f5e9;border-radius:8px;padding:8px;text-align:center">'+
+              '<div style="font-size:13px;font-weight:800;color:#1e7a4f">₹'+fmt(totalNetPaid)+'</div>'+
+              '<div style="font-size:9px;color:#7a8fa6;text-transform:uppercase;font-family:monospace;margin-top:2px">Salary Paid</div></div>'+
+            (totalDeduct>0?
+            '<div style="background:#fef2f2;border-radius:8px;padding:8px;text-align:center">'+
+              '<div style="font-size:13px;font-weight:800;color:#c8382a">₹'+fmt(totalDeduct)+'</div>'+
+              '<div style="font-size:9px;color:#7a8fa6;text-transform:uppercase;font-family:monospace;margin-top:2px">Deductions</div></div>':
+            '<div></div>')+
+          '</div>'+
+          '<div style="background:'+(isOwed?'#fef2f2':'#fff8e1')+';border-radius:10px;padding:10px;display:flex;justify-content:space-between;align-items:center">'+
+            '<div style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:0.5px">'+(isOwed?'💸 You Owe Driver':'🔄 Driver Owes You (Advance Extra)')+'</div>'+
+            '<div style="font-size:18px;font-weight:900;color:'+(isOwed?'#c8382a':'#c07000')+'">₹'+fmt(Math.abs(outstanding))+'</div>'+
+          '</div>'+
+        '</div>';
+      }).join('');
+    } else {sumEl.style.display='none';}
+
+    if(!rows.length){el.innerHTML='<div class="empty">No transactions found</div>';return;}
+    // legend
+    var legend='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">'+
+      '<span style="font-size:10px;background:#e8f5e9;border-left:3px solid #22c55e;padding:3px 8px;border-radius:4px;color:#1e7a4f;font-weight:700">💰 Salary Paid</span>'+
+      '<span style="font-size:10px;background:#fff8e1;border-left:3px solid #f59e0b;padding:3px 8px;border-radius:4px;color:#c07000;font-weight:700">📋 Salary Pending</span>'+
+      '<span style="font-size:10px;background:#fffbeb;border-left:3px solid #fb923c;padding:3px 8px;border-radius:4px;color:#b45309;font-weight:700">📤 Advance</span>'+
+      '<span style="font-size:10px;background:#fef2f2;border-left:3px solid #ef4444;padding:3px 8px;border-radius:4px;color:#c8382a;font-weight:700">⚠️ Deduction</span>'+
+    '</div>';
+    el.innerHTML=legend+rows.map(function(r){
+      var isSal=r.type==='salary';
+      var isSalPending=r.type==='salary-pending';
+      var isAdv=r.type==='advance';
+      var amtColor=isSal?'#1e7a4f':isSalPending?'#c07000':isAdv?'#b45309':'#c8382a';
+      var rowBg=isSal?'#f0fdf4':isSalPending?'#fff8e1':isAdv?'#fffbeb':'#fef2f2';
+      var borderColor=isSal?'#22c55e':isSalPending?'#f59e0b':isAdv?'#fb923c':'#ef4444';
+      var badge=isSal?'<span style="font-size:9px;background:#d1fae5;color:#065f46;font-weight:800;padding:2px 6px;border-radius:4px;text-transform:uppercase">Salary Paid</span>':
+                isSalPending?'<span style="font-size:9px;background:#fff8e1;color:#c07000;font-weight:800;padding:2px 6px;border-radius:4px;text-transform:uppercase;border:1px solid #f59e0b">⏳ Pending</span>':
+                isAdv?'<span style="font-size:9px;background:#fef3c7;color:#92400e;font-weight:800;padding:2px 6px;border-radius:4px;text-transform:uppercase">Advance</span>':
+                '<span style="font-size:9px;background:#fee2e2;color:#991b1b;font-weight:800;padding:2px 6px;border-radius:4px;text-transform:uppercase">Deduction</span>';
+      var editFn=(isSal||isSalPending)?'editSalaryById('+r.id+')':'editAdvanceById('+r.id+')';
+      var delFn=(isSal||isSalPending)?'deleteSalaryById('+r.id+')':'deleteAdvance('+r.id+')';
+      return'<div class="item-card" style="background:'+rowBg+';border-left:4px solid '+borderColor+';border-top:1px solid '+borderColor+'40;border-right:1px solid '+borderColor+'40;border-bottom:1px solid '+borderColor+'40">'+
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
+          '<div style="flex:1">'+
+            '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">'+
+              '<div style="font-weight:800;font-size:13px;color:#1a3a5c">'+r.driver+'</div>'+
+              badge+
+            '</div>'+
+            '<div style="font-size:11px;color:#7a8fa6">'+r.label+(r.sub?' · '+r.sub:'')+'</div>'+
+            (r.note?'<div style="font-size:10px;color:#aaa;margin-top:2px">'+r.note+'</div>':'')+'</div>'+
+          '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;margin-left:8px">'+
+            '<div style="font-weight:900;font-size:16px;color:'+amtColor+'">₹'+fmt(r.amount)+'</div>'+
+            '<div style="font-size:10px;color:#7a8fa6">'+r.date+'</div>'+
+            '<div style="display:flex;gap:4px">'+
+              '<button class="btn-sm btn-edit" onclick="'+editFn+'">✏️</button>'+
+              '<button class="btn-sm btn-del" onclick="'+delFn+'">🗑</button>'+
+            '</div>'+
+          '</div>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+  });
 }
 function showFleetTab(t){
   ['tempos','rentin','rentout','service'].forEach(function(s){
@@ -1505,11 +1741,12 @@ var tempos=[];
 var DRIVERS=[];
 function populateDriverSelects(drivers){
   DRIVERS=drivers.map(function(d){return d.name;});
-  var driverSelects=['sal-driver','adv-driver','ded-driver','lv-driver','sal-list-driver','adv-list-driver','ded-list-driver','lv-list-driver','ex-driver'];
+  var driverSelects=['dtxn-driver','sal-driver','adv-driver','ded-driver','lv-driver','sal-list-driver','adv-list-driver','ded-list-driver','lv-list-driver','ex-driver'];
   driverSelects.forEach(function(id){
     var el=document.getElementById(id);
     if(!el) return;
-    el.innerHTML='<option value="">— Driver —</option>'+drivers.map(function(d){
+    var placeholder=id==='dtxn-driver'?'— All Drivers —':'— Driver —';
+    el.innerHTML='<option value="">'+placeholder+'</option>'+drivers.map(function(d){
       return'<option value="'+d.name+'">'+d.name+(d.active?'':' (inactive)')+'</option>';
     }).join('');
   });
@@ -1533,7 +1770,7 @@ function showLedgerTab(t){
   });
   _currentLedgerTab=t;
   if(t==='all')      { setAllLedgerFilter('month'); }
-  if(t==='rent_out') loadLedgerPartyList('rent_out');
+  if(t==='rent_out') loadLedgerPartyList('client');
   if(t==='rent_in')  loadLedgerPartyList('rent_in');
   if(t==='manage')   loadAllPartiesManage();
 }
@@ -1601,7 +1838,7 @@ function setClientFilter(active){
   loadLedgerPartyList('client');
 }
 function loadLedgerPartyList(type){
-  var elMap={client:'ledger-client-list',rent_out:'ledger-rentout-list',rent_in:'ledger-rentin-list'};
+  var elMap={client:'ledger-rentout-list',rent_out:'ledger-rentout-list',rent_in:'ledger-rentin-list'};
   var el=document.getElementById(elMap[type]);
   if(!el) return;
   var prefix={client:'cp',rent_out:'ro',rent_in:'ri'}[type];
@@ -1686,13 +1923,20 @@ function saveLedgerPayment(){
   var raw=_currentLedgerRaw;
   var colon=raw.indexOf(':'); var party=raw.slice(colon+1);
   var date=v('ldg-pay-date'); var amt=parseFloat(v('ldg-pay-amount'));
+  var bankAcct=v('ldg-pay-bank');
   if(!date||!amt){showMsg('ldg-pay-msg','Fill date and amount','er');return;}
   sbPost('customer_payments',{customer_name:party,date:date,amount:amt,
-    mode:v('ldg-pay-mode'),reference:v('ldg-pay-ref'),note:v('ldg-pay-note')}).then(function(r){
-    if(r.ok){showMsg('ldg-pay-msg','Payment saved ✓','ok');
+    mode:v('ldg-pay-mode'),reference:v('ldg-pay-ref'),note:v('ldg-pay-note'),
+    bank_account:bankAcct}).then(function(r){
+    if(r.ok){
+      if(bankAcct){
+        sbPost('bank_transactions',{account_name:bankAcct,date:date,type:'credit',
+          amount:amt,description:'Sale — '+party,reference:party});
+      }
+      showMsg('ldg-pay-msg','Payment saved'+(bankAcct?' + bank entry':'')+' ✓','ok');
       setV('ldg-pay-amount','');setV('ldg-pay-ref','');setV('ldg-pay-note','');
-      showLedgerForm('');loadLedger(raw);}
-    else r.text().then(function(t){showMsg('ldg-pay-msg','Error: '+t,'er');});
+      showLedgerForm('');loadLedger(raw);
+    } else r.text().then(function(t){showMsg('ldg-pay-msg','Error: '+t,'er');});
   });
 }
 function saveLedgerDeduction(){
@@ -1839,8 +2083,12 @@ function saveParty(){
     ? fetch(BASE+'/fin_parties?id=eq.'+editId,{method:'PATCH',headers:hdrs({'Prefer':'return=minimal'}),body:JSON.stringify({name:name,type:type,note:v('lp-note')})}).then(function(r){return{ok:r.ok};})
     : sbPost('fin_parties',{name:name,type:type,note:v('lp-note'),active:true});
   promise.then(function(r){
-    if(r.ok){showMsg('lp-msg',(editId?'Updated':'Added')+' ✓','ok');cancelPartyEdit();loadAllPartiesManage();}
-    else showMsg('lp-msg','Error (may already exist)','er');
+    if(r.ok){
+      showMsg('lp-msg',(editId?'Updated':'Added')+' ✓','ok');
+      cancelPartyEdit();
+      loadAllPartiesManage();
+      if(_currentLedgerTab) loadLedgerPartyList(_currentLedgerTab==='rent_out'?'client':_currentLedgerTab);
+    } else showMsg('lp-msg','Error (may already exist)','er');
   });
 }
 function initApp(){
@@ -1855,6 +2103,7 @@ function initApp(){
   setV('ro-month',thisMonth()); setV('ro-list-month',thisMonth());
   setV('ex-date',todayStr()); populateExpCatSelects();
   setV('bk-date',todayStr()); setV('bk-xfr-date',todayStr());
+  loadBankAccounts();
   setV('cp-date',todayStr()); setV('cp-list-month',thisMonth());
   setV('sv-date',todayStr()); setV('ln-start',todayStr());
   setV('dashMonth',thisMonth());
@@ -2025,8 +2274,13 @@ function saveSalary(){
   }).then(function(){
     return sbPost('driver_salary',body);
   }).then(function(r){
-    if(r.ok){showMsg('sal-msg','Salary saved ✓','ok');loadSalaryList();}
-    else showMsg('sal-msg','Error saving','er');
+    if(r.ok){
+      showMsg('sal-msg','Salary saved ✓','ok');
+      loadSalaryList(); loadDriverTxns();
+      var btn=document.getElementById('sal-save-btn');
+      if(btn) btn.textContent='💾 Save Salary Record';
+      setV('sal-edit-id','0');
+    } else showMsg('sal-msg','Error saving','er');
   });
 }
 function loadSalaryList(){
@@ -2067,12 +2321,16 @@ function loadSalaryList(){
         (!isPaid?
           '<div style="margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0">'+
           '<div style="font-size:12px;font-weight:700;color:#1a3a5c;margin-bottom:6px">💵 Mark as Paid</div>'+
-          '<div style="display:flex;gap:8px;align-items:center">'+
-          '<input type="date" id="sal-pay-date" value="'+todayStr()+'" style="flex:1;padding:6px;border:1px solid #cdd5e0;border-radius:6px;font-size:13px">'+
-          '<select id="sal-pay-mode" style="flex:1;padding:6px;border:1px solid #cdd5e0;border-radius:6px;font-size:13px">'+
+          '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
+          '<input type="date" id="sal-pay-date" value="'+todayStr()+'" style="flex:1;min-width:120px;padding:6px;border:1px solid #cdd5e0;border-radius:6px;font-size:13px">'+
+          '<select id="sal-pay-mode" style="flex:1;min-width:100px;padding:6px;border:1px solid #cdd5e0;border-radius:6px;font-size:13px">'+
           '<option value="Cash">Cash</option><option value="Bank Transfer">Bank Transfer</option><option value="UPI">UPI</option>'+
           '</select>'+
-          '<button class="btn-sm btn-blue" onclick="markSalaryPaid('+s.id+')">Mark Paid</button>'+
+          '<select id="sal-pay-bank" style="flex:1;min-width:120px;padding:6px;border:1px solid #cdd5e0;border-radius:6px;font-size:13px">'+
+          '<option value="">— No bank entry —</option>'+
+          (_bankAccounts||[]).map(function(a){var def=getDefaultBank();return'<option value="'+a.name+'"'+(def===a.name?' selected':'')+'>'+a.name+'</option>';}).join('')+
+          '</select>'+
+          '<button class="btn-sm btn-blue" onclick="markSalaryPaid('+s.id+',\''+s.driver_name.replace(/'/g,"\\'")+'\','+s.net_paid+')">Mark Paid</button>'+
           '</div></div>':'')
         +'</div>';
     });
@@ -2123,15 +2381,23 @@ function markParttimePaid(name,amount,mon){
   });
 }
 
-function markSalaryPaid(id){
+function markSalaryPaid(id,driverName,netPaid){
   var date=v('sal-pay-date')||todayStr();
   var mode=v('sal-pay-mode')||'Cash';
+  var bankAcct=v('sal-pay-bank')||'';
   // fetch current note to append audit trail
   sbGetQ('driver_salary','id=eq.'+id).then(function(rows){
     var cur=rows&&rows.length?rows[0]:{};
-    var note=(cur.note||'')+' | Paid '+date+' via '+mode;
+    var note=(cur.note||'')+' | Paid '+date+' via '+mode+(bankAcct?' ['+bankAcct+']':'');
     fetch(BASE+'/driver_salary?id=eq.'+id,{method:'PATCH',headers:hdrs({'Prefer':'return=minimal'}),
-      body:JSON.stringify({paid_date:date,note:note})}).then(function(){loadSalaryList();});
+      body:JSON.stringify({paid_date:date,note:note})}).then(function(){
+      if(bankAcct){
+        var amt=parseFloat(netPaid)||parseFloat(cur.net_paid)||0;
+        var desc='Salary — '+(driverName||cur.driver_name||'Driver')+' '+(cur.month||'');
+        sbPost('bank_transactions',{account_name:bankAcct,date:date,type:'debit',amount:amt,description:desc,reference:'Salary'});
+      }
+      loadSalaryList();
+    });
   });
 }
 function markSalaryUnpaid(id){
@@ -2146,13 +2412,21 @@ function markSalaryUnpaid(id){
 // ── ADVANCE ──
 function saveAdvance(){
   var drv=v('adv-driver'); var amt=parseFloat(v('adv-amount'));
+  var date=v('adv-date'); var reason=v('adv-reason'); var bankAcct=v('adv-bank-account');
   if(!drv||!amt){showMsg('adv-msg','Fill driver and amount','er');return;}
-  var body={driver_name:drv,date:v('adv-date'),amount:amt,type:'advance',reason:v('adv-reason')};
+  var body={driver_name:drv,date:date,amount:amt,type:'advance',reason:reason};
   var editId=parseInt(v('adv-edit-id'))||0;
   var promise=editId>0 ? sbPatch('driver_advances','id=eq.'+editId,body) : sbPost('driver_advances',body);
   promise.then(function(r){
-    if(r.ok){showMsg('adv-msg',(editId>0?'Updated':'Advance recorded')+' ✓','ok');setV('adv-amount','');setV('adv-reason','');cancelEditAdvance();loadAdvanceList();}
-    else showMsg('adv-msg','Error saving','er');
+    if(!r.ok){showMsg('adv-msg','Error saving','er');return;}
+    // also create bank transaction if account selected
+    if(bankAcct&&!editId){
+      sbPost('bank_transactions',{account_name:bankAcct,date:date,type:'debit',amount:amt,
+        description:'Advance — '+drv+(reason?' ('+reason+')':''),reference:drv});
+    }
+    showMsg('adv-msg',(editId>0?'Updated':'Advance recorded'+(bankAcct?' + bank entry':''))+' ✓','ok');
+    setV('adv-amount','');setV('adv-reason','');setV('adv-bank-account','');
+    cancelEditAdvance();loadAdvanceList();
   });
 }
 function loadAdvanceList(){
@@ -2175,7 +2449,7 @@ function loadAdvanceList(){
   });
 }
 function deleteAdvance(id){
-  sbDelete('driver_advances',id).then(function(){loadAdvanceList();});
+  sbDelete('driver_advances',id).then(function(){loadAdvanceList();loadDriverTxns();});
 }
 
 // ── DEDUCTIONS ──
@@ -2525,7 +2799,7 @@ function showExpenseTab(t){
     var el=document.getElementById('exsec-'+s); if(el) el.style.display=s===t?'block':'none';
     var btn=document.getElementById('extab-'+s); if(btn) btn.className='btn-sm '+(s===t?'btn-blue':'btn-grey');
   });
-  if(t==='all') loadExpenseList();
+  if(t==='all'){setV('ex-search','');loadExpenseList();}
   if(t==='cats') renderExpCatList();
 }
 function setExpenseFilter(p){
@@ -2544,41 +2818,65 @@ function saveExpense(){
   if(!date||!amt){showMsg('ex-msg','Fill date and amount','er');return;}
   var tid=v('ex-tempo');
   var tempo=tid?tempos.find(function(t){return String(t.id)===String(tid);}):null;
-  var body={date:date,category:v('ex-cat'),amount:amt,tempo_name:tempo?tempo.name:'',driver_name:v('ex-driver'),note:v('ex-note')};
+  var cat=v('ex-cat'); var bankAcct=v('ex-bank-account');
+  var body={date:date,category:cat,amount:amt,tempo_name:tempo?tempo.name:'',driver_name:v('ex-driver'),note:v('ex-note'),bank_account:bankAcct};
   var editId=parseInt(v('ex-edit-id'))||0;
   var promise=editId>0
     ? sbPatch('fin_expenses','id=eq.'+editId,body)
     : sbPost('fin_expenses',body);
   promise.then(function(r){
-    if(r.ok){showMsg('ex-msg',(editId>0?'Updated':'Expense saved')+' ✓','ok');setV('ex-amount','');setV('ex-note','');cancelEditExpense();showExpenseTab('all');}
+    if(r.ok){
+      var desc='Expense — '+expCatLabel(cat)+(v('ex-note')?' ('+v('ex-note')+')':'');
+      if(bankAcct&&editId===0){
+        sbPost('bank_transactions',{account_name:bankAcct,date:date,type:'debit',amount:amt,description:desc,reference:'Expense'});
+      }
+      showMsg('ex-msg',(editId>0?'Updated':'Expense saved'+(bankAcct?' + bank entry':''))+' ✓','ok');
+      setV('ex-amount','');setV('ex-note','');setV('ex-bank-account',getDefaultBank()||'');
+      cancelEditExpense();showExpenseTab('all');
+    }
     else showMsg('ex-msg','Error','er');
   });
 }
+var _expenseRows=[];
 function loadExpenseList(){
   var from=v('ex-from'); var to=v('ex-to'); var cat=v('ex-list-cat');
   var el=document.getElementById('expenseList');
   el.innerHTML='<div class="empty">Loading…</div>';
-  var parts=['order=date.desc','limit=500'];
+  var parts=['order=date.desc','limit=2000'];
   if(from) parts.push('date=gte.'+from);
   if(to)   parts.push('date=lte.'+to);
   if(cat)  parts.push('category=eq.'+encodeURIComponent(cat));
   sbGetQ('fin_expenses',parts.join('&')).then(function(rows){
-    var total=rows.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
-    var tot=document.getElementById('expenseTotal');
-    if(rows.length){tot.style.display='block';tot.textContent='Total: '+fmt(total)+' ('+rows.length+' entries)';}
-    else{tot.style.display='none';}
-    if(!rows.length){el.innerHTML='<div class="empty">No expenses for selected range</div>';return;}
-    el.innerHTML=rows.map(function(e){
-      return'<div class="item-card"><div style="display:flex;justify-content:space-between;align-items:center">'+
-        '<div><div style="font-weight:800">'+fmt(e.amount)+'  <span class="badge b-blue">'+expCatLabel(e.category)+'</span></div>'+
-        '<div style="font-size:11px;color:#7a8fa6">'+e.date+(e.tempo_name?' · '+e.tempo_name:'')+(e.driver_name?' · '+e.driver_name:'')+'</div>'+
-        (e.note?'<div style="font-size:11px;color:#7a8fa6">'+e.note+'</div>':'')+
-        '</div><div style="display:flex;gap:4px">'+
-        '<button class="btn-sm btn-edit" onclick="editExpenseById('+e.id+')">✏</button>'+
-        '<button class="btn-sm btn-del" onclick="delGuard(this,function(){deleteExpense('+e.id+');})">Del</button>'+
-        '</div></div></div>';
-    }).join('');
+    _expenseRows=rows||[];
+    filterExpenseList();
   });
+}
+function filterExpenseList(){
+  var el=document.getElementById('expenseList');
+  var q=(v('ex-search')||'').toLowerCase().trim();
+  var rows=q?_expenseRows.filter(function(e){
+    return (e.note||'').toLowerCase().indexOf(q)>=0||
+           (e.tempo_name||'').toLowerCase().indexOf(q)>=0||
+           (e.driver_name||'').toLowerCase().indexOf(q)>=0||
+           String(e.amount).indexOf(q)>=0||
+           (e.date||'').indexOf(q)>=0||
+           expCatLabel(e.category).toLowerCase().indexOf(q)>=0;
+  }):_expenseRows;
+  var total=rows.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
+  var tot=document.getElementById('expenseTotal');
+  if(rows.length){tot.style.display='block';tot.textContent='Total: '+fmt(total)+' ('+rows.length+' entries'+(q?' matched':'')+')';}
+  else{tot.style.display='none';}
+  if(!rows.length){el.innerHTML='<div class="empty">'+(q?'No results for "'+q+'"':'No expenses for selected range')+'</div>';return;}
+  el.innerHTML=rows.map(function(e){
+    return'<div class="item-card"><div style="display:flex;justify-content:space-between;align-items:center">'+
+      '<div><div style="font-weight:800">'+fmt(e.amount)+'  <span class="badge b-blue">'+expCatLabel(e.category)+'</span></div>'+
+      '<div style="font-size:11px;color:#7a8fa6">'+e.date+(e.tempo_name?' · '+e.tempo_name:'')+(e.driver_name?' · '+e.driver_name:'')+'</div>'+
+      (e.note?'<div style="font-size:11px;color:#7a8fa6">'+e.note+'</div>':'')+
+      '</div><div style="display:flex;gap:4px">'+
+      '<button class="btn-sm btn-edit" onclick="editExpenseById('+e.id+')">✏</button>'+
+      '<button class="btn-sm btn-del" onclick="delGuard(this,function(){deleteExpense('+e.id+');})">Del</button>'+
+      '</div></div></div>';
+  }).join('');
 }
 function deleteExpense(id){sbDelete('fin_expenses',id).then(function(){loadExpenseList();});}
 // ── Category management ──
@@ -2641,6 +2939,32 @@ function loadBankAccounts(){
     if(xfrFrom) xfrFrom.innerHTML=opts;
     if(xfrTo) xfrTo.innerHTML=opts;
     if(xfrTo&&rows.length>1) xfrTo.value=rows[1].name;
+    var def=getDefaultBank();
+    var advBank=document.getElementById('adv-bank-account');
+    if(advBank){
+      advBank.innerHTML='<option value="">— No bank entry —</option>'+opts;
+      if(def) advBank.value=def;
+    }
+    var cpBank=document.getElementById('cp-bank-account');
+    if(cpBank){
+      cpBank.innerHTML='<option value="">— No bank entry —</option>'+opts;
+      if(def) cpBank.value=def;
+    }
+    var ldgPayBank=document.getElementById('ldg-pay-bank');
+    if(ldgPayBank){
+      ldgPayBank.innerHTML='<option value="">— No bank entry —</option>'+opts;
+      if(def) ldgPayBank.value=def;
+    }
+    var exBank=document.getElementById('ex-bank-account');
+    if(exBank){
+      exBank.innerHTML='<option value="">— No bank entry —</option>'+opts;
+      if(def) exBank.value=def;
+    }
+    var defSel=document.getElementById('bk-default-select');
+    if(defSel){
+      defSel.innerHTML='<option value="">— None —</option>'+opts;
+      if(def) defSel.value=def;
+    }
     loadBankAccountCards();
   });
 }
@@ -2719,7 +3043,7 @@ function loadBankDetail(){
   }
   if(type) parts.push('type=eq.'+type);
   parts.push('order=date.desc,id.desc');
-  if(!mon) parts.push('limit=500');
+  if(!mon) parts.push('limit=2000');
   sbGetQ('bank_transactions',parts.join('&')).then(function(rows){
     if(!rows.length){el.innerHTML='<div class="empty">No transactions</div>';return;}
     var totalIn=rows.filter(function(r){return r.type==='credit';}).reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
@@ -2730,12 +3054,21 @@ function loadBankDetail(){
       '</div>'+
       rows.map(function(t){
         var isCredit=t.type==='credit';
-        return'<div class="item-card"><div style="display:flex;justify-content:space-between;align-items:center">'+
-          '<div><div style="font-weight:800;color:'+(isCredit?'#1e7a4f':'#c8382a')+'">'+(isCredit?'+ ':'-  ')+fmt(t.amount)+'</div>'+
-          '<div style="font-size:11px;color:#7a8fa6">'+t.date+' · <span class="badge '+(isCredit?'b-green':'b-red')+'">'+t.type+'</span>'+(!_currentBankAccount&&t.account_name?' · '+t.account_name:'')+' </div>'+
-          (t.description?'<div style="font-size:12px">'+t.description+'</div>':'')+
-          (t.reference&&t.reference!=='TRANSFER'?'<div style="font-size:11px;color:#7a8fa6">Ref: '+t.reference+'</div>':'')+
-          '</div>'+(t.balance_after!=null?'<div style="font-size:12px;font-weight:700;color:#1a3a5c">Bal: '+fmt(t.balance_after)+'</div>':'')+
+        var desc=t.description||'';
+        return'<div class="item-card"><div style="display:flex;justify-content:space-between;align-items:flex-start">'+
+          '<div style="flex:1">'+
+            '<div style="font-weight:800;color:'+(isCredit?'#1e7a4f':'#c8382a')+'">'+(isCredit?'+ ':'-  ')+fmt(t.amount)+'</div>'+
+            '<div style="font-size:11px;color:#7a8fa6">'+t.date+' · <span class="badge '+(isCredit?'b-green':'b-red')+'">'+t.type+'</span>'+(!_currentBankAccount&&t.account_name?' · '+t.account_name:'')+' </div>'+
+            (desc?'<div style="font-size:12px">'+desc+'</div>':'')+
+            (t.reference&&t.reference!=='TRANSFER'?'<div style="font-size:11px;color:#7a8fa6">Ref: '+t.reference+'</div>':'')+
+          '</div>'+
+          '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;margin-left:8px">'+
+            (t.balance_after!=null?'<div style="font-size:12px;font-weight:700;color:#1a3a5c">Bal: '+fmt(t.balance_after)+'</div>':'')+
+            '<div style="display:flex;gap:4px">'+
+              '<button class="btn-sm btn-edit" onclick="editBankTxn('+t.id+')">✏️</button>'+
+              '<button class="btn-sm btn-del" onclick="deleteBankTxn('+t.id+',\''+desc.replace(/'/g,'')+'\')">🗑</button>'+
+            '</div>'+
+          '</div>'+
           '</div></div>';
       }).join('');
   });
@@ -2802,18 +3135,74 @@ function saveBankAccount(){
     else showMsg('bk-acc-msg','Error (name may already exist)','er');
   });
 }
+var _BK_CATS_IN =['Sale','Rent','Loan','Transfer','Other'];
+var _BK_CATS_OUT=['Salary','Advance','Expense','Rent','Flipkart','Insurance','Loan','Transfer','Other'];
+function updateBkCategories(){
+  var type=v('bk-type');
+  var cats=type==='credit'?_BK_CATS_IN:_BK_CATS_OUT;
+  var el=document.getElementById('bk-category');
+  var cur=el.value;
+  el.innerHTML='<option value="">— Select Category —</option>'+cats.map(function(c){
+    var icons={Salary:'💰',Advance:'📤',Expense:'🔧',Rent:'🚐',Sale:'💼',Flipkart:'📦',Insurance:'🛡',Loan:'🏦',Transfer:'🔄',Other:'📝'};
+    return'<option value="'+c+'">'+(icons[c]||'')+' '+c+'</option>';
+  }).join('');
+  if(cats.indexOf(cur)>=0) setV('bk-category',cur);
+}
 function saveBankTxn(){
   var acct=v('bk-account'); var date=v('bk-date'); var amt=parseFloat(v('bk-amount'));
   if(!acct||!date||!amt){showMsg('bk-msg','Select account, fill date and amount','er');return;}
   var type=v('bk-type');
+  var cat=v('bk-category');
+  var desc=v('bk-desc');
+  var fullDesc=cat?(cat+(desc?' — '+desc:'')):desc;
   var balAfter=v('bk-balance-after')?parseFloat(v('bk-balance-after')):null;
-  sbPost('bank_transactions',{account_name:acct,date:date,type:type,amount:amt,
-    description:v('bk-desc'),reference:v('bk-ref'),balance_after:balAfter}).then(function(r){
-    if(r.ok){showMsg('bk-msg','Transaction saved ✓','ok');
-      setV('bk-amount','');setV('bk-desc','');setV('bk-ref','');setV('bk-balance-after','');
-      loadBankAccounts();}
+  var body={account_name:acct,date:date,type:type,amount:amt,
+    description:fullDesc,reference:v('bk-ref'),balance_after:balAfter};
+  var editId=parseInt(v('bk-edit-id'))||0;
+  var promise=editId>0
+    ? sbPatch('bank_transactions','id=eq.'+editId,body)
+    : sbPost('bank_transactions',body);
+  promise.then(function(r){
+    if(r.ok){showMsg('bk-msg',(editId>0?'Updated':'Transaction saved')+' ✓','ok');
+      cancelEditBankTxn();loadBankAccounts();loadBankDetail();}
     else showMsg('bk-msg','Error','er');
   });
+}
+function editBankTxn(id){
+  sbGetQ('bank_transactions','id=eq.'+id).then(function(rows){
+    if(!rows||!rows.length) return;
+    var t=rows[0];
+    setV('bk-edit-id',t.id);
+    setV('bk-account',t.account_name);
+    setV('bk-date',t.date);
+    setV('bk-type',t.type);
+    updateBkCategories();
+    // try to extract category from description
+    var desc=t.description||'';
+    var cats=_BK_CATS_IN.concat(_BK_CATS_OUT);
+    var matched='';
+    cats.forEach(function(c){if(desc.startsWith(c+' — ')||desc===c){matched=c;}});
+    setV('bk-category',matched);
+    setV('bk-desc',matched?desc.replace(matched+' — ','').replace(matched,''):desc);
+    setV('bk-amount',t.amount);
+    setV('bk-ref',t.reference||'');
+    setV('bk-balance-after',t.balance_after!=null?t.balance_after:'');
+    document.getElementById('bk-form-title').textContent='✏️ Edit Transaction';
+    document.getElementById('bk-cancel-btn').style.display='';
+    showBankTab('add');
+    window.scrollTo(0,0);
+  });
+}
+function cancelEditBankTxn(){
+  setV('bk-edit-id','0');
+  setV('bk-amount','');setV('bk-desc','');setV('bk-ref','');setV('bk-balance-after','');
+  setV('bk-category','');
+  document.getElementById('bk-form-title').textContent='➕ Add Transaction';
+  document.getElementById('bk-cancel-btn').style.display='none';
+}
+function deleteBankTxn(id,desc){
+  if(!confirm('Delete: '+(desc||'this transaction')+'?')) return;
+  sbDelete('bank_transactions',id).then(function(){loadBankDetail();loadBankAccounts();});
 }
 function loadBankList(){
   var mon=v('bk-list-month');
@@ -2827,7 +3216,7 @@ function loadBankList(){
     parts.push('date=lte.'+mon.slice(0,4)+'-'+mon.slice(5,7)+'-'+ld);
   }
   parts.push('order=date.desc,id.desc');
-  if(!mon) parts.push('limit=200');
+  if(!mon) parts.push('limit=2000');
   sbGetQ('bank_transactions', parts.join('&')).then(function(rows){
     if(!rows.length){el.innerHTML='<div class="empty">No transactions</div>';return;}
     var totalIn=rows.filter(function(r){return r.type==='credit';}).reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
@@ -2954,12 +3343,118 @@ function markEMIPaid(id){
 // ── CUSTOMER PAYMENTS ──
 function savePayment(){
   var cust=v('cp-cust').trim(); var amt=parseFloat(v('cp-amount'));
+  var date=v('cp-date'); var bankAcct=v('cp-bank-account');
+  var editId=parseInt(v('cp-edit-id'))||0;
   if(!cust||!amt){showMsg('cp-msg','Fill customer name and amount','er');return;}
-  sbPost('customer_payments',{customer_name:cust,date:v('cp-date'),amount:amt,
-    mode:v('cp-mode'),reference:v('cp-ref'),note:v('cp-note')}).then(function(r){
-    if(r.ok){showMsg('cp-msg','Payment recorded ✓','ok');setV('cp-cust','');setV('cp-amount','');
-      setV('cp-ref','');setV('cp-note','');loadPaymentList();}
-    else showMsg('cp-msg','Error','er');
+  var body={customer_name:cust,date:date,amount:amt,
+    mode:v('cp-mode'),reference:v('cp-ref'),note:v('cp-note'),bank_account:bankAcct};
+  var promise=editId>0
+    ? sbPatch('customer_payments','id=eq.'+editId,body)
+    : sbPost('customer_payments',body);
+  promise.then(function(r){
+    if(!r.ok){showMsg('cp-msg','Error','er');return;}
+    if(bankAcct&&!editId){
+      sbPost('bank_transactions',{account_name:bankAcct,date:date,type:'credit',amount:amt,
+        description:'Sale — '+cust,reference:cust});
+    }
+    showMsg('cp-msg',(editId>0?'Updated':'Payment recorded'+(bankAcct?' + bank entry':''))+' ✓','ok');
+    cancelEditPayment();
+    loadPaymentList();
+    if(_currentLedgerRaw) loadLedger(_currentLedgerRaw);
+  });
+}
+function editPayment(id){
+  sbGetQ('customer_payments','id=eq.'+id).then(function(rows){
+    if(!rows||!rows.length) return;
+    var p=rows[0];
+    setV('cp-edit-id',p.id);
+    setV('cp-cust',p.customer_name||'');
+    setV('cp-date',p.date||'');
+    setV('cp-amount',p.amount||'');
+    setV('cp-mode',p.mode||'cash');
+    setV('cp-bank-account',p.bank_account||'');
+    setV('cp-ref',p.reference||'');
+    setV('cp-note',p.note||'');
+    document.getElementById('cp-form-title').textContent='✏️ Edit Payment';
+    document.getElementById('cp-save-btn').textContent='✏️ Update Payment';
+    document.getElementById('cp-cancel-btn').style.display='';
+    window.scrollTo(0,0);
+  });
+}
+function cancelEditPayment(){
+  setV('cp-edit-id','0');
+  setV('cp-cust','');setV('cp-amount','');setV('cp-ref','');setV('cp-note','');
+  document.getElementById('cp-form-title').textContent='💰 Record Payment';
+  document.getElementById('cp-save-btn').textContent='💾 Save Payment';
+  document.getElementById('cp-cancel-btn').style.display='none';
+}
+function deletePayment(id){
+  if(!confirm('Delete this payment?')) return;
+  sbDelete('customer_payments',id).then(function(){loadPaymentList();});
+}
+function deleteLedgerPayment(id){
+  if(!confirm('Delete this payment?')) return;
+  sbDelete('customer_payments',id).then(function(){loadLedger(_currentLedgerRaw);});
+}
+function deleteLedgerBill(id){
+  if(!confirm('Delete this bill?')) return;
+  sbDelete('customer_bills',id).then(function(){loadLedger(_currentLedgerRaw);});
+}
+function editLedgerBill(id){
+  sbGetQ('customer_bills','id=eq.'+id).then(function(rows){
+    if(!rows||!rows.length) return;
+    var b=rows[0];
+    setV('ldg-bill-date',b.date||'');
+    setV('ldg-bill-amount',b.amount||'');
+    setV('ldg-bill-desc',b.description||'');
+    setV('ldg-bill-note',b.note||'');
+    var btn=document.querySelector('[onclick="saveLedgerBill()"]');
+    if(btn){btn.textContent='✏️ Update Bill';btn.setAttribute('onclick','updateLedgerBill('+id+')');}
+    showLedgerForm('bill');
+    window.scrollTo(0,0);
+  });
+}
+function editLedgerPayment(id){
+  sbGetQ('customer_payments','id=eq.'+id).then(function(rows){
+    if(!rows||!rows.length) return;
+    var p=rows[0];
+    setV('ldg-pay-date',p.date||'');
+    setV('ldg-pay-amount',p.amount||'');
+    setV('ldg-pay-mode',p.mode||'cash');
+    setV('ldg-pay-ref',p.reference||'');
+    setV('ldg-pay-note',p.note||'');
+    var btn=document.querySelector('[onclick="saveLedgerPayment()"]');
+    if(btn){btn.textContent='✏️ Update Payment';btn.setAttribute('onclick','updateLedgerPayment('+id+')');}
+    showLedgerForm('pay');
+    window.scrollTo(0,0);
+  });
+}
+function updateLedgerPayment(id){
+  var amt=parseFloat(v('ldg-pay-amount'));
+  if(!amt){showMsg('ldg-pay-msg','Fill amount','er');return;}
+  sbPatch('customer_payments','id=eq.'+id,{date:v('ldg-pay-date'),amount:amt,
+    mode:v('ldg-pay-mode'),reference:v('ldg-pay-ref'),note:v('ldg-pay-note')}).then(function(r){
+    if(r.ok){
+      showMsg('ldg-pay-msg','Updated ✓','ok');
+      setV('ldg-pay-amount','');setV('ldg-pay-ref','');setV('ldg-pay-note','');
+      var btn=document.querySelector('[onclick="updateLedgerPayment('+id+')"]');
+      if(btn){btn.textContent='💾 Save Payment';btn.setAttribute('onclick','saveLedgerPayment()');}
+      showLedgerForm('');loadLedger(_currentLedgerRaw);
+    } else showMsg('ldg-pay-msg','Error','er');
+  });
+}
+function updateLedgerBill(id){
+  var date=v('ldg-bill-date'); var amt=parseFloat(v('ldg-bill-amount'));
+  if(!date||!amt){showMsg('ldg-bill-msg','Fill date and amount','er');return;}
+  sbPatch('customer_bills','id=eq.'+id,{date:date,amount:amt,
+    description:v('ldg-bill-desc'),note:v('ldg-bill-note')}).then(function(r){
+    if(r.ok){
+      showMsg('ldg-bill-msg','Updated ✓','ok');
+      setV('ldg-bill-amount','');setV('ldg-bill-desc','');setV('ldg-bill-note','');
+      var btn=document.querySelector('[onclick="updateLedgerBill('+id+')"]');
+      if(btn){btn.textContent='💾 Save Bill';btn.setAttribute('onclick','saveLedgerBill()');}
+      showLedgerForm('');loadLedger(_currentLedgerRaw);
+    } else showMsg('ldg-bill-msg','Error','er');
   });
 }
 function loadPaymentList(){
@@ -2976,12 +3471,21 @@ function loadPaymentList(){
     else tot.style.display='none';
     if(!filtered.length){el.innerHTML='<div class="empty">No payments found</div>';return;}
     el.innerHTML=filtered.map(function(p){
-      return'<div class="item-card"><div style="display:flex;justify-content:space-between;align-items:center">'+
-        '<div><div style="font-weight:800">'+p.customer_name+'</div>'+
-        '<div style="font-size:11px;color:#7a8fa6">'+p.date+' · <span class="badge b-blue">'+modeLabel(p.mode)+'</span></div>'+
-        (p.reference?'<div style="font-size:11px;color:#7a8fa6">Ref: '+p.reference+'</div>':'')+
-        (p.note?'<div style="font-size:11px;color:#7a8fa6">'+p.note+'</div>':'')+
-        '</div><div style="font-weight:900;font-size:15px;color:#1e7a4f">'+fmt(p.amount)+'</div></div></div>';
+      return'<div class="item-card"><div style="display:flex;justify-content:space-between;align-items:flex-start">'+
+        '<div style="flex:1">'+
+          '<div style="font-weight:800">'+p.customer_name+'</div>'+
+          '<div style="font-size:11px;color:#7a8fa6">'+p.date+' · <span class="badge b-blue">'+modeLabel(p.mode)+'</span>'+(p.bank_account?' · 🏦 '+p.bank_account:'')+'</div>'+
+          (p.reference?'<div style="font-size:11px;color:#7a8fa6">Ref: '+p.reference+'</div>':'')+
+          (p.note?'<div style="font-size:11px;color:#7a8fa6">'+p.note+'</div>':'')+
+        '</div>'+
+        '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;margin-left:8px">'+
+          '<div style="font-weight:900;font-size:15px;color:#1e7a4f">'+fmt(p.amount)+'</div>'+
+          '<div style="display:flex;gap:4px">'+
+            '<button class="btn-sm btn-edit" onclick="editPayment('+p.id+')">✏️</button>'+
+            '<button class="btn-sm btn-del" onclick="deletePayment('+p.id+')">🗑</button>'+
+          '</div>'+
+        '</div>'+
+      '</div></div>';
     }).join('');
   });
 }
@@ -3039,19 +3543,30 @@ function loadLedger(raw){
       });
       entries.sort(function(a,b){return a.date>b.date?1:a.date<b.date?-1:0;});
       if(!entries.length){listEl.innerHTML='<div class="empty">No bills or payments yet — use the buttons above</div>';return;}
+      // pre-compute running balance for each entry (oldest→newest), then reverse for display
       var running=0;
+      entries.forEach(function(e){running+=(e.type==='bill'?e.amount:-e.amount);e._bal=running;});
+      entries.reverse(); // show newest first
       listEl.innerHTML=entries.map(function(e){
-        running+=(e.type==='bill'?e.amount:-e.amount);
         var color=e.type==='bill'?'#c8382a':e.type==='deduct'?'#b45309':'#1e7a4f';
         var icon=e.type==='bill'?'🧾 Bill':e.type==='deduct'?'➖ Deduction':'💵 Payment';
-        return'<div class="item-card"><div style="display:flex;justify-content:space-between;align-items:center">'+
-          '<div>'+
+        var isBill=e.type==='bill';
+        var delFn=isBill?'deleteLedgerBill('+e.id+')':'deleteLedgerPayment('+e.id+')';
+        var editFn=isBill?'editLedgerBill('+e.id+')':'editLedgerPayment('+e.id+')';
+        return'<div class="item-card"><div style="display:flex;justify-content:space-between;align-items:flex-start">'+
+          '<div style="flex:1">'+
           '<div style="font-weight:700;color:'+color+'">'+icon+' · '+fmt(e.amount)+'</div>'+
           '<div style="font-size:11px;color:#7a8fa6">'+e.date+(e.desc?' · '+e.desc:'')+(e.note?' · '+e.note:'')+'</div>'+
           '</div>'+
+          '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;margin-left:8px">'+
           '<div style="text-align:right">'+
           '<div style="font-size:12px;color:#7a8fa6">Balance</div>'+
-          '<div style="font-weight:800;font-size:14px;color:'+(running>0?'#c8382a':running<0?'#1e7a4f':'#7a8fa6')+'">'+fmt(Math.abs(running))+(running>0?' DR':running<0?' CR':'')+'</div>'+
+          '<div style="font-weight:800;font-size:14px;color:'+(e._bal>0?'#c8382a':e._bal<0?'#1e7a4f':'#7a8fa6')+'">'+fmt(Math.abs(e._bal))+(e._bal>0?' DR':e._bal<0?' CR':'')+'</div>'+
+          '</div>'+
+          '<div style="display:flex;gap:4px">'+
+            '<button class="btn-sm btn-edit" onclick="'+editFn+'">✏️</button>'+
+            '<button class="btn-sm btn-del" onclick="'+delFn+'">🗑</button>'+
+          '</div>'+
           '</div>'+
           '</div></div>';
       }).join('')+
@@ -3295,6 +3810,7 @@ function editExpenseById(id){
       if(sel){for(var i=0;i<sel.options.length;i++){var t=tempos.find(function(t){return t.name===e.tempo_name;});if(t&&sel.options[i].value===String(t.id)){sel.value=sel.options[i].value;break;}}}
     } else setV('ex-tempo','');
     setV('ex-driver',e.driver_name||'');
+    setV('ex-bank-account',e.bank_account||'');
     _exEditId=e.id;
     setV('ex-edit-id',e.id);
     var titleEl=document.getElementById('ex-form-title'); if(titleEl) titleEl.textContent='✏ Edit Expense';
@@ -3334,6 +3850,34 @@ function cancelEditAdvance(){
   setV('adv-amount',''); setV('adv-reason','');
 }
 
+function editSalaryById(id){
+  sbGetQ('driver_salary','id=eq.'+id).then(function(rows){
+    if(!rows||!rows.length) return;
+    var s=rows[0];
+    setV('sal-driver',s.driver_name||'');
+    setV('sal-month',s.month||'');
+    setV('sal-base',s.base_salary||'');
+    setV('sal-adv-given',s.advance_given||'');
+    setV('sal-adv-deduct',s.advance_deducted||'');
+    setV('sal-other-deduct',s.other_deductions||'');
+    setV('sal-net',s.net_paid||'');
+    setV('sal-note',s.note||'');
+    // store id for update
+    if(!document.getElementById('sal-edit-id')){
+      var h=document.createElement('input');h.type='hidden';h.id='sal-edit-id';
+      document.getElementById('dsec-salary').appendChild(h);
+    }
+    setV('sal-edit-id',s.id);
+    var btn=document.getElementById('sal-save-btn');
+    if(btn) btn.textContent='✏️ Update Salary';
+    showDriverTab('salary');
+    window.scrollTo(0,0);
+  });
+}
+function deleteSalaryById(id){
+  if(!confirm('Delete this salary record?')) return;
+  sbDelete('driver_salary',id).then(function(){loadDriverTxns();loadSalaryList();});
+}
 // ── Deduction edit ──
 var _dedEditId=0;
 function editDeductionById(id){
