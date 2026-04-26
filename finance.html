@@ -490,9 +490,10 @@ body.dark .search-item:hover{background:#3d4a5c}
         <div class="row2">
           <div><label class="lbl">Bonus</label>
             <input type="number" id="sal-bonus" placeholder="0" oninput="calcNetSalary()"></div>
-          <div><label class="lbl">Driver Paid (₹) <span style="font-size:10px;color:#1e7a4f">reduces net payable</span></label>
+          <div><label class="lbl">Driver Paid Rent (₹) <span style="font-size:10px;color:#1e7a4f">cash / bank — offsets tempo deduction</span></label>
             <input type="number" id="sal-driver-paid" placeholder="0" oninput="calcNetSalary()" style="background:#f0fdf4;color:#1e7a4f;font-weight:700">
-            <div style="font-size:11px;color:#1e7a4f;margin-top:2px" id="sal-driver-paid-note"></div></div>
+            <div style="font-size:11px;color:#7a8fa6;margin-top:2px" id="sal-driver-paid-note"></div>
+            <div style="font-size:11px;color:#1e7a4f;margin-top:2px" id="sal-driver-paid-hint"></div></div>
         </div>
         <div><label class="lbl">Net Payable (₹)</label>
           <input type="number" id="sal-net" placeholder="0" style="background:#e8f5e9;font-weight:800;color:#1e7a4f;width:100%"></div>
@@ -2258,7 +2259,16 @@ function calcNetSalary(){
   var otherD=parseFloat(v('sal-other-deduct'))||0;
   var bonus=parseFloat(v('sal-bonus'))||0;
   var driverPaid=parseFloat(v('sal-driver-paid'))||0;
-  setV('sal-net', Math.max(0, base - advD - lvD - tempoD - otherD - driverPaid + bonus));
+  // driver_paid = cash payments driver made towards rent (already settled portion of tempoD)
+  // So: net rent still to deduct from salary = tempoD - driverPaid (driver already paid the rest in cash)
+  var netTempoD=Math.max(0, tempoD - driverPaid);
+  setV('sal-net', Math.max(0, base - advD - lvD - netTempoD - otherD + bonus));
+  // update hint
+  var hint=document.getElementById('sal-driver-paid-hint');
+  if(hint && tempoD>0){
+    var remaining=Math.max(0,tempoD-driverPaid);
+    hint.textContent='Rent due: '+fmt(tempoD)+' · Already paid: '+fmt(driverPaid)+(remaining>0?' · Still deducting from salary: '+fmt(remaining):'  · Fully settled ✓ (no salary deduction)');
+  } else if(hint) hint.textContent='';
 }
 function saveSalary(){
   var drv=v('sal-driver'); var mon=v('sal-month');
@@ -2328,7 +2338,7 @@ function loadSalaryList(){
         (tr?'<div class="sum-row"><span class="sum-lbl">Tempo Rent ('+tr.tempo_name+' · '+tr.days_used+'/'+tr.days_in_month+'d)</span><span class="sum-val" style="color:#c8382a">− '+fmt(tr.rent_amount)+'</span></div>':'')+
         '<div class="sum-row"><span class="sum-lbl">Advance Deducted</span><span class="sum-val" style="color:#c8382a">− '+fmt(s.advance_deducted)+'</span></div>'+
         (s.other_deduction?'<div class="sum-row"><span class="sum-lbl">Other Deductions</span><span class="sum-val" style="color:#c8382a">− '+fmt(s.other_deduction)+'</span></div>':'')+
-        (s.driver_paid?'<div class="sum-row"><span class="sum-lbl">💚 Driver Paid (Rent/Amount)</span><span class="sum-val" style="color:#1e7a4f">− '+fmt(s.driver_paid)+'</span></div>':'')+
+        (s.driver_paid?'<div class="sum-row"><span class="sum-lbl">💚 Driver Paid Rent</span><span class="sum-val" style="color:#1e7a4f">'+fmt(s.driver_paid)+' <span style="font-size:10px;color:#7a8fa6">(offsets rent deduction)</span></span></div>':'')+
         '<div class="sum-row"><span class="sum-lbl">Bonus</span><span class="sum-val" style="color:#1e7a4f">+ '+fmt(s.bonus)+'</span></div>'+
         '<hr class="divider">'+
         '<div class="sum-row total"><span class="sum-lbl">Net Payable</span><span class="sum-val">'+fmt(s.net_paid)+'</span></div>'+
