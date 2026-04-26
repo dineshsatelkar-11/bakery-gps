@@ -598,18 +598,27 @@ body.dark .search-item:hover{background:#3d4a5c}
         <div class="row2">
           <div><label class="lbl">Driver</label>
             <select id="lv-driver" onchange="autoFillLeaveDeduction()"></select></div>
-          <div><label class="lbl">Date</label>
-            <input type="date" id="lv-date" onchange="autoFillLeaveDeduction()"></div>
-        </div>
-        <div class="row2">
           <div><label class="lbl">Type</label>
             <select id="lv-type">
               <option value="unpaid">Unpaid</option>
               <option value="paid">Paid</option>
             </select></div>
+        </div>
+        <div class="row2">
+          <div><label class="lbl">From Date</label>
+            <input type="date" id="lv-date-from" onchange="autoFillLeaveDeduction()"></div>
+          <div><label class="lbl">To Date</label>
+            <input type="date" id="lv-date-to" onchange="autoFillLeaveDeduction()"></div>
+        </div>
+        <div id="lv-days-hint" style="font-size:11px;color:#7a8fa6;margin-bottom:6px"></div>
+        <div class="row2">
           <div>
-            <label class="lbl">Deduction Amount (₹) <span style="font-size:10px;color:#7a8fa6" id="lv-ded-hint"></span></label>
-            <input type="number" id="lv-deduction" placeholder="0">
+            <label class="lbl">Deduction Per Day (₹) <span style="font-size:10px;color:#7a8fa6" id="lv-ded-hint"></span></label>
+            <input type="number" id="lv-deduction" placeholder="0" oninput="autoFillLeaveDeduction(true)">
+          </div>
+          <div>
+            <label class="lbl">Total Deduction (₹)</label>
+            <input type="number" id="lv-deduction-total" placeholder="0" readonly style="background:#f5f7fa;color:#7a8fa6;font-weight:700">
           </div>
         </div>
         <div class="row2">
@@ -2108,7 +2117,7 @@ function initApp(){
   loadDriversFromDB(function(){ loadPartiesFromDB(); });
   // Default dates
   setV('sal-month',thisMonth()); setV('sal-list-month',thisMonth());
-  setV('adv-date',todayStr()); setV('ded-date',todayStr()); setV('lv-date',todayStr());
+  setV('adv-date',todayStr()); setV('ded-date',todayStr()); setV('lv-date-from',todayStr()); setV('lv-date-to',todayStr());
   setV('lv-list-month',thisMonth());
   setV('ri-month',thisMonth()); setV('ri-list-month',thisMonth());
   setV('ro-month',thisMonth()); setV('ro-list-month',thisMonth());
@@ -2619,31 +2628,54 @@ function deleteTempoPay(id){
 }
 
 // ── LEAVES ──
-function autoFillLeaveDeduction(){
-  var drv=v('lv-driver'); var date=v('lv-date');
-  if(!drv||!date) return;
-  // find driver base salary from already-loaded _bankAccounts equivalent — use fin_drivers
+function autoFillLeaveDeduction(manualDeductEdit){
+  var drv=v('lv-driver'); var dateFrom=v('lv-date-from'); var dateTo=v('lv-date-to');
+  if(!drv||!dateFrom) return;
+  var effectiveTo=dateTo&&dateTo>=dateFrom?dateTo:dateFrom;
+  // count days in range (inclusive)
+  var d1=new Date(dateFrom); var d2=new Date(effectiveTo);
+  var leaveDays=Math.round((d2-d1)/(86400000))+1;
   sbGetQ('fin_drivers','name=eq.'+encodeURIComponent(drv)).then(function(rows){
     if(!rows.length) return;
     var base=parseFloat(rows[0].base_salary)||0;
     if(!base) return;
-    // days in that month
-    var y=parseInt(date.slice(0,4)); var m=parseInt(date.slice(5,7));
+    // days in the month of the from-date
+    var y=parseInt(dateFrom.slice(0,4)); var m=parseInt(dateFrom.slice(5,7));
     var daysInMonth=new Date(y,m,0).getDate();
     var perDay=+(base/daysInMonth).toFixed(2);
-    // only auto-fill if user hasn't manually entered a value
-    if(!v('lv-deduction')) setV('lv-deduction', perDay);
-    document.getElementById('lv-ded-hint').textContent='₹'+base+' ÷ '+daysInMonth+'d = ₹'+perDay;
+    document.getElementById('lv-ded-hint').textContent='₹'+base+' ÷ '+daysInMonth+'d = ₹'+perDay+'/day';
+    // on driver/date change: always reset per-day to calculated rate
+    // on manual deduction edit: keep what user typed, just recalc total
+    if(!manualDeductEdit) setV('lv-deduction', perDay);
+    var usedPerDay=parseFloat(v('lv-deduction'))||perDay;
+    var total=+(usedPerDay*leaveDays).toFixed(2);
+    setV('lv-deduction-total', total);
+    var daysHint=document.getElementById('lv-days-hint');
+    if(daysHint) daysHint.textContent=dateFrom+(effectiveTo!==dateFrom?' → '+effectiveTo:'')+' · '+leaveDays+' day'+(leaveDays>1?'s':'')+' · ₹'+usedPerDay+'/day × '+leaveDays+' = ₹'+total;
   });
 }
 function saveLeave(){
-  var drv=v('lv-driver'); var date=v('lv-date');
-  if(!drv||!date){showMsg('lv-msg','Select driver and date','er');return;}
-  sbPost('driver_leaves',{driver_name:drv,date:date,type:v('lv-type'),
-    deduction_amount:parseFloat(v('lv-deduction'))||0,
-    substitute_driver:v('lv-sub'),substitute_cost:parseFloat(v('lv-sub-cost'))||0,note:v('lv-note')}).then(function(r){
-    if(r.ok){showMsg('lv-msg','Leave recorded ✓','ok');setV('lv-deduction','');setV('lv-sub','');setV('lv-sub-cost','');setV('lv-note','');loadLeaveList();}
-    else showMsg('lv-msg','Error saving','er');
+  var drv=v('lv-driver'); var dateFrom=v('lv-date-from'); var dateTo=v('lv-date-to');
+  if(!drv||!dateFrom){showMsg('lv-msg','Select driver and date','er');return;}
+  var effectiveTo=dateTo&&dateTo>=dateFrom?dateTo:dateFrom;
+  var perDay=parseFloat(v('lv-deduction'))||0;
+  var type=v('lv-type'); var sub=v('lv-sub'); var subCost=parseFloat(v('lv-sub-cost'))||0; var note=v('lv-note');
+  // build one record per day in range
+  var records=[]; var cur=new Date(dateFrom); var end=new Date(effectiveTo);
+  while(cur<=end){
+    var ds=cur.toISOString().slice(0,10);
+    records.push({driver_name:drv,date:ds,type:type,deduction_amount:perDay,
+      substitute_driver:sub,substitute_cost:subCost,note:note});
+    cur.setDate(cur.getDate()+1);
+  }
+  Promise.all(records.map(function(rec){return sbPost('driver_leaves',rec);})).then(function(results){
+    var allOk=results.every(function(r){return r.ok;});
+    if(allOk){
+      showMsg('lv-msg','Leave recorded ✓ ('+records.length+' day'+(records.length>1?'s':'')+')','ok');
+      setV('lv-deduction','');setV('lv-deduction-total','');setV('lv-sub','');setV('lv-sub-cost','');setV('lv-note','');
+      document.getElementById('lv-days-hint').textContent='';
+      loadLeaveList();
+    } else showMsg('lv-msg','Error saving one or more records','er');
   });
 }
 function loadLeaveList(){
