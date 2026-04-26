@@ -495,11 +495,15 @@ body.dark .search-item:hover{background:#3d4a5c}
             <div style="font-size:11px;color:#7a8fa6;margin-top:2px" id="sal-driver-paid-note"></div>
             <div style="font-size:11px;color:#1e7a4f;margin-top:2px" id="sal-driver-paid-hint"></div></div>
         </div>
+        <div id="sal-carry-fwd-note" style="display:none;font-size:11px;padding:5px 8px;border-radius:6px;background:#f0f4ff;margin-bottom:4px"></div>
         <div><label class="lbl">Net Payable (₹)</label>
           <input type="number" id="sal-net" placeholder="0" style="background:#e8f5e9;font-weight:800;color:#1e7a4f;width:100%"></div>
         <label class="lbl">Note</label>
         <textarea id="sal-note" rows="2"></textarea>
-        <button class="btn btn-blue" onclick="saveSalary()">💾 Save Salary Record</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-blue" id="sal-save-btn" style="flex:1" onclick="saveSalary()">💾 Save Salary Record</button>
+          <button class="btn btn-grey" id="sal-cancel-edit-btn" style="display:none;flex:none" onclick="cancelEditSalary()">✕ Cancel</button>
+        </div>
         <div id="sal-msg"></div>
       </div>
       <div class="card">
@@ -629,7 +633,11 @@ body.dark .search-item:hover{background:#3d4a5c}
         </div>
         <label class="lbl">Note</label>
         <input type="text" id="lv-note" placeholder="">
-        <button class="btn btn-blue" onclick="saveLeave()">💾 Save Leave</button>
+        <input type="hidden" id="lv-edit-id" value="0">
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-blue" id="lv-save-btn" style="flex:1" onclick="saveLeave()">💾 Save Leave</button>
+          <button class="btn btn-grey" id="lv-cancel-edit-btn" style="display:none;flex:none" onclick="cancelEditLeave()">✕ Cancel</button>
+        </div>
         <div id="lv-msg"></div>
       </div>
       <div class="card">
@@ -697,7 +705,11 @@ body.dark .search-item:hover{background:#3d4a5c}
         <select id="tp-bank-account">
           <option value="">— No bank entry —</option>
         </select>
-        <button class="btn btn-blue" onclick="saveTempoPay()">💾 Save Payment</button>
+        <input type="hidden" id="tp-edit-id" value="0">
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-blue" id="tp-save-btn" style="flex:1" onclick="saveTempoPay()">💾 Save Payment</button>
+          <button class="btn btn-grey" id="tp-cancel-edit-btn" style="display:none;flex:none" onclick="cancelEditTempoPay()">✕ Cancel</button>
+        </div>
         <div id="tp-msg"></div>
       </div>
 
@@ -2174,6 +2186,8 @@ var _salDriverData=null;
 function salaryAutoFill(){
   var drv=v('sal-driver'); var mon=v('sal-month');
   if(!drv||!mon) return;
+  window._salCarryFwd=0;
+  var cfEl=document.getElementById('sal-carry-fwd-note');if(cfEl)cfEl.style.display='none';
   var statusEl=document.getElementById('sal-autofill-status');
   statusEl.textContent='Fetching…';
   // days in month
@@ -2188,9 +2202,10 @@ function salaryAutoFill(){
     sbGetQ('driver_tempo_rent','driver_name=eq.'+encodeURIComponent(drv)+'&month=eq.'+mon),
     sbGetQ('driver_advances','driver_name=eq.'+encodeURIComponent(drv)+'&type=eq.advance&date=gte.'+monthStart+'&date=lte.'+monthEnd+'&order=date.asc'),
     sbGetQ('driver_advances','driver_name=eq.'+encodeURIComponent(drv)+'&type=eq.deduction&date=gte.'+monthStart+'&date=lte.'+monthEnd+'&order=date.asc'),
-    sbGetQ('driver_tempo_advance','driver_name=eq.'+encodeURIComponent(drv)+'&date=gte.'+monthStart+'&date=lte.'+monthEnd+'&order=date.asc')
+    sbGetQ('driver_tempo_advance','driver_name=eq.'+encodeURIComponent(drv)+'&date=gte.'+monthStart+'&date=lte.'+monthEnd+'&order=date.asc'),
+    sbGetQ('driver_advances','driver_name=eq.'+encodeURIComponent(drv)+'&type=in.(salary_cf_debit,salary_cf_credit)&date=gte.'+monthStart+'&date=lte.'+monthEnd+'&order=date.asc')
   ]).then(function(res){
-    var driverRows=res[0]||[]; var leaves=res[1]||[]; var tempoRows=res[2]||[]; var advances=res[3]||[]; var deductions=res[4]||[]; var tempoPaid=res[5]||[];
+    var driverRows=res[0]||[]; var leaves=res[1]||[]; var tempoRows=res[2]||[]; var advances=res[3]||[]; var deductions=res[4]||[]; var tempoPaid=res[5]||[]; var cfRows=res[6]||[];
     var d=driverRows[0]; if(!d) return;
     _salDriverData=d;
     // base salary
@@ -2244,12 +2259,27 @@ function salaryAutoFill(){
       tempoSec.style.display='none';
       setV('sal-tempo-deduct',0);
     }
+    // carry forward from previous month salary payment
+    var cfDebit=cfRows.filter(function(r){return r.type==='salary_cf_debit';}).reduce(function(s,r){return s+(parseFloat(r.amount)||0);},0);
+    var cfCredit=cfRows.filter(function(r){return r.type==='salary_cf_credit';}).reduce(function(s,r){return s+(parseFloat(r.amount)||0);},0);
+    var cfNet=cfCredit-cfDebit; // positive = net credit (salary goes up), negative = net debit (salary goes down)
+    window._salCarryFwd=cfNet;
+    var cfEl=document.getElementById('sal-carry-fwd-note');
+    if(cfEl){
+      if(Math.abs(cfNet)>0.01){
+        cfEl.style.display='block';
+        cfEl.innerHTML=cfNet>0
+          ?'<span style="color:#1e7a4f">↩ Carry fwd from prev month: +₹'+fmt(cfNet)+' (overpaid credit)</span>'
+          :'<span style="color:#c8382a">↩ Carry fwd from prev month: −₹'+fmt(Math.abs(cfNet))+' (short paid, debit)</span>';
+      } else {cfEl.style.display='none';}
+    }
     calcNetSalary();
     var advMsg=totalAdvance>0?' · Advance '+fmt(totalAdvance):'';
     var dedMsg=totalDeduction>0?' · Deductions '+fmt(totalDeduction):'';
     var subMsg=totalSubCost>0?' · Substitute cost (ref) '+fmt(totalSubCost):'';
     var dpMsg=totalDriverPaid>0?' · Driver paid '+fmt(totalDriverPaid):'';
-    statusEl.textContent='✓ Auto-filled: '+leaveDays+' leave day(s) · '+daysInMonth+' days in month'+(d.has_tempo?' · Tempo rent loaded':'')+advMsg+dedMsg+subMsg+dpMsg;
+    var cfMsg=Math.abs(cfNet)>0.01?' · Carry-fwd '+(cfNet>0?'+':'')+fmt(cfNet):'';
+    statusEl.textContent='✓ Auto-filled: '+leaveDays+' leave day(s) · '+daysInMonth+' days in month'+(d.has_tempo?' · Tempo rent loaded':'')+advMsg+dedMsg+subMsg+dpMsg+cfMsg;
   });
 }
 function calcTempoRent(){
@@ -2271,7 +2301,8 @@ function calcNetSalary(){
   // driver_paid = cash payments driver made towards rent (already settled portion of tempoD)
   // So: net rent still to deduct from salary = tempoD - driverPaid (driver already paid the rest in cash)
   var netTempoD=Math.max(0, tempoD - driverPaid);
-  setV('sal-net', Math.max(0, base - advD - lvD - netTempoD - otherD + bonus));
+  var cf=window._salCarryFwd||0; // positive = credit (add to salary), negative = debit (subtract)
+  setV('sal-net', Math.max(0, base - advD - lvD - netTempoD - otherD + bonus + cf));
   // update hint
   var hint=document.getElementById('sal-driver-paid-hint');
   if(hint && tempoD>0){
@@ -2354,15 +2385,22 @@ function loadSalaryList(){
         (s.note?'<div style="font-size:11px;color:#7a8fa6;margin-top:6px">📝 '+s.note+'</div>':'')+
         // Print + WhatsApp buttons (store s/tr in global cache keyed by salary id)
         (function(){window._salCache=window._salCache||{};window._salCache[s.id]={s:s,tr:tr};return'';})() +
-        '<div style="display:flex;gap:8px;margin-top:10px">'+
+        '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'+
         '<button class="btn-sm btn-grey" onclick="var c=window._salCache['+s.id+'];if(c)printSalarySlip(c.s,c.tr)">🖨 Print Slip</button>'+
         '<button class="btn-sm btn-grey" onclick="var c=window._salCache['+s.id+'];if(c)copySalaryForWhatsapp(c.s,c.tr)">📱 Copy for WhatsApp</button>'+
+        '<button class="btn-sm btn-edit" onclick="editSalaryById('+s.id+')">✏ Edit</button>'+
+        '<button class="btn-sm btn-del" onclick="delGuard(this,function(){deleteSalaryById('+s.id+');})">Del</button>'+
         '</div>'+
         '<div id="sal-wa-toast" style="display:none;background:#e8f5e9;color:#1e7a4f;padding:6px 10px;border-radius:8px;font-size:12px;margin-top:6px">Copied ✓</div>'+
         // Mark as paid section
         (!isPaid?
           '<div style="margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0">'+
-          '<div style="font-size:12px;font-weight:700;color:#1a3a5c;margin-bottom:6px">💵 Mark as Paid</div>'+
+          '<div style="font-size:12px;font-weight:700;color:#1a3a5c;margin-bottom:8px">💵 Mark as Paid</div>'+
+          '<div style="margin-bottom:8px">'+
+          '<div style="font-size:10px;color:#7a8fa6;font-family:monospace;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">AMOUNT PAYING (₹)</div>'+
+          '<input type="number" id="sal-pay-amount" value="'+s.net_paid+'" oninput="calcSalaryPayDiff('+s.net_paid+')" style="width:100%;padding:9px 12px;border:2px solid #1e7a4f;border-radius:8px;font-size:16px;font-weight:800;color:#1a3a5c;background:#e8f5e9">'+
+          '<div id="sal-pay-diff-hint" style="font-size:11px;margin-top:4px;line-height:1.5"></div>'+
+          '</div>'+
           '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
           '<input type="date" id="sal-pay-date" value="'+todayStr()+'" style="flex:1;min-width:120px;padding:6px;border:1px solid #cdd5e0;border-radius:6px;font-size:13px">'+
           '<select id="sal-pay-mode" style="flex:1;min-width:100px;padding:6px;border:1px solid #cdd5e0;border-radius:6px;font-size:13px">'+
@@ -2372,7 +2410,7 @@ function loadSalaryList(){
           '<option value="">— No bank entry —</option>'+
           (_bankAccounts||[]).map(function(a){var def=getDefaultBank();return'<option value="'+a.name+'"'+(def===a.name?' selected':'')+'>'+a.name+'</option>';}).join('')+
           '</select>'+
-          '<button class="btn-sm btn-blue" onclick="markSalaryPaid('+s.id+',\''+s.driver_name.replace(/'/g,"\\'")+'\','+s.net_paid+')">Mark Paid</button>'+
+          '<button class="btn-sm btn-blue" onclick="markSalaryPaid('+s.id+',\''+s.driver_name.replace(/'/g,"\\'")+'\','+s.net_paid+',\''+s.month+'\')">Mark Paid</button>'+
           '</div></div>':'')
         +'</div>';
     });
@@ -2423,20 +2461,49 @@ function markParttimePaid(name,amount,mon){
   });
 }
 
-function markSalaryPaid(id,driverName,netPaid){
+function calcSalaryPayDiff(netPaid){
+  var actual=parseFloat(document.getElementById('sal-pay-amount').value)||0;
+  var diff=+(actual-netPaid).toFixed(2);
+  var hintEl=document.getElementById('sal-pay-diff-hint');
+  if(!hintEl) return;
+  if(Math.abs(diff)<0.01){
+    hintEl.innerHTML='<span style="color:#1e7a4f">✓ Paying exact amount</span>';
+  } else if(diff>0){
+    hintEl.innerHTML='<span style="color:#1e7a4f">Overpaying ₹'+fmt(diff)+' → credit of ₹'+fmt(diff)+' will carry forward to next month salary</span>';
+  } else {
+    hintEl.innerHTML='<span style="color:#c8382a">Short by ₹'+fmt(Math.abs(diff))+' → ₹'+fmt(Math.abs(diff))+' will be added (debit) to next month salary</span>';
+  }
+}
+function getNextMonthStr(mon){
+  var y=parseInt(mon.slice(0,4)); var m=parseInt(mon.slice(5,7));
+  m++; if(m>12){m=1;y++;}
+  return y+'-'+(m<10?'0':'')+m;
+}
+function markSalaryPaid(id,driverName,netPaid,month){
   var date=v('sal-pay-date')||todayStr();
   var mode=v('sal-pay-mode')||'Cash';
   var bankAcct=v('sal-pay-bank')||'';
+  var actualPaid=parseFloat(document.getElementById('sal-pay-amount')?document.getElementById('sal-pay-amount').value:netPaid)||netPaid;
+  var diff=+(actualPaid-netPaid).toFixed(2);
   // fetch current note to append audit trail
   sbGetQ('driver_salary','id=eq.'+id).then(function(rows){
     var cur=rows&&rows.length?rows[0]:{};
-    var note=(cur.note||'')+' | Paid '+date+' via '+mode+(bankAcct?' ['+bankAcct+']':'');
+    var cfNote=Math.abs(diff)>0.01?(diff>0?' [Overpaid ₹'+fmt(diff)+' → credit next month]':' [Short ₹'+fmt(Math.abs(diff))+' → debit next month]'):'';
+    var note=(cur.note||'')+' | Paid ₹'+fmt(actualPaid)+' on '+date+' via '+mode+(bankAcct?' ['+bankAcct+']':'')+cfNote;
     fetch(BASE+'/driver_salary?id=eq.'+id,{method:'PATCH',headers:hdrs({'Prefer':'return=minimal'}),
       body:JSON.stringify({paid_date:date,note:note})}).then(function(){
       if(bankAcct){
-        var amt=parseFloat(netPaid)||parseFloat(cur.net_paid)||0;
-        var desc='Salary — '+(driverName||cur.driver_name||'Driver')+' '+(cur.month||'');
-        sbPost('bank_transactions',{account_name:bankAcct,date:date,type:'debit',amount:amt,description:desc,reference:'Salary'});
+        var desc='Salary — '+(driverName||cur.driver_name||'Driver')+' '+(month||cur.month||'');
+        sbPost('bank_transactions',{account_name:bankAcct,date:date,type:'debit',amount:actualPaid,description:desc,reference:'Salary'});
+      }
+      // Carry forward difference to next month
+      if(Math.abs(diff)>0.01){
+        var drv=driverName||cur.driver_name;
+        var mon=month||cur.month;
+        var nextMon=getNextMonthStr(mon);
+        var cfType=diff>0?'salary_cf_credit':'salary_cf_debit';
+        var cfReason=(diff>0?'Overpaid ':'Short paid ')+mon+' salary by ₹'+fmt(Math.abs(diff));
+        sbPost('driver_advances',{driver_name:drv,date:nextMon+'-01',amount:Math.abs(diff),type:cfType,reason:cfReason});
       }
       loadSalaryList();
     });
@@ -2561,21 +2628,19 @@ function autoFillTempoPay(){
 function saveTempoPay(){
   var drv=v('tp-driver'); var date=v('tp-date'); var amt=parseFloat(v('tp-amount'));
   var bankAcct=v('tp-bank-account');
+  var editId=parseInt(v('tp-edit-id'))||0;
   if(!drv||!date||!amt){showMsg('tp-msg','Fill driver, date and amount','er');return;}
-  sbPost('driver_tempo_advance',{
-    driver_name:drv, tempo_name:v('tp-tempo'), date:date, amount:amt,
-    period:v('tp-period'), days_covered:parseInt(v('tp-days'))||0, note:v('tp-note')
-  }).then(function(r){
+  var body={driver_name:drv,tempo_name:v('tp-tempo'),date:date,amount:amt,period:v('tp-period'),days_covered:parseInt(v('tp-days'))||0,note:v('tp-note')};
+  var promise=editId>0 ? sbPatch('driver_tempo_advance','id=eq.'+editId,body) : sbPost('driver_tempo_advance',body);
+  promise.then(function(r){
     if(r.ok){
-      var note=v('tp-note');
-      var msg='Payment recorded ✓';
-      if(bankAcct){
+      if(bankAcct&&!editId){
         sbPost('bank_transactions',{account_name:bankAcct,date:date,type:'credit',amount:amt,
-          description:'Tempo rent — '+drv+(note?' ('+note+')':''),reference:drv});
-        msg='Payment recorded + bank entry ✓';
+          description:'Tempo rent — '+drv+(v('tp-note')?' ('+v('tp-note')+')':''),reference:drv});
       }
-      showMsg('tp-msg',msg,'ok');
+      showMsg('tp-msg',(editId>0?'Updated':'Payment recorded'+(bankAcct?' + bank entry':''))+' ✓','ok');
       setV('tp-amount',''); setV('tp-days',''); setV('tp-note',''); setV('tp-bank-account','');
+      cancelEditTempoPay();
       loadTempoPayList();
     } else r.text().then(function(t){showMsg('tp-msg','Error: '+t,'er');});
   });
@@ -2618,10 +2683,36 @@ function loadTempoPayList(){
         '<div style="font-size:11px;color:#7a8fa6">'+r.date+' · '+r.driver_name+(r.tempo_name?' · '+r.tempo_name:'')+(r.days_covered?' · '+r.days_covered+' days':'')+'</div>'+
         (r.note?'<div style="font-size:11px;color:#7a8fa6">'+r.note+'</div>':'')+
         '</div>'+
+        '<div style="display:flex;gap:4px">'+
+        '<button class="btn-sm btn-edit" onclick="editTempoPayById('+r.id+')">✏</button>'+
         '<button class="btn-sm btn-del" onclick="delGuard(this,function(){deleteTempoPay('+r.id+');})">Del</button>'+
+        '</div>'+
         '</div></div>';
     }).join('');
   });
+}
+function editTempoPayById(id){
+  sbGetQ('driver_tempo_advance','id=eq.'+id).then(function(rows){
+    if(!rows||!rows.length) return;
+    var r=rows[0];
+    setV('tp-date',r.date||'');
+    setV('tp-amount',r.amount||'');
+    setV('tp-driver',r.driver_name||'');
+    setV('tp-tempo',r.tempo_name||'');
+    setV('tp-period',r.period||'daily');
+    setV('tp-days',r.days_covered||'');
+    setV('tp-note',r.note||'');
+    setV('tp-edit-id',r.id);
+    var saveBtn=document.getElementById('tp-save-btn');if(saveBtn)saveBtn.textContent='✏ Update Payment';
+    var cancelBtn=document.getElementById('tp-cancel-edit-btn');if(cancelBtn)cancelBtn.style.display='inline-block';
+    showDriverTab('tempopay');
+    window.scrollTo(0,0);
+  });
+}
+function cancelEditTempoPay(){
+  setV('tp-edit-id','0');
+  var saveBtn=document.getElementById('tp-save-btn');if(saveBtn)saveBtn.textContent='💾 Save Payment';
+  var cancelBtn=document.getElementById('tp-cancel-edit-btn');if(cancelBtn)cancelBtn.style.display='none';
 }
 function deleteTempoPay(id){
   sbDelete('driver_tempo_advance',id).then(function(){loadTempoPayList();});
@@ -2657,9 +2748,19 @@ function autoFillLeaveDeduction(manualDeductEdit){
 function saveLeave(){
   var drv=v('lv-driver'); var dateFrom=v('lv-date-from'); var dateTo=v('lv-date-to');
   if(!drv||!dateFrom){showMsg('lv-msg','Select driver and date','er');return;}
+  var editId=parseInt(v('lv-edit-id'))||0;
   var effectiveTo=dateTo&&dateTo>=dateFrom?dateTo:dateFrom;
   var perDay=parseFloat(v('lv-deduction'))||0;
   var type=v('lv-type'); var sub=v('lv-sub'); var subCost=parseFloat(v('lv-sub-cost'))||0; var note=v('lv-note');
+  if(editId>0){
+    // edit single record
+    var body={driver_name:drv,date:dateFrom,type:type,deduction_amount:perDay,substitute_driver:sub,substitute_cost:subCost,note:note};
+    sbPatch('driver_leaves','id=eq.'+editId,body).then(function(r){
+      if(r.ok){showMsg('lv-msg','Leave updated ✓','ok');cancelEditLeave();loadLeaveList();}
+      else showMsg('lv-msg','Error updating','er');
+    });
+    return;
+  }
   // build one record per day in range
   var records=[]; var cur=new Date(dateFrom); var end=new Date(effectiveTo);
   while(cur<=end){
@@ -2703,7 +2804,10 @@ function loadLeaveList(){
           (l.substitute_driver?'<div style="font-size:11px;color:#7a8fa6">Sub: '+l.substitute_driver+(l.substitute_cost?' · '+fmt(l.substitute_cost):'')+'</div>':'')+
           (l.note?'<div style="font-size:11px;color:#7a8fa6">'+l.note+'</div>':'')+
           '</div>'+
+          '<div style="display:flex;gap:4px">'+
+          '<button class="btn-sm btn-edit" onclick="editLeaveById('+l.id+')">✏</button>'+
           '<button class="btn-sm btn-del" onclick="delGuard(this,function(){deleteLeave('+l.id+');})">Del</button>'+
+          '</div>'+
           '</div>'+
           // inline deduction edit
           '<div style="display:flex;align-items:center;gap:8px;margin-top:8px;padding-top:8px;border-top:1px solid #e2e8f0">'+
@@ -2718,6 +2822,31 @@ function loadLeaveList(){
 function updateLeaveDeduction(id){
   var amt=parseFloat(document.getElementById('lv-ded-'+id).value)||0;
   sbPatch('driver_leaves','id=eq.'+id,{deduction_amount:amt}).then(function(){loadLeaveList();});
+}
+function editLeaveById(id){
+  sbGetQ('driver_leaves','id=eq.'+id).then(function(rows){
+    if(!rows||!rows.length) return;
+    var l=rows[0];
+    setV('lv-driver',l.driver_name||'');
+    setV('lv-type',l.type||'unpaid');
+    setV('lv-date-from',l.date||'');
+    setV('lv-date-to',l.date||'');
+    setV('lv-deduction',l.deduction_amount||0);
+    setV('lv-sub',l.substitute_driver||'');
+    setV('lv-sub-cost',l.substitute_cost||0);
+    setV('lv-note',l.note||'');
+    setV('lv-edit-id',l.id);
+    var saveBtn=document.getElementById('lv-save-btn');if(saveBtn)saveBtn.textContent='✏ Update Leave';
+    var cancelBtn=document.getElementById('lv-cancel-edit-btn');if(cancelBtn)cancelBtn.style.display='inline-block';
+    showDriverTab('leaves');
+    window.scrollTo(0,0);
+  });
+}
+function cancelEditLeave(){
+  setV('lv-edit-id','0');
+  var saveBtn=document.getElementById('lv-save-btn');if(saveBtn)saveBtn.textContent='💾 Save Leave';
+  var cancelBtn=document.getElementById('lv-cancel-edit-btn');if(cancelBtn)cancelBtn.style.display='none';
+  setV('lv-deduction','');setV('lv-deduction-total','');setV('lv-sub','');setV('lv-sub-cost','');setV('lv-note','');
 }
 function deleteLeave(id){
   sbDelete('driver_leaves',id).then(function(){loadLeaveList();});
@@ -3962,9 +4091,17 @@ function editSalaryById(id){
     setV('sal-edit-id',s.id);
     var btn=document.getElementById('sal-save-btn');
     if(btn) btn.textContent='✏️ Update Salary';
+    var cancelBtn=document.getElementById('sal-cancel-edit-btn');
+    if(cancelBtn) cancelBtn.style.display='inline-block';
     showDriverTab('salary');
     window.scrollTo(0,0);
   });
+}
+function cancelEditSalary(){
+  setV('sal-edit-id','0');
+  var btn=document.getElementById('sal-save-btn');if(btn)btn.textContent='💾 Save Salary Record';
+  var cancelBtn=document.getElementById('sal-cancel-edit-btn');if(cancelBtn)cancelBtn.style.display='none';
+  window._salCarryFwd=0;
 }
 function deleteSalaryById(id){
   if(!confirm('Delete this salary record?')) return;
