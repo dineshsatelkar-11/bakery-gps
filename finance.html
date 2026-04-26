@@ -2262,15 +2262,15 @@ function salaryAutoFill(){
     // carry forward from previous month salary payment
     var cfDebit=cfRows.filter(function(r){return r.type==='salary_cf_debit';}).reduce(function(s,r){return s+(parseFloat(r.amount)||0);},0);
     var cfCredit=cfRows.filter(function(r){return r.type==='salary_cf_credit';}).reduce(function(s,r){return s+(parseFloat(r.amount)||0);},0);
-    var cfNet=cfCredit-cfDebit; // positive = net credit (salary goes up), negative = net debit (salary goes down)
+    var cfNet=cfDebit-cfCredit; // positive = short paid prev month (salary goes up), negative = overpaid prev month (salary goes down)
     window._salCarryFwd=cfNet;
     var cfEl=document.getElementById('sal-carry-fwd-note');
     if(cfEl){
       if(Math.abs(cfNet)>0.01){
         cfEl.style.display='block';
         cfEl.innerHTML=cfNet>0
-          ?'<span style="color:#1e7a4f">↩ Carry fwd from prev month: +₹'+fmt(cfNet)+' (overpaid credit)</span>'
-          :'<span style="color:#c8382a">↩ Carry fwd from prev month: −₹'+fmt(Math.abs(cfNet))+' (short paid, debit)</span>';
+          ?'<span style="color:#c8382a">↩ Carry fwd from prev month: +₹'+fmt(cfNet)+' (short paid, adding to salary)</span>'
+          :'<span style="color:#1e7a4f">↩ Carry fwd from prev month: −₹'+fmt(Math.abs(cfNet))+' (overpaid credit, deducting from salary)</span>';
       } else {cfEl.style.display='none';}
     }
     calcNetSalary();
