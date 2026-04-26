@@ -490,7 +490,9 @@ body.dark .search-item:hover{background:#3d4a5c}
         <div class="row2">
           <div><label class="lbl">Bonus</label>
             <input type="number" id="sal-bonus" placeholder="0" oninput="calcNetSalary()"></div>
-          <div></div>
+          <div><label class="lbl">Driver Paid (₹) <span style="font-size:10px;color:#1e7a4f">reduces net payable</span></label>
+            <input type="number" id="sal-driver-paid" placeholder="0" oninput="calcNetSalary()" style="background:#f0fdf4;color:#1e7a4f;font-weight:700">
+            <div style="font-size:11px;color:#1e7a4f;margin-top:2px" id="sal-driver-paid-note"></div></div>
         </div>
         <div><label class="lbl">Net Payable (₹)</label>
           <input type="number" id="sal-net" placeholder="0" style="background:#e8f5e9;font-weight:800;color:#1e7a4f;width:100%"></div>
@@ -2175,9 +2177,10 @@ function salaryAutoFill(){
     sbGetQ('driver_leaves','driver_name=eq.'+encodeURIComponent(drv)+'&date=gte.'+monthStart+'&date=lte.'+monthEnd),
     sbGetQ('driver_tempo_rent','driver_name=eq.'+encodeURIComponent(drv)+'&month=eq.'+mon),
     sbGetQ('driver_advances','driver_name=eq.'+encodeURIComponent(drv)+'&type=eq.advance&date=gte.'+monthStart+'&date=lte.'+monthEnd+'&order=date.asc'),
-    sbGetQ('driver_advances','driver_name=eq.'+encodeURIComponent(drv)+'&type=eq.deduction&date=gte.'+monthStart+'&date=lte.'+monthEnd+'&order=date.asc')
+    sbGetQ('driver_advances','driver_name=eq.'+encodeURIComponent(drv)+'&type=eq.deduction&date=gte.'+monthStart+'&date=lte.'+monthEnd+'&order=date.asc'),
+    sbGetQ('driver_tempo_advance','driver_name=eq.'+encodeURIComponent(drv)+'&date=gte.'+monthStart+'&date=lte.'+monthEnd+'&order=date.asc')
   ]).then(function(res){
-    var driverRows=res[0]||[]; var leaves=res[1]||[]; var tempoRows=res[2]||[]; var advances=res[3]||[]; var deductions=res[4]||[];
+    var driverRows=res[0]||[]; var leaves=res[1]||[]; var tempoRows=res[2]||[]; var advances=res[3]||[]; var deductions=res[4]||[]; var tempoPaid=res[5]||[];
     var d=driverRows[0]; if(!d) return;
     _salDriverData=d;
     // base salary
@@ -2200,6 +2203,13 @@ function salaryAutoFill(){
     var noteEl=document.getElementById('sal-other-deduct-note');
     if(noteEl) noteEl.textContent=deductions.length>0
       ? deductions.map(function(a){return a.reason||'Deduction';}).join(', ')+' ('+deductions.length+' item'+(deductions.length>1?'s':'')+')'
+      : '';
+    // driver paid (tempo rent advance payments this month)
+    var totalDriverPaid=tempoPaid.reduce(function(s,a){return s+(parseFloat(a.amount)||0);},0);
+    setV('sal-driver-paid', totalDriverPaid||'');
+    var dpNoteEl=document.getElementById('sal-driver-paid-note');
+    if(dpNoteEl) dpNoteEl.textContent=tempoPaid.length>0
+      ? tempoPaid.length+' payment'+(tempoPaid.length>1?'s':'')+' from driver_tempo_advance'
       : '';
     // tempo rent section
     var tempoSec=document.getElementById('sal-tempo-section');
@@ -2228,7 +2238,8 @@ function salaryAutoFill(){
     var advMsg=totalAdvance>0?' · Advance '+fmt(totalAdvance):'';
     var dedMsg=totalDeduction>0?' · Deductions '+fmt(totalDeduction):'';
     var subMsg=totalSubCost>0?' · Substitute cost (ref) '+fmt(totalSubCost):'';
-    statusEl.textContent='✓ Auto-filled: '+leaveDays+' leave day(s) · '+daysInMonth+' days in month'+(d.has_tempo?' · Tempo rent loaded':'')+advMsg+dedMsg+subMsg;
+    var dpMsg=totalDriverPaid>0?' · Driver paid '+fmt(totalDriverPaid):'';
+    statusEl.textContent='✓ Auto-filled: '+leaveDays+' leave day(s) · '+daysInMonth+' days in month'+(d.has_tempo?' · Tempo rent loaded':'')+advMsg+dedMsg+subMsg+dpMsg;
   });
 }
 function calcTempoRent(){
@@ -2246,13 +2257,15 @@ function calcNetSalary(){
   var tempoD=parseFloat(v('sal-tempo-deduct'))||0;
   var otherD=parseFloat(v('sal-other-deduct'))||0;
   var bonus=parseFloat(v('sal-bonus'))||0;
-  setV('sal-net', Math.max(0, base - advD - lvD - tempoD - otherD + bonus));
+  var driverPaid=parseFloat(v('sal-driver-paid'))||0;
+  setV('sal-net', Math.max(0, base - advD - lvD - tempoD - otherD - driverPaid + bonus));
 }
 function saveSalary(){
   var drv=v('sal-driver'); var mon=v('sal-month');
   if(!drv||!mon){showMsg('sal-msg','Select driver and month','er');return;}
   var base=parseFloat(v('sal-base'))||0;
   var net=parseFloat(v('sal-net'))||0;
+  var driverPaid=parseFloat(v('sal-driver-paid'))||0;
   var body={driver_name:drv,month:mon,base_salary:base,
     advance_given:parseFloat(v('sal-adv-given'))||0,
     advance_deducted:parseFloat(v('sal-adv-deduct'))||0,
@@ -2261,6 +2274,7 @@ function saveSalary(){
     substitute_cost:parseFloat(v('sal-sub-cost'))||0,
     other_deduction:parseFloat(v('sal-other-deduct'))||0,
     bonus:parseFloat(v('sal-bonus'))||0,
+    driver_paid:driverPaid,
     net_paid:net,note:v('sal-note')};
   // Save tempo rent record for this month (snapshot the rate)
   var saveTempoPromise=Promise.resolve();
@@ -2314,6 +2328,7 @@ function loadSalaryList(){
         (tr?'<div class="sum-row"><span class="sum-lbl">Tempo Rent ('+tr.tempo_name+' · '+tr.days_used+'/'+tr.days_in_month+'d)</span><span class="sum-val" style="color:#c8382a">− '+fmt(tr.rent_amount)+'</span></div>':'')+
         '<div class="sum-row"><span class="sum-lbl">Advance Deducted</span><span class="sum-val" style="color:#c8382a">− '+fmt(s.advance_deducted)+'</span></div>'+
         (s.other_deduction?'<div class="sum-row"><span class="sum-lbl">Other Deductions</span><span class="sum-val" style="color:#c8382a">− '+fmt(s.other_deduction)+'</span></div>':'')+
+        (s.driver_paid?'<div class="sum-row"><span class="sum-lbl">💚 Driver Paid (Rent/Amount)</span><span class="sum-val" style="color:#1e7a4f">− '+fmt(s.driver_paid)+'</span></div>':'')+
         '<div class="sum-row"><span class="sum-lbl">Bonus</span><span class="sum-val" style="color:#1e7a4f">+ '+fmt(s.bonus)+'</span></div>'+
         '<hr class="divider">'+
         '<div class="sum-row total"><span class="sum-lbl">Net Payable</span><span class="sum-val">'+fmt(s.net_paid)+'</span></div>'+
@@ -3894,6 +3909,7 @@ function editSalaryById(id){
     setV('sal-adv-given',s.advance_given||'');
     setV('sal-adv-deduct',s.advance_deducted||'');
     setV('sal-other-deduct',s.other_deductions||'');
+    setV('sal-driver-paid',s.driver_paid||'');
     setV('sal-net',s.net_paid||'');
     setV('sal-note',s.note||'');
     // store id for update
