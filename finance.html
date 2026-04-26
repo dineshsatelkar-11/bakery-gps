@@ -571,6 +571,10 @@ body.dark .search-item:hover{background:#3d4a5c}
         </div>
         <label class="lbl">Reason</label>
         <input type="text" id="ded-reason" placeholder="Material missing, damage, fuel misuse…">
+        <label class="lbl">Paid From Account (if we paid on driver's behalf)</label>
+        <select id="ded-bank-account">
+          <option value="">— No bank entry —</option>
+        </select>
         <div style="display:flex;gap:8px">
           <button class="btn btn-red" id="ded-save-btn" style="flex:1" onclick="saveDeduction()">⚠️ Record Charge</button>
           <button class="btn btn-grey" id="ded-cancel-btn" style="display:none;flex:none" onclick="cancelEditDeduction()">✕ Cancel</button>
@@ -677,6 +681,10 @@ body.dark .search-item:hover{background:#3d4a5c}
         </div>
         <label class="lbl">Note</label>
         <input type="text" id="tp-note" placeholder="">
+        <label class="lbl">Credited to Account (optional)</label>
+        <select id="tp-bank-account">
+          <option value="">— No bank entry —</option>
+        </select>
         <button class="btn btn-blue" onclick="saveTempoPay()">💾 Save Payment</button>
         <div id="tp-msg"></div>
       </div>
@@ -2458,12 +2466,20 @@ function saveDeduction(){
   if(!drv||!amt){showMsg('ded-msg','Fill driver and amount','er');return;}
   var reason=v('ded-reason');
   if(!reason){showMsg('ded-msg','Reason is required for charges','er');return;}
-  var body={driver_name:drv,date:v('ded-date'),amount:amt,type:'deduction',reason:reason};
+  var date=v('ded-date'); var bankAcct=v('ded-bank-account');
+  var body={driver_name:drv,date:date,amount:amt,type:'deduction',reason:reason};
   var editId=parseInt(v('ded-edit-id'))||0;
   var promise=editId>0 ? sbPatch('driver_advances','id=eq.'+editId,body) : sbPost('driver_advances',body);
   promise.then(function(r){
-    if(r.ok){showMsg('ded-msg',(editId>0?'Updated':'Charge recorded')+' ✓','ok');setV('ded-amount','');setV('ded-reason','');cancelEditDeduction();loadDeductionList();}
-    else showMsg('ded-msg','Error saving','er');
+    if(r.ok){
+      if(bankAcct&&!editId){
+        sbPost('bank_transactions',{account_name:bankAcct,date:date,type:'debit',amount:amt,
+          description:'Driver charge paid — '+drv+' ('+reason+')',reference:drv});
+      }
+      showMsg('ded-msg',(editId>0?'Updated':'Charge recorded'+(bankAcct?' + bank entry':''))+' ✓','ok');
+      setV('ded-amount','');setV('ded-reason','');setV('ded-bank-account','');
+      cancelEditDeduction();loadDeductionList();
+    } else showMsg('ded-msg','Error saving','er');
   });
 }
 function loadDeductionList(){
@@ -2510,14 +2526,22 @@ function autoFillTempoPay(){
 }
 function saveTempoPay(){
   var drv=v('tp-driver'); var date=v('tp-date'); var amt=parseFloat(v('tp-amount'));
+  var bankAcct=v('tp-bank-account');
   if(!drv||!date||!amt){showMsg('tp-msg','Fill driver, date and amount','er');return;}
   sbPost('driver_tempo_advance',{
     driver_name:drv, tempo_name:v('tp-tempo'), date:date, amount:amt,
     period:v('tp-period'), days_covered:parseInt(v('tp-days'))||0, note:v('tp-note')
   }).then(function(r){
     if(r.ok){
-      showMsg('tp-msg','Payment recorded ✓','ok');
-      setV('tp-amount',''); setV('tp-days',''); setV('tp-note','');
+      var note=v('tp-note');
+      var msg='Payment recorded ✓';
+      if(bankAcct){
+        sbPost('bank_transactions',{account_name:bankAcct,date:date,type:'credit',amount:amt,
+          description:'Tempo rent — '+drv+(note?' ('+note+')':''),reference:drv});
+        msg='Payment recorded + bank entry ✓';
+      }
+      showMsg('tp-msg',msg,'ok');
+      setV('tp-amount',''); setV('tp-days',''); setV('tp-note',''); setV('tp-bank-account','');
       loadTempoPayList();
     } else r.text().then(function(t){showMsg('tp-msg','Error: '+t,'er');});
   });
@@ -2959,6 +2983,16 @@ function loadBankAccounts(){
     if(exBank){
       exBank.innerHTML='<option value="">— No bank entry —</option>'+opts;
       if(def) exBank.value=def;
+    }
+    var tpBank=document.getElementById('tp-bank-account');
+    if(tpBank){
+      tpBank.innerHTML='<option value="">— No bank entry —</option>'+opts;
+      if(def) tpBank.value=def;
+    }
+    var dedBank=document.getElementById('ded-bank-account');
+    if(dedBank){
+      dedBank.innerHTML='<option value="">— No bank entry —</option>'+opts;
+      if(def) dedBank.value=def;
     }
     var defSel=document.getElementById('bk-default-select');
     if(defSel){
