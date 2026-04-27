@@ -318,6 +318,7 @@ CREATE POLICY "anon_all" ON fin_parties FOR ALL USING (TRUE) WITH CHECK (TRUE);
 -- ================================================================
 ALTER TABLE bank_transactions ADD COLUMN IF NOT EXISTS account_name TEXT NOT NULL DEFAULT '';
 ALTER TABLE driver_advances   ADD COLUMN IF NOT EXISTS type TEXT NOT NULL DEFAULT 'advance';
+ALTER TABLE driver_advances   ADD COLUMN IF NOT EXISTS bank_account TEXT DEFAULT '';
 ALTER TABLE loans ADD COLUMN IF NOT EXISTS down_payment  NUMERIC DEFAULT 0;
 ALTER TABLE loans ADD COLUMN IF NOT EXISTS vehicle_cost  NUMERIC DEFAULT 0;
 ALTER TABLE fin_drivers ADD COLUMN IF NOT EXISTS has_tempo   BOOLEAN DEFAULT FALSE;

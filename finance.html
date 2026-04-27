@@ -387,7 +387,7 @@ body.dark .search-item:hover{background:#3d4a5c}
   <!-- ══ DRIVERS ══ -->
   <div class="page" id="tab-drivers">
     <!-- Sub-tabs -->
-    <div style="display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px">
+    <div style="display:flex;gap:8px;margin-bottom:8px;overflow-x:auto;padding-bottom:4px">
       <button class="btn-sm btn-blue" id="dstab-txns" onclick="showDriverTab('txns')">📋 All Txns</button>
       <button class="btn-sm btn-grey" id="dstab-salary" onclick="showDriverTab('salary')">💰 Salary</button>
       <button class="btn-sm btn-grey" id="dstab-parttime" onclick="showDriverTab('parttime')">🕐 Part-time</button>
@@ -396,6 +396,9 @@ body.dark .search-item:hover{background:#3d4a5c}
       <button class="btn-sm btn-grey" id="dstab-leaves" onclick="showDriverTab('leaves')">🏖 Leaves</button>
       <button class="btn-sm btn-grey" id="dstab-tempopay" onclick="showDriverTab('tempopay')">🚐 Tempo Rent</button>
       <button class="btn-sm btn-grey" id="dstab-manage" onclick="showDriverTab('manage')">👤 Manage</button>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:6px">
+      <button class="btn-sm btn-grey" onclick="refreshDriverTab()" style="font-size:12px">🔄 Refresh</button>
     </div>
 
     <!-- All Transactions -->
@@ -496,6 +499,7 @@ body.dark .search-item:hover{background:#3d4a5c}
             <div style="font-size:11px;color:#1e7a4f;margin-top:2px" id="sal-driver-paid-hint"></div></div>
         </div>
         <div id="sal-carry-fwd-note" style="display:none;font-size:11px;padding:5px 8px;border-radius:6px;background:#f0f4ff;margin-bottom:4px"></div>
+        <div id="sal-adv-excess-note" style="display:none;font-size:11px;padding:5px 8px;border-radius:6px;background:#fde8e8;margin-bottom:4px"></div>
         <div><label class="lbl">Net Payable (₹)</label>
           <input type="number" id="sal-net" placeholder="0" style="background:#e8f5e9;font-weight:800;color:#1e7a4f;width:100%"></div>
         <label class="lbl">Note</label>
@@ -508,11 +512,13 @@ body.dark .search-item:hover{background:#3d4a5c}
       </div>
       <div class="card">
         <div class="card-title">📋 Salary Records</div>
-        <div class="row2" style="margin-bottom:8px">
-          <select id="sal-list-driver" onchange="loadSalaryList()"></select>
-          <input type="month" id="sal-list-month" onchange="loadSalaryList()">
+        <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
+          <select id="sal-list-driver" onchange="loadSalaryList()" style="flex:1"></select>
+          <input type="month" id="sal-list-month" onchange="loadSalaryList()" style="flex:1" placeholder="All months">
+          <button class="btn-sm btn-grey" onclick="loadSalaryList()" style="flex:none">🔄</button>
         </div>
-        <div id="salaryList"><div class="empty">Select driver & month</div></div>
+        <div style="font-size:10px;color:#7a8fa6;margin-bottom:6px;font-family:monospace">Leave month blank to see all records. Latest first.</div>
+        <div id="salaryList"><div class="empty">Select driver</div></div>
       </div>
     </div>
 
@@ -558,7 +564,12 @@ body.dark .search-item:hover{background:#3d4a5c}
       </div>
       <div class="card">
         <div class="card-title">📋 Advance History</div>
-        <select id="adv-list-driver" onchange="loadAdvanceList()"></select>
+        <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
+          <select id="adv-list-driver" onchange="loadAdvanceList()" style="flex:1"></select>
+          <input type="month" id="adv-list-month" onchange="loadAdvanceList()" style="flex:1" placeholder="All months">
+          <button class="btn-sm btn-grey" onclick="loadAdvanceList()" style="flex:none">🔄</button>
+        </div>
+        <div style="font-size:10px;color:#7a8fa6;margin-bottom:6px;font-family:monospace">Leave month blank to see all. Latest first.</div>
         <div id="advanceList"><div class="empty">Select driver</div></div>
       </div>
     </div>
@@ -1501,6 +1512,14 @@ function showDriverTab(t){
   if(t==='parttime'){setV('pt-month',thisMonth());loadParttimeList();}
   if(t==='tempopay'){initTempoPayTab();}
 }
+function refreshDriverTab(){
+  // Reload whichever sub-tab is currently visible
+  var tabs=['txns','salary','parttime','advance','deduct','leaves','tempopay','manage'];
+  for(var i=0;i<tabs.length;i++){
+    var el=document.getElementById('dsec-'+tabs[i]);
+    if(el&&el.style.display!=='none'){showDriverTab(tabs[i]);break;}
+  }
+}
 function setDriverTxnFilter(range){
   var now=new Date(); var y=now.getFullYear(); var m=now.getMonth();
   var from='',to='';
@@ -1553,7 +1572,8 @@ function loadDriverTxns(){
     });
     advs.forEach(function(r){
       var isAdv=r.type==='advance';
-      rows.push({id:r.id,date:r.date,driver:r.driver_name,label:isAdv?'📤 Advance':'⚠️ Deduction',sub:r.reason||'',amount:r.amount,type:r.type,note:''});
+      var bankLabel=r.bank_account?('🏦 '+r.bank_account):'💵 Cash';
+      rows.push({id:r.id,date:r.date,driver:r.driver_name,label:isAdv?'📤 Advance':'⚠️ Deduction',sub:r.reason||'',amount:r.amount,type:r.type,note:isAdv?bankLabel:''});
     });
     rows.sort(function(a,b){return b.date.localeCompare(a.date);});
 
@@ -1568,13 +1588,18 @@ function loadDriverTxns(){
         var dSals=sals.filter(function(r){return r.driver_name===d;});
         var dAdvs=advs.filter(function(r){return r.driver_name===d;});
         var totalBase    =dSals.reduce(function(s,r){return s+(parseFloat(r.base_salary)||0);},0);
-        var totalAdvGiven=dSals.reduce(function(s,r){return s+(parseFloat(r.advance_given)||0);},0);
         var totalNetPaid =dSals.reduce(function(s,r){return s+(parseFloat(r.net_paid)||0);},0);
+        var totalAdvGiven=dSals.reduce(function(s,r){return s+(parseFloat(r.advance_given)||0);},0);
+        // Owner still needs to pay = net_paid of UNPAID salary records only
+        var ownerOwes    =dSals.filter(function(r){return !r.paid_date;}).reduce(function(s,r){return s+(parseFloat(r.net_paid)||0);},0);
+        // Salary already paid by owner (records with paid_date)
+        var alreadyPaid  =dSals.filter(function(r){return !!r.paid_date;}).reduce(function(s,r){return s+(parseFloat(r.net_paid)||0);},0);
+        // Separate advances not yet deducted from any salary
         var totalSepAdv  =dAdvs.filter(function(r){return r.type==='advance';}).reduce(function(s,r){return s+(parseFloat(r.amount)||0);},0);
         var totalDeduct  =dAdvs.filter(function(r){return r.type==='deduction';}).reduce(function(s,r){return s+(parseFloat(r.amount)||0);},0);
-        var totalPaid    =totalAdvGiven+totalNetPaid;
-        var outstanding  =totalBase-totalPaid-totalDeduct;
-        var isOwed=outstanding>0;
+        // outstanding: positive = owner owes driver, negative = driver owes owner (advance excess)
+        var outstanding  =ownerOwes;
+        var isOwed=outstanding>0.01;
         return'<div class="card" style="margin-bottom:6px;padding:12px;border-left:4px solid '+(isOwed?'#c8382a':'#1e7a4f')+'">'+
           '<div style="font-weight:800;font-size:14px;margin-bottom:10px;color:#1a3a5c">👤 '+d+'</div>'+
           '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:10px">'+
@@ -1587,7 +1612,7 @@ function loadDriverTxns(){
               '<div style="font-size:9px;color:#7a8fa6;text-transform:uppercase;font-family:monospace;margin-top:2px">Salary Advance</div></div>':
             '<div></div>')+
             '<div style="background:#e8f5e9;border-radius:8px;padding:8px;text-align:center">'+
-              '<div style="font-size:13px;font-weight:800;color:#1e7a4f">₹'+fmt(totalNetPaid)+'</div>'+
+              '<div style="font-size:13px;font-weight:800;color:#1e7a4f">₹'+fmt(alreadyPaid)+'</div>'+
               '<div style="font-size:9px;color:#7a8fa6;text-transform:uppercase;font-family:monospace;margin-top:2px">Salary Paid</div></div>'+
             (totalDeduct>0?
             '<div style="background:#fef2f2;border-radius:8px;padding:8px;text-align:center">'+
@@ -1595,9 +1620,9 @@ function loadDriverTxns(){
               '<div style="font-size:9px;color:#7a8fa6;text-transform:uppercase;font-family:monospace;margin-top:2px">Deductions</div></div>':
             '<div></div>')+
           '</div>'+
-          '<div style="background:'+(isOwed?'#fef2f2':'#fff8e1')+';border-radius:10px;padding:10px;display:flex;justify-content:space-between;align-items:center">'+
-            '<div style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:0.5px">'+(isOwed?'💸 You Owe Driver':'🔄 Driver Owes You (Advance Extra)')+'</div>'+
-            '<div style="font-size:18px;font-weight:900;color:'+(isOwed?'#c8382a':'#c07000')+'">₹'+fmt(Math.abs(outstanding))+'</div>'+
+          '<div style="background:'+(isOwed?'#fef2f2':'#f0fdf4')+';border-radius:10px;padding:10px;display:flex;justify-content:space-between;align-items:center">'+
+            '<div style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:0.5px">'+(isOwed?'💸 Owner to Pay Driver':'✅ All Salaries Paid')+'</div>'+
+            '<div style="font-size:18px;font-weight:900;color:'+(isOwed?'#c8382a':'#1e7a4f')+'">₹'+fmt(Math.abs(outstanding))+'</div>'+
           '</div>'+
         '</div>';
       }).join('');
@@ -2203,7 +2228,7 @@ function salaryAutoFill(){
     sbGetQ('driver_advances','driver_name=eq.'+encodeURIComponent(drv)+'&type=eq.advance&date=gte.'+monthStart+'&date=lte.'+monthEnd+'&order=date.asc'),
     sbGetQ('driver_advances','driver_name=eq.'+encodeURIComponent(drv)+'&type=eq.deduction&date=gte.'+monthStart+'&date=lte.'+monthEnd+'&order=date.asc'),
     sbGetQ('driver_tempo_advance','driver_name=eq.'+encodeURIComponent(drv)+'&date=gte.'+monthStart+'&date=lte.'+monthEnd+'&order=date.asc'),
-    sbGetQ('driver_advances','driver_name=eq.'+encodeURIComponent(drv)+'&type=in.(salary_cf_debit,salary_cf_credit)&date=gte.'+monthStart+'&date=lte.'+monthEnd+'&order=date.asc')
+    sbGetQ('driver_advances','driver_name=eq.'+encodeURIComponent(drv)+'&type=in.(salary_cf_debit,salary_cf_credit,salary_cf_adv_excess)&date=gte.'+monthStart+'&date=lte.'+monthEnd+'&order=date.asc')
   ]).then(function(res){
     var driverRows=res[0]||[]; var leaves=res[1]||[]; var tempoRows=res[2]||[]; var advances=res[3]||[]; var deductions=res[4]||[]; var tempoPaid=res[5]||[]; var cfRows=res[6]||[];
     var d=driverRows[0]; if(!d) return;
@@ -2261,8 +2286,9 @@ function salaryAutoFill(){
     }
     // carry forward from previous month salary payment
     var cfDebit=cfRows.filter(function(r){return r.type==='salary_cf_debit';}).reduce(function(s,r){return s+(parseFloat(r.amount)||0);},0);
-    var cfCredit=cfRows.filter(function(r){return r.type==='salary_cf_credit';}).reduce(function(s,r){return s+(parseFloat(r.amount)||0);},0);
-    var cfNet=cfDebit-cfCredit; // positive = short paid prev month (salary goes up), negative = overpaid prev month (salary goes down)
+    var cfCredit=cfRows.filter(function(r){return r.type==='salary_cf_credit'||r.type==='salary_cf_adv_excess';}).reduce(function(s,r){return s+(parseFloat(r.amount)||0);},0);
+    var cfAdvExcess=cfRows.filter(function(r){return r.type==='salary_cf_adv_excess';}).reduce(function(s,r){return s+(parseFloat(r.amount)||0);},0);
+    var cfNet=cfDebit-cfCredit; // positive = short paid prev month (salary goes up), negative = overpaid / advance excess (salary goes down)
     window._salCarryFwd=cfNet;
     var cfEl=document.getElementById('sal-carry-fwd-note');
     if(cfEl){
@@ -2270,7 +2296,9 @@ function salaryAutoFill(){
         cfEl.style.display='block';
         cfEl.innerHTML=cfNet>0
           ?'<span style="color:#c8382a">↩ Carry fwd from prev month: +₹'+fmt(cfNet)+' (short paid, adding to salary)</span>'
-          :'<span style="color:#1e7a4f">↩ Carry fwd from prev month: −₹'+fmt(Math.abs(cfNet))+' (overpaid credit, deducting from salary)</span>';
+          :(cfAdvExcess>0
+          ?'<span style="color:#c8382a">⚠ Prev month advance exceeded salary by ₹'+fmt(cfAdvExcess)+' → deducting from this month salary</span>'
+          :'<span style="color:#1e7a4f">↩ Carry fwd from prev month: −₹'+fmt(Math.abs(cfNet))+' (overpaid credit, deducting from salary)</span>');
       } else {cfEl.style.display='none';}
     }
     calcNetSalary();
@@ -2298,11 +2326,20 @@ function calcNetSalary(){
   var otherD=parseFloat(v('sal-other-deduct'))||0;
   var bonus=parseFloat(v('sal-bonus'))||0;
   var driverPaid=parseFloat(v('sal-driver-paid'))||0;
-  // driver_paid = cash payments driver made towards rent (already settled portion of tempoD)
-  // So: net rent still to deduct from salary = tempoD - driverPaid (driver already paid the rest in cash)
   var netTempoD=Math.max(0, tempoD - driverPaid);
-  var cf=window._salCarryFwd||0; // positive = credit (add to salary), negative = debit (subtract)
-  setV('sal-net', Math.max(0, base - advD - lvD - netTempoD - otherD + bonus + cf));
+  var cf=window._salCarryFwd||0;
+  var rawNet = base - advD - lvD - netTempoD - otherD + bonus + cf;
+  window._salRawNet = rawNet;
+  setV('sal-net', Math.max(0, rawNet));
+  // show advance excess carry-forward warning
+  var exEl=document.getElementById('sal-adv-excess-note');
+  if(exEl){
+    if(rawNet < -0.01){
+      var excess=Math.abs(rawNet);
+      exEl.style.display='block';
+      exEl.innerHTML='<span style="color:#c8382a">⚠ Advance exceeds salary by ₹'+fmt(excess)+' → ₹'+fmt(excess)+' will carry forward as debt deducted from next month salary. Net payable = ₹0.</span>';
+    } else { exEl.style.display='none'; }
+  }
   // update hint
   var hint=document.getElementById('sal-driver-paid-hint');
   if(hint && tempoD>0){
@@ -2316,6 +2353,11 @@ function saveSalary(){
   var base=parseFloat(v('sal-base'))||0;
   var net=parseFloat(v('sal-net'))||0;
   var driverPaid=parseFloat(v('sal-driver-paid'))||0;
+  // detect advance-excess carry forward
+  var rawNet=window._salRawNet!=null?window._salRawNet:net;
+  var advExcess=rawNet<-0.01?Math.abs(rawNet):0;
+  var noteVal=v('sal-note');
+  if(advExcess>0) noteVal=(noteVal?noteVal+' | ':'')+'Advance excess ₹'+fmt(advExcess)+' → carry fwd to '+getNextMonthStr(mon);
   var body={driver_name:drv,month:mon,base_salary:base,
     advance_given:parseFloat(v('sal-adv-given'))||0,
     advance_deducted:parseFloat(v('sal-adv-deduct'))||0,
@@ -2325,7 +2367,7 @@ function saveSalary(){
     other_deduction:parseFloat(v('sal-other-deduct'))||0,
     bonus:parseFloat(v('sal-bonus'))||0,
     driver_paid:driverPaid,
-    net_paid:net,note:v('sal-note')};
+    net_paid:net,note:noteVal};
   // Save tempo rent record for this month (snapshot the rate)
   var saveTempoPromise=Promise.resolve();
   if(_salDriverData&&_salDriverData.has_tempo&&v('sal-tempo-name')){
@@ -2347,7 +2389,17 @@ function saveSalary(){
     return sbPost('driver_salary',body);
   }).then(function(r){
     if(r.ok){
-      showMsg('sal-msg','Salary saved ✓','ok');
+      // Create advance-excess carry-forward record for next month
+      if(advExcess>0){
+        var nextMon=getNextMonthStr(mon);
+        // clean previous advance-excess CF for this driver/month combo before creating new
+        fetch(BASE+'/driver_advances?driver_name=eq.'+encodeURIComponent(drv)+'&date=eq.'+nextMon+'-01&type=eq.salary_cf_adv_excess',
+          {method:'DELETE',headers:hdrs({'Prefer':'return=minimal'})}).then(function(){
+          sbPost('driver_advances',{driver_name:drv,date:nextMon+'-01',amount:advExcess,
+            type:'salary_cf_adv_excess',reason:'Advance exceeded salary in '+mon+' by ₹'+fmt(advExcess)});
+        });
+      }
+      showMsg('sal-msg','Salary saved ✓'+(advExcess>0?' · ₹'+fmt(advExcess)+' carry fwd to next month':''),'ok');
       loadSalaryList(); loadDriverTxns();
       var btn=document.getElementById('sal-save-btn');
       if(btn) btn.textContent='💾 Save Salary Record';
@@ -2358,15 +2410,23 @@ function saveSalary(){
 function loadSalaryList(){
   var drv=v('sal-list-driver'); var mon=v('sal-list-month');
   var el=document.getElementById('salaryList');
-  if(!drv||!mon){if(el)el.innerHTML='<div class="empty">Select driver & month</div>';return;}
-  sbGetQ('driver_salary','driver_name=eq.'+encodeURIComponent(drv)+'&month=eq.'+encodeURIComponent(mon)).then(function(rows){
-    if(!rows.length){el.innerHTML='<div class="empty">No record for this period</div>';return;}
-    var s=rows[0];
-    // also fetch tempo rent record for this month
-    sbGetQ('driver_tempo_rent','driver_name=eq.'+encodeURIComponent(drv)+'&month=eq.'+encodeURIComponent(mon)).then(function(trows){
-      var tr=trows&&trows.length?trows[0]:null;
+  if(!drv){if(el)el.innerHTML='<div class="empty">Select driver</div>';return;}
+  var q='driver_name=eq.'+encodeURIComponent(drv)+'&order=month.desc';
+  if(mon) q+='&month=eq.'+encodeURIComponent(mon);
+  sbGetQ('driver_salary',q).then(function(rows){
+    if(!rows.length){el.innerHTML='<div class="empty">No salary records found</div>';return;}
+    // fetch all tempo rent records for this driver (or specific month)
+    var trQ='driver_name=eq.'+encodeURIComponent(drv)+'&order=month.desc';
+    if(mon) trQ+='&month=eq.'+encodeURIComponent(mon);
+    sbGetQ('driver_tempo_rent',trQ).then(function(trows){
+      var trMap={};
+      (trows||[]).forEach(function(tr){trMap[tr.month]=tr;});
+      el.innerHTML=rows.map(function(s){
+      var tr=trMap[s.month]||null;
       var isPaid=!!s.paid_date;
-      el.innerHTML='<div class="item-card">'+
+      return'<div class="item-card" style="margin-bottom:10px">'+
+        // month header
+        '<div style="font-size:12px;font-weight:800;color:#1a3a5c;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #e4edf6">📅 '+s.month+'</div>'+
         // Payment status banner
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
         '<span class="badge '+(isPaid?'b-green':'b-red')+'" style="font-size:12px;padding:4px 10px">'+(isPaid?'✅ Paid on '+s.paid_date:'⏳ Not Paid Yet')+'</span>'+
@@ -2387,32 +2447,33 @@ function loadSalaryList(){
         (function(){window._salCache=window._salCache||{};window._salCache[s.id]={s:s,tr:tr};return'';})() +
         '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">'+
         '<button class="btn-sm btn-grey" onclick="var c=window._salCache['+s.id+'];if(c)printSalarySlip(c.s,c.tr)">🖨 Print Slip</button>'+
-        '<button class="btn-sm btn-grey" onclick="var c=window._salCache['+s.id+'];if(c)copySalaryForWhatsapp(c.s,c.tr)">📱 Copy for WhatsApp</button>'+
+        '<button class="btn-sm btn-grey" onclick="var c=window._salCache['+s.id+'];if(c)copySalaryForWhatsapp(c.s,c.tr,'+s.id+')">📱 Copy for WhatsApp</button>'+
         '<button class="btn-sm btn-edit" onclick="editSalaryById('+s.id+')">✏ Edit</button>'+
         '<button class="btn-sm btn-del" onclick="delGuard(this,function(){deleteSalaryById('+s.id+');})">Del</button>'+
         '</div>'+
-        '<div id="sal-wa-toast" style="display:none;background:#e8f5e9;color:#1e7a4f;padding:6px 10px;border-radius:8px;font-size:12px;margin-top:6px">Copied ✓</div>'+
+        '<div id="sal-wa-toast-'+s.id+'" style="display:none;background:#e8f5e9;color:#1e7a4f;padding:6px 10px;border-radius:8px;font-size:12px;margin-top:6px">Copied ✓</div>'+
         // Mark as paid section
         (!isPaid?
           '<div style="margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0">'+
           '<div style="font-size:12px;font-weight:700;color:#1a3a5c;margin-bottom:8px">💵 Mark as Paid</div>'+
           '<div style="margin-bottom:8px">'+
           '<div style="font-size:10px;color:#7a8fa6;font-family:monospace;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">AMOUNT PAYING (₹)</div>'+
-          '<input type="number" id="sal-pay-amount" value="'+s.net_paid+'" oninput="calcSalaryPayDiff('+s.net_paid+')" style="width:100%;padding:9px 12px;border:2px solid #1e7a4f;border-radius:8px;font-size:16px;font-weight:800;color:#1a3a5c;background:#e8f5e9">'+
-          '<div id="sal-pay-diff-hint" style="font-size:11px;margin-top:4px;line-height:1.5"></div>'+
+          '<input type="number" id="sal-pay-amount-'+s.id+'" value="'+s.net_paid+'" oninput="calcSalaryPayDiff2('+s.id+','+s.net_paid+')" style="width:100%;padding:9px 12px;border:2px solid #1e7a4f;border-radius:8px;font-size:16px;font-weight:800;color:#1a3a5c;background:#e8f5e9">'+
+          '<div id="sal-pay-diff-hint-'+s.id+'" style="font-size:11px;margin-top:4px;line-height:1.5"></div>'+
           '</div>'+
           '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
-          '<input type="date" id="sal-pay-date" value="'+todayStr()+'" style="flex:1;min-width:120px;padding:6px;border:1px solid #cdd5e0;border-radius:6px;font-size:13px">'+
-          '<select id="sal-pay-mode" style="flex:1;min-width:100px;padding:6px;border:1px solid #cdd5e0;border-radius:6px;font-size:13px">'+
+          '<input type="date" id="sal-pay-date-'+s.id+'" value="'+todayStr()+'" style="flex:1;min-width:120px;padding:6px;border:1px solid #cdd5e0;border-radius:6px;font-size:13px">'+
+          '<select id="sal-pay-mode-'+s.id+'" style="flex:1;min-width:100px;padding:6px;border:1px solid #cdd5e0;border-radius:6px;font-size:13px">'+
           '<option value="Cash">Cash</option><option value="Bank Transfer">Bank Transfer</option><option value="UPI">UPI</option>'+
           '</select>'+
-          '<select id="sal-pay-bank" style="flex:1;min-width:120px;padding:6px;border:1px solid #cdd5e0;border-radius:6px;font-size:13px">'+
+          '<select id="sal-pay-bank-'+s.id+'" style="flex:1;min-width:120px;padding:6px;border:1px solid #cdd5e0;border-radius:6px;font-size:13px">'+
           '<option value="">— No bank entry —</option>'+
           (_bankAccounts||[]).map(function(a){var def=getDefaultBank();return'<option value="'+a.name+'"'+(def===a.name?' selected':'')+'>'+a.name+'</option>';}).join('')+
           '</select>'+
-          '<button class="btn-sm btn-blue" onclick="markSalaryPaid('+s.id+',\''+s.driver_name.replace(/'/g,"\\'")+'\','+s.net_paid+',\''+s.month+'\')">Mark Paid</button>'+
+          '<button class="btn-sm btn-blue" onclick="markSalaryPaidV2('+s.id+',\''+s.driver_name.replace(/'/g,"\\'")+'\','+s.net_paid+',\''+s.month+'\')">Mark Paid</button>'+
           '</div></div>':'')
         +'</div>';
+      }).join('');
     });
   });
 }
@@ -2517,13 +2578,54 @@ function markSalaryUnpaid(id){
       body:JSON.stringify({paid_date:null,note:note})}).then(function(){loadSalaryList();});
   });
 }
+// v2: per-record-ID versions used in salary list (multiple records)
+function calcSalaryPayDiff2(salId,netPaid){
+  var amtEl=document.getElementById('sal-pay-amount-'+salId);
+  var hintEl=document.getElementById('sal-pay-diff-hint-'+salId);
+  if(!amtEl||!hintEl) return;
+  var actual=parseFloat(amtEl.value)||0;
+  var diff=+(actual-netPaid).toFixed(2);
+  if(Math.abs(diff)<0.01){hintEl.innerHTML='<span style="color:#1e7a4f">✓ Paying exact amount</span>';}
+  else if(diff>0){hintEl.innerHTML='<span style="color:#1e7a4f">Overpaying ₹'+fmt(diff)+' → credit carry forward next month</span>';}
+  else{hintEl.innerHTML='<span style="color:#c8382a">Short ₹'+fmt(Math.abs(diff))+' → debit carry forward next month</span>';}
+}
+function markSalaryPaidV2(id,driverName,netPaid,month){
+  var date=(document.getElementById('sal-pay-date-'+id)||{value:todayStr()}).value||todayStr();
+  var mode=(document.getElementById('sal-pay-mode-'+id)||{value:'Cash'}).value||'Cash';
+  var bankEl=document.getElementById('sal-pay-bank-'+id);
+  var bankAcct=bankEl?bankEl.value:'';
+  var amtEl=document.getElementById('sal-pay-amount-'+id);
+  var actualPaid=amtEl?parseFloat(amtEl.value)||netPaid:netPaid;
+  var diff=+(actualPaid-netPaid).toFixed(2);
+  sbGetQ('driver_salary','id=eq.'+id).then(function(rows){
+    var cur=rows&&rows.length?rows[0]:{};
+    var cfNote=Math.abs(diff)>0.01?(diff>0?' [Overpaid ₹'+fmt(diff)+' → credit next month]':' [Short ₹'+fmt(Math.abs(diff))+' → debit next month]'):'';
+    var note=(cur.note||'')+' | Paid ₹'+fmt(actualPaid)+' on '+date+' via '+mode+(bankAcct?' ['+bankAcct+']':'')+cfNote;
+    fetch(BASE+'/driver_salary?id=eq.'+id,{method:'PATCH',headers:hdrs({'Prefer':'return=minimal'}),
+      body:JSON.stringify({paid_date:date,note:note})}).then(function(){
+      if(bankAcct){
+        var desc='Salary — '+(driverName||cur.driver_name||'Driver')+' '+(month||cur.month||'');
+        sbPost('bank_transactions',{account_name:bankAcct,date:date,type:'debit',amount:actualPaid,description:desc,reference:'Salary'});
+      }
+      if(Math.abs(diff)>0.01){
+        var drv=driverName||cur.driver_name;
+        var mon=month||cur.month;
+        var nextMon=getNextMonthStr(mon);
+        var cfType=diff>0?'salary_cf_credit':'salary_cf_debit';
+        var cfReason=(diff>0?'Overpaid ':'Short paid ')+mon+' salary by ₹'+fmt(Math.abs(diff));
+        sbPost('driver_advances',{driver_name:drv,date:nextMon+'-01',amount:Math.abs(diff),type:cfType,reason:cfReason});
+      }
+      loadSalaryList();
+    });
+  });
+}
 
 // ── ADVANCE ──
 function saveAdvance(){
   var drv=v('adv-driver'); var amt=parseFloat(v('adv-amount'));
   var date=v('adv-date'); var reason=v('adv-reason'); var bankAcct=v('adv-bank-account');
   if(!drv||!amt){showMsg('adv-msg','Fill driver and amount','er');return;}
-  var body={driver_name:drv,date:date,amount:amt,type:'advance',reason:reason};
+  var body={driver_name:drv,date:date,amount:amt,type:'advance',reason:reason,bank_account:bankAcct||''};
   var editId=parseInt(v('adv-edit-id'))||0;
   var promise=editId>0 ? sbPatch('driver_advances','id=eq.'+editId,body) : sbPost('driver_advances',body);
   promise.then(function(r){
@@ -2540,17 +2642,27 @@ function saveAdvance(){
 }
 function loadAdvanceList(){
   var drv=v('adv-list-driver');
+  var mon=v('adv-list-month');
   var el=document.getElementById('advanceList');
   if(!drv){if(el)el.innerHTML='<div class="empty">Select driver</div>';return;}
-  sbGetQ('driver_advances','driver_name=eq.'+encodeURIComponent(drv)+'&type=eq.advance&order=date.desc').then(function(rows){
-    if(!rows.length){el.innerHTML='<div class="empty">No advances found</div>';return;}
+  var q='driver_name=eq.'+encodeURIComponent(drv)+'&type=eq.advance&order=date.desc';
+  if(mon){
+    var y=mon.slice(0,4);var m=mon.slice(5,7);
+    var days=new Date(parseInt(y),parseInt(m),0).getDate();
+    q+='&date=gte.'+y+'-'+m+'-01&date=lte.'+y+'-'+m+'-'+days;
+  }
+  sbGetQ('driver_advances',q).then(function(rows){
+    if(!rows.length){el.innerHTML='<div class="empty">No advances found'+(mon?' for '+mon:'')+'</div>';return;}
     var total=rows.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
-    el.innerHTML='<div class="msg in" style="margin-bottom:8px">Total Advances: '+fmt(total)+'</div>'+
+    el.innerHTML='<div class="msg in" style="margin-bottom:8px">Total Advances: ₹'+fmt(total)+(mon?' for '+mon:' (all time)')+'</div>'+
       rows.map(function(a){
+        var bankInfo=a.bank_account?'<span class="badge b-blue" style="font-size:9px;margin-top:2px">🏦 '+a.bank_account+'</span>':'<span class="badge b-grey" style="font-size:9px;margin-top:2px">💵 Cash</span>';
         return'<div class="item-card"><div style="display:flex;justify-content:space-between;align-items:center">'+
-          '<div><div style="font-weight:700">'+fmt(a.amount)+'</div>'+
-          '<div style="font-size:11px;color:#7a8fa6">'+a.date+(a.reason?' · '+a.reason:'')+'</div></div>'+
-          '<div style="display:flex;gap:4px">'+
+          '<div><div style="font-weight:700">₹'+fmt(a.amount)+'</div>'+
+          '<div style="font-size:11px;color:#7a8fa6">'+a.date+(a.reason?' · '+a.reason:'')+'</div>'+
+          bankInfo+
+          '</div>'+
+          '<div style="display:flex;gap:4px;align-self:flex-start">'+
           '<button class="btn-sm btn-edit" onclick="editAdvanceById('+a.id+')">✏</button>'+
           '<button class="btn-sm btn-del" onclick="delGuard(this,function(){deleteAdvance('+a.id+');})">Del</button>'+
           '</div></div></div>';
@@ -4055,6 +4167,8 @@ function editAdvanceById(id){
     var a=rows[0];
     setV('adv-driver',a.driver_name||''); setV('adv-date',a.date||'');
     setV('adv-amount',a.amount||''); setV('adv-reason',a.reason||'');
+    // pre-fill bank account if saved
+    if(a.bank_account){var ba=document.getElementById('adv-bank-account');if(ba)ba.value=a.bank_account;}
     _advEditId=a.id; setV('adv-edit-id',a.id);
     var titleEl=document.getElementById('adv-form-title'); if(titleEl) titleEl.textContent='✏ Edit Advance';
     var saveBtn=document.getElementById('adv-save-btn'); if(saveBtn) saveBtn.textContent='✏ Update Advance';
@@ -4568,6 +4682,7 @@ function printSalarySlip(s,tr){
     (s.bonus?'<tr><td>Bonus</td><td style="color:#1e7a4f">+ ₹'+Number(s.bonus).toLocaleString('en-IN')+'</td></tr>':'')+
     '<tr class="total"><td>NET PAYABLE</td><td>₹'+Number(s.net_paid).toLocaleString('en-IN')+'</td></tr>'+
     '</table>'+
+    (s.note&&s.note.indexOf('Advance excess')>=0?'<p style="font-size:12px;background:#fff3cd;padding:6px 10px;border-radius:6px;border-left:3px solid #e09000">⚠ '+s.note.split('|').find(function(x){return x.indexOf('Advance excess')>=0;}).trim()+'</p>':'')+
     (s.note?'<p style="font-size:12px;color:#7a8fa6">Note: '+s.note+'</p>':'')+
     '<div class="sig"><div>Driver Signature</div><div>Authorised By</div></div>'+
     '</body></html>';
@@ -4583,7 +4698,7 @@ function printSalarySlip(s,tr){
 // ══════════════════════════════════════════════
 //  STEP 14: WhatsApp Salary Summary
 // ══════════════════════════════════════════════
-function copySalaryForWhatsapp(s,tr){
+function copySalaryForWhatsapp(s,tr,salId){
   var monthLabel=s.month;
   try{var d=new Date(s.month+'-01');monthLabel=d.toLocaleString('en-IN',{month:'long',year:'numeric'});}catch(e){}
   var pad=function(lbl,val,sign){
@@ -4602,9 +4717,11 @@ function copySalaryForWhatsapp(s,tr){
     (s.bonus?pad('Bonus','₹'+Number(s.bonus).toLocaleString('en-IN'),'+')+'\n':'')+
     '─────────────────────────\n'+
     '*Net Payable:   ₹'+Number(s.net_paid).toLocaleString('en-IN')+'*\n'+
+    (s.note&&s.note.indexOf('Advance excess')>=0?'⚠ '+(s.note.split('|').find(function(x){return x.indexOf('Advance excess')>=0;})||'').trim()+'\n':'')+
     (s.paid_date?'✅ Paid on '+s.paid_date:'⏳ Payment Pending');
   navigator.clipboard.writeText(text).then(function(){
-    var el=document.getElementById('sal-wa-toast');
+    var elId='sal-wa-toast'+(salId?'-'+salId:'');
+    var el=document.getElementById(elId);
     if(el){el.style.display='block';setTimeout(function(){el.style.display='none';},2000);}
   }).catch(function(){alert(text);});
 }
