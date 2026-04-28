@@ -2592,7 +2592,9 @@ function markSalaryPaid(id,driverName,netPaid,month){
   sbGetQ('driver_salary','id=eq.'+id).then(function(rows){
     var cur=rows&&rows.length?rows[0]:{};
     var cfNote=Math.abs(diff)>0.01?(diff>0?' [Overpaid '+fmt(diff)+' → credit next month]':' [Short '+fmt(Math.abs(diff))+' → debit next month]'):'';
-    var note=(cur.note||'')+' | Paid '+fmt(actualPaid)+' on '+date+' via '+mode+(bankAcct?' ['+bankAcct+']':'')+cfNote;
+    var payEntry=' | Paid '+fmt(actualPaid)+' on '+date+' via '+mode+(bankAcct?' ['+bankAcct+']':'')+cfNote;
+    var baseNote=(cur.note||'').replace(/ \| Paid ₹[\d,.]+ on \d{4}-\d{2}-\d{2}[^|]*/g,'').trim();
+    var note=baseNote+payEntry;
     fetch(BASE+'/driver_salary?id=eq.'+id,{method:'PATCH',headers:hdrs({'Prefer':'return=minimal'}),
       body:JSON.stringify({paid_date:date,actual_paid:actualPaid,note:note})}).then(function(){
       if(bankAcct){
@@ -2642,7 +2644,9 @@ function markSalaryPaidV2(id,driverName,netPaid,month){
   sbGetQ('driver_salary','id=eq.'+id).then(function(rows){
     var cur=rows&&rows.length?rows[0]:{};
     var cfNote=Math.abs(diff)>0.01?(diff>0?' [Overpaid '+fmt(diff)+' → credit next month]':' [Short '+fmt(Math.abs(diff))+' → debit next month]'):'';
-    var note=(cur.note||'')+' | Paid '+fmt(actualPaid)+' on '+date+' via '+mode+(bankAcct?' ['+bankAcct+']':'')+cfNote;
+    var payEntry=' | Paid '+fmt(actualPaid)+' on '+date+' via '+mode+(bankAcct?' ['+bankAcct+']':'')+cfNote;
+    var baseNote=(cur.note||'').replace(/ \| Paid ₹[\d,.]+ on \d{4}-\d{2}-\d{2}[^|]*/g,'').trim();
+    var note=baseNote+payEntry;
     fetch(BASE+'/driver_salary?id=eq.'+id,{method:'PATCH',headers:hdrs({'Prefer':'return=minimal'}),
       body:JSON.stringify({paid_date:date,actual_paid:actualPaid,note:note})}).then(function(){
       if(bankAcct){
@@ -2665,11 +2669,18 @@ function updateActualPaid(id,netPaid,driverName,month){
   var amtEl=document.getElementById('sal-pay-amount-'+id);
   var actualPaid=amtEl&&amtEl.value.trim()!==''?parseFloat(amtEl.value):netPaid;
   var date=(document.getElementById('sal-pay-date-'+id)||{}).value||todayStr();
+  var mode=(document.getElementById('sal-pay-mode-'+id)||{value:'Cash'}).value||'Cash';
+  var bankEl=document.getElementById('sal-pay-bank-'+id);
+  var bankAcct=bankEl?bankEl.value:'';
   var diff=+(actualPaid-netPaid).toFixed(2);
   sbGetQ('driver_salary','id=eq.'+id).then(function(rows){
     var cur=rows&&rows.length?rows[0]:{};
+    var cfNote=Math.abs(diff)>0.01?(diff>0?' [Overpaid '+fmt(diff)+' → credit next month]':' [Short '+fmt(Math.abs(diff))+' → debit next month]'):'';
+    var payEntry=' | Paid '+fmt(actualPaid)+' on '+date+' via '+mode+(bankAcct?' ['+bankAcct+']':'')+cfNote;
+    var baseNote=(cur.note||'').replace(/ \| Paid ₹[\d,.]+ on \d{4}-\d{2}-\d{2}[^|]*/g,'').trim();
+    var note=baseNote+payEntry;
     fetch(BASE+'/driver_salary?id=eq.'+id,{method:'PATCH',headers:hdrs({'Prefer':'return=minimal'}),
-      body:JSON.stringify({paid_date:date,actual_paid:actualPaid})}).then(function(){
+      body:JSON.stringify({paid_date:date,actual_paid:actualPaid,note:note})}).then(function(){
       // remove old cf entries for this salary, then re-create if diff
       var nextMon=getNextMonthStr(month);
       fetch(BASE+'/driver_advances?driver_name=eq.'+encodeURIComponent(driverName||cur.driver_name)+'&date=eq.'+nextMon+'-01'+'&type=in.(salary_cf_debit,salary_cf_credit)',
