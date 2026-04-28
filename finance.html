@@ -1544,23 +1544,28 @@ function loadDriverTxns(){
   el.innerHTML='<div class="empty">Loading…</div>';
   var salParts=['order=month.desc'];
   var advParts=['order=date.desc'];
-  if(drv){salParts.push('driver_name=eq.'+encodeURIComponent(drv));advParts.push('driver_name=eq.'+encodeURIComponent(drv));}
+  var tpParts=['order=date.desc'];
+  if(drv){salParts.push('driver_name=eq.'+encodeURIComponent(drv));advParts.push('driver_name=eq.'+encodeURIComponent(drv));tpParts.push('driver_name=eq.'+encodeURIComponent(drv));}
   if(from&&to){
     // filter salary by month range (month is YYYY-MM, compare as string)
     salParts.push('month=gte.'+from.slice(0,7)+'&month=lte.'+to.slice(0,7));
     advParts.push('date=gte.'+from+'&date=lte.'+to);
+    tpParts.push('date=gte.'+from+'&date=lte.'+to);
   } else if(from){
     salParts.push('month=gte.'+from.slice(0,7));
     advParts.push('date=gte.'+from);
+    tpParts.push('date=gte.'+from);
   } else if(to){
     salParts.push('month=lte.'+to.slice(0,7));
     advParts.push('date=lte.'+to);
+    tpParts.push('date=lte.'+to);
   }
   Promise.all([
     sbGetQ('driver_salary',salParts.join('&')),
-    sbGetQ('driver_advances',advParts.join('&'))
+    sbGetQ('driver_advances',advParts.join('&')),
+    sbGetQ('driver_tempo_advance',tpParts.join('&'))
   ]).then(function(res){
-    var sals=res[0]||[]; var advs=res[1]||[];
+    var sals=res[0]||[]; var advs=res[1]||[]; var tempoPays=res[2]||[];
     var rows=[];
     sals.forEach(function(r){
       var isPending=!r.paid_date;
@@ -1581,6 +1586,11 @@ function loadDriverTxns(){
         amount:r.amount,balanceChange:isAdv?-(parseFloat(r.amount)||0):0,
         type:r.type,note:isAdv?bankLabel:''});
     });
+    tempoPays.forEach(function(r){
+      rows.push({id:'tp'+r.id,date:r.date,driver:r.driver_name,label:'🏠 Rent Paid by Driver',
+        sub:r.tempo_name+(r.period?' · '+r.period:'')+(r.note?' · '+r.note:''),
+        amount:r.amount,balanceChange:0,type:'tempo-pay',note:''});
+    });
     // compute running balance: sort ASC → accumulate → sort DESC for display
     rows.sort(function(a,b){return a.date.localeCompare(b.date)||a.id-b.id;});
     var runBal=0;
@@ -1596,41 +1606,88 @@ function loadDriverTxns(){
       sumEl.style.display='block';
       sumEl.innerHTML=driverNames.map(function(d){
         var dSals=sals.filter(function(r){return r.driver_name===d;});
-        // Gross salary = what driver earned before advance deduction (days × rate − rent + bonus)
-        var grossSalary  =dSals.reduce(function(s,r){return s+(parseFloat(r.net_paid)||0)+(parseFloat(r.advance_deducted)||0);},0);
-        // Advance given = cash given to driver during month (already deducted from net_paid in salary calc)
-        var totalAdvGiven=dSals.reduce(function(s,r){return s+(parseFloat(r.advance_given)||0);},0);
-        // Cash paid on salary day = actual_paid for marked-paid months (0 if not yet paid)
+        var dAdvs=advs.filter(function(r){return r.driver_name===d;});
+        var dTempoPays=tempoPays.filter(function(r){return r.driver_name===d;});
+        // Months with a salary record (YYYY-MM keys)
+        var salMonths={};
+        dSals.forEach(function(r){salMonths[r.month]=true;});
+        // Net salary total = what owner must pay in cash (advances already deducted inside net_paid)
+        var totalNetPaid =dSals.reduce(function(s,r){return s+(parseFloat(r.net_paid)||0);},0);
+        // Advance given = from driver_advances table directly (matches Advance tab total)
+        var totalAdvGiven=dAdvs.filter(function(r){return r.type==='advance';}).reduce(function(s,r){return s+(parseFloat(r.amount)||0);},0);
+        // Cash paid on salary day = actual_paid for marked-paid months
         var cashPaid     =dSals.reduce(function(s,r){return s+(r.paid_date?(parseFloat(r.actual_paid!=null?r.actual_paid:r.net_paid)||0):0);},0);
+        // Rent paid by driver = from driver_tempo_advance table (matches Tempo Pay tab)
+        var rentPaidByDriver=dTempoPays.reduce(function(s,r){return s+(parseFloat(r.amount)||0);},0);
         // Total given to driver = advance + cash on salary day
         var totalPaid    =totalAdvGiven+cashPaid;
-        // Balance = what driver earned (gross) − what was given = owner still owes (positive) or driver owes (negative)
-        var balance      =+(grossSalary-totalPaid).toFixed(2);
-        var owesOwner    =balance<-0.01;  // driver was overpaid
-        var owesDriver   =balance>0.01;   // owner still owes driver
-        var balColor     =owesDriver?'#c8382a':owesOwner?'#1e7a4f':'#1e7a4f';
-        var balBg        =owesDriver?'#fef2f2':'#f0fdf4';
-        var balLabel     =owesDriver?'💸 Owner Still Owes Driver':owesOwner?'Driver Owes Owner (Overpaid)':'✅ Fully Settled';
+        // Gross = net_paid + advance_deducted = real earned amount before advance repayment
+        var grossSalary  =dSals.reduce(function(s,r){return s+(parseFloat(r.net_paid)||0)+(parseFloat(r.advance_deducted)||0);},0);
+        // Outstanding CF/advance entries for months with NO salary record yet (not yet applied to net_paid)
+        var outstandingExcess=0; // advance_cf_adv_excess: driver owes owner (advance > salary)
+        var outstandingCredit=0; // salary_cf_credit: owner overpaid previously
+        var outstandingDebit =0; // salary_cf_debit: owner underpaid previously (no salary yet for that month)
+        var cfForwardApplied =0; // salary_cf_debit where salary already exists = short-pay CF'd to next month
+        var pendingAdvances  =0; // advances given in months not yet salary-calculated
+        dAdvs.forEach(function(r){
+          var rMon=r.date.slice(0,7);
+          var applied=!!salMonths[rMon];
+          var amt=parseFloat(r.amount)||0;
+          if(r.type==='salary_cf_adv_excess'&&!applied) outstandingExcess+=amt;
+          else if(r.type==='salary_cf_credit'&&!applied) outstandingCredit+=amt;
+          else if(r.type==='salary_cf_debit'&&!applied) outstandingDebit+=amt;
+          else if(r.type==='salary_cf_debit'&&applied) cfForwardApplied+=amt; // short-pay already CF'd to next salary
+          else if(r.type==='advance'&&!applied) pendingAdvances+=amt;
+        });
+        // Balance: positive = owner owes driver, negative = driver owes owner
+        // Subtract excess/credit/pending-advance (driver received more); add debit (owner still owes from short pay)
+        var balance=+(totalNetPaid-cashPaid-outstandingExcess-outstandingCredit+outstandingDebit-pendingAdvances).toFixed(2);
+        var driverOwes   =balance<-0.01;
+        var ownerOwes    =balance>0.01;
+        var balColor     =ownerOwes?'#c8382a':driverOwes?'#1e7a4f':'#1e7a4f';
+        // True gross = remove the inflated advance_deducted from excess months
+        var trueGross        =+Math.max(0,grossSalary-outstandingExcess).toFixed(2);
+        var unpaidSalary     =+(totalNetPaid-cashPaid).toFixed(2); // total owed but not given in cash
+        var trulyUnpaid      =+Math.max(0,unpaidSalary-cfForwardApplied).toFixed(2); // owed and NOT CF'd
+        var driverOwesTotal  =+(outstandingExcess+pendingAdvances+outstandingCredit).toFixed(2);
+        var ownerOwesTotal   =+(unpaidSalary+outstandingDebit).toFixed(2);
         var unpaidMonths =dSals.filter(function(r){return !r.paid_date;}).length;
-        function row(lbl,val,color,small){
-          return'<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #edf2f7">'+
-            '<span style="font-size:'+(small?'11':'12')+'px;color:#555">'+lbl+'</span>'+
-            '<span style="font-size:'+(small?'12':'13')+'px;font-weight:800;color:'+(color||'#1a3a5c')+'">'+fmt(val)+'</span></div>';
+        function srow(lbl,val,color,small){
+          return'<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #edf2f7">'+
+            '<span style="font-size:'+(small?'10':'12')+'px;color:#555">'+lbl+'</span>'+
+            '<span style="font-size:'+(small?'11':'13')+'px;font-weight:800;color:'+(color||'#1a3a5c')+'">'+fmt(val)+'</span></div>';
         }
         return'<div class="card" style="margin-bottom:6px;padding:14px;border-left:4px solid '+balColor+'">'+
           '<div style="font-weight:800;font-size:14px;margin-bottom:10px;color:#1a3a5c">👤 '+d+
             (unpaidMonths>0?'<span style="font-size:10px;background:#fff8e1;color:#c07000;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:8px">'+unpaidMonths+' month'+(unpaidMonths>1?'s':'')+' pending</span>':'')+
           '</div>'+
-          '<div style="margin-bottom:10px">'+
-            row('Total Salary (earned gross)',''+grossSalary,'#1a3a5c')+
-            row('  ↳ Advance deducted in salary',''+totalAdvGiven,'#c07000',true)+
-            row('  ↳ Cash paid on salary day',''+cashPaid,'#1e7a4f',true)+
-            '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #edf2f7">'+
-              '<span style="font-size:12px;color:#555;font-weight:700">Total Paid to Driver</span>'+
-              '<span style="font-size:13px;font-weight:800;color:#1a3a5c">'+fmt(totalPaid)+'</span></div>'+
+          // Salary summary
+          '<div style="margin-bottom:8px">'+
+            srow('Total Salary (gross earned)',trueGross,'#1a3a5c')+
+            srow('  ↳ Advance deducted in salary',totalAdvGiven,'#c07000',true)+
+            srow('  ↳ Cash paid on salary day',cashPaid,'#1e7a4f',true)+
+            (rentPaidByDriver>0?srow('  ↳ Rent paid by driver',rentPaidByDriver,'#1e7a4f',true):'')+
           '</div>'+
-          '<div style="background:'+balBg+';border-radius:10px;padding:10px;display:flex;justify-content:space-between;align-items:center">'+
-            '<div style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:0.5px">'+balLabel+'</div>'+
+          // Who owes what breakdown
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">'+
+            '<div style="background:#fef2f2;border-radius:8px;padding:8px">'+
+              '<div style="font-size:9px;font-weight:800;color:#c8382a;text-transform:uppercase;margin-bottom:4px">Driver Owes Owner</div>'+
+              (outstandingExcess>0?'<div style="font-size:10px;color:#555;display:flex;justify-content:space-between"><span>Adv excess</span><b>'+fmt(outstandingExcess)+'</b></div>':'')+
+              (pendingAdvances>0?'<div style="font-size:10px;color:#555;display:flex;justify-content:space-between"><span>Pending adv</span><b>'+fmt(pendingAdvances)+'</b></div>':'')+
+              (outstandingCredit>0?'<div style="font-size:10px;color:#555;display:flex;justify-content:space-between"><span>Overpaid prev</span><b>'+fmt(outstandingCredit)+'</b></div>':'')+
+              '<div style="font-size:13px;font-weight:900;color:#c8382a;margin-top:4px;border-top:1px solid #fca5a5;padding-top:4px">'+fmt(driverOwesTotal)+'</div>'+
+            '</div>'+
+            '<div style="background:#f0fdf4;border-radius:8px;padding:8px">'+
+              '<div style="font-size:9px;font-weight:800;color:#1e7a4f;text-transform:uppercase;margin-bottom:4px">Owner Owes Driver</div>'+
+              (trulyUnpaid>0.01?'<div style="font-size:10px;color:#555;display:flex;justify-content:space-between"><span>Unpaid salary</span><b>'+fmt(trulyUnpaid)+'</b></div>':'')+
+              (cfForwardApplied>0.01?'<div style="font-size:10px;color:#777;display:flex;justify-content:space-between"><span>↩ CF to next month</span><b style="color:#c07000">'+fmt(cfForwardApplied)+'</b></div>':'')+
+              (outstandingDebit>0?'<div style="font-size:10px;color:#555;display:flex;justify-content:space-between"><span>Short paid prev</span><b>'+fmt(outstandingDebit)+'</b></div>':'')+
+              (!trulyUnpaid&&!cfForwardApplied&&!outstandingDebit?'<div style="font-size:10px;color:#aaa">—</div>':'')+
+              '<div style="font-size:13px;font-weight:900;color:#1e7a4f;margin-top:4px;border-top:1px solid #86efac;padding-top:4px">'+fmt(ownerOwesTotal)+'</div>'+
+            '</div>'+
+          '</div>'+
+          '<div style="background:'+(driverOwes?'#fef2f2':ownerOwes?'#fef2f2':'#f0fdf4')+';border-radius:10px;padding:10px;display:flex;justify-content:space-between;align-items:center">'+
+            '<div style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:0.5px">'+(driverOwes?'⚠️ Net: Driver Owes Owner':ownerOwes?'💸 Net: Owner Owes Driver':'✅ Fully Settled')+'</div>'+
             '<div style="font-size:20px;font-weight:900;color:'+balColor+'">'+fmt(Math.abs(balance))+'</div>'+
           '</div>'+
         '</div>';
@@ -1644,20 +1701,23 @@ function loadDriverTxns(){
       '<span style="font-size:10px;background:#fff8e1;border-left:3px solid #f59e0b;padding:3px 8px;border-radius:4px;color:#c07000;font-weight:700">📋 Salary Pending</span>'+
       '<span style="font-size:10px;background:#fffbeb;border-left:3px solid #fb923c;padding:3px 8px;border-radius:4px;color:#b45309;font-weight:700">📤 Advance</span>'+
       '<span style="font-size:10px;background:#fef2f2;border-left:3px solid #ef4444;padding:3px 8px;border-radius:4px;color:#c8382a;font-weight:700">⚠️ Deduction</span>'+
+      '<span style="font-size:10px;background:#f0fdf4;border-left:3px solid #22c55e;padding:3px 8px;border-radius:4px;color:#1e7a4f;font-weight:700">🏠 Rent Paid by Driver</span>'+
     '</div>';
     el.innerHTML=legend+rows.map(function(r){
       var isSal=r.type==='salary';
       var isSalPending=r.type==='salary-pending';
       var isAdv=r.type==='advance';
-      var amtColor=isSal?'#1e7a4f':isSalPending?'#c07000':isAdv?'#b45309':'#c8382a';
-      var rowBg=isSal?'#f0fdf4':isSalPending?'#fff8e1':isAdv?'#fffbeb':'#fef2f2';
-      var borderColor=isSal?'#22c55e':isSalPending?'#f59e0b':isAdv?'#fb923c':'#ef4444';
+      var isTempoPay=r.type==='tempo-pay';
+      var amtColor=isSal?'#1e7a4f':isSalPending?'#c07000':isAdv?'#b45309':isTempoPay?'#1e7a4f':'#c8382a';
+      var rowBg=isSal?'#f0fdf4':isSalPending?'#fff8e1':isAdv?'#fffbeb':isTempoPay?'#f0fdf4':'#fef2f2';
+      var borderColor=isSal?'#22c55e':isSalPending?'#f59e0b':isAdv?'#fb923c':isTempoPay?'#22c55e':'#ef4444';
       var badge=isSal?'<span style="font-size:9px;background:#d1fae5;color:#065f46;font-weight:800;padding:2px 6px;border-radius:4px;text-transform:uppercase">Salary Paid</span>':
                 isSalPending?'<span style="font-size:9px;background:#fff8e1;color:#c07000;font-weight:800;padding:2px 6px;border-radius:4px;text-transform:uppercase;border:1px solid #f59e0b">⏳ Pending</span>':
                 isAdv?'<span style="font-size:9px;background:#fef3c7;color:#92400e;font-weight:800;padding:2px 6px;border-radius:4px;text-transform:uppercase">Advance</span>':
+                isTempoPay?'<span style="font-size:9px;background:#d1fae5;color:#065f46;font-weight:800;padding:2px 6px;border-radius:4px;text-transform:uppercase">Rent Paid</span>':
                 '<span style="font-size:9px;background:#fee2e2;color:#991b1b;font-weight:800;padding:2px 6px;border-radius:4px;text-transform:uppercase">Deduction</span>';
-      var editFn=(isSal||isSalPending)?'editSalaryById('+r.id+')':'editAdvanceById('+r.id+')';
-      var delFn=(isSal||isSalPending)?'deleteSalaryById('+r.id+')':'deleteAdvance('+r.id+')';
+      var editFn=(isSal||isSalPending)?'editSalaryById('+r.id+')':isTempoPay?'':('editAdvanceById('+r.id+')');
+      var delFn=(isSal||isSalPending)?'deleteSalaryById('+r.id+')':isTempoPay?'':('deleteAdvance('+r.id+')');
       // salary: show Net Payable + Paid separately
       var salDetailHtml='';
       if(isSal||isSalPending){
@@ -1691,10 +1751,10 @@ function loadDriverTxns(){
           '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;margin-left:8px">'+
             '<div style="font-weight:900;font-size:16px;color:'+amtColor+'">'+fmt(r.amount)+'</div>'+
             '<div style="font-size:10px;color:#7a8fa6">'+r.date+'</div>'+
-            '<div style="display:flex;gap:4px">'+
+            (!isTempoPay?'<div style="display:flex;gap:4px">'+
               '<button class="btn-sm btn-edit" onclick="'+editFn+'">✏️</button>'+
               '<button class="btn-sm btn-del" onclick="'+delFn+'">🗑</button>'+
-            '</div>'+
+            '</div>':'<div style="font-size:9px;color:#7a8fa6">Edit in Tempo Pay tab</div>')+
           '</div>'+
         '</div>'+
       '</div>';
@@ -2386,7 +2446,11 @@ function saveSalary(){
   // detect advance-excess carry forward
   var rawNet=window._salRawNet!=null?window._salRawNet:net;
   var advExcess=rawNet<-0.01?Math.abs(rawNet):0;
-  var noteVal=v('sal-note');
+  // Strip auto-generated parts so they are always regenerated fresh (handles month-change edits too)
+  var noteVal=(v('sal-note')||'')
+    .replace(/\s*\|\s*Advance excess ₹[\d,.]+ → carry fwd to \d{4}-\d{2}/g,'')
+    .replace(/ \| Paid ₹[\d,.]+ on \d{4}-\d{2}-\d{2}[^|]*/g,'')
+    .trim();
   if(advExcess>0) noteVal=(noteVal?noteVal+' | ':'')+'Advance excess '+fmt(advExcess)+' → carry fwd to '+getNextMonthStr(mon);
   var body={driver_name:drv,month:mon,base_salary:base,
     advance_given:parseFloat(v('sal-adv-given'))||0,
@@ -2445,14 +2509,36 @@ function loadSalaryList(){
   if(mon) q+='&month=eq.'+encodeURIComponent(mon);
   sbGetQ('driver_salary',q).then(function(rows){
     if(!rows.length){el.innerHTML='<div class="empty">No salary records found</div>';return;}
-    // fetch all tempo rent records for this driver (or specific month)
+    // fetch tempo rent + carry-forward entries for this driver
     var trQ='driver_name=eq.'+encodeURIComponent(drv)+'&order=month.desc';
     if(mon) trQ+='&month=eq.'+encodeURIComponent(mon);
-    sbGetQ('driver_tempo_rent',trQ).then(function(trows){
+    Promise.all([
+      sbGetQ('driver_tempo_rent',trQ),
+      sbGetQ('driver_advances','driver_name=eq.'+encodeURIComponent(drv)+'&type=in.(salary_cf_debit,salary_cf_credit,salary_cf_adv_excess)&order=date.asc'),
+      sbGetQ('driver_advances','driver_name=eq.'+encodeURIComponent(drv)+'&type=eq.advance&order=date.asc')
+    ]).then(function(tres){
+      var trows=tres[0]||[]; var cfRows=tres[1]||[]; var advRows=tres[2]||[];
       var trMap={};
       (trows||[]).forEach(function(tr){trMap[tr.month]=tr;});
+      // build cfMap keyed by the month the CF is APPLIED TO (i.e., date's YYYY-MM)
+      var cfMap={};
+      cfRows.forEach(function(r){
+        var m=r.date.slice(0,7);
+        if(!cfMap[m]) cfMap[m]=0;
+        var amt=parseFloat(r.amount)||0;
+        cfMap[m]+=(r.type==='salary_cf_debit'?amt:-amt);
+      });
+      // build advMap keyed by salary month (YYYY-MM)
+      var advMap={};
+      advRows.forEach(function(r){
+        var m=r.date.slice(0,7);
+        if(!advMap[m]) advMap[m]=[];
+        advMap[m].push(r);
+      });
       el.innerHTML=rows.map(function(s){
       var tr=trMap[s.month]||null;
+      var cf=cfMap[s.month]||0;
+      var monthAdvs=advMap[s.month]||[];
       var isPaid=!!s.paid_date;
       return'<div class="item-card" style="margin-bottom:10px">'+
         // month header
@@ -2464,12 +2550,19 @@ function loadSalaryList(){
         '</div>'+
         '<div class="sum-row"><span class="sum-lbl">Base Salary</span><span class="sum-val">'+fmt(s.base_salary)+'</span></div>'+
         '<div class="sum-row"><span class="sum-lbl">Leave Deduction ('+s.leave_days+'d)</span><span class="sum-val" style="color:#c8382a">− '+fmt(s.leave_deduction)+'</span></div>'+
+        '<div class="sum-row"><span class="sum-lbl">Fine / Extra Deduction</span><span class="sum-val" style="color:'+(s.other_deduction?'#c8382a':'#aaa')+'">− '+fmt(s.other_deduction||0)+'</span></div>'+
+        '<div class="sum-row" style="background:#f0f4ff;border-radius:6px;padding:4px 6px;margin:2px 0"><span class="sum-lbl" style="font-weight:700;color:#1a3a5c">Subtotal (Base − Leave − Fine)</span><span class="sum-val" style="font-weight:800;color:#1a3a5c">'+fmt((parseFloat(s.base_salary)||0)-(parseFloat(s.leave_deduction)||0)-(parseFloat(s.other_deduction)||0))+'</span></div>'+
         (s.substitute_cost?'<div class="sum-row"><span class="sum-lbl" style="color:#9a6700">⚠ Substitute Cost (company loss)</span><span class="sum-val" style="color:#9a6700">'+fmt(s.substitute_cost)+'</span></div>':'')+
         (tr?'<div class="sum-row"><span class="sum-lbl">Tempo Rent ('+tr.tempo_name+' · '+tr.days_used+'/'+tr.days_in_month+'d)</span><span class="sum-val" style="color:#c8382a">− '+fmt(tr.rent_amount)+'</span></div>':'')+
-        '<div class="sum-row"><span class="sum-lbl">Advance Deducted</span><span class="sum-val" style="color:#c8382a">− '+fmt(s.advance_deducted)+'</span></div>'+
-        (s.other_deduction?'<div class="sum-row"><span class="sum-lbl">Other Deductions</span><span class="sum-val" style="color:#c8382a">− '+fmt(s.other_deduction)+'</span></div>':'')+
+        '<div class="sum-row"><span class="sum-lbl">Advance Deducted</span><span class="sum-val" style="display:flex;align-items:center;gap:6px"><span style="color:#c8382a">− '+fmt(s.advance_deducted)+'</span>'+(monthAdvs.length?'<button class="btn-sm btn-grey" style="padding:2px 7px;font-size:10px" onclick="var d=document.getElementById(\'advd-'+s.id+'\');d.style.display=d.style.display===\'none\'?\'block\':\'none\'">Details</button>':'')+'</span></div>'+
+        (monthAdvs.length?'<div id="advd-'+s.id+'" style="display:none;background:#fff8e1;border-radius:6px;padding:6px 8px;margin:2px 0 4px 0;font-size:11px">'+
+          monthAdvs.map(function(a){return'<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f5e6b2">'+
+            '<span style="color:#7a8fa6">'+a.date+(a.reason?' · '+a.reason:'')+(a.bank_account?' · 🏦'+a.bank_account:' · 💵Cash')+'</span>'+
+            '<span style="font-weight:700;color:#c07000">'+fmt(a.amount)+'</span></div>';}).join('')+
+        '</div>':'')+
         (s.driver_paid?'<div class="sum-row"><span class="sum-lbl">💚 Driver Paid Rent</span><span class="sum-val" style="color:#1e7a4f">'+fmt(s.driver_paid)+' <span style="font-size:10px;color:#7a8fa6">(offsets rent deduction)</span></span></div>':'')+
         '<div class="sum-row"><span class="sum-lbl">Bonus</span><span class="sum-val" style="color:#1e7a4f">+ '+fmt(s.bonus)+'</span></div>'+
+        '<div class="sum-row"><span class="sum-lbl">Carry Forward (prev month)</span><span class="sum-val" style="color:'+(cf>0.01?'#1e7a4f':cf<-0.01?'#c8382a':'#aaa')+'">'+(cf>0.01?'+ ':cf<-0.01?'− ':'')+fmt(Math.abs(cf))+'</span></div>'+
         '<hr class="divider">'+
         '<div class="sum-row total"><span class="sum-lbl">Net Payable</span><span class="sum-val">'+fmt(s.net_paid)+'</span></div>'+
         (s.actual_paid!=null&&Math.abs(s.actual_paid-s.net_paid)>0.01?
