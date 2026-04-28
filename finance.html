@@ -1566,22 +1566,26 @@ function loadDriverTxns(){
       var isPending=!r.paid_date;
       var netPayable=parseFloat(r.net_paid)||0;
       var actualPaid=r.actual_paid!=null?parseFloat(r.actual_paid):null;
-      var dispAmt=netPayable;
-      var subNote=r.month;
-      if(!isPending && actualPaid!=null && Math.abs(actualPaid-netPayable)>0.01){
-        subNote=r.month+' · Paid '+fmt(actualPaid)+' / Net '+fmt(netPayable);
-      }
       rows.push({id:r.id,date:r.paid_date||r.month+'-01',driver:r.driver_name,
-        label:isPending?'📋 Salary Pending':'💰 Salary Paid',sub:subNote,
-        amount:dispAmt,
+        label:isPending?'📋 Salary Pending':'💰 Salary Paid',sub:r.month,
+        amount:netPayable,netPayable:netPayable,actualPaid:actualPaid,
+        balanceChange:+netPayable,
         type:isPending?'salary-pending':'salary',note:r.note||''});
     });
     advs.forEach(function(r){
+      // skip internal carry-forward rows — not real cash transactions
+      if(r.type==='salary_cf_adv_excess'||r.type==='salary_cf_debit'||r.type==='salary_cf_credit') return;
       var isAdv=r.type==='advance';
       var bankLabel=r.bank_account?('🏦 '+r.bank_account):'💵 Cash';
-      rows.push({id:r.id,date:r.date,driver:r.driver_name,label:isAdv?'📤 Advance':'⚠️ Deduction',sub:r.reason||'',amount:r.amount,type:r.type,note:isAdv?bankLabel:''});
+      rows.push({id:r.id,date:r.date,driver:r.driver_name,label:isAdv?'📤 Advance':'⚠️ Deduction',sub:r.reason||'',
+        amount:r.amount,balanceChange:isAdv?-(parseFloat(r.amount)||0):0,
+        type:r.type,note:isAdv?bankLabel:''});
     });
-    rows.sort(function(a,b){return b.date.localeCompare(a.date);});
+    // compute running balance: sort ASC → accumulate → sort DESC for display
+    rows.sort(function(a,b){return a.date.localeCompare(b.date)||a.id-b.id;});
+    var runBal=0;
+    rows.forEach(function(r){runBal+=r.balanceChange;r.balance=runBal;});
+    rows.sort(function(a,b){return b.date.localeCompare(a.date)||b.id-a.id;});
 
     // ── Driver summary (use sals + advs directly — no bank double-count) ──
     var sumEl=document.getElementById('driverSummary');
@@ -1655,6 +1659,24 @@ function loadDriverTxns(){
                 '<span style="font-size:9px;background:#fee2e2;color:#991b1b;font-weight:800;padding:2px 6px;border-radius:4px;text-transform:uppercase">Deduction</span>';
       var editFn=(isSal||isSalPending)?'editSalaryById('+r.id+')':'editAdvanceById('+r.id+')';
       var delFn=(isSal||isSalPending)?'deleteSalaryById('+r.id+')':'deleteAdvance('+r.id+')';
+      // salary: show Net Payable + Paid separately
+      var salDetailHtml='';
+      if(isSal||isSalPending){
+        var apVal=r.actualPaid!=null?r.actualPaid:0;
+        salDetailHtml='<div style="display:flex;gap:10px;margin-top:3px;flex-wrap:wrap">'+
+          '<div style="font-size:10px;color:#555">Net Payable: <b>'+fmt(r.netPayable)+'</b></div>'+
+          '<div style="font-size:10px;color:'+(apVal>0.01?'#1e7a4f':'#c8382a')+'">Paid: <b>'+fmt(apVal)+'</b></div>'+
+        '</div>';
+      }
+      // running balance chip
+      var bal=r.balance||0;
+      var balColor=bal<-0.01?'#c8382a':bal>0.01?'#1e7a4f':'#555';
+      var balBg=bal<-0.01?'#fef2f2':bal>0.01?'#f0fdf4':'#f5f5f5';
+      var balLabel=bal<-0.01?'Driver Owes':bal>0.01?'Owner Owes':'Settled';
+      var balHtml='<div style="margin-top:4px;display:inline-flex;align-items:center;gap:4px;background:'+balBg+';border:1px solid '+balColor+'40;border-radius:6px;padding:2px 7px">'+
+        '<span style="font-size:9px;color:'+balColor+';font-weight:700;text-transform:uppercase">'+balLabel+'</span>'+
+        '<span style="font-size:11px;font-weight:900;color:'+balColor+'">'+fmt(Math.abs(bal))+'</span>'+
+      '</div>';
       return'<div class="item-card" style="background:'+rowBg+';border-left:4px solid '+borderColor+';border-top:1px solid '+borderColor+'40;border-right:1px solid '+borderColor+'40;border-bottom:1px solid '+borderColor+'40">'+
         '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
           '<div style="flex:1">'+
@@ -1663,7 +1685,10 @@ function loadDriverTxns(){
               badge+
             '</div>'+
             '<div style="font-size:11px;color:#7a8fa6">'+r.label+(r.sub?' · '+r.sub:'')+'</div>'+
-            (r.note?'<div style="font-size:10px;color:#aaa;margin-top:2px">'+r.note+'</div>':'')+'</div>'+
+            salDetailHtml+
+            (r.note?'<div style="font-size:10px;color:#aaa;margin-top:2px">'+r.note+'</div>':'')+
+            balHtml+
+          '</div>'+
           '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;margin-left:8px">'+
             '<div style="font-weight:900;font-size:16px;color:'+amtColor+'">'+fmt(r.amount)+'</div>'+
             '<div style="font-size:10px;color:#7a8fa6">'+r.date+'</div>'+
