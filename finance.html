@@ -2489,26 +2489,31 @@ function loadSalaryList(){
         '<button class="btn-sm btn-del" onclick="delGuard(this,function(){deleteSalaryById('+s.id+');})">Del</button>'+
         '</div>'+
         '<div id="sal-wa-toast-'+s.id+'" style="display:none;background:#e8f5e9;color:#1e7a4f;padding:6px 10px;border-radius:8px;font-size:12px;margin-top:6px">Copied ✓</div>'+
-        // Mark as paid section
-        (!isPaid?
-          '<div style="margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0">'+
-          '<div style="font-size:12px;font-weight:700;color:#1a3a5c;margin-bottom:8px">💵 Mark as Paid</div>'+
-          '<div style="margin-bottom:8px">'+
-          '<div style="font-size:10px;color:#7a8fa6;font-family:monospace;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">AMOUNT PAYING (₹)</div>'+
-          '<input type="number" id="sal-pay-amount-'+s.id+'" value="'+s.net_paid+'" oninput="calcSalaryPayDiff2('+s.id+','+s.net_paid+')" style="width:100%;padding:9px 12px;border:2px solid #1e7a4f;border-radius:8px;font-size:16px;font-weight:800;color:#1a3a5c;background:#e8f5e9">'+
-          '<div id="sal-pay-diff-hint-'+s.id+'" style="font-size:11px;margin-top:4px;line-height:1.5"></div>'+
-          '</div>'+
-          '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
-          '<input type="date" id="sal-pay-date-'+s.id+'" value="'+todayStr()+'" style="flex:1;min-width:120px;padding:6px;border:1px solid #cdd5e0;border-radius:6px;font-size:13px">'+
-          '<select id="sal-pay-mode-'+s.id+'" style="flex:1;min-width:100px;padding:6px;border:1px solid #cdd5e0;border-radius:6px;font-size:13px">'+
-          '<option value="Cash">Cash</option><option value="Bank Transfer">Bank Transfer</option><option value="UPI">UPI</option>'+
-          '</select>'+
-          '<select id="sal-pay-bank-'+s.id+'" style="flex:1;min-width:120px;padding:6px;border:1px solid #cdd5e0;border-radius:6px;font-size:13px">'+
-          '<option value="">— No bank entry —</option>'+
-          (_bankAccounts||[]).map(function(a){var def=getDefaultBank();return'<option value="'+a.name+'"'+(def===a.name?' selected':'')+'>'+a.name+'</option>';}).join('')+
-          '</select>'+
-          '<button class="btn-sm btn-blue" onclick="markSalaryPaidV2('+s.id+',\''+s.driver_name.replace(/'/g,"\\'")+'\','+s.net_paid+',\''+s.month+'\')">Mark Paid</button>'+
-          '</div></div>':'')
+        // Mark as paid / Update payment section
+        '<div style="margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0">'+
+        '<div style="font-size:12px;font-weight:700;color:#1a3a5c;margin-bottom:6px">'+(isPaid?'✏️ Update Payment':'💵 Mark as Paid')+'</div>'+
+        '<div style="background:#f0fdf4;border-radius:8px;padding:8px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center">'+
+          '<span style="font-size:11px;color:#555;font-weight:600">Net Payable</span>'+
+          '<span style="font-size:15px;font-weight:900;color:#1a3a5c">'+fmt(s.net_paid)+'</span>'+
+        '</div>'+
+        '<div style="margin-bottom:8px">'+
+        '<div style="font-size:10px;color:#7a8fa6;font-family:monospace;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">AMOUNT PAYING TODAY (₹)</div>'+
+        '<input type="number" id="sal-pay-amount-'+s.id+'" value="'+(s.actual_paid!=null?s.actual_paid:s.net_paid)+'" placeholder="Enter amount being paid" oninput="calcSalaryPayDiff2('+s.id+','+s.net_paid+')" style="width:100%;padding:9px 12px;border:2px solid #1e7a4f;border-radius:8px;font-size:16px;font-weight:800;color:#1a3a5c;background:#e8f5e9;box-sizing:border-box">'+
+        '<div id="sal-pay-diff-hint-'+s.id+'" style="font-size:11px;margin-top:4px;line-height:1.5"></div>'+
+        '</div>'+
+        '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
+        '<input type="date" id="sal-pay-date-'+s.id+'" value="'+(s.paid_date||todayStr())+'" style="flex:1;min-width:120px;padding:6px;border:1px solid #cdd5e0;border-radius:6px;font-size:13px">'+
+        '<select id="sal-pay-mode-'+s.id+'" style="flex:1;min-width:100px;padding:6px;border:1px solid #cdd5e0;border-radius:6px;font-size:13px">'+
+        '<option value="Cash">Cash</option><option value="Bank Transfer">Bank Transfer</option><option value="UPI">UPI</option>'+
+        '</select>'+
+        '<select id="sal-pay-bank-'+s.id+'" style="flex:1;min-width:120px;padding:6px;border:1px solid #cdd5e0;border-radius:6px;font-size:13px">'+
+        '<option value="">— No bank entry —</option>'+
+        (_bankAccounts||[]).map(function(a){var def=getDefaultBank();return'<option value="'+a.name+'"'+(def===a.name?' selected':'')+'>'+a.name+'</option>';}).join('')+
+        '</select>'+
+        (isPaid?
+          '<button class="btn-sm btn-edit" onclick="updateActualPaid('+s.id+','+s.net_paid+',\''+s.driver_name.replace(/'/g,"\\'")+'\',\''+s.month+'\')">💾 Update</button>':
+          '<button class="btn-sm btn-blue" onclick="markSalaryPaidV2('+s.id+',\''+s.driver_name.replace(/'/g,"\\'")+'\','+s.net_paid+',\''+s.month+'\')">✅ Mark Paid</button>')+
+        '</div></div>')
         +'</div>';
       }).join('');
     });
@@ -2632,7 +2637,7 @@ function markSalaryPaidV2(id,driverName,netPaid,month){
   var bankEl=document.getElementById('sal-pay-bank-'+id);
   var bankAcct=bankEl?bankEl.value:'';
   var amtEl=document.getElementById('sal-pay-amount-'+id);
-  var actualPaid=amtEl?parseFloat(amtEl.value)||netPaid:netPaid;
+  var actualPaid=amtEl&&amtEl.value.trim()!==''?parseFloat(amtEl.value):netPaid;
   var diff=+(actualPaid-netPaid).toFixed(2);
   sbGetQ('driver_salary','id=eq.'+id).then(function(rows){
     var cur=rows&&rows.length?rows[0]:{};
@@ -2653,6 +2658,29 @@ function markSalaryPaidV2(id,driverName,netPaid,month){
         sbPost('driver_advances',{driver_name:drv,date:nextMon+'-01',amount:Math.abs(diff),type:cfType,reason:cfReason});
       }
       loadSalaryList();
+    });
+  });
+}
+function updateActualPaid(id,netPaid,driverName,month){
+  var amtEl=document.getElementById('sal-pay-amount-'+id);
+  var actualPaid=amtEl&&amtEl.value.trim()!==''?parseFloat(amtEl.value):netPaid;
+  var date=(document.getElementById('sal-pay-date-'+id)||{}).value||todayStr();
+  var diff=+(actualPaid-netPaid).toFixed(2);
+  sbGetQ('driver_salary','id=eq.'+id).then(function(rows){
+    var cur=rows&&rows.length?rows[0]:{};
+    fetch(BASE+'/driver_salary?id=eq.'+id,{method:'PATCH',headers:hdrs({'Prefer':'return=minimal'}),
+      body:JSON.stringify({paid_date:date,actual_paid:actualPaid})}).then(function(){
+      // remove old cf entries for this salary, then re-create if diff
+      var nextMon=getNextMonthStr(month);
+      fetch(BASE+'/driver_advances?driver_name=eq.'+encodeURIComponent(driverName||cur.driver_name)+'&date=eq.'+nextMon+'-01'+'&type=in.(salary_cf_debit,salary_cf_credit)',
+        {method:'DELETE',headers:hdrs({'Prefer':'return=minimal'})}).then(function(){
+        if(Math.abs(diff)>0.01){
+          var cfType=diff>0?'salary_cf_credit':'salary_cf_debit';
+          var cfReason=(diff>0?'Overpaid ':'Short paid ')+(month||cur.month)+' salary by '+fmt(Math.abs(diff));
+          sbPost('driver_advances',{driver_name:driverName||cur.driver_name,date:nextMon+'-01',amount:Math.abs(diff),type:cfType,reason:cfReason});
+        }
+        loadSalaryList(); loadDriverTxns();
+      });
     });
   });
 }
