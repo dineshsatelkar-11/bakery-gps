@@ -1587,7 +1587,7 @@ function loadDriverTxns(){
     rows.forEach(function(r){runBal+=r.balanceChange;r.balance=runBal;});
     rows.sort(function(a,b){return b.date.localeCompare(a.date)||b.id-a.id;});
 
-    // ── Driver summary (use sals + advs directly — no bank double-count) ──
+    // ── Driver summary ──
     var sumEl=document.getElementById('driverSummary');
     var driverNames=[];
     sals.forEach(function(r){if(driverNames.indexOf(r.driver_name)<0)driverNames.push(r.driver_name);});
@@ -1596,43 +1596,42 @@ function loadDriverTxns(){
       sumEl.style.display='block';
       sumEl.innerHTML=driverNames.map(function(d){
         var dSals=sals.filter(function(r){return r.driver_name===d;});
-        var dAdvs=advs.filter(function(r){return r.driver_name===d;});
-        var totalBase    =dSals.reduce(function(s,r){return s+(parseFloat(r.base_salary)||0);},0);
-        var totalNetPaid =dSals.reduce(function(s,r){return s+(parseFloat(r.net_paid)||0);},0);
+        // Gross salary = what driver earned before advance deduction (days × rate − rent + bonus)
+        var grossSalary  =dSals.reduce(function(s,r){return s+(parseFloat(r.net_paid)||0)+(parseFloat(r.advance_deducted)||0);},0);
+        // Advance given = cash given to driver during month (already deducted from net_paid in salary calc)
         var totalAdvGiven=dSals.reduce(function(s,r){return s+(parseFloat(r.advance_given)||0);},0);
-        // Owner still needs to pay = net_paid of UNPAID salary records only
-        var ownerOwes    =dSals.filter(function(r){return !r.paid_date;}).reduce(function(s,r){return s+(parseFloat(r.net_paid)||0);},0);
-        // Salary already paid by owner (records with paid_date)
-        var alreadyPaid  =dSals.filter(function(r){return !!r.paid_date;}).reduce(function(s,r){return s+(parseFloat(r.net_paid)||0);},0);
-        // Separate advances not yet deducted from any salary
-        var totalSepAdv  =dAdvs.filter(function(r){return r.type==='advance';}).reduce(function(s,r){return s+(parseFloat(r.amount)||0);},0);
-        var totalDeduct  =dAdvs.filter(function(r){return r.type==='deduction';}).reduce(function(s,r){return s+(parseFloat(r.amount)||0);},0);
-        // outstanding: positive = owner owes driver, negative = driver owes owner (advance excess)
-        var outstanding  =ownerOwes;
-        var isOwed=outstanding>0.01;
-        return'<div class="card" style="margin-bottom:6px;padding:12px;border-left:4px solid '+(isOwed?'#c8382a':'#1e7a4f')+'">'+
-          '<div style="font-weight:800;font-size:14px;margin-bottom:10px;color:#1a3a5c">👤 '+d+'</div>'+
-          '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:10px">'+
-            '<div style="background:#f0fdf4;border-radius:8px;padding:8px;text-align:center">'+
-              '<div style="font-size:13px;font-weight:800;color:#1e7a4f">'+fmt(totalBase)+'</div>'+
-              '<div style="font-size:9px;color:#7a8fa6;text-transform:uppercase;font-family:monospace;margin-top:2px">Base Salary</div></div>'+
-            (totalAdvGiven>0?
-            '<div style="background:#fff8e1;border-radius:8px;padding:8px;text-align:center">'+
-              '<div style="font-size:13px;font-weight:800;color:#c07000">'+fmt(totalAdvGiven)+'</div>'+
-              '<div style="font-size:9px;color:#7a8fa6;text-transform:uppercase;font-family:monospace;margin-top:2px">Salary Advance</div></div>':
-            '<div></div>')+
-            '<div style="background:#e8f5e9;border-radius:8px;padding:8px;text-align:center">'+
-              '<div style="font-size:13px;font-weight:800;color:#1e7a4f">'+fmt(alreadyPaid)+'</div>'+
-              '<div style="font-size:9px;color:#7a8fa6;text-transform:uppercase;font-family:monospace;margin-top:2px">Salary Paid</div></div>'+
-            (totalDeduct>0?
-            '<div style="background:#fef2f2;border-radius:8px;padding:8px;text-align:center">'+
-              '<div style="font-size:13px;font-weight:800;color:#c8382a">'+fmt(totalDeduct)+'</div>'+
-              '<div style="font-size:9px;color:#7a8fa6;text-transform:uppercase;font-family:monospace;margin-top:2px">Deductions</div></div>':
-            '<div></div>')+
+        // Cash paid on salary day = actual_paid for marked-paid months (0 if not yet paid)
+        var cashPaid     =dSals.reduce(function(s,r){return s+(r.paid_date?(parseFloat(r.actual_paid!=null?r.actual_paid:r.net_paid)||0):0);},0);
+        // Total given to driver = advance + cash on salary day
+        var totalPaid    =totalAdvGiven+cashPaid;
+        // Balance = what driver earned (gross) − what was given = owner still owes (positive) or driver owes (negative)
+        var balance      =+(grossSalary-totalPaid).toFixed(2);
+        var owesOwner    =balance<-0.01;  // driver was overpaid
+        var owesDriver   =balance>0.01;   // owner still owes driver
+        var balColor     =owesDriver?'#c8382a':owesOwner?'#1e7a4f':'#1e7a4f';
+        var balBg        =owesDriver?'#fef2f2':'#f0fdf4';
+        var balLabel     =owesDriver?'💸 Owner Still Owes Driver':owesOwner?'Driver Owes Owner (Overpaid)':'✅ Fully Settled';
+        var unpaidMonths =dSals.filter(function(r){return !r.paid_date;}).length;
+        function row(lbl,val,color,small){
+          return'<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #edf2f7">'+
+            '<span style="font-size:'+(small?'11':'12')+'px;color:#555">'+lbl+'</span>'+
+            '<span style="font-size:'+(small?'12':'13')+'px;font-weight:800;color:'+(color||'#1a3a5c')+'">'+fmt(val)+'</span></div>';
+        }
+        return'<div class="card" style="margin-bottom:6px;padding:14px;border-left:4px solid '+balColor+'">'+
+          '<div style="font-weight:800;font-size:14px;margin-bottom:10px;color:#1a3a5c">👤 '+d+
+            (unpaidMonths>0?'<span style="font-size:10px;background:#fff8e1;color:#c07000;font-weight:700;padding:2px 7px;border-radius:10px;margin-left:8px">'+unpaidMonths+' month'+(unpaidMonths>1?'s':'')+' pending</span>':'')+
           '</div>'+
-          '<div style="background:'+(isOwed?'#fef2f2':'#f0fdf4')+';border-radius:10px;padding:10px;display:flex;justify-content:space-between;align-items:center">'+
-            '<div style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:0.5px">'+(isOwed?'💸 Owner to Pay Driver':'✅ All Salaries Paid')+'</div>'+
-            '<div style="font-size:18px;font-weight:900;color:'+(isOwed?'#c8382a':'#1e7a4f')+'">'+fmt(Math.abs(outstanding))+'</div>'+
+          '<div style="margin-bottom:10px">'+
+            row('Total Salary (earned gross)',''+grossSalary,'#1a3a5c')+
+            row('  ↳ Advance deducted in salary',''+totalAdvGiven,'#c07000',true)+
+            row('  ↳ Cash paid on salary day',''+cashPaid,'#1e7a4f',true)+
+            '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #edf2f7">'+
+              '<span style="font-size:12px;color:#555;font-weight:700">Total Paid to Driver</span>'+
+              '<span style="font-size:13px;font-weight:800;color:#1a3a5c">'+fmt(totalPaid)+'</span></div>'+
+          '</div>'+
+          '<div style="background:'+balBg+';border-radius:10px;padding:10px;display:flex;justify-content:space-between;align-items:center">'+
+            '<div style="font-size:11px;font-weight:700;color:#555;text-transform:uppercase;letter-spacing:0.5px">'+balLabel+'</div>'+
+            '<div style="font-size:20px;font-weight:900;color:'+balColor+'">'+fmt(Math.abs(balance))+'</div>'+
           '</div>'+
         '</div>';
       }).join('');
