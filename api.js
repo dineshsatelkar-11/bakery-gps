@@ -476,15 +476,15 @@
           group_id: b.group_id || null, active: b.active !== false
         });
 
-      // Batch upsert — single request for any number of products
+      // Batch insert new products only — ignore duplicates so existing category/price are never overwritten
       case 'addProducts':
-        return sbUpsert('products', b.products.map(function (p) {
+        return sbPost('products', b.products.map(function (p) {
           return {
             product_id: p.product_id, name: p.name, category: p.category || '',
             price: p.price || '', unit: p.unit || 'Pieces', description: p.description || '',
             group_id: p.group_id || null, active: p.active !== false
           };
-        }), 'product_id');
+        }), 'resolution=ignore-duplicates,return=minimal');
 
       case 'updateProduct':
         return sbPatch('products', { product_id: b.product_id }, {

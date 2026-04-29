@@ -2187,7 +2187,7 @@ function bulkAssignQueue(){
 
 // Map a product name to its category using product master first, then keyword fallback
 function getCat(name, prodMap){
-  if(prodMap){var p=prodMap[(name||'').toLowerCase()];if(p&&p.category)return p.category;}
+  if(prodMap){var p=prodMap[(name||'').toLowerCase()];if(p)return p.category||'Other';}
   var n=(name||'').toLowerCase();
   if(/puff/.test(n))             return 'Puff';
   if(/sweet[\s-]?bun/.test(n))  return 'Sweet Bun';
