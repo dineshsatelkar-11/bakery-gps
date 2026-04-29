@@ -126,6 +126,7 @@ body.dark #searchDropdown{background:#2d3748;border-color:#3d4a5c}
 .search-item:hover{background:#f4f8fc}
 body.dark .search-item:hover{background:#3d4a5c}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
 
@@ -1004,43 +1005,117 @@ body.dark .search-item:hover{background:#3d4a5c}
 
     <!-- Service -->
     <div id="flsec-service" style="display:none">
-      <div class="card">
-        <div class="card-title" id="sv-form-title">🔧 Log Service</div>
-        <input type="hidden" id="sv-edit-id" value="0">
-        <div class="row2">
-          <div><label class="lbl">Tempo</label>
-            <select id="sv-tempo"></select></div>
-          <div><label class="lbl">Date</label>
-            <input type="date" id="sv-date"></div>
-        </div>
-        <div class="row2">
-          <div><label class="lbl">KM at Service</label>
-            <input type="number" id="sv-km" placeholder="0"></div>
-          <div><label class="lbl">Next Service KM</label>
-            <input type="number" id="sv-next-km" placeholder="0"></div>
-        </div>
-        <label class="lbl">Service Type</label>
-        <input type="text" id="sv-type" placeholder="Oil Change, Full Service, Tyre…">
-        <div class="row2">
-          <div><label class="lbl">Cost (₹)</label>
-            <input type="number" id="sv-cost" placeholder="0"></div>
-          <div><label class="lbl">Workshop</label>
-            <input type="text" id="sv-workshop" placeholder="Name"></div>
-        </div>
-        <label class="lbl">Note</label>
-        <input type="text" id="sv-note" placeholder="">
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-blue" id="sv-save-btn" style="flex:1" onclick="saveService()">💾 Save Service</button>
-          <button class="btn btn-grey" id="sv-cancel-btn" style="display:none;flex:none" onclick="cancelEditService()">✕ Cancel</button>
-        </div>
-        <div id="sv-msg"></div>
+      <!-- Sub-tabs -->
+      <div style="display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px">
+        <button class="btn-sm btn-blue" id="svtab-log"    onclick="showServiceTab('log')">➕ Log Service</button>
+        <button class="btn-sm btn-grey" id="svtab-history" onclick="showServiceTab('history')">📋 History</button>
+        <button class="btn-sm btn-grey" id="svtab-report" onclick="showServiceTab('report')">📊 Report</button>
       </div>
-      <div class="card">
-        <div class="card-title">📋 Service History</div>
-        <select id="sv-list-tempo" onchange="loadServiceList()" style="margin-bottom:8px">
-          <option value="">All Tempos</option>
-        </select>
+
+      <!-- Log Service -->
+      <div id="svsec-log">
+        <!-- Bill Parser -->
+        <div class="card" style="border:1px dashed #c7d2fe;background:#f8f7ff">
+          <div class="card-title" style="color:#4338ca">📄 Parse Bill (Optional)</div>
+          <div style="font-size:11px;color:#6366f1;margin-bottom:8px">Upload service bill (PDF or TXT) → auto-fill form fields</div>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;border:1.5px dashed #818cf8;border-radius:10px;padding:12px 14px;background:#f5f3ff">
+            <span style="font-size:22px">📂</span>
+            <span id="sv-bill-filename" style="font-size:12px;color:#4338ca;flex:1">Choose bill file (.pdf or .txt)…</span>
+            <input type="file" id="sv-bill-file" accept=".pdf,.txt" style="display:none" onchange="loadBillFile(this)">
+          </label>
+          <button class="btn" style="background:#4338ca;color:#fff;width:100%;margin-top:8px" onclick="parseBillText()">🔍 Extract from Bill</button>
+          <textarea id="sv-bill-text" rows="3" style="display:none;width:100%;font-size:10px;font-family:monospace;border:1px solid #c7d2fe;border-radius:8px;padding:8px;resize:vertical;margin-top:8px" placeholder="Extracted text will appear here…" readonly></textarea>
+          <div id="sv-parse-msg" style="font-size:11px;margin-top:4px"></div>
+        </div>
+
+        <!-- Main Form -->
+        <div class="card">
+          <div class="card-title" id="sv-form-title">🔧 Log Service</div>
+          <input type="hidden" id="sv-edit-id" value="0">
+          <div class="row2">
+            <div><label class="lbl">Tempo</label>
+              <select id="sv-tempo"></select></div>
+            <div><label class="lbl">Service Date</label>
+              <input type="date" id="sv-date"></div>
+          </div>
+          <div class="row2">
+            <div><label class="lbl">Bill / Invoice No</label>
+              <input type="text" id="sv-bill-no" placeholder="INV-XXXX"></div>
+            <div><label class="lbl">Bill Date</label>
+              <input type="date" id="sv-bill-date"></div>
+          </div>
+          <div class="row2">
+            <div><label class="lbl">Odometer (KM)</label>
+              <input type="number" id="sv-km" placeholder="0"></div>
+            <div><label class="lbl">Next Service KM</label>
+              <input type="number" id="sv-next-km" placeholder="0"></div>
+          </div>
+          <div class="row2">
+            <div><label class="lbl">Service Type</label>
+              <input type="text" id="sv-type" placeholder="Oil Change, Full Service, Parts…"></div>
+            <div><label class="lbl">Workshop</label>
+              <input type="text" id="sv-workshop" placeholder="Name"></div>
+          </div>
+          <div class="row2">
+            <div><label class="lbl">Service Person</label>
+              <input type="text" id="sv-person" placeholder="Technician name"></div>
+            <div><label class="lbl">Reg No</label>
+              <input type="text" id="sv-reg-no" placeholder="MH12XX0000"></div>
+          </div>
+
+          <!-- Line Items -->
+          <div style="margin-top:10px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <label class="lbl" style="margin:0">Parts & Labour</label>
+              <button class="btn-sm" style="background:#1a3a5c;color:#fff;font-size:11px" onclick="addServiceItem()">+ Add Row</button>
+            </div>
+            <div id="sv-items" style="display:flex;flex-direction:column;gap:6px"></div>
+            <div style="display:flex;justify-content:flex-end;align-items:center;margin-top:8px;gap:8px">
+              <span style="font-size:12px;color:#7a8fa6">Total:</span>
+              <span id="sv-total-display" style="font-weight:900;font-size:16px;color:#1a3a5c">₹0</span>
+            </div>
+          </div>
+
+          <label class="lbl" style="margin-top:8px">Observations / Notes</label>
+          <textarea id="sv-note" rows="2" style="width:100%;border:1px solid #c8d8e8;border-radius:8px;padding:8px;font-size:13px;resize:vertical" placeholder="e.g. All relays OK, check tyre pressure next visit…"></textarea>
+
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn btn-blue" id="sv-save-btn" style="flex:1" onclick="saveService()">💾 Save Service</button>
+            <button class="btn btn-grey" id="sv-cancel-btn" style="display:none;flex:none" onclick="cancelEditService()">✕ Cancel</button>
+          </div>
+          <div id="sv-msg"></div>
+        </div>
+      </div>
+
+      <!-- History -->
+      <div id="svsec-history" style="display:none">
+        <div class="card" style="padding:10px">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <select id="sv-list-tempo" onchange="loadServiceList()" style="flex:1">
+              <option value="">All Tempos</option>
+            </select>
+            <input type="month" id="sv-list-month" onchange="loadServiceList()" style="flex:1">
+          </div>
+        </div>
         <div id="serviceList"><div class="empty">Loading…</div></div>
+      </div>
+
+      <!-- Report -->
+      <div id="svsec-report" style="display:none">
+        <div class="card" style="padding:10px">
+          <div class="row2">
+            <div><label class="lbl">From</label><input type="date" id="sv-rep-from"></div>
+            <div><label class="lbl">To</label><input type="date" id="sv-rep-to"></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap">
+            <button class="btn-sm btn-grey" onclick="setServiceReportRange('month')">This Month</button>
+            <button class="btn-sm btn-grey" onclick="setServiceReportRange('quarter')">3 Months</button>
+            <button class="btn-sm btn-grey" onclick="setServiceReportRange('year')">This Year</button>
+            <button class="btn-sm btn-grey" onclick="setServiceReportRange('all')">All Time</button>
+          </div>
+          <button class="btn btn-blue" style="width:100%;margin-top:8px" onclick="loadServiceReport()">📊 Generate Report</button>
+        </div>
+        <div id="serviceReport"><div class="empty">Select range and generate</div></div>
       </div>
     </div>
   </div>
@@ -1498,6 +1573,7 @@ function sbDelete(table,id){
 function todayStr(){return new Date().toISOString().slice(0,10);}
 function thisMonth(){return new Date().toISOString().slice(0,7);}
 function fmt(n){return'₹'+(parseFloat(n)||0).toLocaleString('en-IN');}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function showMsg(id,text,type){
   var el=document.getElementById(id);
   if(!el)return;
@@ -1736,9 +1812,12 @@ function loadDriverTxns(){
 
     // ── Driver summary ──
     var sumEl=document.getElementById('driverSummary');
+    // Only include active drivers (use the already-loaded selects list)
+    var activeDriverNames=Array.from(document.querySelectorAll('#dtxn-driver option'))
+      .map(function(o){return o.value;}).filter(Boolean);
     var driverNames=[];
-    sals.forEach(function(r){if(driverNames.indexOf(r.driver_name)<0)driverNames.push(r.driver_name);});
-    advs.forEach(function(r){if(driverNames.indexOf(r.driver_name)<0)driverNames.push(r.driver_name);});
+    sals.forEach(function(r){if(activeDriverNames.indexOf(r.driver_name)>=0&&driverNames.indexOf(r.driver_name)<0)driverNames.push(r.driver_name);});
+    advs.forEach(function(r){if(activeDriverNames.indexOf(r.driver_name)>=0&&driverNames.indexOf(r.driver_name)<0)driverNames.push(r.driver_name);});
     if(driverNames.length){
       sumEl.style.display='block';
       sumEl.innerHTML=driverNames.map(function(d){
@@ -1970,7 +2049,7 @@ function showFleetTab(t){
   });
   if(t==='rentin') loadRentInList();
   if(t==='rentout') loadRentOutList();
-  if(t==='service') loadServiceList();
+  if(t==='service'){ showServiceTab('log'); _svItems=[]; renderServiceItems(); }
 }
 function showLoanTab(t){
   ['list','add','emis','detail','calendar'].forEach(function(s){
@@ -2100,7 +2179,7 @@ function populateDriverSelects(drivers){
   });
 }
 function loadDriversFromDB(cb){
-  sbGetQ('fin_drivers','order=name.asc').then(function(rows){
+  sbGetQ('fin_drivers','active=eq.true&order=name.asc').then(function(rows){
     populateDriverSelects(rows||[]);
     if(cb) cb(rows||[]);
   });
@@ -3789,40 +3868,45 @@ function saveService(){
   var tid=v('sv-tempo'); var date=v('sv-date');
   if(!tid||!date){showMsg('sv-msg','Select tempo and date','er');return;}
   var tempo=tempos.find(function(t){return String(t.id)===String(tid);})||{};
-  var body={tempo_id:tid,tempo_name:tempo.name||'',service_date:date,
-    km_at_service:parseInt(v('sv-km'))||0,next_service_km:parseInt(v('sv-next-km'))||0,
-    service_type:v('sv-type'),cost:parseFloat(v('sv-cost'))||0,
-    workshop:v('sv-workshop'),note:v('sv-note')};
+  var totalCost=_svItems.reduce(function(s,it){return s+(parseFloat(it.amount)||0);},0);
+  var body={
+    tempo_id:tid, tempo_name:tempo.name||'',
+    service_date:date, bill_no:v('sv-bill-no'), bill_date:v('sv-bill-date')||null,
+    km_at_service:parseInt(v('sv-km'))||0, next_service_km:parseInt(v('sv-next-km'))||0,
+    service_type:v('sv-type'), cost:totalCost||parseFloat(v('sv-cost'))||0,
+    workshop:v('sv-workshop'), service_person:v('sv-person'),
+    reg_no:v('sv-reg-no'), line_items:_svItems, observations:v('sv-note')
+  };
   var editId=parseInt(v('sv-edit-id'))||0;
-  var promise=editId>0 ? sbPatch('tempo_service','id=eq.'+editId,body) : sbPost('tempo_service',body);
+  var promise=editId>0?sbPatch('tempo_service','id=eq.'+editId,body):sbPost('tempo_service',body);
   promise.then(function(r){
     if(r.ok){showMsg('sv-msg',(editId>0?'Updated':'Service logged')+' ✓','ok');cancelEditService();loadServiceList();}
-    else showMsg('sv-msg','Error','er');
+    else showMsg('sv-msg','Error saving','er');
   });
 }
 function loadServiceList(){
   var el=document.getElementById('serviceList');
-  var tid=v('sv-list-tempo');
-  var qs='order=service_date.desc'+(tid?'&tempo_id=eq.'+tid:'');
-  sbGetQ('tempo_service',qs).then(function(rows){
+  if(!el) return;
+  var tid=v('sv-list-tempo'); var mon=v('sv-list-month');
+  var parts=['order=service_date.desc'];
+  if(tid) parts.push('tempo_id=eq.'+tid);
+  if(mon){
+    var ld=new Date(parseInt(mon.slice(0,4)),parseInt(mon.slice(5,7)),0).getDate();
+    parts.push('service_date=gte.'+mon.slice(0,4)+'-'+mon.slice(5,7)+'-01');
+    parts.push('service_date=lte.'+mon.slice(0,4)+'-'+mon.slice(5,7)+'-'+ld);
+  }
+  sbGetQ('tempo_service',parts.join('&')).then(function(rows){
     if(!rows.length){el.innerHTML='<div class="empty">No service records</div>';return;}
-    el.innerHTML=rows.map(function(s){
-      var alert=s.next_service_km>0&&s.km_at_service>=s.next_service_km-500;
-      return'<div class="item-card" style="'+(alert?'border-color:#ffc87a;background:#fffaf4':'')+'">'+
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
-        '<div><div style="font-weight:800">'+s.tempo_name+' · '+s.service_date+'</div>'+
-        '<div style="font-size:12px;color:#1a3a5c">'+s.service_type+'</div>'+
-        '<div style="font-size:11px;color:#7a8fa6">KM: '+s.km_at_service+' | Next: '+s.next_service_km+' km | Cost: '+fmt(s.cost)+'</div>'+
-        (s.workshop?'<div style="font-size:11px;color:#7a8fa6">🔧 '+s.workshop+'</div>':'')+
-        (alert?'<div class="badge b-yellow">⚠️ Service Due Soon</div>':'')+
-        '</div><div style="display:flex;gap:4px">'+
-        '<button class="btn-sm btn-edit" onclick="editServiceById('+s.id+')">✏</button>'+
-        '<button class="btn-sm btn-del" onclick="delGuard(this,function(){deleteService('+s.id+');})">Del</button>'+
-        '</div></div></div>';
-    }).join('');
+    el.innerHTML=rows.map(function(s){return renderServiceCard(s);}).join('');
   });
 }
-function deleteService(id){sbDelete('tempo_service',id).then(function(){loadServiceList();});}
+function deleteService(id){
+  sbDelete('tempo_service',id).then(function(){
+    var repEl=document.getElementById('svsec-report');
+    if(repEl&&repEl.style.display!=='none') loadServiceReport();
+    else loadServiceList();
+  });
+}
 
 // ── EXPENSES ──
 // ── Expense sub-tabs ──
@@ -4783,12 +4867,16 @@ function loadDashboard(){
     // Driver summary
     sbGetQ('fin_drivers','is_parttime=eq.false&active=eq.true&order=name.asc'),
     sbGetQ('driver_advances','order=date.asc'),
-    sbGetQ('driver_salary','order=month.asc')
+    sbGetQ('driver_salary','order=month.asc'),
+    // This month driver advances/deductions/rent
+    sbGetQ('driver_advances','date=gte.'+from+'&date=lte.'+to+'&order=date.asc'),
+    sbGetQ('driver_tempo_rent','month=eq.'+encodeURIComponent(mon))
   ]).then(function(res){
     var payments=res[0]; var rentOut=res[1];
     var expenses=res[2]; var salaries=res[3];
     var rentIn=res[4]; var emis=res[5]; var services=res[6];
     var allDrivers=res[7]||[]; var allAdvances=res[8]||[]; var allSalaries=res[9]||[];
+    var monthAdvances=res[10]||[]; var monthTempoRent=res[11]||[];
 
     var totalPayments=payments.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
     var totalRentOut=rentOut.reduce(function(a,r){return a+(parseFloat(r.received)||0);},0);
@@ -4845,29 +4933,66 @@ function loadDashboard(){
     if(!allDrivers.length){drvEl.innerHTML='<div class="empty">No drivers</div>';}
     else{
       drvEl.innerHTML=allDrivers.map(function(d){
-        // Outstanding advance = total advances given (all time) − total advance_deducted (all salary records)
-        var totalGiven=allAdvances.filter(function(a){return a.driver_name===d.name&&a.type==='advance';})
+        var n=d.name;
+        // Outstanding — same logic as driver transaction card
+        var drvSalMonths={};
+        allSalaries.filter(function(s){return s.driver_name===n;})
+          .forEach(function(s){drvSalMonths[s.month]=true;});
+        var totalGiven=allAdvances.filter(function(a){return a.driver_name===n&&a.type==='advance';})
           .reduce(function(s,a){return s+(parseFloat(a.amount)||0);},0);
-        var totalDeducted=allSalaries.filter(function(s){return s.driver_name===d.name;})
+        var totalDeducted=allSalaries.filter(function(s){return s.driver_name===n;})
           .reduce(function(s,r){return s+(parseFloat(r.advance_deducted)||0);},0);
-        var outstanding=totalGiven-totalDeducted;
+        var pendingAdvances=totalGiven-totalDeducted;
+        // Unapplied excess CF (advance > salary in a prev month, not yet recovered)
+        var excessCF=allAdvances.filter(function(a){return a.driver_name===n&&a.type==='salary_cf_adv_excess';})
+          .reduce(function(s,a){return s+(!drvSalMonths[a.date.slice(0,7)]?parseFloat(a.amount)||0:0);},0);
+        var outstanding=pendingAdvances+excessCF;
 
-        // This month salary
-        var thisSal=salaries.find(function(s){return s.driver_name===d.name;});
+        // This month stats
+        var thisSal=salaries.find(function(s){return s.driver_name===n;});
         var salStatus, salColor;
         if(!thisSal){salStatus='Not calculated'; salColor='#7a8fa6';}
         else if(thisSal.paid_date){salStatus='✅ Paid '+thisSal.paid_date; salColor='#1e7a4f';}
         else{salStatus='⏳ Pending '+fmt(thisSal.net_paid); salColor='#c8382a';}
 
-        return'<div style="padding:10px 0;border-bottom:1px solid #e4edf6;display:flex;justify-content:space-between;align-items:center">'+
+        // This month: advance given
+        var monAdv=monthAdvances.filter(function(a){return a.driver_name===n&&a.type==='advance';})
+          .reduce(function(s,a){return s+(parseFloat(a.amount)||0);},0);
+        // This month: deductions/fines
+        var monDed=monthAdvances.filter(function(a){return a.driver_name===n&&a.type==='deduction';})
+          .reduce(function(s,a){return s+(parseFloat(a.amount)||0);},0);
+        // This month: tempo rent paid by driver
+        var monRent=monthTempoRent.filter(function(r){return r.driver_name===n;})
+          .reduce(function(s,r){return s+(parseFloat(r.amount)||0);},0);
+        // Carry forward into this month: salary_cf_debit (owner owes) or salary_cf_credit (driver owes)
+        var cfDebit=allAdvances.filter(function(a){return a.driver_name===n&&a.type==='salary_cf_debit'&&a.date.slice(0,7)===mon;})
+          .reduce(function(s,a){return s+(parseFloat(a.amount)||0);},0);
+        var cfCredit=allAdvances.filter(function(a){return a.driver_name===n&&a.type==='salary_cf_credit'&&a.date.slice(0,7)===mon;})
+          .reduce(function(s,a){return s+(parseFloat(a.amount)||0);},0);
+        var cf=cfDebit-cfCredit; // positive = we owe driver, negative = driver owes us
+        // Previous months with unpaid salary (will be carried forward)
+        var prevUnpaid=allSalaries.filter(function(s){return s.driver_name===n&&s.month<mon&&!s.paid_date;})
+          .reduce(function(s,r){return s+(parseFloat(r.net_paid)||0);},0);
+
+        var chips='';
+        if(monAdv>0) chips+='<span style="font-size:10px;background:#fef3c7;color:#92400e;border-radius:4px;padding:1px 6px;margin-right:3px">📤 Adv '+fmt(monAdv)+'</span>';
+        if(monDed>0) chips+='<span style="font-size:10px;background:#fee2e2;color:#991b1b;border-radius:4px;padding:1px 6px;margin-right:3px">⚠️ Ded '+fmt(monDed)+'</span>';
+        if(monRent>0) chips+='<span style="font-size:10px;background:#d1fae5;color:#065f46;border-radius:4px;padding:1px 6px;margin-right:3px">🚛 Rent '+fmt(monRent)+'</span>';
+        if(Math.abs(cf)>0.01) chips+='<span style="font-size:10px;background:#ede9fe;color:#4338ca;border-radius:4px;padding:1px 6px;margin-right:3px">↩ CF '+(cf>0?'+':'')+fmt(cf)+'</span>';
+        if(prevUnpaid>0) chips+='<span style="font-size:10px;background:#fff0e0;color:#c07000;border-radius:4px;padding:1px 6px;margin-right:3px;border:1px solid #f59e0b">⏳ Prev Unpaid '+fmt(prevUnpaid)+'</span>';
+
+        return'<div style="padding:10px 0;border-bottom:1px solid #e4edf6">'+
+          '<div style="display:flex;justify-content:space-between;align-items:center">'+
           '<div>'+
-          '<div style="font-weight:700;font-size:13px">'+d.name+'</div>'+
+          '<div style="font-weight:700;font-size:13px">'+n+'</div>'+
           '<div style="font-size:11px;color:'+salColor+';margin-top:2px">'+salStatus+'</div>'+
           '</div>'+
           '<div style="text-align:right">'+
           '<div style="font-size:11px;color:#7a8fa6">Advance Outstanding</div>'+
           '<div style="font-weight:800;font-size:14px;color:'+(outstanding>0?'#c8382a':outstanding<0?'#1e7a4f':'#7a8fa6')+'">'+(outstanding>0?'− '+fmt(outstanding):outstanding<0?'+ '+fmt(Math.abs(outstanding)):'₹ 0')+'</div>'+
           '</div>'+
+          '</div>'+
+          (chips?'<div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:3px">'+chips+'</div>':'')+
           '</div>';
       }).join('');
     }
@@ -5072,29 +5197,294 @@ function cancelEditDeduction(){
   setV('ded-amount',''); setV('ded-reason','');
 }
 
-// ── Service edit ──
+// ── Service module ──
 var _svEditId=0;
+var _svItems=[];
+
+function showServiceTab(t){
+  ['log','history','report'].forEach(function(s){
+    var el=document.getElementById('svsec-'+s); if(el) el.style.display=s===t?'block':'none';
+    var btn=document.getElementById('svtab-'+s); if(btn) btn.className='btn-sm '+(s===t?'btn-blue':'btn-grey');
+  });
+  if(t==='history') loadServiceList();
+  if(t==='report') setServiceReportRange('month');
+}
+
+function addServiceItem(item){
+  item=item||{type:'part',description:'',qty:1,rate:0,amount:0};
+  _svItems.push(item);
+  renderServiceItems();
+}
+function removeServiceItem(idx){
+  _svItems.splice(idx,1);
+  renderServiceItems();
+}
+function renderServiceItems(){
+  var el=document.getElementById('sv-items');
+  if(!el) return;
+  el.innerHTML=_svItems.map(function(it,i){
+    return'<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:4px">'+
+      '<div style="display:flex;gap:6px;align-items:center">'+
+        '<select onchange="_svItems['+i+'].type=this.value" style="font-size:11px;padding:4px;border:1px solid #c8d8e8;border-radius:6px;background:'+(it.type==='part'?'#fef3c7':'#d1fae5')+';color:'+(it.type==='part'?'#92400e':'#065f46')+';font-weight:700">'+
+          '<option value="part"'+(it.type==='part'?' selected':'')+'>🔩 Part</option>'+
+          '<option value="labour"'+(it.type==='labour'?' selected':'')+'>🔧 Labour</option>'+
+        '</select>'+
+        '<input type="text" value="'+esc(it.description)+'" placeholder="Part name / Labour description" oninput="_svItems['+i+'].description=this.value" style="flex:1;font-size:12px;padding:4px 6px;border:1px solid #c8d8e8;border-radius:6px">'+
+        '<button onclick="removeServiceItem('+i+')" style="background:#fee2e2;color:#c8382a;border:none;border-radius:6px;padding:3px 8px;font-size:12px;cursor:pointer">✕</button>'+
+      '</div>'+
+      '<div style="display:flex;gap:6px">'+
+        '<div style="flex:1"><div style="font-size:9px;color:#7a8fa6;margin-bottom:2px">QTY</div>'+
+          '<input type="number" value="'+it.qty+'" min="0" oninput="_svItems['+i+'].qty=parseFloat(this.value)||0;_svItems['+i+'].amount=+(_svItems['+i+'].qty*_svItems['+i+'].rate).toFixed(2);renderServiceItems();calcServiceTotal()" style="width:100%;font-size:12px;padding:4px;border:1px solid #c8d8e8;border-radius:6px"></div>'+
+        '<div style="flex:2"><div style="font-size:9px;color:#7a8fa6;margin-bottom:2px">RATE (₹)</div>'+
+          '<input type="number" value="'+it.rate+'" min="0" oninput="_svItems['+i+'].rate=parseFloat(this.value)||0;_svItems['+i+'].amount=+(_svItems['+i+'].qty*_svItems['+i+'].rate).toFixed(2);renderServiceItems();calcServiceTotal()" style="width:100%;font-size:12px;padding:4px;border:1px solid #c8d8e8;border-radius:6px"></div>'+
+        '<div style="flex:2"><div style="font-size:9px;color:#7a8fa6;margin-bottom:2px">AMOUNT (₹)</div>'+
+          '<div style="font-weight:800;font-size:13px;color:#1a3a5c;padding:4px 0">'+fmt(it.amount)+'</div></div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+  calcServiceTotal();
+}
+function calcServiceTotal(){
+  var total=_svItems.reduce(function(s,it){return s+(parseFloat(it.amount)||0);},0);
+  var el=document.getElementById('sv-total-display'); if(el) el.textContent=fmt(total);
+}
+
+function loadBillFile(input){
+  var file=input.files[0]; if(!file) return;
+  document.getElementById('sv-bill-filename').textContent=file.name;
+  var ext=file.name.split('.').pop().toLowerCase();
+  var textEl=document.getElementById('sv-bill-text');
+  textEl.style.display='block';
+  textEl.value='Loading…';
+  if(ext==='txt'){
+    var fr=new FileReader();
+    fr.onload=function(e){textEl.value=e.target.result;};
+    fr.readAsText(file);
+  } else if(ext==='pdf'){
+    var fr2=new FileReader();
+    fr2.onload=function(e){
+      var typedArr=new Uint8Array(e.target.result);
+      // pdfjsLib must be loaded
+      if(typeof pdfjsLib==='undefined'){textEl.value='PDF.js not loaded';return;}
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      pdfjsLib.getDocument({data:typedArr}).promise.then(function(pdf){
+        var pages=[]; var total=pdf.numPages;
+        for(var i=1;i<=total;i++) pages.push(i);
+        return Promise.all(pages.map(function(p){
+          return pdf.getPage(p).then(function(pg){
+            return pg.getTextContent().then(function(tc){
+              return tc.items.map(function(it){return it.str;}).join(' ');
+            });
+          });
+        }));
+      }).then(function(texts){textEl.value=texts.join('\n');})
+        .catch(function(err){textEl.value='PDF error: '+err.message;});
+    };
+    fr2.readAsArrayBuffer(file);
+  } else {
+    textEl.value='Unsupported file type. Use .pdf or .txt';
+  }
+}
+function parseBillText(){
+  var raw=document.getElementById('sv-bill-text').value||'';
+  var msg=document.getElementById('sv-parse-msg');
+  if(!raw.trim()||raw==='Loading…'){msg.textContent='Load a bill file first';msg.style.color='#c8382a';return;}
+  var extracted=[];
+
+  // Invoice no
+  var invM=raw.match(/Bill of Supply\s*#[:\s]*([A-Z0-9\-\.]+)/i)||raw.match(/Invoice\s*(?:No|Number|#)[:\s]*([A-Z0-9\-\.]+)/i);
+  if(invM) setV('sv-bill-no',invM[1].trim());
+
+  // Invoice date
+  var dateM=raw.match(/Invoice\s*Date[:\s]*(\d{1,2}[\s\-\/][A-Za-z]+[\s\-\/]\d{4})/i)||raw.match(/Invoice\s*Date[:\s]*(\d{4}-\d{2}-\d{2})/i);
+  if(dateM){
+    var d=new Date(dateM[1]);
+    if(!isNaN(d)) setV('sv-bill-date',d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
+  }
+
+  // Odometer — handle same line or next line
+  var odoM=raw.match(/ODO\s*METER\s*READING[:\s]*\n?\s*(\d{4,6})/i)
+    ||raw.match(/ODOMETER[:\s]*\n?\s*(\d{4,6})/i)
+    ||raw.match(/KM\s*READING[:\s]*\n?\s*(\d{4,6})/i);
+  if(odoM) setV('sv-km',odoM[1]);
+
+  // Reg No — handle same line or next line
+  var regM=raw.match(/REG\s*NO[:\s]*\n?\s*([A-Z]{2}\d{2}[A-Z]{1,2}\d{3,4})/i)
+    ||raw.match(/Registration(?:\s*No)?[:\s]*\n?\s*([A-Z]{2}\d{2}[A-Z]{1,2}\d{3,4})/i)
+    ||raw.match(/\b([A-Z]{2}\d{2}[A-Z]{1,2}\d{4})\b/);
+  if(regM) setV('sv-reg-no',regM[1].trim());
+
+  // Service person — handle same line or next line
+  var persM=raw.match(/SERVICE\s*PERSON[:\s]*\n?\s*([A-Z][A-Z\s]+?)(?:\n|$)/i)
+    ||raw.match(/Technician[:\s]*\n?\s*([A-Z][A-Z\s]+?)(?:\n|$)/i);
+  if(persM) setV('sv-person',persM[1].trim());
+
+  // Workshop name (first prominent proper-noun line or garage name)
+  var wsM=raw.match(/^([A-Z][A-Z\s]+(?:MOTORS|GARAGE|AUTO|SERVICE|WORKSHOP))/m);
+  if(wsM) setV('sv-workshop',wsM[1].trim());
+
+  // Notes/observations
+  var notesM=raw.match(/Notes?[:\s]*\n(.+?)(?:\n\n|\nTerms|$)/is)||raw.match(/observations?[:\s]*\n(.+?)(?:\n\n|$)/is);
+  if(notesM) setV('sv-note',(v('sv-note')?v('sv-note')+' | ':'')+notesM[1].replace(/\n/g,' ').trim());
+
+  // Line items — look for numbered rows with amount at end
+  // Pattern: number  description  hsn?  qty  unit  rate  amount
+  var lines=raw.split('\n');
+  _svItems=[];
+  var itemRe=/^(\d+)\s+(.+?)\s+(\d[\d,]*\.?\d*)\s*(?:NOS|nos|Nos|-)\s+(\d[\d,]*\.?\d*)\s*(?:NOS|nos|Nos|-)\s+([\d,]+\.?\d*)\s*$/;
+  var simpleRe=/^(\d+)\s+(.+?)\s+([\d,]+\.?\d{2})\s*$/;
+  lines.forEach(function(line){
+    line=line.trim();
+    var m=itemRe.exec(line);
+    if(m){
+      var desc=m[2].trim();
+      var qty=parseFloat(m[3].replace(/,/g,''))||1;
+      var rate=parseFloat(m[4].replace(/,/g,''))||0;
+      var amount=parseFloat(m[5].replace(/,/g,''))||0;
+      // if rate looks like amount (single value), recalc
+      if(rate===0&&amount>0) rate=amount;
+      var isLabour=/install|remov|replac|check|wash|align|adjust|clean|repair|service|labour|labor/i.test(desc);
+      extracted.push({type:isLabour?'labour':'part',description:desc,qty:qty,rate:rate,amount:amount||+(qty*rate).toFixed(2)});
+      return;
+    }
+    // Simpler fallback: "1 THROTTLE OPI 2684.75"
+    var m2=simpleRe.exec(line);
+    if(m2&&parseInt(m2[1])===(_svItems.length+extracted.length+1)){
+      var desc2=m2[2].trim();
+      var amount2=parseFloat(m2[3].replace(/,/g,''))||0;
+      var isLabour2=/install|remov|replac|check|wash|align|adjust|clean|repair|service|labour|labor/i.test(desc2);
+      extracted.push({type:isLabour2?'labour':'part',description:desc2,qty:1,rate:amount2,amount:amount2});
+    }
+  });
+  if(extracted.length){
+    _svItems=extracted;
+    renderServiceItems();
+    msg.textContent='✓ Extracted '+extracted.length+' line items'+(invM?' · Bill '+invM[1]:''+(odoM?' · KM '+odoM[1]:''));
+    msg.style.color='#1e7a4f';
+  } else {
+    msg.textContent='Could not extract line items — fill manually';
+    msg.style.color='#c07000';
+  }
+}
+
 function editServiceById(id){
   sbGetQ('tempo_service','id=eq.'+id).then(function(rows){
     if(!rows||!rows.length) return;
     var s=rows[0];
+    _svItems=(s.line_items&&Array.isArray(s.line_items))?s.line_items:[];
     setV('sv-tempo',s.tempo_id||''); setV('sv-date',s.service_date||'');
+    setV('sv-bill-no',s.bill_no||''); setV('sv-bill-date',s.bill_date||'');
     setV('sv-km',s.km_at_service||''); setV('sv-next-km',s.next_service_km||'');
-    setV('sv-type',s.service_type||''); setV('sv-cost',s.cost||'');
-    setV('sv-workshop',s.workshop||''); setV('sv-note',s.note||'');
+    setV('sv-type',s.service_type||''); setV('sv-workshop',s.workshop||'');
+    setV('sv-person',s.service_person||''); setV('sv-reg-no',s.reg_no||'');
+    setV('sv-note',s.observations||s.note||'');
     _svEditId=s.id; setV('sv-edit-id',s.id);
+    renderServiceItems();
     var titleEl=document.getElementById('sv-form-title'); if(titleEl) titleEl.textContent='✏ Edit Service';
     var saveBtn=document.getElementById('sv-save-btn'); if(saveBtn) saveBtn.textContent='✏ Update Service';
     var cancelBtn=document.getElementById('sv-cancel-btn'); if(cancelBtn) cancelBtn.style.display='inline-block';
-    showFleetTab('service');
+    showFleetTab('service'); showServiceTab('log');
+    window.scrollTo(0,0);
   });
 }
 function cancelEditService(){
-  _svEditId=0; setV('sv-edit-id','0');
+  _svEditId=0; _svItems=[]; setV('sv-edit-id','0');
   var titleEl=document.getElementById('sv-form-title'); if(titleEl) titleEl.textContent='🔧 Log Service';
   var saveBtn=document.getElementById('sv-save-btn'); if(saveBtn) saveBtn.textContent='💾 Save Service';
   var cancelBtn=document.getElementById('sv-cancel-btn'); if(cancelBtn) cancelBtn.style.display='none';
-  setV('sv-km',''); setV('sv-next-km',''); setV('sv-type',''); setV('sv-cost',''); setV('sv-workshop',''); setV('sv-note','');
+  ['sv-km','sv-next-km','sv-type','sv-workshop','sv-note','sv-bill-no','sv-bill-date','sv-person','sv-reg-no'].forEach(function(id){setV(id,'');});
+  renderServiceItems();
+}
+
+function setServiceReportRange(p){
+  var now=new Date(); var y=now.getFullYear(); var m=now.getMonth();
+  var from,to;
+  if(p==='month'){from=new Date(y,m,1);to=new Date(y,m+1,0);}
+  else if(p==='quarter'){from=new Date(y,m-2,1);to=new Date(y,m+1,0);}
+  else if(p==='year'){from=new Date(y,0,1);to=new Date(y,11,31);}
+  else{from=new Date('2020-01-01');to=new Date(y+1,0,1);}
+  function ds(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+  setV('sv-rep-from',ds(from)); setV('sv-rep-to',ds(to));
+}
+function loadServiceReport(){
+  var from=v('sv-rep-from'); var to=v('sv-rep-to');
+  var el=document.getElementById('serviceReport');
+  el.innerHTML='<div class="empty">Loading…</div>';
+  var qs='order=service_date.desc'+(from?'&service_date=gte.'+from:'')+(to?'&service_date=lte.'+to:'');
+  sbGetQ('tempo_service',qs).then(function(rows){
+    if(!rows.length){el.innerHTML='<div class="empty">No records in range</div>';return;}
+    // Totals
+    var totalCost=0,totalParts=0,totalLabour=0;
+    var byCost={};
+    rows.forEach(function(s){
+      var items=Array.isArray(s.line_items)?s.line_items:[];
+      var cost=items.length?items.reduce(function(a,it){return a+(parseFloat(it.amount)||0);},0):(parseFloat(s.cost)||0);
+      totalCost+=cost;
+      byCost[s.tempo_name]=(byCost[s.tempo_name]||0)+cost;
+      items.forEach(function(it){
+        if(it.type==='labour') totalLabour+=(parseFloat(it.amount)||0);
+        else totalParts+=(parseFloat(it.amount)||0);
+      });
+    });
+    // By tempo breakdown
+    var tempoRows=Object.entries(byCost).sort(function(a,b){return b[1]-a[1];})
+      .map(function(e){return'<div style="display:flex;justify-content:space-between;padding:5px 0;border-top:1px solid #e4edf6"><span style="font-weight:700">'+esc(e[0])+'</span><span style="font-weight:800;color:#1a3a5c">'+fmt(e[1])+'</span></div>';}).join('');
+    el.innerHTML=
+      '<div class="card">'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'+
+          '<div class="stat" style="flex:1"><div class="stat-n" style="color:#1a3a5c">'+fmt(totalCost)+'</div><div class="stat-l">Total Spent</div></div>'+
+          '<div class="stat" style="flex:1"><div class="stat-n" style="color:#b45309">'+fmt(totalParts)+'</div><div class="stat-l">Parts</div></div>'+
+          '<div class="stat" style="flex:1"><div class="stat-n" style="color:#1e7a4f">'+fmt(totalLabour)+'</div><div class="stat-l">Labour</div></div>'+
+          '<div class="stat" style="flex:1"><div class="stat-n">'+rows.length+'</div><div class="stat-l">Services</div></div>'+
+        '</div>'+
+        '<div class="card-title" style="margin-bottom:6px">By Vehicle</div>'+tempoRows+
+      '</div>'+
+      rows.map(function(s){return renderServiceCard(s,true);}).join('');
+  });
+}
+function renderServiceCard(s,expanded){
+  var items=Array.isArray(s.line_items)?s.line_items:[];
+  var cost=items.length?items.reduce(function(a,it){return a+(parseFloat(it.amount)||0);},0):(parseFloat(s.cost)||0);
+  var partsCount=items.filter(function(it){return it.type==='part';}).length;
+  var labourCount=items.filter(function(it){return it.type==='labour';}).length;
+  var alert=s.next_service_km>0&&s.km_at_service>=s.next_service_km-500;
+  var itemsHtml=items.map(function(it){
+    var isPart=it.type==='part';
+    return'<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-top:1px solid #f0f4f8">'+
+      '<div style="display:flex;align-items:center;gap:6px;flex:1">'+
+        '<span style="font-size:9px;padding:1px 5px;border-radius:4px;font-weight:700;'+(isPart?'background:#fef3c7;color:#92400e':'background:#d1fae5;color:#065f46')+'">'+(isPart?'PART':'LABOUR')+'</span>'+
+        '<span style="font-size:12px">'+esc(it.description)+'</span>'+
+      '</div>'+
+      '<div style="text-align:right;font-size:12px;color:#7a8fa6;margin-left:8px">'+
+        (it.qty&&it.qty!==1?it.qty+'×':'')+' <span style="font-weight:700;color:#1a3a5c">'+fmt(it.amount)+'</span>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+  return'<div class="item-card" style="'+(alert?'border-color:#ffc87a;background:#fffaf4':'')+'">'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
+    '<div style="flex:1">'+
+      '<div style="font-weight:800;font-size:14px">'+esc(s.tempo_name)+'</div>'+
+      '<div style="font-size:11px;color:#7a8fa6;margin-top:2px">'+s.service_date+(s.bill_no?' · '+s.bill_no:'')+(s.service_person?' · 👨‍🔧 '+s.service_person:'')+'</div>'+
+      (s.service_type?'<div style="font-size:12px;color:#1a3a5c;font-weight:700;margin-top:3px">'+esc(s.service_type)+'</div>':'')+
+      '<div style="font-size:11px;color:#7a8fa6;margin-top:2px">'+
+        '🏁 '+s.km_at_service+' km'+(s.next_service_km?' · Next: '+s.next_service_km+' km':'')+
+        (s.workshop?' · 🔧 '+esc(s.workshop):'')+
+        (s.reg_no?' · '+esc(s.reg_no):'')+
+      '</div>'+
+      (alert?'<div class="badge b-yellow" style="margin-top:4px">⚠️ Service Due Soon</div>':'')+
+    '</div>'+
+    '<div style="text-align:right;margin-left:8px">'+
+      '<div style="font-weight:900;font-size:16px;color:#1a3a5c">'+fmt(cost)+'</div>'+
+      (partsCount||labourCount?'<div style="font-size:10px;color:#7a8fa6">'+partsCount+' parts · '+labourCount+' labour</div>':'')+
+      '<div style="display:flex;gap:4px;margin-top:6px;justify-content:flex-end">'+
+        '<button class="btn-sm btn-edit" onclick="editServiceById('+s.id+')">✏</button>'+
+        '<button class="btn-sm btn-del" onclick="delGuard(this,function(){deleteService('+s.id+');})">Del</button>'+
+      '</div>'+
+    '</div>'+
+    '</div>'+
+    (items.length?'<div style="margin-top:8px;padding-top:4px">'+itemsHtml+'</div>':'')+
+    (s.observations||s.note?'<div style="margin-top:8px;font-size:11px;color:#5a7a9a;background:#f0f4ff;border-radius:6px;padding:6px 8px">📝 '+(s.observations||s.note)+'</div>':'')+
+  '</div>';
 }
 
 // ── Rent Out inline received update ──
