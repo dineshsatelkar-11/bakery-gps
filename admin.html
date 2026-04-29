@@ -1699,12 +1699,14 @@ function doPreview(){
     var driver=cust?(cust.assigned_driver||LOGISTICS):LOGISTICS;
     var itemsStr=c.items.map(function(it){return it.name+(it.desc?' ('+it.desc+')':'');}).join(', ');
     var qtyStr=c.items.map(function(it){return it.qty;}).join(', ');
+    var itemIdsStr=c.items.map(function(it){return it.product_id||'';}).join(', ');
     parsedOrders.push({
       customer_id: cust?(cust.customer_id||cust.shop_id):c.customer_id,
       shop_name:   cust?cust.name:c.customer_name,
       driver:      driver,
       items:       itemsStr,
       qty:         qtyStr,
+      item_ids:    itemIdsStr,
       raw_items:   c.items,
       date:        c.dc_date||todayStr(),
       dc_num:      c.dc_num,
@@ -1848,7 +1850,7 @@ function doSave(){
     apiPost({action:'addOrders', orders:toSave.map(function(o){
       return {
         customer_id:o.customer_id, shop_id:o.customer_id, shop_name:o.shop_name,
-        driver:o.driver, items:o.items, qty:o.qty, date:o.date,
+        driver:o.driver, items:o.items, qty:o.qty, item_ids:o.item_ids||'', date:o.date,
         note:(o.is_new?'NEW CUSTOMER ':'')+o.dc_num,
         dc_num:o.dc_num
       };
@@ -2194,25 +2196,46 @@ function getCat(name, prodMap){
 var _lastSummaryData = [];
 var _dashDelivDate = '';
 
-/* Parse items+qty string into {itemName:qty} — module level so printSummary can use it */
+/* Parse items+qty+item_ids into [{name,qty,product_id}] — module level so printSummary can use it */
 function parseIQ(o){
-  var r={};
   var its=(o.items||'').split(',').map(function(s){return s.replace(/\s*\(.*?\)/g,'').trim();}).filter(Boolean);
   var qs=(o.qty||'').split(',').map(function(s){return parseInt(s)||0;});
-  its.forEach(function(it,i){r[it]=(r[it]||0)+(qs[i]||0);});
+  var ids=(o.item_ids||'').split(',').map(function(s){return s.trim();});
+  // return array of {name, qty, product_id} — callers that expect {name:qty} map still work via _toMap
+  var arr=[];
+  its.forEach(function(name,i){
+    if(!name) return;
+    var existing=arr.find(function(x){return x.name===name;});
+    if(existing){existing.qty+=(qs[i]||0);}
+    else arr.push({name:name,qty:qs[i]||0,product_id:ids[i]||''});
+  });
+  return arr;
+}
+/* Legacy helper — convert parseIQ result to {name:qty} map for older callers */
+function parseIQMap(o){
+  var r={};
+  parseIQ(o).forEach(function(x){r[x.name]=(r[x.name]||0)+x.qty;});
   return r;
 }
 
-/* Group {itemName:qty} into category buckets — module level so printSummary can use it */
-function groupByCat(itemMap){
-  var prodMap={};
-  allProducts.forEach(function(p){if(p.name)prodMap[p.name.toLowerCase()]=p;});
+/* Group [{name,qty,product_id}] into category buckets */
+function groupByCat(items){
+  // accept old {name:qty} map or new array
+  var arr=Array.isArray(items)?items:Object.entries(items).map(function(e){return{name:e[0],qty:e[1],product_id:''};});
+  var idMap={};   // product_id → product
+  var nameMap={}; // name.toLowerCase() → product
+  allProducts.forEach(function(p){
+    if(p.product_id) idMap[String(p.product_id).trim()]=p;
+    if(p.name) nameMap[p.name.toLowerCase().trim()]=p;
+  });
   var cats={};
-  Object.entries(itemMap).forEach(function(e){
-    var cat=getCat(e[0],prodMap);
+  arr.forEach(function(item){
+    // lookup by product_id first, fall back to name
+    var p=(item.product_id&&idMap[String(item.product_id).trim()])||nameMap[(item.name||'').toLowerCase().trim()];
+    var cat=p?(p.category||'Other'):'Other';
     if(!cats[cat])cats[cat]={total:0,items:[]};
-    cats[cat].total+=e[1];
-    cats[cat].items.push({name:e[0],qty:e[1]});
+    cats[cat].total+=item.qty;
+    cats[cat].items.push({name:item.name,qty:item.qty});
   });
   Object.values(cats).forEach(function(c){c.items.sort(function(a,b){return b.qty-a.qty;});});
   return cats;
@@ -2238,11 +2261,11 @@ function loadSummary(){
       if(!orders.length) return '<div class="card" style="margin-bottom:10px"><div class="lbl">'+esc(title)+'</div><div style="font-size:12px;color:#8a7a6a;font-family:monospace">No orders.</div></div>';
 
       // Grand totals across all orders
-      var grand={};
-      orders.forEach(function(o){Object.entries(parseIQ(o)).forEach(function(e){grand[e[0]]=(grand[e[0]]||0)+e[1];});});
+      var grand=[];
+      orders.forEach(function(o){parseIQ(o).forEach(function(x){var f=grand.find(function(g){return g.product_id?g.product_id===x.product_id:g.name===x.name;});if(f){f.qty+=x.qty;}else{grand.push({name:x.name,qty:x.qty,product_id:x.product_id});}});});
       var grandCats=groupByCat(grand);
       var grandCatEntries=Object.entries(grandCats).sort(function(a,b){return b[1].total-a[1].total;});
-      var grandTotal=Object.values(grand).reduce(function(s,v){return s+v;},0);
+      var grandTotal=grand.reduce(function(s,x){return s+x.qty;},0);
 
       // Group by driver
       var byD={};
@@ -2275,11 +2298,11 @@ function loadSummary(){
 
       // Per-driver cards
       sorted.forEach(function(drv){
-        var ords=byD[drv],dItems={};
-        ords.forEach(function(o){Object.entries(parseIQ(o)).forEach(function(e){dItems[e[0]]=(dItems[e[0]]||0)+e[1];});});
+        var ords=byD[drv],dItems=[];
+        ords.forEach(function(o){parseIQ(o).forEach(function(x){var f=dItems.find(function(g){return g.product_id?g.product_id===x.product_id:g.name===x.name;});if(f){f.qty+=x.qty;}else{dItems.push({name:x.name,qty:x.qty,product_id:x.product_id});}});});
         var dCats=groupByCat(dItems);
         var dCatEntries=Object.entries(dCats).sort(function(a,b){return b[1].total-a[1].total;});
-        var dTotal=Object.values(dItems).reduce(function(s,v){return s+v;},0);
+        var dTotal=dItems.reduce(function(s,x){return s+x.qty;},0);
         var dc=DRIVERS.indexOf(drv)>=0?'DC-'+drv:'DC-Logistics';
 
         h+='<div class="summary-card" style="margin-bottom:10px">'+
@@ -2367,15 +2390,15 @@ function printSummary(){
   var data = _lastSummaryData;
   if(shopFilter) data = data.filter(function(o){ return (o.shop_name||'').toLowerCase().indexOf(shopFilter) >= 0; });
 
-  // Aggregate grand totals: product name → qty
-  var grand = {};
+  // Aggregate grand totals
+  var grand = [];
   data.forEach(function(o){
-    Object.entries(parseIQ(o)).forEach(function(e){ grand[e[0]] = (grand[e[0]]||0) + e[1]; });
+    parseIQ(o).forEach(function(x){var f=grand.find(function(g){return g.product_id?g.product_id===x.product_id:g.name===x.name;});if(f){f.qty+=x.qty;}else{grand.push({name:x.name,qty:x.qty,product_id:x.product_id});}});
   });
 
   // Group by category
   var grandCats = groupByCat(grand);
-  var grandTotal = Object.values(grand).reduce(function(s,v){ return s+v; }, 0);
+  var grandTotal = grand.reduce(function(s,x){ return s+x.qty; }, 0);
   var catEntries = Object.entries(grandCats).sort(function(a,b){ return b[1].total - a[1].total; });
 
   var fmtDate = '';
@@ -4726,9 +4749,13 @@ function exportCustomersCSV(){
 function exportSummaryCSV(){
   if(!_lastSummaryData||!_lastSummaryData.length){alert('Load summary first.');return;}
   var rows=[['Category','Product','Total Qty']];
-  var byCat=groupByCat(_lastSummaryData);
+  var grand=[];
+  _lastSummaryData.forEach(function(o){
+    parseIQ(o).forEach(function(x){var f=grand.find(function(g){return g.product_id?g.product_id===x.product_id:g.name===x.name;});if(f){f.qty+=x.qty;}else{grand.push({name:x.name,qty:x.qty,product_id:x.product_id});}});
+  });
+  var byCat=groupByCat(grand);
   Object.keys(byCat).sort().forEach(function(cat){
-    byCat[cat].forEach(function(p){rows.push([cat,p.name,p.qty]);});
+    byCat[cat].items.forEach(function(p){rows.push([cat,p.name,p.qty]);});
   });
   dlCSV(rows,'summary-'+document.getElementById('f-sum-date').value+'.csv');
 }

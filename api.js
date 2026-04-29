@@ -391,7 +391,7 @@
           return {
             customer_id: o.customer_id || o.shop_id, shop_id: o.shop_id || o.customer_id,
             shop_name: o.shop_name, driver: o.driver || 'Logistics',
-            items: o.items, qty: o.qty, note: o.note || '', date: o.date,
+            items: o.items, qty: o.qty, item_ids: o.item_ids || '', note: o.note || '', date: o.date,
             dc_num: o.dc_num || ''
           };
         }));
