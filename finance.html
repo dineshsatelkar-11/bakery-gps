@@ -183,8 +183,12 @@ body.dark .search-item:hover{background:#3d4a5c}
       <div class="stat"><div class="stat-n" id="dashEMI">—</div><div class="stat-l">EMI Due</div></div>
     </div>
     <div class="stats-grid">
-      <div class="stat"><div class="stat-n" id="dashSalary">—</div><div class="stat-l">Salaries</div></div>
-      <div class="stat"><div class="stat-n" id="dashRentIn">—</div><div class="stat-l">Rent In</div></div>
+      <div class="stat"><div class="stat-n" id="dashSalary">—</div><div class="stat-l">Salary Paid</div></div>
+      <div class="stat"><div class="stat-n" id="dashDriverRent" style="color:#22c55e">—</div><div class="stat-l">Driver Rent ↑</div></div>
+      <div class="stat"><div class="stat-n" id="dashSalaryNet">—</div><div class="stat-l">Net Salary Cost</div></div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat"><div class="stat-n" id="dashRentIn">—</div><div class="stat-l">Rent In (paid)</div></div>
       <div class="stat"><div class="stat-n" id="dashRentOut">—</div><div class="stat-l">Rent Out</div></div>
     </div>
 
@@ -1023,8 +1027,11 @@ body.dark .search-item:hover{background:#3d4a5c}
             <span id="sv-bill-filename" style="font-size:12px;color:#4338ca;flex:1">Choose bill file (.pdf or .txt)…</span>
             <input type="file" id="sv-bill-file" accept=".pdf,.txt" style="display:none" onchange="loadBillFile(this)">
           </label>
-          <button class="btn" style="background:#4338ca;color:#fff;width:100%;margin-top:8px" onclick="parseBillText()">🔍 Extract from Bill</button>
-          <textarea id="sv-bill-text" rows="3" style="display:none;width:100%;font-size:10px;font-family:monospace;border:1px solid #c7d2fe;border-radius:8px;padding:8px;resize:vertical;margin-top:8px" placeholder="Extracted text will appear here…" readonly></textarea>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button id="sv-ai-btn" class="btn" style="background:#4338ca;color:#fff;flex:1" onclick="extractBillWithAI()">🤖 AI Extract</button>
+            <button class="btn btn-grey" style="flex:1" onclick="parseBillText()">🔍 Regex Extract</button>
+          </div>
+          <textarea id="sv-bill-text" rows="3" style="display:none;width:100%;font-size:10px;font-family:monospace;border:1px solid #c7d2fe;border-radius:8px;padding:8px;resize:vertical;margin-top:8px" placeholder="Extracted text will appear here…"></textarea>
           <div id="sv-parse-msg" style="font-size:11px;margin-top:4px"></div>
         </div>
 
@@ -1220,6 +1227,7 @@ body.dark .search-item:hover{background:#3d4a5c}
     <!-- Accounts list + All Transactions -->
     <div id="bksec-accounts">
       <div id="bankAccountCards" style="display:flex;gap:10px;overflow-x:auto;padding-bottom:8px"></div>
+      <div id="bankAccountList" style="margin-bottom:8px"></div>
       <!-- Filters (shared for all & filtered view) -->
       <div class="card" style="padding:10px;margin-top:8px">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
@@ -1345,6 +1353,14 @@ body.dark .search-item:hover{background:#3d4a5c}
         <div id="bk-default-msg"></div>
       </div>
       <div id="bkManageList"><div class="empty">Loading…</div></div>
+      <div class="card" style="margin-top:10px;border:1px solid #c7d2fe;background:#f8f7ff">
+        <div class="card-title" style="color:#4338ca">🤖 AI Settings (Gemini)</div>
+        <div style="font-size:11px;color:#6366f1;margin-bottom:8px">Used for auto-reading service bills. Get a free key at <b>aistudio.google.com</b></div>
+        <label class="lbl">Gemini API Key</label>
+        <input type="password" id="gemini-api-key" placeholder="AIza…" style="font-family:monospace">
+        <button class="btn btn-blue" style="margin-top:6px" onclick="saveGeminiKey()">💾 Save Key</button>
+        <div id="gemini-key-msg" style="font-size:11px;margin-top:4px"></div>
+      </div>
     </div>
 
     <!-- hidden dropdown for statement (kept for loadBankList compat) -->
@@ -1381,34 +1397,52 @@ body.dark .search-item:hover{background:#3d4a5c}
 
     <div id="lnsec-add" style="display:none">
       <div class="card">
-        <div class="card-title">➕ New Loan</div>
-        <label class="lbl">Lender Name</label>
+        <div class="card-title">➕ New Loan / OD Account</div>
+        <!-- Type selector -->
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <button id="lntype-term" class="btn btn-blue" style="flex:1" onclick="setLoanType('term')">🏦 Term Loan</button>
+          <button id="lntype-od" class="btn btn-grey" style="flex:1" onclick="setLoanType('od')">🔄 Overdraft (OD)</button>
+        </div>
+        <input type="hidden" id="ln-type" value="term">
+        <label class="lbl">Lender / Bank Name</label>
         <input type="text" id="ln-lender" placeholder="Bank / Person">
-        <label class="lbl">Purpose</label>
-        <input type="text" id="ln-purpose" placeholder="Vehicle, Business…">
-        <div class="row2">
-          <div><label class="lbl">Vehicle Total Cost (₹)</label>
-            <input type="number" id="ln-vehicle-cost" placeholder="0"></div>
-          <div><label class="lbl">Down Payment (₹)</label>
-            <input type="number" id="ln-down-payment" placeholder="0"></div>
+        <label class="lbl">Purpose / Account Name</label>
+        <input type="text" id="ln-purpose" placeholder="Vehicle, Business, CC OD…">
+        <!-- Term loan only fields -->
+        <div id="ln-term-fields">
+          <div class="row2">
+            <div><label class="lbl">Vehicle Total Cost (₹)</label>
+              <input type="number" id="ln-vehicle-cost" placeholder="0"></div>
+            <div><label class="lbl">Down Payment (₹)</label>
+              <input type="number" id="ln-down-payment" placeholder="0"></div>
+          </div>
+          <div class="row2">
+            <div><label class="lbl">Principal (₹)</label>
+              <input type="number" id="ln-principal" placeholder="0"></div>
+            <div><label class="lbl">Interest % p.a.</label>
+              <input type="number" id="ln-rate" placeholder="0"></div>
+          </div>
+          <div class="row2">
+            <div><label class="lbl">EMI Amount (₹)</label>
+              <input type="number" id="ln-emi" placeholder="0"></div>
+            <div><label class="lbl">Total EMIs</label>
+              <input type="number" id="ln-total-emis" placeholder="0"></div>
+          </div>
         </div>
-        <div class="row2">
-          <div><label class="lbl">Principal (₹)</label>
-            <input type="number" id="ln-principal" placeholder="0"></div>
-          <div><label class="lbl">Interest % p.a.</label>
-            <input type="number" id="ln-rate" placeholder="0"></div>
-        </div>
-        <div class="row2">
-          <div><label class="lbl">EMI Amount (₹)</label>
-            <input type="number" id="ln-emi" placeholder="0"></div>
-          <div><label class="lbl">Total EMIs</label>
-            <input type="number" id="ln-total-emis" placeholder="0"></div>
+        <!-- OD only fields -->
+        <div id="ln-od-fields" style="display:none">
+          <div class="row2">
+            <div><label class="lbl">Credit Limit (₹)</label>
+              <input type="number" id="ln-od-limit" placeholder="0"></div>
+            <div><label class="lbl">Interest % p.a.</label>
+              <input type="number" id="ln-od-rate" placeholder="0"></div>
+          </div>
         </div>
         <label class="lbl">Start Date</label>
         <input type="date" id="ln-start">
         <label class="lbl">Note</label>
         <input type="text" id="ln-note" placeholder="">
-        <button class="btn btn-blue" onclick="saveLoan()">💾 Save Loan</button>
+        <button class="btn btn-blue" onclick="saveLoan()">💾 Save</button>
         <div id="ln-msg"></div>
       </div>
     </div>
@@ -1448,6 +1482,7 @@ body.dark .search-item:hover{background:#3d4a5c}
           <div><label class="lbl">To</label><input type="date" id="rp-to" onchange="loadPL()"></div>
         </div>
         <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+          <button class="btn-sm btn-grey" onclick="setRPFilter('lastmonth')">Last Month</button>
           <button class="btn-sm btn-grey" onclick="setRPFilter('month')">This Month</button>
           <button class="btn-sm btn-grey" onclick="setRPFilter('quarter')">3 Months</button>
           <button class="btn-sm btn-grey" onclick="setRPFilter('year')">This Year</button>
@@ -1459,8 +1494,11 @@ body.dark .search-item:hover{background:#3d4a5c}
     <!-- Driver Cost -->
     <div id="rpsec-driver" style="display:none">
       <div class="card" style="padding:10px">
-        <label class="lbl">Month</label>
-        <input type="month" id="rp-driver-month" onchange="loadDriverCostReport()">
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+          <input type="month" id="rp-driver-month" onchange="loadDriverCostReport()" style="flex:1">
+          <button class="btn-sm btn-grey" onclick="setReportMonth('rp-driver-month',loadDriverCostReport,-1)">Last</button>
+          <button class="btn-sm btn-grey" onclick="setReportMonth('rp-driver-month',loadDriverCostReport,0)">This</button>
+        </div>
       </div>
       <div id="driverCostReport"><div class="empty">Select month</div></div>
     </div>
@@ -1468,8 +1506,11 @@ body.dark .search-item:hover{background:#3d4a5c}
     <!-- Tempo -->
     <div id="rpsec-tempo" style="display:none">
       <div class="card" style="padding:10px">
-        <label class="lbl">Month</label>
-        <input type="month" id="rp-tempo-month" onchange="loadTempoReport()">
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+          <input type="month" id="rp-tempo-month" onchange="loadTempoReport()" style="flex:1">
+          <button class="btn-sm btn-grey" onclick="setReportMonth('rp-tempo-month',loadTempoReport,-1)">Last</button>
+          <button class="btn-sm btn-grey" onclick="setReportMonth('rp-tempo-month',loadTempoReport,0)">This</button>
+        </div>
       </div>
       <div id="tempoReport"><div class="empty">Select month</div></div>
     </div>
@@ -2074,6 +2115,73 @@ function openLoanDetail(loanId,loanName){
     sbGetQ('loan_charges','loan_id=eq.'+loanId+'&order=date.asc')
   ]).then(function(res){
     var loan=res[0]&&res[0][0]; var emis=res[1]; var charges=res[2];
+    var isOD=loan&&(loan.loan_type==='overdraft'||loan.loan_type==='od');
+    var safeId=loanId; var safeName=loanName.replace(/'/g,"\\'");
+
+    if(isOD){
+      // ── OD DETAIL ──
+      var draws=emis.filter(function(e){return e.status==='draw';});
+      var repays=emis.filter(function(e){return e.status==='repay';});
+      var totalDrawn=draws.reduce(function(a,e){return a+(parseFloat(e.amount)||0);},0);
+      var totalRepaid=repays.reduce(function(a,e){return a+(parseFloat(e.amount)||0);},0);
+      var outstanding=totalDrawn-totalRepaid;
+      var limit=parseFloat(loan.od_limit)||0;
+      var available=limit-outstanding;
+      var usedPct=limit>0?Math.min(100,Math.round(outstanding/limit*100)):0;
+
+      sumEl.style.display='block';
+      sumBody.innerHTML=
+        '<div class="sum-row"><span class="sum-lbl">Credit Limit</span><span class="sum-val">'+fmt(limit)+'</span></div>'+
+        '<div style="background:#e5e7eb;border-radius:6px;height:8px;margin:4px 0 8px;overflow:hidden">'+
+          '<div style="height:8px;border-radius:6px;width:'+usedPct+'%;background:'+(usedPct>85?'#ef4444':usedPct>60?'#f59e0b':'#22c55e')+'"></div></div>'+
+        '<div class="sum-row"><span class="sum-lbl">Total Drawn</span><span class="sum-val" style="color:#c8382a">'+fmt(totalDrawn)+'</span></div>'+
+        '<div class="sum-row"><span class="sum-lbl">Total Repaid</span><span class="sum-val" style="color:#1e7a4f">'+fmt(totalRepaid)+'</span></div>'+
+        '<hr class="divider">'+
+        '<div class="sum-row" style="font-weight:900"><span class="sum-lbl">Outstanding</span><span class="sum-val" style="color:#c8382a">'+fmt(outstanding)+'</span></div>'+
+        '<div class="sum-row" style="font-weight:900"><span class="sum-lbl">Available</span><span class="sum-val" style="color:#1e7a4f">'+fmt(available)+'</span></div>';
+
+      // OD draw/repay form
+      var today=new Date().toISOString().slice(0,10);
+      var formHtml='<div class="card" style="margin-top:8px">'+
+        '<div class="card-title">💸 New Transaction</div>'+
+        '<div style="display:flex;gap:8px;margin-bottom:10px">'+
+          '<button id="odtype-draw" class="btn btn-blue" style="flex:1" onclick="setODTxnType(\'draw\')">📤 Draw</button>'+
+          '<button id="odtype-repay" class="btn btn-grey" style="flex:1" onclick="setODTxnType(\'repay\')">📥 Repay</button>'+
+        '</div>'+
+        '<input type="hidden" id="od-txn-type" value="draw">'+
+        '<div class="row2">'+
+          '<div><label class="lbl">Date</label><input type="date" id="od-txn-date" value="'+today+'"></div>'+
+          '<div><label class="lbl">Amount (₹)</label><input type="number" id="od-txn-amount" placeholder="0"></div>'+
+        '</div>'+
+        '<label class="lbl">Note</label>'+
+        '<input type="text" id="od-txn-note" placeholder="Reason / reference…">'+
+        '<button class="btn btn-blue" style="margin-top:6px" onclick="saveODTxn('+safeId+',\''+safeName+'\')">💾 Save</button>'+
+        '<div id="od-txn-msg"></div></div>';
+
+      // Transaction timeline
+      var allTxns=emis.filter(function(e){return e.status==='draw'||e.status==='repay';})
+        .sort(function(a,b){return a.due_date>b.due_date?1:-1;});
+      var running=0;
+      var txnHtml='<div style="font-weight:700;margin:12px 0 6px;font-size:13px">📋 Transactions</div>'+
+        (allTxns.length?allTxns.map(function(e){
+          var isDraw=e.status==='draw';
+          running+=isDraw?parseFloat(e.amount||0):-parseFloat(e.amount||0);
+          return'<div class="item-card" style="border-left:3px solid '+(isDraw?'#ef4444':'#22c55e')+'">'+
+            '<div style="display:flex;justify-content:space-between;align-items:center">'+
+            '<div><div style="font-weight:700">'+(isDraw?'📤 Draw':'📥 Repay')+'</div>'+
+            '<div style="font-size:11px;color:#7a8fa6">'+e.due_date+(e.note?' · '+e.note:'')+'</div></div>'+
+            '<div style="text-align:right">'+
+            '<div style="font-weight:900;color:'+(isDraw?'#c8382a':'#1e7a4f')+'">'+fmt(e.amount)+'</div>'+
+            '<div style="font-size:10px;color:#7a8fa6">Bal: '+fmt(running)+'</div>'+
+            '<button class="btn-sm btn-del" style="margin-top:2px" onclick="delGuard(this,function(){deleteODTxn('+e.id+','+safeId+',\''+safeName+'\');})">Del</button>'+
+            '</div></div></div>';
+        }).join(''):'<div class="empty">No transactions yet</div>');
+
+      listEl.innerHTML=formHtml+txnHtml;
+      return;
+    }
+
+    // ── TERM LOAN DETAIL (unchanged) ──
     var emiTotal=emis.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
     var emiPaid=emis.filter(function(r){return r.status==='paid';}).reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
     var emiPending=emiTotal-emiPaid;
@@ -2093,7 +2201,6 @@ function openLoanDetail(loanId,loanName){
       '<div class="sum-row"><span class="sum-lbl">EMIs Remaining</span><span class="sum-val" style="color:#c0392b">'+fmt(emiPending)+'</span></div>'+
       '<div class="sum-row" style="font-weight:900"><span class="sum-lbl">Total Spent So Far</span><span class="sum-val" style="color:#c8382a">'+fmt(totalSpent)+'</span></div>';
 
-    // Extra charges section
     var chargesHtml='';
     if(charges.length){
       chargesHtml='<div style="font-weight:700;margin:12px 0 6px;font-size:13px">📋 Extra Charges</div>'+
@@ -2105,7 +2212,6 @@ function openLoanDetail(loanId,loanName){
             '</div></div>';
         }).join('');
     }
-    // Add charge form
     chargesHtml+='<div class="card" style="margin-top:8px">'+
       '<div class="card-title">➕ Add Charge</div>'+
       '<div class="row2">'+
@@ -2116,10 +2222,9 @@ function openLoanDetail(loanId,loanName){
       '<input type="text" id="lnc-desc" placeholder="Registration, Insurance, Processing Fee…">'+
       '<label class="lbl">Paid By</label>'+
       '<input type="text" id="lnc-paidby" placeholder="Cash / Warna Bank…">'+
-      '<button class="btn btn-blue" style="margin-top:6px" onclick="saveLoanCharge('+loanId+',\''+loanName.replace(/'/g,"\\'")+'\')">➕ Save Charge</button>'+
+      '<button class="btn btn-blue" style="margin-top:6px" onclick="saveLoanCharge('+safeId+',\''+safeName+'\')">➕ Save Charge</button>'+
       '<div id="lnc-msg"></div></div>';
 
-    // EMI list
     var today=new Date().toISOString().slice(0,10);
     var emisHtml='<div style="font-weight:700;margin:12px 0 6px;font-size:13px">📅 EMI Schedule ('+emis.filter(function(e){return e.status==='paid';}).length+'/'+emis.length+' paid)</div>'+
       emis.map(function(e){
@@ -2133,12 +2238,29 @@ function openLoanDetail(loanId,loanName){
           (isPaid?'<span class="badge b-green">✅ Paid</span>':
            isOverdue?'<span class="badge b-red">Overdue</span>':
            '<span class="badge b-grey">Pending</span>')+
-          (isPaid?'':' <button class="btn-sm btn-blue" onclick="markEmiPaid('+e.id+','+loanId+',\''+loanName.replace(/'/g,"\\'")+'\')">Mark Paid</button>')+
+          (isPaid?'':' <button class="btn-sm btn-blue" onclick="markEmiPaid('+e.id+','+safeId+',\''+safeName+'\')">Mark Paid</button>')+
           '</div></div></div>';
       }).join('');
 
     listEl.innerHTML=chargesHtml+emisHtml;
   });
+}
+function setODTxnType(t){
+  setV('od-txn-type',t);
+  document.getElementById('odtype-draw').className='btn '+(t==='draw'?'btn-blue':'btn-grey');
+  document.getElementById('odtype-repay').className='btn '+(t==='repay'?'btn-blue':'btn-grey');
+}
+function saveODTxn(loanId,loanName){
+  var amt=parseFloat(v('od-txn-amount')); var date=v('od-txn-date');
+  var txnType=v('od-txn-type');
+  if(!amt||!date){showMsg('od-txn-msg','Fill date and amount','er');return;}
+  sbPost('loan_emis',{loan_id:loanId,due_date:date,amount:amt,status:txnType,note:v('od-txn-note')}).then(function(r){
+    if(r.ok){openLoanDetail(loanId,loanName);}
+    else showMsg('od-txn-msg','Error saving','er');
+  });
+}
+function deleteODTxn(emiId,loanId,loanName){
+  sbDelete('loan_emis',emiId).then(function(){openLoanDetail(loanId,loanName);});
 }
 function saveLoanCharge(loanId,loanName){
   var desc=v('lnc-desc').trim(); var amt=parseFloat(v('lnc-amount'));
@@ -4040,7 +4162,7 @@ function showBankTab(t){
     var btn=document.getElementById('bktab-'+s); if(btn) btn.className='btn-sm '+(s===t?'btn-blue':'btn-grey');
   });
   if(t==='accounts'){ loadBankAccountCards(); loadBankDetail(); }
-  if(t==='manage')   loadBankManageList();
+  if(t==='manage'){loadBankManageList();var k=getGeminiKey();if(k){var kEl=document.getElementById('gemini-api-key');if(kEl)kEl.placeholder='Key saved ('+k.slice(0,8)+'…)';}}
 }
 function loadBankAccounts(){
   sbGetQ('bank_accounts','active=eq.true&order=name.asc').then(function(rows){
@@ -4418,24 +4540,41 @@ function loadBankList(){
 
 // ── LOANS ──
 var loans=[];
+function setLoanType(t){
+  setV('ln-type',t);
+  document.getElementById('lntype-term').className='btn '+(t==='term'?'btn-blue':'btn-grey');
+  document.getElementById('lntype-od').className='btn '+(t==='od'?'btn-blue':'btn-grey');
+  document.getElementById('ln-term-fields').style.display=t==='term'?'block':'none';
+  document.getElementById('ln-od-fields').style.display=t==='od'?'block':'none';
+}
 function loadLoanList(){
   sbGetQ('loans','order=created_at.desc').then(function(rows){
     loans=rows||[];
     var el=document.getElementById('loanList');
     if(!rows.length){el.innerHTML='<div class="empty">No loans yet</div>';return;}
     el.innerHTML=rows.map(function(l){
-      var paid=l.total_emis; // we'll compute this later; show basic info
-      return'<div class="card"><div style="display:flex;justify-content:space-between;align-items:flex-start">'+
-        '<div style="cursor:pointer" onclick="openLoanDetail('+l.id+',\''+l.lender_name.replace(/'/g,"\\'")+' — '+l.purpose.replace(/'/g,"\\'")+'\')">' +
-        '<div style="font-weight:900;font-size:15px">'+l.lender_name+'</div>'+
-        '<div style="font-size:11px;color:#7a8fa6">'+l.purpose+' · Started: '+l.start_date+'</div>'+
+      var isOD=(l.loan_type==='overdraft'||l.loan_type==='od');
+      var lname=l.lender_name.replace(/'/g,"\\'");
+      var pname=(l.purpose||'').replace(/'/g,"\\'");
+      var detailLabel=isOD?'📊 View Transactions':'📅 View EMIs';
+      var typeTag=isOD
+        ?'<span class="badge" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d">OD</span>'
+        :'<span class="badge b-grey">Term</span>';
+      var bodyHtml=isOD
+        ?'<div class="sum-row"><span class="sum-lbl">Credit Limit</span><span class="sum-val">'+fmt(l.od_limit||0)+'</span></div>'+
+          '<div class="sum-row"><span class="sum-lbl">Interest Rate</span><span class="sum-val">'+(l.interest_rate||0)+'% p.a.</span></div>'
+        :'<div class="sum-row"><span class="sum-lbl">Principal</span><span class="sum-val">'+fmt(l.principal||0)+'</span></div>'+
+          '<div class="sum-row"><span class="sum-lbl">EMI</span><span class="sum-val">'+fmt(l.emi_amount||0)+' × '+(l.total_emis||0)+'</span></div>'+
+          '<div class="sum-row"><span class="sum-lbl">Interest Rate</span><span class="sum-val">'+l.interest_rate+'% p.a.</span></div>';
+      return'<div class="card">'+
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
+        '<div style="cursor:pointer;flex:1" onclick="openLoanDetail('+l.id+',\''+lname+' — '+pname+'\')">'+
+        '<div style="font-weight:900;font-size:15px">'+l.lender_name+' '+typeTag+'</div>'+
+        '<div style="font-size:11px;color:#7a8fa6">'+(l.purpose||'')+' · Started: '+l.start_date+'</div>'+
         '</div><span class="badge '+(l.active?'b-green':'b-grey')+'">'+(l.active?'Active':'Closed')+'</span></div>'+
-        '<hr class="divider">'+
-        '<div class="sum-row"><span class="sum-lbl">Principal</span><span class="sum-val">'+fmt(l.principal)+'</span></div>'+
-        '<div class="sum-row"><span class="sum-lbl">EMI Amount</span><span class="sum-val">'+fmt(l.emi_amount)+' × '+l.total_emis+'</span></div>'+
-        '<div class="sum-row"><span class="sum-lbl">Interest Rate</span><span class="sum-val">'+l.interest_rate+'% p.a.</span></div>'+
+        '<hr class="divider">'+bodyHtml+
         '<div style="display:flex;gap:8px;margin-top:8px">'+
-        '<button class="btn-sm btn-blue" onclick="openLoanDetail('+l.id+',\''+l.lender_name.replace(/'/g,"\\'")+'\')">📅 View EMIs</button>'+
+        '<button class="btn-sm btn-blue" onclick="openLoanDetail('+l.id+',\''+lname+'\')">'+detailLabel+'</button>'+
         '<button class="btn-sm btn-del" onclick="delGuard(this,function(){deleteLoan('+l.id+');})">Delete</button></div></div>';
     }).join('');
   });
@@ -4445,21 +4584,33 @@ function populateLoanSelect(){
     var sel=document.getElementById('emi-loan-select');
     if(!sel) return;
     sel.innerHTML='<option value="">Select Loan</option>'+
-      rows.map(function(l){return'<option value="'+l.id+'">'+l.lender_name+' ('+fmt(l.emi_amount)+'/mo)</option>';}).join('');
+      rows.filter(function(l){return l.loan_type!=='overdraft'&&l.loan_type!=='od';})
+        .map(function(l){return'<option value="'+l.id+'">'+l.lender_name+' ('+fmt(l.emi_amount)+'/mo)</option>';}).join('');
   });
 }
 function saveLoan(){
-  var lender=v('ln-lender').trim();
-  if(!lender||!v('ln-emi')||!v('ln-total-emis')||!v('ln-start')){
-    showMsg('ln-msg','Fill all required fields','er');return;
+  var lender=v('ln-lender').trim(); var ltype=v('ln-type');
+  var isOD=ltype==='od';
+  if(!lender||!v('ln-start')){showMsg('ln-msg','Fill all required fields','er');return;}
+  if(!isOD&&(!v('ln-emi')||!v('ln-total-emis'))){showMsg('ln-msg','Fill EMI and total EMIs','er');return;}
+  if(isOD&&!v('ln-od-limit')){showMsg('ln-msg','Fill credit limit','er');return;}
+  var body={lender_name:lender,purpose:v('ln-purpose'),start_date:v('ln-start'),
+    note:v('ln-note'),active:true,loan_type:isOD?'overdraft':'term'};
+  if(isOD){
+    body.od_limit=parseFloat(v('ln-od-limit'))||0;
+    body.interest_rate=parseFloat(v('ln-od-rate'))||0;
+    body.principal=0; body.emi_amount=0; body.total_emis=0;
+    body.vehicle_cost=0; body.down_payment=0;
+  } else {
+    body.vehicle_cost=parseFloat(v('ln-vehicle-cost'))||0;
+    body.down_payment=parseFloat(v('ln-down-payment'))||0;
+    body.principal=parseFloat(v('ln-principal'))||0;
+    body.interest_rate=parseFloat(v('ln-rate'))||0;
+    body.emi_amount=parseFloat(v('ln-emi'));
+    body.total_emis=parseInt(v('ln-total-emis'));
   }
-  sbPost('loans',{lender_name:lender,purpose:v('ln-purpose'),
-    vehicle_cost:parseFloat(v('ln-vehicle-cost'))||0,
-    down_payment:parseFloat(v('ln-down-payment'))||0,
-    principal:parseFloat(v('ln-principal'))||0,interest_rate:parseFloat(v('ln-rate'))||0,
-    emi_amount:parseFloat(v('ln-emi')),total_emis:parseInt(v('ln-total-emis')),
-    start_date:v('ln-start'),note:v('ln-note'),active:true}).then(function(r){
-    if(r.ok){showMsg('ln-msg','Loan saved ✓','ok');loadLoanList();populateLoanSelect();showLoanTab('list');}
+  sbPost('loans',body).then(function(r){
+    if(r.ok){showMsg('ln-msg','Saved ✓','ok');loadLoanList();populateLoanSelect();showLoanTab('list');}
     else showMsg('ln-msg','Error','er');
   });
 }
@@ -4880,12 +5031,15 @@ function loadDashboard(){
 
     var totalPayments=payments.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
     var totalRentOut=rentOut.reduce(function(a,r){return a+(parseFloat(r.received)||0);},0);
-    var income=totalPayments+totalRentOut;
+    // Driver rent deducted from salary = company income
+    var totalDriverRent=monthTempoRent.reduce(function(a,r){return a+(parseFloat(r.rent_amount)||0);},0);
+    var income=totalPayments+totalRentOut+totalDriverRent;
 
     var totalExp=expenses.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
     var totalSal=salaries.reduce(function(a,r){return a+(parseFloat(r.net_paid)||0);},0);
     var totalRentIn=rentIn.reduce(function(a,r){return a+(parseFloat(r.final_rent)||0);},0);
     var totalEMI=emis.filter(function(e){return e.status!=='paid';}).reduce(function(a,e){return a+(parseFloat(e.amount)||0);},0);
+    var netSalCost=totalSal-totalDriverRent; // salary outgo minus rent income
 
     var outgo=totalExp+totalSal+totalRentIn;
     var netPL=income-outgo-totalEMI;
@@ -4896,6 +5050,8 @@ function loadDashboard(){
     document.getElementById('dashExpenses').textContent=fmt(outgo);
     document.getElementById('dashEMI').textContent=fmt(totalEMI);
     document.getElementById('dashSalary').textContent=fmt(totalSal);
+    document.getElementById('dashDriverRent').textContent=fmt(totalDriverRent);
+    document.getElementById('dashSalaryNet').textContent=fmt(netSalCost);
     document.getElementById('dashRentIn').textContent=fmt(totalRentIn);
     document.getElementById('dashRentOut').textContent=fmt(totalRentOut);
 
@@ -5285,6 +5441,99 @@ function loadBillFile(input){
     textEl.value='Unsupported file type. Use .pdf or .txt';
   }
 }
+function saveGeminiKey(){
+  var key=document.getElementById('gemini-api-key').value.trim();
+  var msgEl=document.getElementById('gemini-key-msg');
+  if(!key){msgEl.textContent='Enter a key';msgEl.style.color='#c8382a';return;}
+  localStorage.setItem('fin_gemini_key',key);
+  document.getElementById('gemini-api-key').value='';
+  msgEl.textContent='Key saved ✓';msgEl.style.color='#1e7a4f';
+}
+function getGeminiKey(){return localStorage.getItem('fin_gemini_key')||'';}
+
+var _aiRunning=false;
+function resetAIBtn(){
+  _aiRunning=false;
+  var b=document.getElementById('sv-ai-btn');
+  if(b){b.disabled=false;b.textContent='🤖 AI Extract';}
+}
+function extractBillWithAI(){
+  if(_aiRunning) return;
+  var fileInput=document.getElementById('sv-bill-file');
+  var msg=document.getElementById('sv-parse-msg');
+  var file=fileInput&&fileInput.files&&fileInput.files[0];
+  if(!file){msg.textContent='Choose a bill file first';msg.style.color='#c8382a';return;}
+  var apiKey=getGeminiKey();
+  if(!apiKey){msg.textContent='Add Gemini API key in Bank → ⚙️ Manage → AI Settings';msg.style.color='#c8382a';return;}
+  _aiRunning=true;
+  var b=document.getElementById('sv-ai-btn');
+  if(b){b.disabled=true;b.textContent='⏳ Processing…';}
+  msg.textContent='🤖 Reading file…';msg.style.color='#4338ca';
+
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var b64=e.target.result.split(',')[1];
+    var mime=file.type||'application/pdf';
+    var prompt='Extract all details from this vehicle service bill and return ONLY valid JSON (no markdown, no explanation):\n{\n"invoice_no":"",\n"invoice_date":"YYYY-MM-DD or empty",\n"reg_no":"vehicle registration number like MH12XX1234",\n"odometer":0,\n"service_person":"",\n"workshop":"",\n"notes":"",\n"items":[\n{"description":"","type":"part or labour","qty":1,"rate":0,"amount":0}\n]\n}\nRules: type=labour for installation/fitting/checking/repair/setting work, type=part for physical parts/oils/materials. Omit Round Off and Total rows.';
+    var url='https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key='+apiKey;
+    msg.textContent='🤖 Sending to Gemini…';msg.style.color='#4338ca';
+    fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({contents:[{parts:[{text:prompt},{inline_data:{mime_type:mime,data:b64}}]}]})
+    }).then(function(r){
+      if(r.status===429){
+        msg.textContent='⚠️ Rate limited (15 req/min free tier). Wait 1 minute then retry.';
+        msg.style.color='#c8382a';resetAIBtn();return null;
+      }
+      if(!r.ok){
+        msg.textContent='API error '+r.status+' — check your API key';
+        msg.style.color='#c8382a';resetAIBtn();return null;
+      }
+      return r.json();
+    }).then(function(result){
+      if(!result) return;
+      var text='';
+      try{text=result.candidates[0].content.parts[0].text||'';}catch(ex){}
+      if(!text){msg.textContent='AI returned empty response';msg.style.color='#c8382a';resetAIBtn();return;}
+      var jsonStr=text.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+      var data;
+      try{data=JSON.parse(jsonStr);}catch(ex){
+        var m=text.match(/\{[\s\S]+\}/);
+        try{data=m?JSON.parse(m[0]):null;}catch(ex2){data=null;}
+      }
+      if(!data){
+        msg.textContent='Could not parse AI response';msg.style.color='#c07000';
+        document.getElementById('sv-bill-text').style.display='block';
+        document.getElementById('sv-bill-text').value=text;
+        resetAIBtn();return;
+      }
+      if(data.invoice_no) setV('sv-bill-no',data.invoice_no);
+      if(data.invoice_date&&/\d{4}-\d{2}-\d{2}/.test(data.invoice_date)) setV('sv-bill-date',data.invoice_date);
+      if(data.reg_no) setV('sv-reg-no',data.reg_no);
+      if(data.odometer) setV('sv-km',data.odometer);
+      if(data.service_person) setV('sv-person',data.service_person);
+      if(data.workshop) setV('sv-workshop',data.workshop);
+      if(data.notes) setV('sv-note',data.notes);
+      if(data.items&&data.items.length){
+        _svItems=data.items.map(function(it){
+          return{type:String(it.type||'part').toLowerCase()==='labour'?'labour':'part',
+            description:String(it.description||''),
+            qty:parseFloat(it.qty)||1,rate:parseFloat(it.rate)||0,
+            amount:parseFloat(it.amount)||+(parseFloat(it.qty||1)*parseFloat(it.rate||0)).toFixed(2)};
+        });
+        renderServiceItems();calcServiceTotal();
+        msg.textContent='✓ '+_svItems.length+' items extracted'+(data.invoice_no?' · '+data.invoice_no:'')+(data.odometer?' · KM '+data.odometer:'');
+        msg.style.color='#1e7a4f';
+      } else {
+        msg.textContent='Header fields filled but no line items found';msg.style.color='#c07000';
+      }
+      resetAIBtn();
+    }).catch(function(err){
+      msg.textContent='Network error: '+err.message;msg.style.color='#c8382a';resetAIBtn();
+    });
+  };
+  reader.readAsDataURL(file);
+}
+
 function parseBillText(){
   var raw=document.getElementById('sv-bill-text').value||'';
   var msg=document.getElementById('sv-parse-msg');
@@ -5292,74 +5541,126 @@ function parseBillText(){
   var extracted=[];
 
   // Invoice no
-  var invM=raw.match(/Bill of Supply\s*#[:\s]*([A-Z0-9\-\.]+)/i)||raw.match(/Invoice\s*(?:No|Number|#)[:\s]*([A-Z0-9\-\.]+)/i);
+  var invM=raw.match(/Bill\s+of\s+Supply\s*#\s*:?\s*([A-Z0-9][A-Z0-9\-\.\/]+)/i)
+    ||raw.match(/Invoice\s*(?:No|Number|#)[:\s]*([A-Z0-9][A-Z0-9\-\.\/]+)/i);
   if(invM) setV('sv-bill-no',invM[1].trim());
 
-  // Invoice date
-  var dateM=raw.match(/Invoice\s*Date[:\s]*(\d{1,2}[\s\-\/][A-Za-z]+[\s\-\/]\d{4})/i)||raw.match(/Invoice\s*Date[:\s]*(\d{4}-\d{2}-\d{2})/i);
+  // Invoice date — allow spaces inside date parts (PDF sometimes pads them)
+  var dateM=raw.match(/Invoice\s*Date[:\s]*(\d{1,2}\s+[A-Za-z]+\s+\d{4})/i)
+    ||raw.match(/Invoice\s*Date[:\s]*(\d{1,2}[\-\/][A-Za-z]+[\-\/]\d{4})/i)
+    ||raw.match(/Invoice\s*Date[:\s]*(\d{4}-\d{2}-\d{2})/i);
   if(dateM){
-    var d=new Date(dateM[1]);
+    var d=new Date(dateM[1].replace(/\s+/g,' '));
     if(!isNaN(d)) setV('sv-bill-date',d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));
   }
 
-  // Odometer — handle same line or next line
-  var odoM=raw.match(/ODO\s*METER\s*READING[:\s]*\n?\s*(\d{4,6})/i)
-    ||raw.match(/ODOMETER[:\s]*\n?\s*(\d{4,6})/i)
-    ||raw.match(/KM\s*READING[:\s]*\n?\s*(\d{4,6})/i);
+  // Odometer
+  var odoM=raw.match(/ODO\s*METER\s*READING\s*:?\s*(\d{4,6})/i)
+    ||raw.match(/ODOMETER\s*:?\s*(\d{4,6})/i)
+    ||raw.match(/KM\s*READING\s*:?\s*(\d{4,6})/i);
   if(odoM) setV('sv-km',odoM[1]);
 
-  // Reg No — handle same line or next line
-  var regM=raw.match(/REG\s*NO[:\s]*\n?\s*([A-Z]{2}\d{2}[A-Z]{1,2}\d{3,4})/i)
-    ||raw.match(/Registration(?:\s*No)?[:\s]*\n?\s*([A-Z]{2}\d{2}[A-Z]{1,2}\d{3,4})/i)
+  // Reg No
+  var regM=raw.match(/REG\s*NO\s*:?\s*([A-Z]{2}\d{2}[A-Z]{1,2}\d{3,4})/i)
+    ||raw.match(/Registration\s*(?:No)?\s*:?\s*([A-Z]{2}\d{2}[A-Z]{1,2}\d{3,4})/i)
     ||raw.match(/\b([A-Z]{2}\d{2}[A-Z]{1,2}\d{4})\b/);
   if(regM) setV('sv-reg-no',regM[1].trim());
 
-  // Service person — handle same line or next line
-  var persM=raw.match(/SERVICE\s*PERSON[:\s]*\n?\s*([A-Z][A-Z\s]+?)(?:\n|$)/i)
-    ||raw.match(/Technician[:\s]*\n?\s*([A-Z][A-Z\s]+?)(?:\n|$)/i);
+  // Service person — stop before known subsequent labels
+  var persM=raw.match(/SERVICE\s*PERSON\s*:?\s*([A-Z][A-Z\s]+?)(?:\s{2,}|ODO|REFERENCE|Reference|$)/i)
+    ||raw.match(/Technician\s*:?\s*([A-Z][A-Z\s]+?)(?:\s{2,}|$)/i);
   if(persM) setV('sv-person',persM[1].trim());
 
-  // Workshop name (first prominent proper-noun line or garage name)
-  var wsM=raw.match(/^([A-Z][A-Z\s]+(?:MOTORS|GARAGE|AUTO|SERVICE|WORKSHOP))/m);
+  // Workshop name
+  var wsM=raw.match(/\b([A-Z][A-Z\s]+(?:MOTORS|GARAGE|AUTO|SERVICE|WORKSHOP))\b/);
   if(wsM) setV('sv-workshop',wsM[1].trim());
 
-  // Notes/observations
-  var notesM=raw.match(/Notes?[:\s]*\n(.+?)(?:\n\n|\nTerms|$)/is)||raw.match(/observations?[:\s]*\n(.+?)(?:\n\n|$)/is);
-  if(notesM) setV('sv-note',(v('sv-note')?v('sv-note')+' | ':'')+notesM[1].replace(/\n/g,' ').trim());
+  // Notes
+  var notesM=raw.match(/Notes?\s*:\s*([^\n]+?)(?:\s{3,}|Receiver|Terms|$)/i)
+    ||raw.match(/observations?\s*:\s*\n(.+?)(?:\n\n|$)/is);
+  if(notesM){var noteStr=notesM[1].replace(/\n/g,' ').trim();if(noteStr) setV('sv-note',(v('sv-note')?v('sv-note')+' | ':'')+noteStr);}
 
-  // Line items — look for numbered rows with amount at end
-  // Pattern: number  description  hsn?  qty  unit  rate  amount
-  var lines=raw.split('\n');
+  // ── LINE ITEMS ──
+  // Listtriik format: # NAME [HSN] [Tax|-] QTY NOS RATE [Disc|-] [Per|NOS] AMOUNT
   _svItems=[];
-  var itemRe=/^(\d+)\s+(.+?)\s+(\d[\d,]*\.?\d*)\s*(?:NOS|nos|Nos|-)\s+(\d[\d,]*\.?\d*)\s*(?:NOS|nos|Nos|-)\s+([\d,]+\.?\d*)\s*$/;
-  var simpleRe=/^(\d+)\s+(.+?)\s+([\d,]+\.?\d{2})\s*$/;
+
+  // Helper: classify description
+  var labourRe=/install|remov|replac|check|wash|align|adjust|clean|repair|service|labour|labor/i;
+
+  // Strategy 1: proper line breaks
+  var lines=raw.split('\n');
+  var lineItemRe=/^(\d{1,2})\s+(.+?)\s+(?:\d{5,8}\s+)?(?:-|[\d.]+%?)\s+(\d+)\s+NOS\s+([\d,]+\.?\d*)\s+(?:-|[\d.]+%?)\s+(?:NOS\s+)?([\d,]+\.?\d*)\s*$/i;
   lines.forEach(function(line){
     line=line.trim();
-    var m=itemRe.exec(line);
+    var m=lineItemRe.exec(line);
     if(m){
-      var desc=m[2].trim();
-      var qty=parseFloat(m[3].replace(/,/g,''))||1;
+      var desc=m[2].trim(); var qty=parseFloat(m[3])||1;
       var rate=parseFloat(m[4].replace(/,/g,''))||0;
-      var amount=parseFloat(m[5].replace(/,/g,''))||0;
-      // if rate looks like amount (single value), recalc
-      if(rate===0&&amount>0) rate=amount;
-      var isLabour=/install|remov|replac|check|wash|align|adjust|clean|repair|service|labour|labor/i.test(desc);
-      extracted.push({type:isLabour?'labour':'part',description:desc,qty:qty,rate:rate,amount:amount||+(qty*rate).toFixed(2)});
-      return;
-    }
-    // Simpler fallback: "1 THROTTLE OPI 2684.75"
-    var m2=simpleRe.exec(line);
-    if(m2&&parseInt(m2[1])===(_svItems.length+extracted.length+1)){
-      var desc2=m2[2].trim();
-      var amount2=parseFloat(m2[3].replace(/,/g,''))||0;
-      var isLabour2=/install|remov|replac|check|wash|align|adjust|clean|repair|service|labour|labor/i.test(desc2);
-      extracted.push({type:isLabour2?'labour':'part',description:desc2,qty:1,rate:amount2,amount:amount2});
+      var amount=parseFloat(m[5].replace(/,/g,''))||+(qty*rate).toFixed(2);
+      extracted.push({type:labourRe.test(desc)?'labour':'part',description:desc,qty:qty,rate:rate,amount:amount});
     }
   });
+
+  // Strategy 2: global scan for collapsed PDF text (no proper newlines)
+  if(!extracted.length){
+    // Format: # NAME [PARTCODE|-] [HSN|-] [-] qty UNIT rate [-] UNIT amount
+    // Columns are separated by 3+ spaces; within a multi-word name only 1-2 spaces
+    // Units can be NOS, LTR, KGS, KG, SET, PCS etc. Qty can be decimal.
+    // Strategy: find items sequentially by number to avoid false matches.
+    var UNITS='NOS|LTR|KGS|KG|SET|PCS|MTR|PRS|Nos|Ltr|Kgs';
+    var tailRePDF=new RegExp('([\\d.]+)\\s+(?:'+UNITS+')\\s+([\\d,]+\\.?\\d*)\\s+-\\s+(?:'+UNITS+')\\s+([\\d,]+\\.?\\d*)','i');
+    var searchPos=0;
+    for(var sn=1;sn<=99;sn++){
+      var snStr=String(sn);
+      // Find next occurrence of "  N  Letter" (item number with surrounding spaces)
+      var snRe=new RegExp('(?:^|\\s{2,})'+snStr+'\\s{2,}([A-Za-z(])','g');
+      snRe.lastIndex=searchPos;
+      var snM=snRe.exec(raw);
+      if(!snM) break; // no more items
+      // Position of the item number itself in raw string
+      var numIdx=snM.index+(snM[0].length-snStr.length-(snM[0].match(/^(\s*)/)[1].length||0));
+      // Actually: match[0] may start with spaces. Find position of snStr within match.
+      var offsetInMatch=snM[0].lastIndexOf(snStr);
+      numIdx=snM.index+offsetInMatch;
+      var nameStart=numIdx+snStr.length;
+      // Find next item's position (or end) to bound this segment
+      var nextRe=new RegExp('(?:^|\\s{2,})'+String(sn+1)+'\\s{2,}[A-Za-z(]','g');
+      nextRe.lastIndex=nameStart;
+      var nextM=nextRe.exec(raw);
+      var segEnd=nextM?nextM.index+1:raw.length;
+      var seg=raw.substring(nameStart,segEnd);
+      // Extract name: text from start of seg up to first 3+ spaces
+      var nameM=seg.match(/^\s{1,3}((?:(?!\s{3})[\s\S])+?)(?=\s{3})/);
+      if(!nameM){searchPos=snM.index+1;continue;}
+      var desc=nameM[1].replace(/\s*-\s*$/,'').replace(/\s+/g,' ').trim();
+      if(!desc||desc.length<2||/^(?:ITEM|#|HSN|QTY|RATE|AMOUNT)$/i.test(desc)){searchPos=snM.index+1;continue;}
+      // Extract tail: qty UNIT rate - UNIT amount
+      var tm2=tailRePDF.exec(seg);
+      if(!tm2){searchPos=snM.index+1;continue;}
+      var gqty=parseFloat(tm2[1])||1;
+      var grate=parseFloat(tm2[2].replace(/,/g,''))||0;
+      var gamount=parseFloat(tm2[3].replace(/,/g,''))||+(gqty*grate).toFixed(2);
+      extracted.push({type:labourRe.test(desc)?'labour':'part',description:desc,qty:gqty,rate:grate,amount:gamount});
+      searchPos=snM.index+1;
+    }
+  }
+
+  // Strategy 3: simple fallback — item number + name + final currency amount on same line
+  if(!extracted.length){
+    var fallbackRe=/^(\d{1,2})\s{2,}([A-Za-z&][^\n]{3,60?}?)\s+([\d,]+\.\d{2})\s*$/mg;
+    var fm;
+    while((fm=fallbackRe.exec(raw))!==null){
+      if(parseInt(fm[1])!==extracted.length+1) continue;
+      var fdesc=fm[2].trim(); var famt=parseFloat(fm[3].replace(/,/g,''))||0;
+      extracted.push({type:labourRe.test(fdesc)?'labour':'part',description:fdesc,qty:1,rate:famt,amount:famt});
+    }
+  }
+
   if(extracted.length){
     _svItems=extracted;
-    renderServiceItems();
-    msg.textContent='✓ Extracted '+extracted.length+' line items'+(invM?' · Bill '+invM[1]:''+(odoM?' · KM '+odoM[1]:''));
+    renderServiceItems(); calcServiceTotal();
+    msg.textContent='✓ Extracted '+extracted.length+' item'+(extracted.length>1?'s':'')
+      +(invM?' · '+invM[1]:'')+(odoM?' · KM '+odoM[1]:'');
     msg.style.color='#1e7a4f';
   } else {
     msg.textContent='Could not extract line items — fill manually';
@@ -5509,10 +5810,21 @@ function showReportTab(t){
   if(t==='driver') { setV('rp-driver-month',thisMonth()); loadDriverCostReport(); }
   if(t==='tempo') { setV('rp-tempo-month',thisMonth()); loadTempoReport(); }
 }
+function setReportMonth(fieldId,loadFn,offset){
+  var now=new Date(); var d=new Date(now.getFullYear(),now.getMonth()+offset,1);
+  setV(fieldId,d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'));
+  loadFn();
+}
 function setRPFilter(range){
   var now=new Date(); var y=now.getFullYear(); var m=now.getMonth();
   var from='',to='';
-  if(range==='month'){from=y+'-'+String(m+1).padStart(2,'0')+'-01';to=y+'-'+String(m+1).padStart(2,'0')+'-'+new Date(y,m+1,0).getDate();}
+  if(range==='lastmonth'){
+    var lm=new Date(y,m,0); // last day of prev month
+    var ly=lm.getFullYear(); var lmm=lm.getMonth()+1;
+    from=ly+'-'+String(lmm).padStart(2,'0')+'-01';
+    to=ly+'-'+String(lmm).padStart(2,'0')+'-'+lm.getDate();
+  }
+  else if(range==='month'){from=y+'-'+String(m+1).padStart(2,'0')+'-01';to=y+'-'+String(m+1).padStart(2,'0')+'-'+new Date(y,m+1,0).getDate();}
   else if(range==='quarter'){var qFrom=new Date(y,m-2,1);from=qFrom.getFullYear()+'-'+String(qFrom.getMonth()+1).padStart(2,'0')+'-01';to=y+'-'+String(m+1).padStart(2,'0')+'-'+new Date(y,m+1,0).getDate();}
   else if(range==='year'){from=y+'-01-01';to=y+'-12-31';}
   setV('rp-from',from); setV('rp-to',to); loadPL();
@@ -5529,30 +5841,52 @@ function loadPL(){
     sbGetQ('fin_expenses','date=gte.'+from+'&date=lte.'+to),
     sbGetQ('driver_salary','month=gte.'+mon1+'&month=lte.'+mon2),
     sbGetQ('tempo_rent_in','month=gte.'+mon1+'&month=lte.'+mon2),
-    sbGetQ('loan_emis','status=eq.paid&paid_date=gte.'+from+'&paid_date=lte.'+to)
+    sbGetQ('loan_emis','status=eq.paid&paid_date=gte.'+from+'&paid_date=lte.'+to),
+    sbGetQ('driver_tempo_rent','month=gte.'+mon1+'&month=lte.'+mon2)
   ]).then(function(res){
     var bills=res[0]||[]; var cashPays=res[1]||[]; var rentOut=res[2]||[];
-    var expenses=res[3]||[]; var salaries=res[4]||[]; var rentIn=res[5]||[]; var emis=res[6]||[];
+    var expenses=res[3]||[]; var salaries=res[4]||[]; var rentIn=res[5]||[];
+    var emis=res[6]||[]; var driverRents=res[7]||[];
+
     var totalBills=bills.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
     var totalPays=cashPays.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
     var totalRentOut=rentOut.reduce(function(a,r){return a+(parseFloat(r.final_rent)||0);},0);
-    var income=totalBills+totalRentOut;
+    // Driver rent deducted from salary = income for company
+    var totalDriverRent=driverRents.reduce(function(a,r){return a+(parseFloat(r.rent_amount)||0);},0);
+    var income=totalBills+totalRentOut+totalDriverRent;
+
     var totalExp=expenses.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
-    var totalSal=salaries.reduce(function(a,r){return a+(parseFloat(r.net_paid)||0);},0);
+    // Salary outgo = net_paid MINUS rent already deducted (rent is income, not salary cost)
+    var totalSal=salaries.reduce(function(a,r){
+      var netPaid=parseFloat(r.net_paid)||0;
+      // Find rent deducted for this driver-month
+      var dr=driverRents.find(function(d){return d.driver_name===r.driver_name&&d.month===r.month;});
+      var rent=dr?parseFloat(dr.rent_amount)||0:0;
+      return a+(netPaid+rent); // net_paid already has rent subtracted, add it back to get true salary cost
+    },0);
+    // True salary expense = gross salary paid out (net_paid already excludes rent; rent is accounted as income above)
+    // So actual salary cost = just net_paid (rent was deducted from worker, not paid by company)
+    // Re-calc: net_paid = salary paid by company after deducting rent from driver
+    // Company outgo for salary = net_paid (what company pays driver after offsetting rent received)
+    // Driver rent income is already counted above; so salary cost should just be net_paid
+    totalSal=salaries.reduce(function(a,r){return a+(parseFloat(r.net_paid)||0);},0);
+
     var totalRentIn=rentIn.reduce(function(a,r){return a+(parseFloat(r.final_rent)||0);},0);
     var totalEMI=emis.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
     var outgo=totalExp+totalSal+totalRentIn+totalEMI;
     var net=income-outgo;
+
     el.innerHTML='<div class="card">'+
       '<div class="card-title">📈 P&L Summary ('+from+' → '+to+')</div>'+
       '<div style="font-size:12px;font-weight:700;color:#1e7a4f;margin:8px 0 4px">INCOME</div>'+
       '<div class="sum-row"><span class="sum-lbl">Customer Bills</span><span class="sum-val" style="color:#1e7a4f">'+fmt(totalBills)+'</span></div>'+
       '<div class="sum-row"><span class="sum-lbl">Cash Received (Payments)</span><span class="sum-val" style="color:#1e7a4f">'+fmt(totalPays)+'</span></div>'+
-      '<div class="sum-row"><span class="sum-lbl">Tempo Rent Out</span><span class="sum-val" style="color:#1e7a4f">'+fmt(totalRentOut)+'</span></div>'+
+      '<div class="sum-row"><span class="sum-lbl">Tempo Rent Out (customers)</span><span class="sum-val" style="color:#1e7a4f">'+fmt(totalRentOut)+'</span></div>'+
+      (totalDriverRent?'<div class="sum-row"><span class="sum-lbl">Driver Tempo Rent (deducted)</span><span class="sum-val" style="color:#1e7a4f">'+fmt(totalDriverRent)+'</span></div>':'')+
       '<div class="sum-row" style="border-top:2px solid #e4edf6;font-weight:900;margin-top:4px;padding-top:8px"><span class="sum-lbl">Total Income</span><span class="sum-val" style="color:#1e7a4f">'+fmt(income)+'</span></div>'+
       '<div style="font-size:12px;font-weight:700;color:#c8382a;margin:12px 0 4px">OUTGO</div>'+
       '<div class="sum-row"><span class="sum-lbl">Expenses</span><span class="sum-val" style="color:#c8382a">'+fmt(totalExp)+'</span></div>'+
-      '<div class="sum-row"><span class="sum-lbl">Salaries Net Paid</span><span class="sum-val" style="color:#c8382a">'+fmt(totalSal)+'</span></div>'+
+      '<div class="sum-row"><span class="sum-lbl">Salaries (net paid to drivers)</span><span class="sum-val" style="color:#c8382a">'+fmt(totalSal)+'</span></div>'+
       '<div class="sum-row"><span class="sum-lbl">Tempo Rent In (paid)</span><span class="sum-val" style="color:#c8382a">'+fmt(totalRentIn)+'</span></div>'+
       '<div class="sum-row"><span class="sum-lbl">EMIs Paid</span><span class="sum-val" style="color:#c8382a">'+fmt(totalEMI)+'</span></div>'+
       '<div class="sum-row" style="border-top:2px solid #e4edf6;font-weight:900;margin-top:4px;padding-top:8px"><span class="sum-lbl">Total Outgo</span><span class="sum-val" style="color:#c8382a">'+fmt(outgo)+'</span></div>'+
@@ -5576,24 +5910,32 @@ function loadDriverCostReport(){
   ]).then(function(res){
     var sals=res[0]||[]; var tempoRents=res[1]||[]; var advances=res[2]||[]; var deductions=res[3]||[]; var leaves=res[4]||[];
     if(!sals.length){el.innerHTML='<div class="empty">No salary records for '+mon+'</div>';return;}
-    el.innerHTML='<div class="card"><div class="card-title">👷 Driver Cost — '+mon+'</div>'+
-      sals.map(function(s){
-        var tr=tempoRents.find(function(r){return r.driver_name===s.driver_name;});
-        var adv=advances.filter(function(r){return r.driver_name===s.driver_name;}).reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
-        var ded=deductions.filter(function(r){return r.driver_name===s.driver_name;}).reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
-        var lvDays=leaves.filter(function(r){return r.driver_name===s.driver_name;}).length;
-        var total=(parseFloat(s.base_salary)||0);
-        return'<div class="item-card">'+
-          '<div style="font-weight:700;font-size:14px">'+s.driver_name+'</div>'+
-          '<div class="sum-row"><span class="sum-lbl">Base Salary</span><span class="sum-val">'+fmt(s.base_salary)+'</span></div>'+
-          '<div class="sum-row"><span class="sum-lbl">Leave Days</span><span class="sum-val">'+lvDays+'d (−'+fmt(s.leave_deduction)+')</span></div>'+
-          (tr?'<div class="sum-row"><span class="sum-lbl">Tempo Rent</span><span class="sum-val" style="color:#c8382a">−'+fmt(tr.rent_amount)+'</span></div>':'')+
-          '<div class="sum-row"><span class="sum-lbl">Advances</span><span class="sum-val">'+fmt(adv)+'</span></div>'+
-          '<div class="sum-row"><span class="sum-lbl">Deductions</span><span class="sum-val" style="color:#c8382a">−'+fmt(ded)+'</span></div>'+
-          '<div class="sum-row" style="border-top:1px solid #e4edf6;margin-top:4px;padding-top:6px;font-weight:900"><span class="sum-lbl">Net Paid</span><span class="sum-val" style="color:#1e7a4f">'+fmt(s.net_paid)+'</span></div>'+
-          (s.paid_date?'<span class="badge b-green">Paid '+s.paid_date+'</span>':'<span class="badge b-red">Not Paid</span>')+
-          '</div>';
-      }).join('')+'</div>';
+    var grandSal=0; var grandRent=0;
+    var rows=sals.map(function(s){
+      var tr=tempoRents.find(function(r){return r.driver_name===s.driver_name;});
+      var adv=advances.filter(function(r){return r.driver_name===s.driver_name;}).reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
+      var ded=deductions.filter(function(r){return r.driver_name===s.driver_name;}).reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
+      var lvDays=leaves.filter(function(r){return r.driver_name===s.driver_name;}).length;
+      var netPaid=parseFloat(s.net_paid)||0;
+      var rentAmt=tr?parseFloat(tr.rent_amount)||0:0;
+      grandSal+=netPaid; grandRent+=rentAmt;
+      return'<div class="item-card">'+
+        '<div style="font-weight:700;font-size:14px">'+s.driver_name+'</div>'+
+        '<div class="sum-row"><span class="sum-lbl">Base Salary</span><span class="sum-val">'+fmt(s.base_salary)+'</span></div>'+
+        (lvDays?'<div class="sum-row"><span class="sum-lbl">Leave Deduction</span><span class="sum-val" style="color:#c8382a">−'+fmt(s.leave_deduction)+'</span></div>':'')+
+        '<div class="sum-row"><span class="sum-lbl">Advances Adjusted</span><span class="sum-val">'+fmt(adv)+'</span></div>'+
+        (ded?'<div class="sum-row"><span class="sum-lbl">Deductions</span><span class="sum-val" style="color:#c8382a">−'+fmt(ded)+'</span></div>':'')+
+        (rentAmt?'<div class="sum-row" style="background:#f0fdf4;border-radius:6px;padding:3px 6px"><span class="sum-lbl">🏠 Tempo Rent (income)</span><span class="sum-val" style="color:#1e7a4f">+'+fmt(rentAmt)+'</span></div>':'')+
+        '<div class="sum-row" style="border-top:1px solid #e4edf6;margin-top:4px;padding-top:6px;font-weight:900"><span class="sum-lbl">Net Paid to Driver</span><span class="sum-val" style="color:#c8382a">'+fmt(netPaid)+'</span></div>'+
+        (s.paid_date?'<span class="badge b-green">Paid '+s.paid_date+'</span>':'<span class="badge b-red">Not Paid</span>')+
+        '</div>';
+    });
+    el.innerHTML='<div class="card" style="margin-bottom:8px">'+
+      '<div class="card-title">👷 Driver Cost Summary — '+mon+'</div>'+
+      '<div class="sum-row"><span class="sum-lbl">Total Salary Outgo</span><span class="sum-val" style="color:#c8382a">'+fmt(grandSal)+'</span></div>'+
+      '<div class="sum-row"><span class="sum-lbl">🏠 Driver Rent Income</span><span class="sum-val" style="color:#1e7a4f">'+fmt(grandRent)+'</span></div>'+
+      '<div class="sum-row" style="border-top:1px solid #e4edf6;font-weight:900;margin-top:4px;padding-top:6px"><span class="sum-lbl">Net Cost to Company</span><span class="sum-val" style="color:#c8382a">'+fmt(grandSal-grandRent)+'</span></div>'+
+      '</div>'+rows.join('');
   });
 }
 function loadTempoReport(){
