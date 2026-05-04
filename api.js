@@ -338,6 +338,15 @@
         return sbGet('crate_logs', where, 'date.desc,driver');
       }
 
+      // ── 🧂 INGREDIENTS ───────────────────────────────────────────────────────
+      case 'getIngredients':
+        return sbGet('ingredients', {}, 'name');
+
+      // ── 📋 RECIPES ───────────────────────────────────────────────────────────
+      case 'getRecipes':
+        // Returns all recipe lines; JS groups them by product_id client-side
+        return sbGet('product_recipes', {}, 'product_id,ingredient_name');
+
       default:
         return Promise.resolve([]);
     }
@@ -364,6 +373,7 @@
           assigned_driver: b.assigned_driver || '', mobile: b.mobile || '', flag: b.flag || '',
           lat: b.lat !== '' && b.lat != null ? parseFloat(b.lat) : null,
           lng: b.lng !== '' && b.lng != null ? parseFloat(b.lng) : null,
+          zoho_doc_type:   b.zoho_doc_type,
           last_updated_by: b.last_updated_by || '', last_updated_at: b.last_updated_at || ''
         });
 
@@ -565,13 +575,14 @@
           .catch(function(){ return { ok: false }; });
 
       // Customer places order
-      case 'placeCustomerOrder':
-        return sbPost('customer_orders', {
-          shop_id: b.shop_id, shop_name: b.shop_name,
-          delivery_date: b.delivery_date,
-          items: b.items, qty: b.qty, note: b.note || '',
-          status: 'pending'
-        });
+case 'placeCustomerOrder':
+  return sbPost('customer_orders', {
+    shop_id: b.shop_id, shop_name: b.shop_name,
+    delivery_date: b.delivery_date,
+    items: b.items, qty: b.qty, note: b.note || '',
+    status: 'pending',
+    zoho_doc_type: b.zoho_doc_type || 'invoice'
+  });
 
       // Customer editing their own pending order (or amending an approved one)
       case 'updateCustomerOrder': {
@@ -586,10 +597,13 @@
         if (b.status === 'approved')   upd.approved_at     = new Date().toISOString();
         if (b.status === 'packaging')  upd.kitchen_done_at = new Date().toISOString();
         if (b.status === 'dispatched') upd.packaged_at     = new Date().toISOString();
-        if (b.admin_note !== undefined) upd.admin_note = b.admin_note;
-        if (b.items !== undefined) upd.items = b.items;
-        if (b.qty   !== undefined) upd.qty   = b.qty;
-        if (b.note  !== undefined) upd.note  = b.note;
+        if (b.admin_note !== undefined)      upd.admin_note        = b.admin_note;
+        if (b.items !== undefined)           upd.items             = b.items;
+        if (b.qty   !== undefined)           upd.qty               = b.qty;
+        if (b.note  !== undefined)           upd.note              = b.note;
+        if (b.zoho_invoice_id !== undefined) upd.zoho_invoice_id   = b.zoho_invoice_id;
+        if (b.zoho_invoice_number !== undefined) upd.zoho_invoice_number = b.zoho_invoice_number;
+        if (b.zoho_doc_type !== undefined)   upd.zoho_doc_type     = b.zoho_doc_type;
         return sbPatch('customer_orders', { id: b.id }, upd);
       }
 
@@ -686,14 +700,11 @@
         // Delete data older than N days from orders, deliveries, routes, notifications
         var days = (!isNaN(parseInt(b.days)) && parseInt(b.days) >= 0) ? parseInt(b.days) : 7;
         var cutoff = new Date();
-        // days=1 → keep today only (delete < today)
-        // days=0 → delete everything (cutoff = tomorrow)
         cutoff.setDate(cutoff.getDate() - days + 1);
-        var cutoffDate = cutoff.toISOString().slice(0, 10); // 'YYYY-MM-DD'
-        var cutoffTs   = cutoff.toISOString();              // for timestamptz columns
+        var cutoffDate = cutoff.toISOString().slice(0, 10);
+        var cutoffTs   = cutoff.toISOString();
 
         function countHeader(r) {
-          // Supabase returns deleted row count in Content-Range: */N
           var cr = r.headers.get('Content-Range') || '';
           var m  = cr.match(/\*\/(\d+)/);
           return m ? parseInt(m[1]) : 0;
@@ -729,8 +740,6 @@
       }
 
       case 'savePushSubscription':
-        // Delete all old subscriptions for this customer first, then insert fresh
-        // This prevents duplicate rows when the endpoint changes after re-registration
         return fetch(BASE + '/push_subscriptions?shop_id=eq.' + encodeURIComponent(b.shop_id), {
           method: 'DELETE', headers: hdrs({ 'Prefer': 'return=minimal' })
         }).catch(function(){}).then(function(){
@@ -748,12 +757,10 @@
         }).then(function(r){ return {ok: r.ok}; }).catch(function(){ return {ok:false}; });
 
       case 'sendCustomerNotification':
-        // Insert new notification, then trim to keep only the latest 10 for this customer
         return sbPost('customer_notifications', {
           shop_id: b.shop_id, shop_name: b.shop_name || '', message: b.message
         }).then(function(res) {
           if (!res.ok) return res;
-          // Find oldest notifications beyond the 10-most-recent and delete them
           return fetch(BASE + '/customer_notifications?shop_id=eq.' + encodeURIComponent(b.shop_id) +
             '&select=id&order=created_at.desc&offset=10', { headers: hdrs() })
             .then(function(r){ return r.ok ? r.json() : []; })
@@ -787,7 +794,60 @@
           {driver: b.driver, date: b.date, crates_returned: b.crates, returned_time: b.time},
           'driver,date');
 
-      // ── ZOHO BOOKS (TESTING MODE — replace with real API calls when credentials ready) ──
+      // ── 🧂 INGREDIENTS ───────────────────────────────────────────────────────
+
+      case 'saveIngredient': {
+        // If id provided → update existing; otherwise → insert new
+        var row = {
+          name:          b.name,
+          unit:          b.unit,
+          cost_per_unit: parseFloat(b.cost_per_unit) || 0
+        };
+        if (b.id) {
+          return sbPatch('ingredients', { id: b.id }, row);
+        }
+        return sbPost('ingredients', row, 'return=representation')
+          .then(function(r){ return r.ok ? { ok: true } : r; });
+      }
+
+      case 'deleteIngredient':
+        // Cascades to product_recipes via FK ON DELETE CASCADE
+        return sbDelete('ingredients', { id: b.id });
+
+      // ── 📋 RECIPES ───────────────────────────────────────────────────────────
+
+      case 'saveRecipe': {
+        // Strategy: delete all existing lines for this product, then re-insert.
+        // Simpler than diffing — recipes are small and saved atomically.
+        var pid = b.product_id;
+        var lines = Array.isArray(b.lines) ? b.lines.filter(function(l){
+          return l.ingredient_id && l.qty_per_unit > 0;
+        }) : [];
+
+        // Step 1: delete existing lines for this product
+        return fetch(BASE + '/product_recipes?product_id=eq.' + encodeURIComponent(pid), {
+          method: 'DELETE',
+          headers: hdrs({ 'Prefer': 'return=minimal' })
+        })
+        .then(function(r){
+          if (!r.ok) return { ok: false, error: 'Failed to clear old recipe lines' };
+          // Step 2: insert new lines (skip if empty — just clearing is valid)
+          if (!lines.length) return { ok: true };
+          var rows = lines.map(function(l){
+            return {
+              product_id:      String(pid),
+              ingredient_id:   parseInt(l.ingredient_id),
+              ingredient_name: l.ingredient_name || '',
+              qty_per_unit:    parseFloat(l.qty_per_unit),
+              unit:            l.unit || ''
+            };
+          });
+          return sbPost('product_recipes', rows);
+        })
+        .catch(function(){ return { ok: false, error: 'Network error' }; });
+      }
+
+      // ── ZOHO BOOKS (TESTING MODE) ─────────────────────────────────────────────
       case 'zohoSyncCustomer':
         console.log('[ZOHO TESTING] Sync customer →', { customer_id: b.customer_id, name: b.name });
         return Promise.resolve({ ok: true, zoho_contact_id: 'TEST-CUST-' + b.customer_id });
@@ -818,7 +878,7 @@
     }
   };
 
-  // ── Global error logger — call window.logError(page, action, err) from anywhere ──
+  // ── Global error logger ───────────────────────────────────────────────────────
   window.logError = function(page, action, err) {
     try {
       var role = sessionStorage.getItem('role') || localStorage.getItem('staffRole') || '';
