@@ -859,6 +859,7 @@
         <input type="hidden" id="rec-product-id">
 
         <!-- Copy recipe from another product -->
+        <!-- Copy recipe from another product -->
         <div style="background:#f0f8ff;border:1.5px solid #90caf9;border-radius:10px;padding:10px 12px;margin-bottom:12px">
             <div style="font-size:11px;font-weight:700;color:#1565c0;font-family:monospace;margin-bottom:8px">📋 COPY RECIPE FROM ANOTHER PRODUCT</div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
@@ -872,6 +873,25 @@
                 <button type="button" onclick="copyRecipeFrom()" style="padding:8px 14px;border:none;border-radius:8px;background:#1565c0;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif;white-space:nowrap">📋 Copy</button>
             </div>
             <div id="rec-copy-msg" style="display:none;margin-top:6px;font-size:11px;font-family:monospace;padding:5px 9px;border-radius:7px"></div>
+
+            <!-- ── BULK COPY SECTION ── -->
+            <div style="border-top:1px dashed #90caf9;margin-top:10px;padding-top:10px">
+                <div style="font-size:11px;font-weight:700;color:#1565c0;font-family:monospace;margin-bottom:6px">📦 BULK COPY — Copy this recipe to multiple products</div>
+                <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-bottom:8px">Select target products and copy current recipe to all of them at once.</div>
+                <input type="text" id="rec-bulk-search" placeholder="Search products to copy to…" oninput="filterBulkCopyList()" style="margin-bottom:8px;font-size:12px;padding:8px 10px;border:1.5px solid #90caf9;border-radius:8px;background:#fff;width:100%;outline:none">
+                <div id="rec-bulk-list" style="max-height:180px;overflow-y:auto;border:1.5px solid #90caf9;border-radius:8px;background:#fff;margin-bottom:8px"></div>
+                <div style="display:flex;gap:6px;margin-bottom:8px">
+                    <button type="button" onclick="bulkCopySelectAll()" style="padding:5px 10px;border:1.5px solid #90caf9;border-radius:7px;background:#e3f2fd;color:#1565c0;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif">✅ All</button>
+                    <button type="button" onclick="bulkCopyDeselectAll()" style="padding:5px 10px;border:1.5px solid #e8dfd2;border-radius:7px;background:#f5f5f5;color:#4a2f14;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif">✖ Clear</button>
+                    <span id="rec-bulk-count" style="font-size:11px;font-family:monospace;color:#1565c0;align-self:center"></span>
+                </div>
+                <select id="rec-bulk-mode" style="margin-bottom:8px;font-size:12px;padding:8px 10px;border:1.5px solid #90caf9;border-radius:8px;background:#fff;width:100%;outline:none;color:#1e1611">
+                    <option value="replace">Replace existing recipes</option>
+                    <option value="merge">Merge / add missing only</option>
+                </select>
+                <button type="button" onclick="bulkCopyRecipe()" style="width:100%;padding:9px;border:none;border-radius:8px;background:#1565c0;color:#fff;font-size:12px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif">📦 Copy to Selected Products</button>
+                <div id="rec-bulk-msg" style="display:none;margin-top:6px;font-size:11px;font-family:monospace;padding:5px 9px;border-radius:7px"></div>
+            </div>
         </div>
 
         <div class="lbl" style="margin-bottom:6px">Ingredient Lines <span style="font-size:10px;font-family:monospace;color:#8a7a6a">(qty per 1 unit of product)</span></div>
@@ -2356,7 +2376,7 @@
         var cat=p?(p.category||'Other'):'Other';
         if(!cats[cat])cats[cat]={total:0,items:[]};
         cats[cat].total+=item.qty;
-        cats[cat].items.push({name:item.name,qty:item.qty});
+       cats[cat].items.push({name:item.name,qty:item.qty,product_id:item.product_id||''});
       });
       Object.values(cats).forEach(function(c){c.items.sort(function(a,b){return b.qty-a.qty;});});
       return cats;
@@ -6428,6 +6448,11 @@ zohoCreateInvoiceReal(orderForZoho)
       document.getElementById('rec-modal-msg').style.display='none';
       document.getElementById('rec-copy-msg').style.display='none';
       renderRecipeLines(allRecipes[productId]||[]);
+      // Populate bulk copy list
+document.getElementById('rec-bulk-search').value = '';
+document.getElementById('rec-bulk-msg').style.display = 'none';
+document.getElementById('rec-bulk-count').textContent = '';
+_renderBulkCopyList('');
       document.getElementById('recipeModal').style.display='flex';
       // Populate copy-source dropdown — all products except current
       var sel=document.getElementById('rec-copy-source');
@@ -6550,6 +6575,123 @@ zohoCreateInvoiceReal(orderForZoho)
       });
     }
 
+    /* ── BULK RECIPE COPY ── */
+function _renderBulkCopyList(filter){
+  var currentPid = document.getElementById('rec-product-id').value;
+  var q = (filter||'').toLowerCase();
+  var el = document.getElementById('rec-bulk-list');
+  if(!el) return;
+  var list = allProducts.filter(function(p){
+    return String(p.product_id) !== String(currentPid)
+      && (!q || (p.name||'').toLowerCase().indexOf(q) >= 0 || (p.category||'').toLowerCase().indexOf(q) >= 0);
+  });
+  if(!list.length){
+    el.innerHTML='<div style="padding:10px;text-align:center;font-size:11px;color:#8a7a6a;font-family:monospace">No products found.</div>';
+    return;
+  }
+  // Group by category
+  var cats = {};
+  list.forEach(function(p){
+    var c = p.category||'Other';
+    if(!cats[c]) cats[c]=[];
+    cats[c].push(p);
+  });
+  var html = '';
+  Object.keys(cats).sort().forEach(function(cat){
+    html += '<div style="padding:4px 10px 2px;font-size:9px;letter-spacing:1.5px;color:#8a7a6a;font-family:monospace;font-weight:700;text-transform:uppercase;background:#f0f4ff;border-bottom:1px solid #dce8f8">'+cat+'</div>';
+    cats[cat].forEach(function(p){
+      var hasRecipe = !!(allRecipes[String(p.product_id)] && allRecipes[String(p.product_id)].length);
+      html += '<label style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid #f0f0f0;cursor:pointer" onmouseover="this.style.background=\'#f0f8ff\'" onmouseout="this.style.background=\'\'">'+
+        '<input type="checkbox" class="rec-bulk-cb" value="'+p.product_id+'" onchange="updateBulkCopyCount()" style="width:15px;height:15px;accent-color:#1565c0;flex-shrink:0">'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-size:12px;font-weight:700;color:#1e1611;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(p.name)+'</div>'+
+        '</div>'+
+        (hasRecipe ? '<span style="font-size:10px;font-family:monospace;color:#2d7a4f;flex-shrink:0">✅ has recipe</span>' : '<span style="font-size:10px;font-family:monospace;color:#c8382a;flex-shrink:0">no recipe</span>')+
+      '</label>';
+    });
+  });
+  el.innerHTML = html;
+  updateBulkCopyCount();
+}
+
+function filterBulkCopyList(){
+  _renderBulkCopyList(document.getElementById('rec-bulk-search').value);
+}
+function bulkCopySelectAll(){
+  document.querySelectorAll('.rec-bulk-cb').forEach(function(cb){ cb.checked=true; });
+  updateBulkCopyCount();
+}
+function bulkCopyDeselectAll(){
+  document.querySelectorAll('.rec-bulk-cb').forEach(function(cb){ cb.checked=false; });
+  updateBulkCopyCount();
+}
+function updateBulkCopyCount(){
+  var n = document.querySelectorAll('.rec-bulk-cb:checked').length;
+  var el = document.getElementById('rec-bulk-count');
+  if(el) el.textContent = n ? n+' selected' : '';
+}
+
+function bulkCopyRecipe(){
+  var sourcePid = document.getElementById('rec-product-id').value;
+  var mode      = document.getElementById('rec-bulk-mode').value;
+  var targets   = Array.from(document.querySelectorAll('.rec-bulk-cb:checked')).map(function(cb){ return cb.value; });
+  var msgEl     = document.getElementById('rec-bulk-msg');
+
+  function showBulkMsg(txt, type){
+    msgEl.textContent = txt;
+    msgEl.style.background = type==='ok'?'#e8f5e9':type==='er'?'#fde8e8':'#e3f2fd';
+    msgEl.style.color      = type==='ok'?'#2d7a4f':type==='er'?'#c8382a':'#1565c0';
+    msgEl.style.border     = '1px solid '+(type==='ok'?'#a5d6a7':type==='er'?'#f0b0b0':'#90caf9');
+    msgEl.style.display    = 'block';
+    if(type==='ok') setTimeout(function(){ msgEl.style.display='none'; }, 4000);
+  }
+
+  if(!targets.length){ showBulkMsg('Select at least one target product.','er'); return; }
+
+  // Get current recipe lines from DOM (what's currently shown in the editor)
+  var currentLines = getRecipeLinesFromDOM().filter(function(l){ return l.ingredient_id && l.qty_per_unit > 0; });
+  if(!currentLines.length){ showBulkMsg('Current recipe has no ingredients. Add ingredients first.','er'); return; }
+
+  if(!confirm('Copy recipe ('+currentLines.length+' ingredient'+(currentLines.length>1?'s':'')+') to '+targets.length+' product'+(targets.length>1?'s':'')+'?\n\nMode: '+(mode==='replace'?'Replace existing recipes':'Merge / add missing only')))return;
+
+  showBulkMsg('⏳ Copying to '+targets.length+' products…','in');
+
+  var ops = targets.map(function(targetPid){
+    var finalLines;
+    if(mode === 'replace'){
+      finalLines = currentLines.slice();
+    } else {
+      // Merge: keep existing, add missing
+      var existing = allRecipes[String(targetPid)] || [];
+      var existingIds = new Set(existing.map(function(l){ return String(l.ingredient_id); }));
+      finalLines = existing.slice();
+      currentLines.forEach(function(l){
+        if(!existingIds.has(String(l.ingredient_id))){
+          finalLines.push(l);
+        }
+      });
+    }
+    return apiPost({action:'saveRecipe', product_id:targetPid, lines:finalLines})
+      .then(function(r){
+        if(r && r.ok){ allRecipes[String(targetPid)] = finalLines; }
+        return r;
+      });
+  });
+
+  Promise.all(ops).then(function(results){
+    var ok   = results.filter(function(r){ return r && r.ok; }).length;
+    var fail = results.length - ok;
+    showBulkMsg(
+      '✅ Recipe copied to '+ok+' product'+(ok!==1?'s':'')+(fail?' · ❌ '+fail+' failed':''),
+      fail ? 'er' : 'ok'
+    );
+    bulkCopyDeselectAll();
+    renderRecipes(); // refresh recipes list
+  }).catch(function(){
+    showBulkMsg('❌ Copy failed. Check connection.','er');
+  });
+}
+
     /* ══════════════════════════════════════════════
        🏭 PRODUCTION SHEET
        Same layout as Kitchen Print Sheet:
@@ -6575,113 +6717,188 @@ zohoCreateInvoiceReal(orderForZoho)
       });
     }
 
-    function renderProductionPage(orders, date){
-      var el=document.getElementById('productionBody');
-      if(!orders.length){
-        el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders for '+date+'.</div>';
-        return;
-      }
+   // ══════════════════════════════════════════════
+// REPLACE the existing renderProductionPage function in admin.html
+// with this version.
+// ══════════════════════════════════════════════
 
-      // Aggregate grand items
-      var grand=[];
-      orders.forEach(function(o){
-        parseIQ(o).forEach(function(x){
-          var f=grand.find(function(g){return g.product_id?g.product_id===x.product_id:g.name===x.name;});
-          if(f) f.qty+=x.qty; else grand.push({name:x.name,qty:x.qty,product_id:x.product_id});
-        });
-      });
+function renderProductionPage(orders, date){
+  var el=document.getElementById('productionBody');
+  if(!orders.length){
+    el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders for '+date+'.</div>';
+    return;
+  }
 
-      var grandCats=groupByCat(grand);
-      var catEntries=Object.entries(grandCats).sort(function(a,b){return b[1].total-a[1].total;});
-      var grandTotal=grand.reduce(function(s,x){return s+x.qty;},0);
+  // Aggregate grand items
+  var grand=[];
+  orders.forEach(function(o){
+    parseIQ(o).forEach(function(x){
+      var f=grand.find(function(g){return g.product_id?g.product_id===x.product_id:g.name===x.name;});
+      if(f) f.qty+=x.qty; else grand.push({name:x.name,qty:x.qty,product_id:x.product_id});
+    });
+  });
 
-      // Compute grand ingredient totals
-      var grandIngMap={};
-      catEntries.forEach(function(ce){
-        var ings=calcIngForItems(ce[1].items);
-        ings.forEach(function(ing){
-          var key=ing.name+'__'+ing.unit;
-          if(!grandIngMap[key]) grandIngMap[key]={name:ing.name,unit:ing.unit,cost_per_unit:ing.cost_per_unit,total_qty:0,total_cost:0};
-          grandIngMap[key].total_qty+=ing.total_qty;
-          grandIngMap[key].total_cost+=ing.total_cost;
-        });
-      });
-      var grandIngList=Object.values(grandIngMap).sort(function(a,b){return b.total_qty-a.total_qty;});
-      var grandIngCost=grandIngList.reduce(function(s,i){return s+i.total_cost;},0);
-      var noRecipeCount=catEntries.filter(function(ce){return calcIngForItems(ce[1].items).length===0;}).length;
+  var grandCats=groupByCat(grand);
+  var catEntries=Object.entries(grandCats).sort(function(a,b){return b[1].total-a[1].total;});
+  var grandTotal=grand.reduce(function(s,x){return s+x.qty;},0);
 
-      var html='';
+  // Compute grand ingredient totals
+  var grandIngMap={};
+  catEntries.forEach(function(ce){
+    var ings=calcIngForItems(ce[1].items);
+    ings.forEach(function(ing){
+      var key=ing.name+'__'+ing.unit;
+      if(!grandIngMap[key]) grandIngMap[key]={name:ing.name,unit:ing.unit,cost_per_unit:ing.cost_per_unit,total_qty:0,total_cost:0};
+      grandIngMap[key].total_qty+=ing.total_qty;
+      grandIngMap[key].total_cost+=ing.total_cost;
+    });
+  });
+  var grandIngList=Object.values(grandIngMap).sort(function(a,b){return b.total_qty-a.total_qty;});
+  var grandIngCost=grandIngList.reduce(function(s,i){return s+i.total_cost;},0);
+  var noRecipeCount=catEntries.filter(function(ce){return calcIngForItems(ce[1].items).length===0;}).length;
 
-      // Stats strip
-      html+='<div class="stats-grid" style="margin-bottom:12px">'+
-        '<div class="stat"><div class="stat-n">'+orders.length+'</div><div class="stat-l">Shops</div></div>'+
-        '<div class="stat"><div class="stat-n" style="color:#1a5fa8">'+grandTotal+'</div><div class="stat-l">Items</div></div>'+
-        '<div class="stat"><div class="stat-n" style="color:#2d7a4f;font-size:16px">'+(grandIngCost>0?'₹'+grandIngCost.toFixed(0):'—')+'</div><div class="stat-l">Est. Cost</div></div>'+
-      '</div>';
+  var html='';
 
-      if(noRecipeCount>0){
-        html+='<div class="msg warn" style="margin-bottom:10px">⚠️ '+noRecipeCount+' category'+(noRecipeCount>1?'s have':' has')+' no recipe — add in Recipes tab.</div>';
-      }
+  // Stats strip
+  html+='<div class="stats-grid" style="margin-bottom:12px">'+
+    '<div class="stat"><div class="stat-n">'+orders.length+'</div><div class="stat-l">Shops</div></div>'+
+    '<div class="stat"><div class="stat-n" style="color:#1a5fa8">'+grandTotal+'</div><div class="stat-l">Items</div></div>'+
+    '<div class="stat"><div class="stat-n" style="color:#2d7a4f;font-size:16px">'+(grandIngCost>0?'₹'+grandIngCost.toFixed(0):'—')+'</div><div class="stat-l">Est. Cost</div></div>'+
+  '</div>';
 
-      // Category cards — matching kitchen sheet style
-      catEntries.forEach(function(ce){
-        var cat=ce[0], info=ce[1];
-        var ings=calcIngForItems(info.items);
-        html+='<div style="background:#fffaf4;border:1.5px solid #e8dfd2;border-radius:12px;padding:10px 12px;margin-bottom:8px">'+
-          // Category header
-          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'+
-            '<span style="font-size:13px;font-weight:900;color:#4a2f14;text-transform:uppercase;letter-spacing:.5px">'+esc(cat)+'</span>'+
-            '<span style="background:#4a2f14;color:#fff;border-radius:20px;padding:3px 14px;font-size:15px;font-weight:900;font-family:monospace">'+info.total+'</span>'+
+  if(noRecipeCount>0){
+    html+='<div class="msg warn" style="margin-bottom:10px">⚠️ '+noRecipeCount+' category'+(noRecipeCount>1?'s have':' has')+' no recipe — add in Recipes tab.</div>';
+  }
+
+  // ── "Expand All / Collapse All" toggle ──
+  html+='<div style="display:flex;gap:8px;margin-bottom:10px">'+
+    '<button onclick="prodExpandAll(true)"  style="padding:6px 14px;border:1.5px solid #2d7a4f;border-radius:8px;background:#e8f5e9;color:#2d7a4f;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif">▼ Expand All</button>'+
+    '<button onclick="prodExpandAll(false)" style="padding:6px 14px;border:1.5px solid #e8dfd2;border-radius:8px;background:#f5f5f5;color:#4a2f14;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif">▲ Collapse All</button>'+
+  '</div>';
+
+  // Category cards
+  catEntries.forEach(function(ce, catIdx){
+    var cat=ce[0], info=ce[1];
+    var catIngs=calcIngForItems(info.items); // category-level ingredient total
+
+    html+='<div style="background:#fffaf4;border:1.5px solid #e8dfd2;border-radius:12px;padding:10px 12px;margin-bottom:8px">'+
+      // Category header
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'+
+        '<span style="font-size:13px;font-weight:900;color:#4a2f14;text-transform:uppercase;letter-spacing:.5px">'+esc(cat)+'</span>'+
+        '<span style="background:#4a2f14;color:#fff;border-radius:20px;padding:3px 14px;font-size:15px;font-weight:900;font-family:monospace">'+info.total+'</span>'+
+      '</div>'+
+
+      // Sub-items — each with a toggle button for per-product ingredients
+      info.items.map(function(it, itemIdx){
+        var pid = it.product_id || '';
+        var resolvedPid = pid;
+        // Try to resolve product_id via name if not set
+        if(!resolvedPid){
+          var matched = allProducts.find(function(p){ return (p.name||'').toLowerCase().trim() === (it.name||'').toLowerCase().trim(); });
+          if(matched) resolvedPid = String(matched.product_id||'');
+        }
+        var itemIngs = calcIngForItems([{name:it.name, qty:it.qty, product_id:resolvedPid}]);
+        var detailId = 'prod-detail-cat'+catIdx+'-item'+itemIdx;
+        var hasIng   = itemIngs.length > 0;
+
+        var ingDetail = '';
+        if(hasIng){
+          ingDetail = '<div id="'+detailId+'" style="display:none;margin-top:6px;padding:8px 10px;background:#f0faf4;border:1.5px solid #c8e6c9;border-radius:8px">'+
+            '<div style="font-size:9px;font-weight:700;color:#2d7a4f;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:5px">🧂 Ingredients for '+esc(it.qty)+'× '+esc(it.name)+'</div>'+
+            itemIngs.map(function(ing){
+              var costStr = ing.total_cost>0 ? ' <span style="color:#8a7a6a;font-size:10px">(₹'+ing.total_cost.toFixed(2)+')</span>' : '';
+              // Per-unit breakdown
+              var perUnit = ing.total_qty / it.qty;
+              return '<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0 3px 4px;border-bottom:1px solid #d4eeda">'+
+                '<div>'+
+                  '<span style="font-size:12px;font-weight:700;color:#2d5a2f;font-family:monospace">'+esc(ing.name)+'</span>'+
+                  '<span style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-left:6px">'+fmtIngQty(perUnit,ing.unit)+' × '+it.qty+'</span>'+
+                '</div>'+
+                '<span style="font-size:13px;font-weight:900;font-family:monospace;color:#2d7a4f;white-space:nowrap;margin-left:8px">'+fmtIngQty(ing.total_qty,ing.unit)+costStr+'</span>'+
+              '</div>';
+            }).join('')+
+          '</div>';
+        } else {
+          ingDetail = '<div id="'+detailId+'" style="display:none;margin-top:6px;padding:7px 10px;background:#fff8f8;border:1.5px solid #f0b0b0;border-radius:8px;font-size:11px;font-family:monospace;color:#c8382a">No recipe set for this product.</div>';
+        }
+
+        return '<div style="padding:4px 0 4px 0;border-bottom:1px solid #f0e8dc">'+
+          '<div style="display:flex;justify-content:space-between;align-items:center">'+
+            '<div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0">'+
+              '<button onclick="prodToggleDetail(\''+detailId+'\')" '+
+                'id="btn-'+detailId+'" '+
+                'title="Show/hide ingredient details" '+
+                'style="flex-shrink:0;width:22px;height:22px;border-radius:6px;border:1.5px solid '+(hasIng?'#a5d6a7':'#e8dfd2')+';background:'+(hasIng?'#e8f5e9':'#f5f5f5')+';color:'+(hasIng?'#2d7a4f':'#b0a090')+';font-size:11px;font-weight:900;cursor:pointer;line-height:1;padding:0;font-family:monospace">▼</button>'+
+              '<span style="font-size:12px;font-family:monospace;color:#6a5040;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(it.name)+'</span>'+
+            '</div>'+
+            '<span style="font-size:13px;font-weight:900;font-family:monospace;color:#4a2f14;min-width:32px;text-align:right;flex-shrink:0">'+it.qty+'</span>'+
           '</div>'+
-          // Sub-items
-          info.items.map(function(it){
-            return '<div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0 3px 8px;border-bottom:1px solid #f0e8dc">'+
-              '<span style="font-size:12px;font-family:monospace;color:#6a5040">'+esc(it.name)+'</span>'+
-              '<span style="font-size:13px;font-weight:900;font-family:monospace;color:#4a2f14;min-width:32px;text-align:right">'+it.qty+'</span>'+
-            '</div>';
-          }).join('')+
-          // Ingredient section
-          (ings.length
-            ? '<div style="margin-top:7px;padding-top:6px;border-top:1.5px dashed #d4c8b8">'+
-                ings.map(function(ing){
-                  var costStr=ing.total_cost>0?' <span style="color:#8a7a6a;font-size:10px">(₹'+ing.total_cost.toFixed(0)+')</span>':'';
-                  return '<div style="display:flex;justify-content:space-between;align-items:center;padding:2px 0 2px 4px">'+
-                    '<span style="font-size:11px;font-family:monospace;color:#2d7a4f">🧂 '+esc(ing.name)+'</span>'+
-                    '<span style="font-size:12px;font-weight:800;font-family:monospace;color:#2d7a4f">'+fmtIngQty(ing.total_qty,ing.unit)+costStr+'</span>'+
-                  '</div>';
-                }).join('')+
-              '</div>'
-            : '<div style="margin-top:6px;font-size:10px;font-family:monospace;color:#c8382a;padding-left:4px">No recipe set</div>'
-          )+
+          ingDetail+
         '</div>';
-      });
+      }).join('')+
 
-      // Grand total bar
-      html+='<div style="background:#4a2f14;color:#fff;border-radius:12px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
-        '<span style="font-size:13px;font-weight:900;letter-spacing:.5px">GRAND TOTAL</span>'+
-        '<span style="font-size:22px;font-weight:900;font-family:monospace">'+grandTotal+'</span>'+
-      '</div>';
+      // Category-level ingredient summary
+      (catIngs.length
+        ? '<div style="margin-top:7px;padding-top:6px;border-top:1.5px dashed #d4c8b8">'+
+            '<div style="font-size:9px;font-weight:700;color:#8a7a6a;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px">Category Total Ingredients</div>'+
+            catIngs.map(function(ing){
+              var costStr=ing.total_cost>0?' <span style="color:#8a7a6a;font-size:10px">(₹'+ing.total_cost.toFixed(0)+')</span>':'';
+              return '<div style="display:flex;justify-content:space-between;align-items:center;padding:2px 0 2px 4px">'+
+                '<span style="font-size:11px;font-family:monospace;color:#2d7a4f">🧂 '+esc(ing.name)+'</span>'+
+                '<span style="font-size:12px;font-weight:800;font-family:monospace;color:#2d7a4f">'+fmtIngQty(ing.total_qty,ing.unit)+costStr+'</span>'+
+              '</div>';
+            }).join('')+
+          '</div>'
+        : '<div style="margin-top:6px;font-size:10px;font-family:monospace;color:#c8382a;padding-left:4px">No recipe set</div>'
+      )+
+    '</div>';
+  });
 
-      // Grand ingredient total card
-      if(grandIngList.length){
-        html+='<div style="background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:12px;padding:10px 12px;margin-bottom:8px">'+
-          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
-            '<span style="font-size:12px;font-weight:900;color:#2d7a4f;text-transform:uppercase;letter-spacing:.5px">🧂 Total Ingredients Needed</span>'+
-            (grandIngCost>0?'<span style="font-size:15px;font-weight:900;color:#2d7a4f;font-family:monospace">₹'+grandIngCost.toFixed(0)+'</span>':'')+
-          '</div>'+
-          grandIngList.map(function(ing){
-            return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #c8e6c9">'+
-              '<span style="font-size:12px;font-family:monospace;color:#2d5a2f;font-weight:700">'+esc(ing.name)+'</span>'+
-              '<span style="font-size:13px;font-weight:900;font-family:monospace;color:#2d7a4f">'+fmtIngQty(ing.total_qty,ing.unit)+
-                (ing.total_cost>0?' <span style="font-size:10px;font-weight:400;color:#8a7a6a">₹'+ing.total_cost.toFixed(0)+'</span>':'')+
-              '</span>'+
-            '</div>';
-          }).join('')+
+  // Grand total bar
+  html+='<div style="background:#4a2f14;color:#fff;border-radius:12px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
+    '<span style="font-size:13px;font-weight:900;letter-spacing:.5px">GRAND TOTAL</span>'+
+    '<span style="font-size:22px;font-weight:900;font-family:monospace">'+grandTotal+'</span>'+
+  '</div>';
+
+  // Grand ingredient total card
+  if(grandIngList.length){
+    html+='<div style="background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:12px;padding:10px 12px;margin-bottom:8px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
+        '<span style="font-size:12px;font-weight:900;color:#2d7a4f;text-transform:uppercase;letter-spacing:.5px">🧂 Total Ingredients Needed</span>'+
+        (grandIngCost>0?'<span style="font-size:15px;font-weight:900;color:#2d7a4f;font-family:monospace">₹'+grandIngCost.toFixed(0)+'</span>':'')+
+      '</div>'+
+      grandIngList.map(function(ing){
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #c8e6c9">'+
+          '<span style="font-size:12px;font-family:monospace;color:#2d5a2f;font-weight:700">'+esc(ing.name)+'</span>'+
+          '<span style="font-size:13px;font-weight:900;font-family:monospace;color:#2d7a4f">'+fmtIngQty(ing.total_qty,ing.unit)+
+            (ing.total_cost>0?' <span style="font-size:10px;font-weight:400;color:#8a7a6a">₹'+ing.total_cost.toFixed(0)+'</span>':'')+
+          '</span>'+
         '</div>';
-      }
+      }).join('')+
+    '</div>';
+  }
 
-      el.innerHTML=html;
-    }
+  el.innerHTML=html;
+}
+
+// ── Toggle helper — called by each ▼ button ──
+function prodToggleDetail(detailId){
+  var panel = document.getElementById(detailId);
+  var btn   = document.getElementById('btn-'+detailId);
+  if(!panel) return;
+  var open = panel.style.display === 'none' || panel.style.display === '';
+  panel.style.display = open ? 'block' : 'none';
+  if(btn) btn.textContent = open ? '▲' : '▼';
+}
+
+// ── Expand / Collapse All ──
+function prodExpandAll(expand){
+  document.querySelectorAll('[id^="prod-detail-"]').forEach(function(panel){
+    panel.style.display = expand ? 'block' : 'none';
+    var btn = document.getElementById('btn-'+panel.id);
+    if(btn) btn.textContent = expand ? '▲' : '▼';
+  });
+}
 
     /* ── PRINT PRODUCTION SHEET (same layout as kitchen print sheet) ── */
     function printProductionSheet(){
