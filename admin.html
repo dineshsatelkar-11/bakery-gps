@@ -857,7 +857,25 @@
         <div class="modal-title" id="recModalTitle">Edit Recipe</div>
         <div id="rec-modal-product" style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-bottom:12px"></div>
         <input type="hidden" id="rec-product-id">
+
+        <!-- Copy recipe from another product -->
+        <div style="background:#f0f8ff;border:1.5px solid #90caf9;border-radius:10px;padding:10px 12px;margin-bottom:12px">
+            <div style="font-size:11px;font-weight:700;color:#1565c0;font-family:monospace;margin-bottom:8px">📋 COPY RECIPE FROM ANOTHER PRODUCT</div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <select id="rec-copy-source" style="flex:1;padding:8px 10px;border:1.5px solid #90caf9;border-radius:8px;font-size:12px;background:#fff;outline:none;min-width:160px;color:#1e1611">
+                    <option value="">— Select source product —</option>
+                </select>
+                <select id="rec-copy-mode" style="flex:0 0 auto;padding:8px 10px;border:1.5px solid #90caf9;border-radius:8px;font-size:12px;background:#fff;outline:none;color:#1e1611">
+                    <option value="replace">Replace all</option>
+                    <option value="merge">Merge / add missing</option>
+                </select>
+                <button type="button" onclick="copyRecipeFrom()" style="padding:8px 14px;border:none;border-radius:8px;background:#1565c0;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif;white-space:nowrap">📋 Copy</button>
+            </div>
+            <div id="rec-copy-msg" style="display:none;margin-top:6px;font-size:11px;font-family:monospace;padding:5px 9px;border-radius:7px"></div>
+        </div>
+
         <div class="lbl" style="margin-bottom:6px">Ingredient Lines <span style="font-size:10px;font-family:monospace;color:#8a7a6a">(qty per 1 unit of product)</span></div>
+
         <div id="rec-lines-wrap" style="margin-bottom:10px"></div>
         <button class="btn btn-grey" style="margin-bottom:10px" onclick="addRecipeLine()">➕ Add Ingredient</button>
         <div id="rec-modal-msg" style="display:none" class="msg ok"></div>
@@ -6408,8 +6426,69 @@ zohoCreateInvoiceReal(orderForZoho)
       document.getElementById('rec-modal-product').textContent='Ingredient qty per 1 unit of product';
       document.getElementById('rec-product-id').value=productId;
       document.getElementById('rec-modal-msg').style.display='none';
+      document.getElementById('rec-copy-msg').style.display='none';
       renderRecipeLines(allRecipes[productId]||[]);
       document.getElementById('recipeModal').style.display='flex';
+      // Populate copy-source dropdown — all products except current
+      var sel=document.getElementById('rec-copy-source');
+      sel.innerHTML='<option value="">— Select source product —</option>'+
+        allProducts.filter(function(p){return String(p.product_id)!==String(productId);}).map(function(p){
+          var hasSrc=!!(allRecipes[String(p.product_id)]&&allRecipes[String(p.product_id)].length);
+          return '<option value="'+p.product_id+'">'+(hasSrc?'✅ ':'')+esc(p.name)+(p.category?' ('+p.category+')':'')+'</option>';
+        }).join('');
+      sel.value='';
+      document.getElementById('rec-copy-mode').value='replace';
+    }
+
+    function copyRecipeFrom(){
+      var srcId=document.getElementById('rec-copy-source').value;
+      var mode=document.getElementById('rec-copy-mode').value;
+      var msgEl=document.getElementById('rec-copy-msg');
+      function showCopyMsg(txt,type){
+        msgEl.textContent=txt;
+        msgEl.style.background=type==='ok'?'#e8f5e9':type==='er'?'#fde8e8':'#e3f2fd';
+        msgEl.style.color=type==='ok'?'#2d7a4f':type==='er'?'#c8382a':'#1565c0';
+        msgEl.style.border='1px solid '+(type==='ok'?'#a5d6a7':type==='er'?'#f0b0b0':'#90caf9');
+        msgEl.style.display='block';
+        if(type==='ok') setTimeout(function(){msgEl.style.display='none';},3000);
+      }
+      if(!srcId){showCopyMsg('Select a source product first.','er');return;}
+      var srcLines=allRecipes[String(srcId)];
+      if(!srcLines||!srcLines.length){
+        // Try fetching from server in case allRecipes cache is incomplete
+        showCopyMsg('⏳ Loading recipe…','in');
+        api({action:'getRecipes',product_id:srcId}).then(function(d){
+          var fetched=(Array.isArray(d)?d:[]).filter(function(r){return String(r.product_id)===String(srcId);});
+          if(!fetched.length){showCopyMsg('No recipe found for that product.','er');return;}
+          allRecipes[String(srcId)]=fetched;
+          _applyCopyLines(fetched,mode,showCopyMsg);
+        });
+        return;
+      }
+      _applyCopyLines(srcLines,mode,showCopyMsg);
+    }
+
+    function _applyCopyLines(srcLines,mode,showMsg){
+      var currentLines=getRecipeLinesFromDOM();
+      var result;
+      if(mode==='replace'){
+        result=srcLines.map(function(l){return Object.assign({},l);});
+        showMsg('✅ Replaced with '+result.length+' ingredient'+(result.length!==1?'s':'')+' from source.','ok');
+      } else {
+        // Merge: keep existing, add lines whose ingredient_id isn't already present
+        result=currentLines.slice();
+        var existingIds=new Set(currentLines.map(function(l){return String(l.ingredient_id);}));
+        var added=0;
+        srcLines.forEach(function(l){
+          if(!existingIds.has(String(l.ingredient_id))){
+            result.push(Object.assign({},l));
+            existingIds.add(String(l.ingredient_id));
+            added++;
+          }
+        });
+        showMsg('✅ Merged — '+added+' new ingredient'+(added!==1?'s':'')+' added.','ok');
+      }
+      renderRecipeLines(result);
     }
     function renderRecipeLines(lines){
       var wrap=document.getElementById('rec-lines-wrap');
