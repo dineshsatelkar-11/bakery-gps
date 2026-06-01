@@ -920,7 +920,7 @@
             <option value="invoice">🧾 Invoice</option>
             <option value="delivery_challan">📋 Delivery Challan</option>
         </select>
-        <div class="lbl">Driver Note</div><input type="text" id="cm-flag" placeholder="e.g. back gate, opens 7am, ring twice">
+        <div class="lbl">Driver Note</div><input type="text" id="apm-flag" placeholder="e.g. back gate, opens 7am, ring twice">
         <div class="lbl">Assign Driver *</div>
         <select id="apm-driver">
             <option value="">— Select Driver —</option>
@@ -2043,14 +2043,60 @@
       el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
       var drvFilter=document.getElementById('f-ord-driver').value;
       var dateVal=document.getElementById('f-ord-date').value||todayStr();
-      Promise.all([
-        api({action:'getOrders', driver:drvFilter, date:dateVal}),
-        api({action:'getOrdersHistory', days:7})
-      ]).then(function(res){
+      loadCustomerMaster().then(function(){
+Promise.all([
+  api({action:'getOrders', driver:drvFilter, date:dateVal}),
+  api({action:'getOrdersHistory', days:7})
+]).then(function(res){
         var data=Array.isArray(res[0])?res[0]:[];
-        var history=Array.isArray(res[1])?res[1]:[];
-        if(!data.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders.</div>';return;}
-        // Build per-shop avg qty from history (excluding today)
+var history=Array.isArray(res[1])?res[1]:[];
+
+// ── Detect Logistics orders whose shop is NOT in allCustomers ──
+var seenInQueue = {};
+newCustQueue.forEach(function(c){ seenInQueue[String(c.customer_id)] = true; });
+data.forEach(function(o){
+  var drv = (o.driver||'').trim().toLowerCase();
+  var isLogistics = !drv || drv.indexOf('logistic') === 0;
+  if(!isLogistics) return;
+  var cid = String(o.customer_id || o.shop_id || '').trim();
+  if(!cid || seenInQueue[cid]) return;
+  // Check if this shop exists in allCustomers
+  var exists = allCustomers.find(function(c){
+    return String(c.customer_id||c.shop_id||'').trim() === cid;
+  });
+  if(!exists){
+    seenInQueue[cid] = true;
+    newCustQueue.push({
+      customer_id:   cid,
+      customer_name: o.shop_name || cid,
+      dc_num:        o.dc_num || o.note || '',
+      dc_date:       o.date || dateVal,
+      mobile:        ''
+    });
+  }
+});
+// Update the "New" tab badge if any were added
+var tbApprove = document.getElementById('tb-approve');
+if(tbApprove && newCustQueue.length){
+  tbApprove.textContent = '⏳ New ('+newCustQueue.length+')';
+}
+// Show a banner in Orders tab if new customers were found
+var newCount = newCustQueue.length;
+if(newCount > 0){
+  var existingBanner = document.getElementById('orders-new-cust-banner');
+  if(!existingBanner){
+    var banner = document.createElement('div');
+    banner.id = 'orders-new-cust-banner';
+    banner.className = 'msg warn';
+    banner.style.cursor = 'pointer';
+    banner.onclick = function(){ showTab('approve'); };
+    banner.textContent = '🆕 '+newCount+' unrecognised shop'+(newCount>1?'s':'')+' assigned to Logistics — tap to review in New tab.';
+    el.parentNode.insertBefore(banner, el);
+  }
+}
+
+if(!data.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders.</div>';return;}
+// Build per-shop avg qty from history (excluding today)
         var shopHist={};
         history.forEach(function(o){
           if(o.date===dateVal) return;
@@ -2097,7 +2143,8 @@
         }
         var obar = document.getElementById('zoho-orders-bar');
         if(obar) obar.style.display = (_zohoEnabled && (_staffRole==='admin'||_staffRole==='super_admin')) ? '' : 'none';
-      });
+       });
+      }); // closes loadCustomerMaster().then
     }
     function delOrder(id){if(!confirm('Delete?'))return;apiPost({action:'deleteOrder',order_id:id}).then(loadOrders);}
 
@@ -2148,8 +2195,8 @@
     /* ── APPROVE QUEUE (customers only) ── */
     function renderApproveQueue(){
       _renderApproveCustomers();
-      document.getElementById('tb-approve').textContent=
-        newCustQueue.length?'⏳ New ('+newCustQueue.length+')':'⏳ New';
+     var tbApprove = document.getElementById('tb-approve');
+if(tbApprove) tbApprove.textContent = newCustQueue.length ? '⏳ New ('+newCustQueue.length+')' : '⏳ New';
     }
 
     function _renderApproveCustomers(){
@@ -2240,9 +2287,11 @@
         if(!Array.isArray(data)||!data.length){
           el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#2d7a4f;font-family:monospace">✅ No unassigned orders!</div>';
           stats.innerHTML='<div class="stat"><div class="stat-n" style="color:#2d7a4f">0</div><div class="stat-l">Unassigned</div></div>';
-          document.getElementById('tb-queue').textContent='⚠️ Queue';return;
+          var tbQueue2 = document.getElementById('tb-queue');
+if(tbQueue2) tbQueue2.textContent = '⚠️ Queue';return;
         }
-        document.getElementById('tb-queue').textContent='⚠️ Queue ('+data.length+')';
+var tbQueue = document.getElementById('tb-queue');
+if(tbQueue) tbQueue.textContent = '⚠️ Queue ('+data.length+')';
         stats.innerHTML='<div class="stat"><div class="stat-n" style="color:#c8864a">'+data.length+'</div><div class="stat-l">Need Driver</div></div>';
         el.innerHTML=data.map(function(o){
           return '<div class="item-card pending" id="qi-'+esc(o.order_id)+'">'+
