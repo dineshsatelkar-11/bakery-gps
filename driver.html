@@ -130,6 +130,7 @@
     <button class="tab on" id="tb-orders" onclick="showTab('orders')"><span id="t-orders">📋 Orders</span></button>
     <button class="tab" id="tb-route" onclick="showTab('route')"><span id="t-route">🗺 Route</span></button>
     <button class="tab" id="tb-gps" onclick="showTab('gps')"><span id="t-gps">📍 GPS</span></button>
+    <button class="tab" id="tb-team" onclick="showTab('team')"><span id="t-team">👥 Team</span></button>
 </div>
 
 <!-- ── ORDERS ── -->
@@ -205,6 +206,15 @@
     <div id="route-msg" style="display:none" class="msg in"></div>
     <div id="mapBtnWrap" style="display:none;margin-bottom:10px"></div>
     <div id="routeBody"></div>
+</div>
+
+<div class="page" id="pg-team">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-size:12px;color:#8a7a6a;font-family:monospace" id="team-date-lbl"></div>
+        <button onclick="loadTeamSummary()" style="background:#f5ede0;border:1.5px solid #e8dfd2;border-radius:10px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;color:#4a2f14;font-family:-apple-system,sans-serif">↻ Refresh</button>
+    </div>
+    <div id="team-msg" style="display:none" class="msg in"></div>
+    <div id="teamBody"></div>
 </div>
 
 <!-- ── CELEBRATION MODAL ── -->
@@ -287,7 +297,18 @@
         <div id="selName" style="font-size:15px;font-weight:800;color:#4a2f14"></div>
         <div id="selArea" style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:3px"></div>
         <div id="selStatus" style="font-size:11px;font-weight:700;font-family:monospace;margin-top:6px;color:#1565c0"></div>
-        <a id="navToShopBtn" href="#" target="_blank" style="display:none;margin-top:10px;text-decoration:none;background:#1565c0;color:#fff;border-radius:10px;padding:9px 14px;font-size:12px;font-weight:800;font-family:-apple-system,sans-serif;text-align:center;width:100%;box-sizing:border-box">🗺 <span id="t-navToShop">Navigate to Shop</span></a>
+
+        <!-- Mobile call button -->
+        <div id="selMobile" style="display:none;margin-top:10px"></div>
+
+        <!-- Navigate button -->
+        <a id="navToShopBtn" href="#" target="_blank" style="display:none;margin-top:8px;text-decoration:none;background:#1565c0;color:#fff;border-radius:10px;padding:9px 14px;font-size:12px;font-weight:800;font-family:-apple-system,sans-serif;text-align:center;width:100%;box-sizing:border-box">🗺 <span id="t-navToShop">Navigate to Shop</span></a>
+
+        <!-- Delivery history toggle -->
+        <button id="selHistToggle" onclick="toggleSelHistory()" style="display:none;width:100%;margin-top:8px;padding:8px 14px;border:1.5px solid #e8dfd2;border-radius:10px;background:#f5ede0;color:#4a2f14;font-size:12px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif;text-align:left">
+            📊 <span id="t-histToggle">Delivery Time History</span> ▼
+        </button>
+        <div id="selHistory" style="display:none;margin-top:6px;max-height:240px;overflow-y:auto;border:1.5px solid #e8dfd2;border-radius:10px;padding:8px 12px;background:#f9f6f1"></div>
     </div>
     <button class="btn btn-gps" id="gpsBtn" onclick="doGPS()">📍 <span id="t-captureBtn">Capture My Location</span></button>
     <button class="btn btn-save" id="saveBtn" onclick="doSave()" style="display:none">✅ <span id="t-saveBtn">Confirm & Save</span></button>
@@ -321,6 +342,7 @@
       document.getElementById('t-orders').textContent = mr ? '📋 ऑर्डर' : '📋 Orders';
       document.getElementById('t-route').textContent  = mr ? '🗺 मार्ग'  : '🗺 Route';
       document.getElementById('t-gps').textContent    = mr ? '📍 GPS'   : '📍 GPS';
+      document.getElementById('t-team').textContent   = mr ? '👥 टीम'  : '👥 Team';
 
       // Start banner
       document.getElementById('t-startTitle').textContent = mr ? 'डिलिव्हरी सुरू करायची?' : 'Ready to deliver?';
@@ -489,11 +511,12 @@
 
     // ── TABS ──
     function showTab(tab) {
-      ['orders','route','gps'].forEach(x=>{
+      ['orders','route','gps','team'].forEach(x=>{
         document.getElementById('pg-'+x).classList.toggle('on',x===tab);
         document.getElementById('tb-'+x).classList.toggle('on',x===tab);
       });
       if(tab==='route') buildRouteUI();
+      if(tab==='team')  loadTeamSummary();
     }
 
     // ── STATE ──
@@ -1437,11 +1460,60 @@
       selCustomer=allCustomers.find(s=>s.shop_id==id); captured=null;
       document.getElementById('saveBtn').style.display='none';
       document.getElementById('gps-msg').style.display='none';
+      // Reset history and mobile on shop switch
+      document.getElementById('selMobile').style.display='none';
+      document.getElementById('selHistory').style.display='none';
+      document.getElementById('selHistToggle').style.display='none';
       document.getElementById('selName').textContent=selCustomer.name;
       document.getElementById('selArea').textContent='📍 '+(selCustomer.area||'');
-      document.getElementById('selStatus').textContent=selCustomer.lat?`GPS: ${selCustomer.lat}, ${selCustomer.lng}`:(lang==='mr'?'GPS नाही — खाली घ्या':'No GPS — capture below');
+     document.getElementById('selStatus').textContent=selCustomer.lat?`GPS: ${selCustomer.lat}, ${selCustomer.lng}`:(lang==='mr'?'GPS नाही — खाली घ्या':'No GPS — capture below');
+
+      // Mobile number
+      const mobileEl = document.getElementById('selMobile');
+      if(selCustomer.mobile && selCustomer.mobile.trim()){
+        mobileEl.innerHTML = `<a href="tel:${selCustomer.mobile}" style="display:inline-flex;align-items:center;gap:6px;background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:10px;padding:8px 14px;font-size:13px;font-weight:700;color:#1a5a38;text-decoration:none;font-family:-apple-system,sans-serif">📞 ${selCustomer.mobile}</a>`;
+        mobileEl.style.display = 'block';
+      } else {
+        mobileEl.innerHTML = `<span style="font-size:11px;font-family:monospace;color:#c8382a">📞 ${lang==='mr'?'मोबाइल नाही':'No mobile number saved'}</span>`;
+        mobileEl.style.display = 'block';
+      }
+
+      // Delivery history
+      const histEl = document.getElementById('selHistory');
+      histEl.innerHTML = `<div style="font-size:11px;font-family:monospace;color:#8a7a6a;padding:6px 0">${lang==='mr'?'इतिहास लोड होत आहे…':'Loading history…'}</div>`;
+      histEl.style.display = 'block';
+      document.getElementById('selHistToggle').style.display = 'block';
+
+      api({action:'getShopDeliveryHistory', shop_id: selCustomer.shop_id, days:14}).then(function(rows){
+        if(!rows || !rows.length){
+          histEl.innerHTML = `<div style="font-size:11px;font-family:monospace;color:#8a7a6a;padding:4px 0">${lang==='mr'?'गेल्या १४ दिवसांत डिलिव्हरी नाही':'No deliveries in last 14 days'}</div>`;
+          return;
+        }
+        // Compute average delivery time
+        const mins = rows.filter(r=>r.time).map(r=>{
+          const m=r.time.match(/(\d+):(\d+)\s*(AM|PM|am|pm)?/);
+          if(!m) return null;
+          let h=parseInt(m[1]),mn=parseInt(m[2]),ap=(m[3]||'').toUpperCase();
+          if(ap==='PM'&&h!==12) h+=12; if(ap==='AM'&&h===12) h=0;
+          return h*60+mn;
+        }).filter(v=>v!==null);
+        let avgStr = '';
+        if(mins.length){
+          const avg = Math.round(mins.reduce((s,v)=>s+v,0)/mins.length);
+          const ah=Math.floor(avg/60), am=avg%60, aap=ah>=12?'PM':'AM', ah12=ah>12?ah-12:(ah===0?12:ah);
+          avgStr = `<div style="background:#e8f5e9;border-radius:8px;padding:6px 10px;margin-bottom:8px;font-size:12px;font-weight:700;color:#2d7a4f">⏰ ${lang==='mr'?'सरासरी वेळ':'Avg delivery time'}: ${String(ah12).padStart(2,'0')}:${String(am).padStart(2,'0')} ${aap}</div>`;
+        }
+        histEl.innerHTML = avgStr + rows.map(r=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #f0e8dc;font-size:12px">
+            <span style="font-family:monospace;color:#4a2f14">📅 ${r.date}</span>
+            <span style="font-weight:700;color:#2d7a4f;font-family:monospace">🕐 ${r.time||'—'}</span>
+          </div>`).join('');
+      }).catch(function(){
+        histEl.innerHTML = `<div style="font-size:11px;font-family:monospace;color:#c8382a">${lang==='mr'?'लोड अयशस्वी':'Failed to load history'}</div>`;
+      });
+
       document.getElementById('selBox').style.display='block';
-      const navBtn=document.getElementById('navToShopBtn');
+       const navBtn=document.getElementById('navToShopBtn');
       if(selCustomer.lat && selCustomer.lng){
         navBtn.href='https://www.google.com/maps/dir/?api=1&destination='+selCustomer.lat+','+selCustomer.lng;
         navBtn.style.display='block';
@@ -1514,6 +1586,185 @@
         await loadOrdersForDate(selectedDate);
       }
     }
+
+    async function loadTeamSummary() {
+  const el = document.getElementById('teamBody');
+  const msg = document.getElementById('team-msg');
+  const lbl = document.getElementById('team-date-lbl');
+  const date = selectedDate || todayStr();
+  lbl.textContent = (lang==='mr' ? 'तारीख: ' : 'Date: ') + date;
+  el.innerHTML = '<div style="text-align:center;padding:24px;font-size:12px;color:#8a7a6a;font-family:monospace">'+(lang==='mr'?'लोड होत आहे…':'Loading…')+'</div>';
+  msg.style.display = 'none';
+
+  try {
+    const [allOrders, allDeliveries] = await Promise.all([
+      api({action:'getOrders', date}),
+      api({action:'getDeliveries', date})
+    ]);
+
+    if (!Array.isArray(allOrders) || !allOrders.length) {
+      el.innerHTML = '<div style="text-align:center;padding:32px;font-size:13px;color:#8a7a6a;font-family:monospace">'+(lang==='mr'?'आजचे ऑर्डर नाहीत':'No orders for this date')+'</div>';
+      return;
+    }
+
+    // Group orders by driver
+    const byDriver = {};
+    allOrders.forEach(function(o) {
+      const drv = o.driver || o.assigned_driver || 'Unassigned';
+      if (!byDriver[drv]) byDriver[drv] = [];
+      byDriver[drv].push(o);
+    });
+
+    // Build delivery lookup: shop_id → delivery record
+    const delivMap = {};
+    if (Array.isArray(allDeliveries)) {
+      allDeliveries.forEach(function(d) { delivMap[d.shop_id] = d; });
+    }
+
+    // Category keyword grouping (same logic as orders tab)
+    function getCat(name) {
+      const n = (name||'').toLowerCase();
+      if (/puff/.test(n))             return 'Puff';
+      if (/sweet[\s-]?bun/.test(n))   return 'Sweet Bun';
+      if (/white[\s-]?bun/.test(n))   return 'White Bun';
+      if (/bun/.test(n))              return 'Bun';
+      if (/bread/.test(n))            return 'Bread';
+      if (/cake/.test(n))             return 'Cake';
+      if (/toast/.test(n))            return 'Toast';
+      if (/rusk/.test(n))             return 'Rusk';
+      if (/cookie|biscuit/.test(n))   return 'Cookie';
+      return 'Other';
+    }
+
+    // Grand total across all drivers
+    const grandTotals = {};
+    allOrders.forEach(function(o) {
+      const its = (o.items||'').split(',').map(s=>s.replace(/\s*\(.*?\)/g,'').trim()).filter(Boolean);
+      const qs  = (o.qty||'').split(',').map(s=>parseInt(s)||0);
+      its.forEach(function(name, i) { grandTotals[name] = (grandTotals[name]||0) + (qs[i]||0); });
+    });
+    const grandBycat = {};
+    Object.entries(grandTotals).forEach(function([name,qty]) {
+      const c = getCat(name);
+      if (!grandBycat[c]) grandBycat[c] = {total:0, items:[]};
+      grandBycat[c].total += qty;
+      grandBycat[c].items.push({name, qty});
+    });
+    const grandGrand = Object.values(grandTotals).reduce((s,v)=>s+v, 0);
+    const totalDoneAll = allOrders.filter(o=>!!delivMap[o.shop_id]).length;
+
+    let html = '';
+
+    // ── Grand total card ──
+    html += '<div style="background:#4a2f14;color:#fff;border-radius:14px;padding:12px 14px;margin-bottom:10px">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+    html += '<span style="font-size:13px;font-weight:700">'+(lang==='mr'?'एकूण सर्व':'Grand Total — All Drivers')+'</span>';
+    html += '<span style="font-size:18px;font-weight:700;font-family:monospace">'+grandGrand+' items</span>';
+    html += '</div>';
+    html += '<div style="display:flex;gap:6px;flex-wrap:wrap">';
+    Object.entries(grandBycat).sort((a,b)=>b[1].total-a[1].total).forEach(function([cat,info]) {
+      html += '<span style="background:rgba(255,255,255,.15);border-radius:20px;padding:2px 10px;font-size:11px;font-family:monospace">'+cat+' <b>×'+info.total+'</b></span>';
+    });
+    html += '</div>';
+    html += '<div style="font-size:10px;color:rgba(255,255,255,.6);font-family:monospace;margin-top:6px">'+allOrders.length+' shops · '+totalDoneAll+' delivered</div>';
+    html += '</div>';
+
+    // ── Per-driver cards ──
+    const driverOrder = Object.keys(byDriver).sort(function(a,b) {
+      // Own driver first
+      if (a===driver) return -1; if (b===driver) return 1; return a.localeCompare(b);
+    });
+
+    driverOrder.forEach(function(drv) {
+      const dOrders = byDriver[drv];
+      const dDone   = dOrders.filter(function(o){ return !!delivMap[o.shop_id]; }).length;
+      const pct     = dOrders.length ? Math.round(dDone/dOrders.length*100) : 0;
+      const isMe    = drv === driver;
+
+      // Aggregate products for this driver
+      const totals = {};
+      dOrders.forEach(function(o) {
+        const its = (o.items||'').split(',').map(s=>s.replace(/\s*\(.*?\)/g,'').trim()).filter(Boolean);
+        const qs  = (o.qty||'').split(',').map(s=>parseInt(s)||0);
+        its.forEach(function(name,i){ totals[name]=(totals[name]||0)+(qs[i]||0); });
+      });
+      const catMap = {};
+      Object.entries(totals).forEach(function([name,qty]){
+        const c=getCat(name);
+        if(!catMap[c]) catMap[c]={total:0,items:[]};
+        catMap[c].total+=qty;
+        catMap[c].items.push({name,qty});
+      });
+      const catEntries = Object.entries(catMap).sort((a,b)=>b[1].total-a[1].total);
+      const dTotal = Object.values(totals).reduce((s,v)=>s+v,0);
+
+      const borderColor = isMe ? '#2d7a4f' : '#e8dfd2';
+      const bgColor     = isMe ? '#f0faf4' : '#fff';
+
+      html += '<div style="background:'+bgColor+';border:1.5px solid '+borderColor+';border-radius:14px;padding:12px 14px;margin-bottom:9px">';
+
+      // Header
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">';
+      html += '<div style="font-size:14px;font-weight:700;color:#1e1611">'+drv+(isMe?' <span style="font-size:10px;font-family:monospace;background:#2d7a4f;color:#fff;padding:2px 7px;border-radius:20px">'+(lang==='mr'?'मी':'you')+'</span>':'')+'</div>';
+      const badgeBg = pct===100?'#e8f5e9':pct>50?'#fff8e1':'#fde8e8';
+      const badgeFg = pct===100?'#2d7a4f':pct>50?'#7a4800':'#c8382a';
+      html += '<span style="background:'+badgeBg+';color:'+badgeFg+';font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;font-family:monospace">'+dDone+' / '+dOrders.length+' '+(lang==='mr'?'झाले':'done')+'</span>';
+      html += '</div>';
+
+      // Progress bar
+      html += '<div style="background:#e8dfd2;border-radius:6px;height:5px;margin-bottom:8px"><div style="width:'+pct+'%;height:5px;border-radius:6px;background:'+(pct===100?'#2d7a4f':pct>50?'#c8864a':'#c8382a')+';transition:width .3s"></div></div>';
+
+      // Category chips
+      html += '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">';
+      catEntries.forEach(function([cat,info]){
+        html += '<span style="background:#f5ede0;border:1px solid #e8dfd2;border-radius:20px;padding:2px 9px;font-size:11px;font-family:monospace;color:#4a2f14">'+cat+' <b>×'+info.total+'</b></span>';
+      });
+      html += '<span style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:20px;padding:2px 9px;font-size:11px;font-family:monospace;color:#2d7a4f">Total <b>×'+dTotal+'</b></span>';
+      html += '</div>';
+
+      // Expanded items list
+      html += '<div style="font-size:11px;font-family:monospace;color:#6a5040;line-height:2;background:#f9f6f1;border-radius:8px;padding:7px 10px">';
+      catEntries.forEach(function([cat,info]){
+        html += '<div style="font-size:10px;font-weight:700;color:#8a7a6a;text-transform:uppercase;letter-spacing:.5px;margin-top:4px">'+cat+'</div>';
+        info.items.sort((a,b)=>b.qty-a.qty).forEach(function(it){
+          html += '<div><b style="color:#4a2f14">'+it.qty+'×</b> '+it.name+'</div>';
+        });
+      });
+      html += '</div>';
+
+      // Shop list (collapsed by default, expand on tap)
+      const shopListId = 'team-shops-'+drv.replace(/\s/g,'_');
+      html += '<div style="margin-top:8px">';
+      html += '<button onclick="var el=document.getElementById(\''+shopListId+'\');var open=el.style.display===\'block\';el.style.display=open?\'none\':\'block\';this.textContent=open?\'▼ '+(lang==='mr'?'दुकाने':'Shops')+' ('+dOrders.length+')\':\'▲ '+(lang==='mr'?'बंद करा':'Hide')+'\';" style="background:none;border:none;color:#8a7a6a;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif;padding:0">▼ '+(lang==='mr'?'दुकाने':'Shops')+' ('+dOrders.length+')</button>';
+      html += '<div id="'+shopListId+'" style="display:none;margin-top:6px;max-height:220px;overflow-y:auto">';
+      dOrders.forEach(function(o){
+        const done = !!delivMap[o.shop_id];
+        const dtime = done ? (delivMap[o.shop_id].time||'') : '';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #f0e8dc;font-size:12px">';
+        html += '<span style="color:'+(done?'#2d7a4f':'#4a2f14')+'">'+(done?'✅ ':'⏳ ')+o.shop_name+'</span>';
+        html += '<span style="font-size:10px;font-family:monospace;color:#8a7a6a">'+dtime+'</span>';
+        html += '</div>';
+      });
+      html += '</div></div>';
+      html += '</div>';
+    });
+
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = '';
+    msg.textContent = (lang==='mr'?'❌ लोड अयशस्वी':'❌ Failed to load team data');
+    msg.className = 'msg er'; msg.style.display = 'block';
+  }
+}
+
+    function toggleSelHistory(){
+      const el = document.getElementById('selHistory');
+      const btn = document.getElementById('selHistToggle');
+      const open = el.style.display === 'none' || el.style.display === '';
+      el.style.display = open ? 'block' : 'none';
+      btn.innerHTML = `📊 <span id="t-histToggle">${lang==='mr'?'डिलिव्हरी वेळ इतिहास':'Delivery Time History'}</span> ${open?'▲':'▼'}`;
+    }
+
 
     init();
 </script>
