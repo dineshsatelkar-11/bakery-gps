@@ -2954,6 +2954,11 @@ if(tbQueue) tbQueue.textContent = '⚠️ Queue ('+data.length+')';
               '<span class="badge b-blue">'+r.total_km+' km</span>'+
             '</div>'+
           '</div>'+
+          '<div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">'+
+            '<button onclick="shareDriverReport(\''+esc(r.driver)+'\',\'all\')" style="flex:1;padding:7px 6px;border:none;border-radius:10px;background:#25d366;color:#fff;font-size:11px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif">📲 All Shops</button>'+
+            '<button onclick="shareDriverReport(\''+esc(r.driver)+'\',\'teapost\')" style="flex:1;padding:7px 6px;border:none;border-radius:10px;background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082;font-size:11px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif">☕ Tea Post</button>'+
+            '<button onclick="shareDriverReport(\''+esc(r.driver)+'\',\'pending\')" style="flex:1;padding:7px 6px;border:none;border-radius:10px;background:#fde8e8;color:#c8382a;border:1.5px solid #f0b0b0;font-size:11px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif">⏳ Pending</button>'+
+          '</div>'+
           '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-bottom:6px">'+
             '🕐 Started: '+(r.start_time||'not started')+
             (r.start_lat?'&nbsp; <a href="https://www.google.com/maps?q='+r.start_lat+','+r.start_lng+'" target="_blank" style="color:#1565c0;font-weight:700">📍 Start Loc</a>':'')+
@@ -7043,6 +7048,109 @@ function prodExpandAll(expand){
         win.document.close();win.focus();
         setTimeout(function(){win.print();},400);
       });
+    }
+
+/* ── SHARE DRIVER REPORT (Admin → WhatsApp) ── */
+    function shareDriverReport(driverName, mode) {
+      var date = document.getElementById('f-rt-date').value || todayStr();
+      var d = new Date(date+'T00:00:00');
+      var dateLabel = d.toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+
+      // Get this driver's orders
+      var dOrders = (_routeOrdersByDriver[driverName] || []);
+
+      // Helper: deduplicate by shop_id
+      function uniqueShops(orders){
+        var seen=new Set(), result=[];
+        orders.forEach(function(o){ if(!seen.has(o.shop_id)){seen.add(o.shop_id);result.push(o);} });
+        return result;
+      }
+      var dOrdersUniq = uniqueShops(dOrders);
+
+      // Filter by mode
+      var filtered;
+      if(mode === 'teapost'){
+        filtered = dOrdersUniq.filter(function(o){ return (o.shop_name||'').toLowerCase().indexOf('tea post') >= 0; });
+      } else if(mode === 'pending'){
+        var dDelivs = _routeDelivMap[driverName] || {};
+        filtered = dOrdersUniq.filter(function(o){ return !dDelivs[o.shop_id] && !dDelivs[o.shop_name]; });
+      } else {
+        filtered = dOrdersUniq;
+      }
+
+      if(!filtered.length){
+        alert('No shops to share for this filter.');
+        return;
+      }
+
+      var dDelivs = _routeDelivMap[driverName] || {};
+      var doneList    = filtered.filter(function(o){ return !!dDelivs[o.shop_id] || !!dDelivs[o.shop_name]; });
+      var pendingList = filtered.filter(function(o){ return !dDelivs[o.shop_id] && !dDelivs[o.shop_name]; });
+
+      // Sort done by delivery time
+      doneList.sort(function(a,b){
+        var ta = (dDelivs[a.shop_id]||dDelivs[a.shop_name]||{}).time || '';
+        var tb = (dDelivs[b.shop_id]||dDelivs[b.shop_name]||{}).time || '';
+        return routeTimeToMins(ta) - routeTimeToMins(tb);
+      });
+
+      var modeLabel = mode==='teapost' ? '☕ Tea Post' : mode==='pending' ? '⏳ Pending' : '🥖 All Shops';
+
+      var lastDeliv = _routeLastDeliv[driverName];
+      var routeRow = routesData.find(function(r){ return r.driver === driverName; });
+      var startTime = routeRow ? routeRow.start_time : null;
+      var hasDeliveries = Object.keys(dDelivs).length > 0;
+      var started = !!(startTime || hasDeliveries);
+
+      var lines = [
+        modeLabel + ' Delivery Report',
+        '🚗 Driver: *' + driverName + '*',
+        '📅 Date: ' + dateLabel,
+        '⏰ Started: ' + (startTime || (hasDeliveries ? 'Yes' : 'Not started')),
+        '',
+        '✅ Done: ' + doneList.length + ' / ' + filtered.length + ' shops',
+        (pendingList.length > 0 ? '⏳ Pending: ' + pendingList.length : ''),
+        ''
+      ].filter(function(l){ return l !== undefined; });
+
+      // Done shops with times
+      if(doneList.length){
+        lines.push('*Delivered:*');
+        doneList.forEach(function(o, i){
+          var del = dDelivs[o.shop_id] || dDelivs[o.shop_name] || {};
+          lines.push((i+1)+'. '+o.shop_name+(del.time?' — '+del.time:''));
+        });
+        lines.push('');
+      }
+
+      // Pending shops
+      if(pendingList.length){
+        lines.push('*Pending:*');
+        pendingList.forEach(function(o, i){
+          lines.push((i+1)+'. '+o.shop_name);
+        });
+        lines.push('');
+      }
+
+      // Last delivery info
+      if(lastDeliv && lastDeliv.time){
+        lines.push('📦 Last delivery: *'+lastDeliv.shop_name+'* @ '+lastDeliv.time);
+      }
+
+      var msg = lines.filter(Boolean).join('\n');
+
+      if(navigator.share){
+        navigator.share({ text: msg }).catch(function(){});
+      } else if(navigator.clipboard){
+        navigator.clipboard.writeText(msg).then(function(){
+          alert('✅ Report copied! Paste in WhatsApp.');
+        });
+      } else {
+        var ta = document.createElement('textarea');
+        ta.value = msg; document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); document.body.removeChild(ta);
+        alert('✅ Report copied! Paste in WhatsApp.');
+      }
     }
 
     /* ── INIT ── */
