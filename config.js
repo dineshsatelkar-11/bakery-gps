@@ -53,7 +53,9 @@ const CONFIG = {
   // 1. Open generate-vapid.html in your browser → click Generate → copy Public Key here
   // 2. Private Key goes into Supabase Edge Function secrets (never here)
   VAPID_PUBLIC_KEY: 'BPvVh1WI7_D4I7nzBYap6Psnys82iFG7ekPyZkwIHX2PltC5cAlK7t3XvcKdUJ00_U5ygtzem5OJ0Z8-vEQynu4'   // ← paste public key from generate-vapid.html
+
 };
+CONFIG.DRIVE_UPLOAD_URL = 'https://script.google.com/macros/s/AKfycbzOCkFzV5TDQuoBJM9hxVx68XTxMhTJ8tPTHXoAQJ74nb37socoxD55F5JUoHYBBCupYQ/exec'; // from Part A step 3
 
 // Smart redirect — uses clean URLs on Vercel, .html locally (IntelliJ / file server)
 function goto(page) {

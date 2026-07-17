@@ -363,6 +363,9 @@
           assigned_driver: b.assigned_driver || '', mobile: b.mobile || '', flag: b.flag || '',
           lat: b.lat !== '' && b.lat != null ? parseFloat(b.lat) : null,
           lng: b.lng !== '' && b.lng != null ? parseFloat(b.lng) : null,
+          drop_photo_url:        b.drop_photo_url,
+              drop_photo_by:         b.drop_photo_by,
+              drop_photo_updated_at: b.drop_photo_updated_at,
           last_updated_by: b.last_updated_by || '', last_updated_at: b.last_updated_at || ''
         }, 'shop_id');
 
@@ -374,6 +377,9 @@
           lat: b.lat !== '' && b.lat != null ? parseFloat(b.lat) : null,
           lng: b.lng !== '' && b.lng != null ? parseFloat(b.lng) : null,
           zoho_doc_type:   b.zoho_doc_type,
+          drop_photo_url:        b.drop_photo_url,
+              drop_photo_by:         b.drop_photo_by,
+              drop_photo_updated_at: b.drop_photo_updated_at,
           last_updated_by: b.last_updated_by || '', last_updated_at: b.last_updated_at || ''
         });
 

@@ -297,7 +297,14 @@
         <div id="selName" style="font-size:15px;font-weight:800;color:#4a2f14"></div>
         <div id="selArea" style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:3px"></div>
         <div id="selStatus" style="font-size:11px;font-weight:700;font-family:monospace;margin-top:6px;color:#1565c0"></div>
-
+        <div id="selDropPhotoWrap" style="margin-top:10px">
+            <div class="lbl" style="margin-bottom:6px">📸 Drop Point Photo</div>
+            <div id="selDropPhotoPreview"></div>
+            <input type="file" accept="image/*" capture="environment" id="dropPhotoInput" style="display:none" onchange="captureDropPhoto(this)">
+            <button class="btn-sm" style="background:#fff3e0;color:#c8864a;border:1.5px solid #ffcc80" onclick="document.getElementById('dropPhotoInput').click()">
+                <span id="dropPhotoBtnLabel">📸 Set Drop Point Photo</span>
+            </button>
+        </div>
         <!-- Mobile call button -->
         <div id="selMobile" style="display:none;margin-top:10px"></div>
 
@@ -1200,6 +1207,7 @@
             </div>
             <div class="rmeta">${s.area||''}</div>
             ${s.flag?`<div style="background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:4px 9px;font-size:11px;font-family:monospace;color:#7a4800;margin-top:4px">📝 ${s.flag}</div>`:''}
+            ${s.drop_photo_url ? `<img src="${s.drop_photo_url}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;margin-top:6px;cursor:pointer" onclick="window.open('${s.drop_photo_url}','_blank')">` : ''}
             ${shopOrders.length?`<div style="font-size:11px;font-family:monospace;color:#4a2f14;margin-top:4px">${shopOrders.map(o=>o.items+' · '+o.qty).join('<br>')}</div>`:''}
             <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
               <a href="https://www.google.com/maps?q=${s.lat},${s.lng}" target="_blank" class="btn-sm btn-map" style="text-decoration:none;padding:7px 12px;background:#e3f2fd;color:#1565c0;border-radius:10px;font-size:11px;font-weight:700">🗺 Map</a>
@@ -1225,6 +1233,7 @@
             </div>
             <div class="rmeta">${s.area||''}</div>
             ${s.flag?`<div style="background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:4px 9px;font-size:11px;font-family:monospace;color:#7a4800;margin-top:4px">📝 ${s.flag}</div>`:''}
+            ${s.drop_photo_url ? `<img src="${s.drop_photo_url}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;margin-top:6px;cursor:pointer" onclick="window.open('${s.drop_photo_url}','_blank')">` : ''}
             ${shopOrders.length?`<div style="font-size:11px;font-family:monospace;color:#4a2f14;margin-top:4px">${shopOrders.map(o=>o.items+' · '+o.qty).join('<br>')}</div>`:''}
             ${!isDone?`<div style="font-size:10px;color:#7a4800;font-family:monospace;margin-top:4px">⚠ ${lang==='mr'?'GPS नाही — GPS टॅबमध्ये स्थान जोडा':'No GPS location — add via GPS tab'}</div>`:''}
             <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
@@ -1523,6 +1532,7 @@
       }
       renderCustomerList(allCustomers);
       document.getElementById('selBox').scrollIntoView({behavior:'smooth',block:'nearest'});
+      renderDropPhotoPreview();
     }
 
     function gMsg(txt,type){ const el=document.getElementById('gps-msg'); el.textContent=txt; el.className='msg '+type; el.style.display='block'; }
@@ -1560,6 +1570,63 @@
       }
       btn.innerHTML=`✅ ${t('confirmSave')}`; btn.disabled=false; btn.style.display='none';
     }
+
+    function renderDropPhotoPreview(){
+  var wrap = document.getElementById('selDropPhotoPreview');
+  var btnLbl = document.getElementById('dropPhotoBtnLabel');
+  if(selCustomer && selCustomer.drop_photo_url){
+    wrap.innerHTML = `<img src="${selCustomer.drop_photo_url}" style="width:100%;max-width:220px;border-radius:10px;margin-bottom:6px;cursor:pointer" onclick="window.open('${selCustomer.drop_photo_url}','_blank')">
+      <div style="font-size:10px;color:#8a7a6a;font-family:monospace">${selCustomer.drop_photo_by?('by '+selCustomer.drop_photo_by+' · '):''}${selCustomer.drop_photo_updated_at||''}</div>`;
+    btnLbl.textContent = '📸 Retake Photo';
+  } else {
+    wrap.innerHTML = `<div style="font-size:11px;color:#c8382a;font-family:monospace;margin-bottom:6px">⚠ No drop point photo yet</div>`;
+    btnLbl.textContent = '📸 Set Drop Point Photo';
+  }
+}
+
+async function captureDropPhoto(input){
+  if(!selCustomer || !input.files[0]) return;
+  var file = input.files[0];
+  var btnLbl = document.getElementById('dropPhotoBtnLabel');
+  btnLbl.textContent = '⏳ Uploading…';
+
+  var reader = new FileReader();
+  reader.onload = async function(e){
+    var base64 = e.target.result.split(',')[1];
+    try {
+      var res = await fetch(CONFIG.DRIVE_UPLOAD_URL, {
+        method: 'POST',
+        body: JSON.stringify({ shop_id: selCustomer.shop_id, image: base64 })
+      });
+      var data = await res.json();
+      if(data.ok){
+        var now = new Date().toLocaleString('en-IN');
+        await apiPost({
+          action: 'updateShop',
+          shop_id: selCustomer.shop_id,
+          drop_photo_url: data.url,
+          drop_photo_by: driver,
+          drop_photo_updated_at: now,
+          // keep other required fields intact so you don't blank them:
+          name: selCustomer.name, address: selCustomer.address||'', area: selCustomer.area||'',
+          assigned_driver: selCustomer.assigned_driver||'', mobile: selCustomer.mobile||'',
+          flag: selCustomer.flag||'', lat: selCustomer.lat||'', lng: selCustomer.lng||''
+        });
+        selCustomer.drop_photo_url = data.url;
+        selCustomer.drop_photo_by = driver;
+        selCustomer.drop_photo_updated_at = now;
+        renderDropPhotoPreview();
+      } else {
+        alert('Upload failed: ' + data.error);
+        btnLbl.textContent = '📸 Set Drop Point Photo';
+      }
+    } catch(err){
+      alert('Upload failed. Check connection.');
+      btnLbl.textContent = '📸 Set Drop Point Photo';
+    }
+  };
+  reader.readAsDataURL(file);
+}
 
     // ── OFFLINE DETECTION ──
     window.addEventListener('offline', function() {
