@@ -366,6 +366,9 @@
           drop_photo_url:        b.drop_photo_url,
               drop_photo_by:         b.drop_photo_by,
               drop_photo_updated_at: b.drop_photo_updated_at,
+          drop_note:              b.drop_note,
+              drop_note_by:          b.drop_note_by,
+              drop_note_updated_at:  b.drop_note_updated_at,
           last_updated_by: b.last_updated_by || '', last_updated_at: b.last_updated_at || ''
         }, 'shop_id');
 
@@ -380,11 +383,61 @@
           drop_photo_url:        b.drop_photo_url,
               drop_photo_by:         b.drop_photo_by,
               drop_photo_updated_at: b.drop_photo_updated_at,
+          drop_note:              b.drop_note,
+              drop_note_by:          b.drop_note_by,
+              drop_note_updated_at:  b.drop_note_updated_at,
           last_updated_by: b.last_updated_by || '', last_updated_at: b.last_updated_at || ''
         });
 
       case 'deleteShop':
         return sbDelete('shops', { shop_id: b.shop_id });
+
+      // Delete a drop-point photo: removes the file from Drive storage first,
+      // and only clears the shop's photo fields once that succeeds. If Drive
+      // deletion fails, the DB row is left untouched (both still exist) so the
+      // photo reference and the actual file never fall out of sync.
+      case 'deleteDropPhoto': {
+        return sbGet('shops', { shop_id: b.shop_id }, null, 'shop_id,drop_photo_url')
+          .then(function (rows) {
+            var row = rows && rows[0];
+            if (!row || !row.drop_photo_url) {
+              // Nothing to delete — treat as already clean.
+              return { ok: true };
+            }
+            return fetch(CONFIG.DRIVE_UPLOAD_URL, {
+              method: 'POST',
+              body: JSON.stringify({ action: 'delete', shop_id: b.shop_id, fileUrl: row.drop_photo_url })
+            })
+            .then(function (r) {
+              return r.json().catch(function () { return { ok: false, error: 'Bad response from storage service' }; });
+            })
+            .then(function (delRes) {
+              if (!delRes || !delRes.ok) {
+                var errMsg = (delRes && delRes.error) || 'Could not delete photo from storage';
+                if (window.logError) {
+                  window.logError('api.js', 'deleteDropPhoto', new Error('Drive delete failed for shop ' + b.shop_id + ': ' + errMsg));
+                }
+                return { ok: false, error: errMsg };
+              }
+              // File confirmed gone from Drive — now safe to clear the DB row.
+              return sbPatch('shops', { shop_id: b.shop_id }, {
+                drop_photo_url: null,
+                drop_photo_by: null,
+                drop_photo_updated_at: null,
+                last_updated_by: b.driver || '',
+                last_updated_at: new Date().toLocaleString('en-IN')
+              });
+            })
+            .catch(function (err) {
+              if (window.logError) window.logError('api.js', 'deleteDropPhoto', err);
+              return { ok: false, error: 'Network error deleting photo' };
+            });
+          })
+          .catch(function (err) {
+            if (window.logError) window.logError('api.js', 'deleteDropPhoto', err);
+            return { ok: false, error: 'Network error looking up photo' };
+          });
+      }
 
       case 'saveGPS':
         return sbPatch('shops', { shop_id: b.shop_id }, {

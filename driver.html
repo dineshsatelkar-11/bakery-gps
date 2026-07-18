@@ -298,12 +298,24 @@
         <div id="selArea" style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:3px"></div>
         <div id="selStatus" style="font-size:11px;font-weight:700;font-family:monospace;margin-top:6px;color:#1565c0"></div>
         <div id="selDropPhotoWrap" style="margin-top:10px">
-            <div class="lbl" style="margin-bottom:6px">📸 Drop Point Photo</div>
+            <div class="lbl" style="margin-bottom:6px">📸 <span id="t-dropPhotoLbl">Drop Point Photo</span></div>
             <div id="selDropPhotoPreview"></div>
             <input type="file" accept="image/*" capture="environment" id="dropPhotoInput" style="display:none" onchange="captureDropPhoto(this)">
-            <button class="btn-sm" style="background:#fff3e0;color:#c8864a;border:1.5px solid #ffcc80" onclick="document.getElementById('dropPhotoInput').click()">
-                <span id="dropPhotoBtnLabel">📸 Set Drop Point Photo</span>
-            </button>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="btn-sm" id="dropPhotoActionBtn" style="background:#fff3e0;color:#c8864a;border:1.5px solid #ffcc80" onclick="document.getElementById('dropPhotoInput').click()">
+                    <span id="dropPhotoBtnLabel">📸 Set Drop Point Photo</span>
+                </button>
+                <button class="btn-sm" id="deletePhotoBtn" style="display:none;background:#fde8e8;color:#c8382a;border:1.5px solid #f0b0b0" onclick="deleteDropPhoto()">
+                    🗑 <span id="t-deletePhoto">Delete Photo</span>
+                </button>
+            </div>
+            <div style="margin-top:10px">
+                <div class="lbl" style="margin-bottom:6px">📝 <span id="t-dropNoteLbl">Drop Point Note</span></div>
+                <textarea id="dropNoteInput" rows="2" placeholder="e.g. Leave at back gate, ask for Ramesh" style="width:100%;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:13px;color:#1e1611;background:#f5ede0;outline:none;font-family:-apple-system,sans-serif;resize:vertical"></textarea>
+                <button class="btn-sm" id="saveNoteBtn" style="margin-top:6px;background:#e3f2fd;color:#1565c0;border:1.5px solid #90caf9" onclick="saveDropNote()">
+                    💾 <span id="t-saveNote">Save Note</span>
+                </button>
+            </div>
         </div>
         <!-- Mobile call button -->
         <div id="selMobile" style="display:none;margin-top:10px"></div>
@@ -1208,6 +1220,7 @@
             <div class="rmeta">${s.area||''}</div>
             ${s.flag?`<div style="background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:4px 9px;font-size:11px;font-family:monospace;color:#7a4800;margin-top:4px">📝 ${s.flag}</div>`:''}
             ${s.drop_photo_url ? `<img src="${s.drop_photo_url}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;margin-top:6px;cursor:pointer" onclick="window.open('${s.drop_photo_url}','_blank')">` : ''}
+            ${s.drop_note ? `<div style="background:#e3f2fd;border:1px solid #90caf9;border-radius:6px;padding:4px 9px;font-size:11px;font-family:monospace;color:#1565c0;margin-top:4px">📝 ${s.drop_note}</div>` : ''}
             ${shopOrders.length?`<div style="font-size:11px;font-family:monospace;color:#4a2f14;margin-top:4px">${shopOrders.map(o=>o.items+' · '+o.qty).join('<br>')}</div>`:''}
             <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
               <a href="https://www.google.com/maps?q=${s.lat},${s.lng}" target="_blank" class="btn-sm btn-map" style="text-decoration:none;padding:7px 12px;background:#e3f2fd;color:#1565c0;border-radius:10px;font-size:11px;font-weight:700">🗺 Map</a>
@@ -1234,6 +1247,7 @@
             <div class="rmeta">${s.area||''}</div>
             ${s.flag?`<div style="background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:4px 9px;font-size:11px;font-family:monospace;color:#7a4800;margin-top:4px">📝 ${s.flag}</div>`:''}
             ${s.drop_photo_url ? `<img src="${s.drop_photo_url}" style="width:60px;height:60px;object-fit:cover;border-radius:8px;margin-top:6px;cursor:pointer" onclick="window.open('${s.drop_photo_url}','_blank')">` : ''}
+            ${s.drop_note ? `<div style="background:#e3f2fd;border:1px solid #90caf9;border-radius:6px;padding:4px 9px;font-size:11px;font-family:monospace;color:#1565c0;margin-top:4px">📝 ${s.drop_note}</div>` : ''}
             ${shopOrders.length?`<div style="font-size:11px;font-family:monospace;color:#4a2f14;margin-top:4px">${shopOrders.map(o=>o.items+' · '+o.qty).join('<br>')}</div>`:''}
             ${!isDone?`<div style="font-size:10px;color:#7a4800;font-family:monospace;margin-top:4px">⚠ ${lang==='mr'?'GPS नाही — GPS टॅबमध्ये स्थान जोडा':'No GPS location — add via GPS tab'}</div>`:''}
             <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
@@ -1574,21 +1588,31 @@
     function renderDropPhotoPreview(){
   var wrap = document.getElementById('selDropPhotoPreview');
   var btnLbl = document.getElementById('dropPhotoBtnLabel');
+  var delBtn = document.getElementById('deletePhotoBtn');
+  var noteInput = document.getElementById('dropNoteInput');
   if(selCustomer && selCustomer.drop_photo_url){
     wrap.innerHTML = `<img src="${selCustomer.drop_photo_url}" style="width:100%;max-width:220px;border-radius:10px;margin-bottom:6px;cursor:pointer" onclick="window.open('${selCustomer.drop_photo_url}','_blank')">
       <div style="font-size:10px;color:#8a7a6a;font-family:monospace">${selCustomer.drop_photo_by?('by '+selCustomer.drop_photo_by+' · '):''}${selCustomer.drop_photo_updated_at||''}</div>`;
-    btnLbl.textContent = '📸 Retake Photo';
+    btnLbl.textContent = lang==='mr' ? '✏️ फोटो एडिट करा' : '✏️ Edit Photo';
+    if(delBtn) delBtn.style.display = 'inline-block';
   } else {
     wrap.innerHTML = `<div style="font-size:11px;color:#c8382a;font-family:monospace;margin-bottom:6px">⚠ No drop point photo yet</div>`;
-    btnLbl.textContent = '📸 Set Drop Point Photo';
+    btnLbl.textContent = lang==='mr' ? '📸 फोटो जोडा' : '📸 Set Drop Point Photo';
+    if(delBtn) delBtn.style.display = 'none';
   }
+  if(noteInput) noteInput.value = (selCustomer && selCustomer.drop_note) || '';
 }
 
 async function captureDropPhoto(input){
   if(!selCustomer || !input.files[0]) return;
   var file = input.files[0];
   var btnLbl = document.getElementById('dropPhotoBtnLabel');
-  btnLbl.textContent = '⏳ Uploading…';
+  var actionBtn = document.getElementById('dropPhotoActionBtn');
+  var delBtn = document.getElementById('deletePhotoBtn');
+  var prevLbl = btnLbl.textContent;
+  if(actionBtn) actionBtn.disabled = true;
+  if(delBtn) delBtn.disabled = true;
+  btnLbl.textContent = lang==='mr' ? '⏳ अपलोड होत आहे…' : '⏳ Uploading…';
 
   var reader = new FileReader();
   reader.onload = async function(e){
@@ -1601,12 +1625,15 @@ async function captureDropPhoto(input){
       var data = await res.json();
       if(data.ok){
         var now = new Date().toLocaleString('en-IN');
+        // Photo can be saved on its own — no other fields are required to change.
+        // Existing values (including any note) are passed through so nothing gets blanked.
         await apiPost({
           action: 'updateShop',
           shop_id: selCustomer.shop_id,
           drop_photo_url: data.url,
           drop_photo_by: driver,
           drop_photo_updated_at: now,
+          drop_note: (document.getElementById('dropNoteInput')||{}).value ?? (selCustomer.drop_note||''),
           // keep other required fields intact so you don't blank them:
           name: selCustomer.name, address: selCustomer.address||'', area: selCustomer.area||'',
           assigned_driver: selCustomer.assigned_driver||'', mobile: selCustomer.mobile||'',
@@ -1616,16 +1643,87 @@ async function captureDropPhoto(input){
         selCustomer.drop_photo_by = driver;
         selCustomer.drop_photo_updated_at = now;
         renderDropPhotoPreview();
+        gMsg(`✅ ${lang==='mr'?'फोटो जतन झाला':'Photo saved'}`,'ok');
       } else {
-        alert('Upload failed: ' + data.error);
-        btnLbl.textContent = '📸 Set Drop Point Photo';
+        alert((lang==='mr'?'अपलोड अयशस्वी: ':'Upload failed: ') + (data.error||'unknown error'));
+        btnLbl.textContent = prevLbl;
       }
     } catch(err){
-      alert('Upload failed. Check connection.');
-      btnLbl.textContent = '📸 Set Drop Point Photo';
+      alert(lang==='mr' ? 'अपलोड अयशस्वी. कनेक्शन तपासा.' : 'Upload failed. Check connection.');
+      btnLbl.textContent = prevLbl;
     }
+    if(actionBtn) actionBtn.disabled = false;
+    if(delBtn) delBtn.disabled = false;
+    input.value = ''; // allow re-selecting the same file next time
   };
   reader.readAsDataURL(file);
+}
+
+async function saveDropNote(){
+  if(!selCustomer) return;
+  var noteInput = document.getElementById('dropNoteInput');
+  var saveBtn = document.getElementById('saveNoteBtn');
+  var noteVal = noteInput.value.trim();
+  var origLbl = saveBtn.innerHTML;
+  saveBtn.disabled = true;
+  saveBtn.innerHTML = `⏳ ${lang==='mr'?'जतन होत आहे…':'Saving…'}`;
+  try {
+    // Note can be saved on its own too — photo/GPS fields are passed through unchanged.
+    var res = await apiPost({
+      action: 'updateShop',
+      shop_id: selCustomer.shop_id,
+      drop_note: noteVal,
+      drop_note_by: driver,
+      drop_note_updated_at: new Date().toLocaleString('en-IN'),
+      name: selCustomer.name, address: selCustomer.address||'', area: selCustomer.area||'',
+      assigned_driver: selCustomer.assigned_driver||'', mobile: selCustomer.mobile||'',
+      flag: selCustomer.flag||'', lat: selCustomer.lat||'', lng: selCustomer.lng||'',
+      drop_photo_url: selCustomer.drop_photo_url||'', drop_photo_by: selCustomer.drop_photo_by||'',
+      drop_photo_updated_at: selCustomer.drop_photo_updated_at||''
+    });
+    if(res && res.ok){
+      selCustomer.drop_note = noteVal;
+      gMsg(`✅ ${lang==='mr'?'नोंद जतन झाली':'Note saved'}`,'ok');
+    } else {
+      gMsg('❌ '+(lang==='mr'?'नोंद जतन करण्यात अयशस्वी: ':'Failed to save note: ')+((res&&res.error)||'unknown'),'er');
+    }
+  } catch(err){
+    gMsg('❌ '+(lang==='mr'?'नोंद जतन करण्यात अयशस्वी. कनेक्शन तपासा.':'Failed to save note. Check connection.'),'er');
+  }
+  saveBtn.disabled = false;
+  saveBtn.innerHTML = origLbl;
+}
+
+async function deleteDropPhoto(){
+  if(!selCustomer || !selCustomer.drop_photo_url) return;
+  var confirmMsg = lang==='mr' ? 'हा फोटो नक्की डिलीट करायचा आहे का? ही क्रिया पूर्ववत करता येणार नाही.' : 'Delete this photo? This cannot be undone.';
+  if(!confirm(confirmMsg)) return;
+  var delBtn = document.getElementById('deletePhotoBtn');
+  var actionBtn = document.getElementById('dropPhotoActionBtn');
+  var origLbl = delBtn.innerHTML;
+  delBtn.disabled = true;
+  if(actionBtn) actionBtn.disabled = true;
+  delBtn.innerHTML = `⏳ ${lang==='mr'?'डिलीट होत आहे…':'Deleting…'}`;
+  try {
+    // Backend must delete the corresponding file from Drive AND clear the shop record.
+    // If Drive deletion fails, the backend should leave the record untouched and
+    // return ok:false so we don't end up with a dangling reference either way.
+    var res = await apiPost({ action: 'deleteDropPhoto', shop_id: selCustomer.shop_id, driver });
+    if(res && res.ok){
+      selCustomer.drop_photo_url = '';
+      selCustomer.drop_photo_by = '';
+      selCustomer.drop_photo_updated_at = '';
+      gMsg(`✅ ${lang==='mr'?'फोटो डिलीट झाला':'Photo deleted'}`,'ok');
+    } else {
+      gMsg('❌ '+(lang==='mr'?'फोटो डिलीट करण्यात अयशस्वी: ':'Failed to delete photo: ')+((res&&res.error)||'unknown'),'er');
+    }
+  } catch(err){
+    gMsg('❌ '+(lang==='mr'?'फोटो डिलीट करण्यात अयशस्वी. कनेक्शन तपासा.':'Failed to delete photo. Check connection.'),'er');
+  }
+  delBtn.disabled = false;
+  if(actionBtn) actionBtn.disabled = false;
+  delBtn.innerHTML = origLbl;
+  renderDropPhotoPreview();
 }
 
     // ── OFFLINE DETECTION ──
