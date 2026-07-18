@@ -1633,6 +1633,7 @@ async function captureDropPhoto(input){
           drop_photo_url: data.url,
           drop_photo_by: driver,
           drop_photo_updated_at: now,
+          drop_photo_file_id: data.file_id || '',
           drop_note: (document.getElementById('dropNoteInput')||{}).value ?? (selCustomer.drop_note||''),
           // keep other required fields intact so you don't blank them:
           name: selCustomer.name, address: selCustomer.address||'', area: selCustomer.area||'',
@@ -1642,6 +1643,7 @@ async function captureDropPhoto(input){
         selCustomer.drop_photo_url = data.url;
         selCustomer.drop_photo_by = driver;
         selCustomer.drop_photo_updated_at = now;
+        selCustomer.drop_photo_file_id = data.file_id || '';
         renderDropPhotoPreview();
         gMsg(`✅ ${lang==='mr'?'फोटो जतन झाला':'Photo saved'}`,'ok');
       } else {
@@ -1713,6 +1715,7 @@ async function deleteDropPhoto(){
       selCustomer.drop_photo_url = '';
       selCustomer.drop_photo_by = '';
       selCustomer.drop_photo_updated_at = '';
+      selCustomer.drop_photo_file_id = '';
       gMsg(`✅ ${lang==='mr'?'फोटो डिलीट झाला':'Photo deleted'}`,'ok');
     } else {
       gMsg('❌ '+(lang==='mr'?'फोटो डिलीट करण्यात अयशस्वी: ':'Failed to delete photo: ')+((res&&res.error)||'unknown'),'er');

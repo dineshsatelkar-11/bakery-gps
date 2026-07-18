@@ -55,8 +55,7 @@ const CONFIG = {
   VAPID_PUBLIC_KEY: 'BPvVh1WI7_D4I7nzBYap6Psnys82iFG7ekPyZkwIHX2PltC5cAlK7t3XvcKdUJ00_U5ygtzem5OJ0Z8-vEQynu4'   // ← paste public key from generate-vapid.html
 
 };
-CONFIG.DRIVE_UPLOAD_URL = 'https://script.google.com/macros/s/AKfycbzOCkFzV5TDQuoBJM9hxVx68XTxMhTJ8tPTHXoAQJ74nb37socoxD55F5JUoHYBBCupYQ/exec'; // from Part A step 3
-
+CONFIG.DRIVE_UPLOAD_URL = 'https://script.google.com/macros/s/AKfycbxVF8UuOIgL-r9BsNG_FmdcdgqFO1MpZMiNImsPQtHjH3i-QLRctU047Y7RazLpK9z9Ug/exec';
 // Smart redirect — uses clean URLs on Vercel, .html locally (IntelliJ / file server)
 function goto(page) {
   var isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';

@@ -366,6 +366,7 @@
           drop_photo_url:        b.drop_photo_url,
               drop_photo_by:         b.drop_photo_by,
               drop_photo_updated_at: b.drop_photo_updated_at,
+              drop_photo_file_id:    b.drop_photo_file_id,
           drop_note:              b.drop_note,
               drop_note_by:          b.drop_note_by,
               drop_note_updated_at:  b.drop_note_updated_at,
@@ -383,6 +384,7 @@
           drop_photo_url:        b.drop_photo_url,
               drop_photo_by:         b.drop_photo_by,
               drop_photo_updated_at: b.drop_photo_updated_at,
+              drop_photo_file_id:    b.drop_photo_file_id,
           drop_note:              b.drop_note,
               drop_note_by:          b.drop_note_by,
               drop_note_updated_at:  b.drop_note_updated_at,
@@ -397,16 +399,23 @@
       // deletion fails, the DB row is left untouched (both still exist) so the
       // photo reference and the actual file never fall out of sync.
       case 'deleteDropPhoto': {
-        return sbGet('shops', { shop_id: b.shop_id }, null, 'shop_id,drop_photo_url')
+        return sbGet('shops', { shop_id: b.shop_id }, null, 'shop_id,drop_photo_url,drop_photo_file_id')
           .then(function (rows) {
             var row = rows && rows[0];
             if (!row || !row.drop_photo_url) {
               // Nothing to delete — treat as already clean.
               return { ok: true };
             }
+            // Prefer the stored file_id (reliable); fall back to parsing the
+            // thumbnail URL for older rows saved before file_id was tracked.
             return fetch(CONFIG.DRIVE_UPLOAD_URL, {
               method: 'POST',
-              body: JSON.stringify({ action: 'delete', shop_id: b.shop_id, fileUrl: row.drop_photo_url })
+              body: JSON.stringify({
+                action: 'delete',
+                shop_id: b.shop_id,
+                file_id: row.drop_photo_file_id || undefined,
+                fileUrl: row.drop_photo_url
+              })
             })
             .then(function (r) {
               return r.json().catch(function () { return { ok: false, error: 'Bad response from storage service' }; });
@@ -424,6 +433,7 @@
                 drop_photo_url: null,
                 drop_photo_by: null,
                 drop_photo_updated_at: null,
+                drop_photo_file_id: null,
                 last_updated_by: b.driver || '',
                 last_updated_at: new Date().toLocaleString('en-IN')
               });
