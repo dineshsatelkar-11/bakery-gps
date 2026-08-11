@@ -1015,6 +1015,7 @@
         </div>
         <div class="modal-sub">Tap ✏️ Edit to update credentials.</div>
         <input type="text" id="cl-search" placeholder="Search by name or username…" oninput="renderCustLoginsList()" style="position:sticky;top:0;z-index:1;margin-bottom:10px">
+        <button class="btn-sm" style="background:#e8f5e9;color:#2d7a4f;border:1.5px solid #a5d6a7;width:100%;padding:9px;border-radius:10px;font-size:12px;margin-bottom:10px;font-weight:800" onclick="shareAllCustLogins()">📤 Share All Filtered Logins</button>
         <div id="cl-list"></div>
     </div>
 </div>
@@ -1034,6 +1035,8 @@
             <option value="">Unassigned</option>
         </select>
         <div class="lbl">Mobile</div><input type="tel" id="cm-mobile" placeholder="Contact number">
+<div class="lbl">Email</div><input type="text" id="cm-email" placeholder="shop@example.com">
+<div class="lbl">Email</div><input type="text" id="cm-email" placeholder="shop@example.com">
         <div class="lbl">Zoho Document Type</div>
         <select id="cm-doc-type" style="margin-bottom:8px">
             <option value="invoice">🧾 Invoice</option>
@@ -2296,33 +2299,51 @@ if(tbApprove) tbApprove.textContent = newCustQueue.length ? '⏳ New ('+newCustQ
     function closeApproveModal(){document.getElementById('approveModal').style.display='none';}
 
     function confirmApprove(){
-      var driver=document.getElementById('apm-driver').value;
-      var name=document.getElementById('apm-name').value.trim();
-      var msg=document.getElementById('apm-msg');
-      if(!driver){msg.textContent='Select a driver.';msg.className='msg er';msg.style.display='block';return;}
-      if(!name){msg.textContent='Name required.';msg.className='msg er';msg.style.display='block';return;}
-      msg.textContent='Saving…';msg.className='msg in';msg.style.display='block';
-      var c=newCustQueue[approveIdx];
-      var now=new Date().toLocaleString('en-IN');
-      apiPost({
-        action:'addShop',customer_id:c.customer_id,shop_id:c.customer_id,name:name,
-        address:document.getElementById('apm-address').value.trim(),
-        area:document.getElementById('apm-area').value.trim(),
-        mobile:document.getElementById('apm-mobile').value.trim(),
-        zoho_doc_type: document.getElementById('apm-doc-type').value,
-        flag:document.getElementById('apm-flag').value.trim(),
-        assigned_driver:driver,lat:'',lng:'',
-        last_updated_by:'Logistics Owner',last_updated_at:now
-      }).then(function(res){
-        if(res&&res.ok){
-          apiPost({action:'updateOrderDriverByCustomer',customer_id:c.customer_id,driver:driver});
-          allCustomers.push({customer_id:c.customer_id,shop_id:c.customer_id,name:name,assigned_driver:driver,last_updated_at:now});
-          msg.textContent='✅ Added! Driver: '+driver;msg.className='msg ok';
-          newCustQueue.splice(approveIdx,1);
-          setTimeout(function(){closeApproveModal();renderApproveQueue();loadQueue();},700);
-        } else { msg.textContent='❌ '+(res.error||'Failed');msg.className='msg er'; }
-      });
-    }
+  var driver=document.getElementById('apm-driver').value;
+  var name=document.getElementById('apm-name').value.trim();
+  var msg=document.getElementById('apm-msg');
+  if(!driver){msg.textContent='Select a driver.';msg.className='msg er';msg.style.display='block';return;}
+  if(!name){msg.textContent='Name required.';msg.className='msg er';msg.style.display='block';return;}
+
+  var c=newCustQueue[approveIdx];
+  var mobile=document.getElementById('apm-mobile').value.trim();
+
+  // Auto-generate login credentials, same as Add Customer flow
+  var loginUser=genUsername(name);
+  var loginPass=mobile||genRandomPass();
+
+  // Duplicate username check
+  var dup=allCustomers.find(function(cust){
+    return (cust.login_username||'').toLowerCase().trim()===loginUser.toLowerCase();
+  });
+  if(dup){
+    // Make it unique by appending the customer id
+    loginUser = loginUser + '_' + String(c.customer_id).slice(-4);
+  }
+
+  msg.textContent='Saving…';msg.className='msg in';msg.style.display='block';
+  var now=new Date().toLocaleString('en-IN');
+  apiPost({
+    action:'addShop',customer_id:c.customer_id,shop_id:c.customer_id,name:name,
+    address:document.getElementById('apm-address').value.trim(),
+    area:document.getElementById('apm-area').value.trim(),
+    mobile:mobile,
+    zoho_doc_type: document.getElementById('apm-doc-type').value,
+    flag:document.getElementById('apm-flag').value.trim(),
+    assigned_driver:driver,lat:'',lng:'',
+    last_updated_by:'Logistics Owner',last_updated_at:now
+  }).then(function(res){
+    if(res&&res.ok){
+      apiPost({action:'updateOrderDriverByCustomer',customer_id:c.customer_id,driver:driver});
+      // Save auto-generated login credentials
+      apiPost({action:'updateShopLogin',shop_id:c.customer_id,login_username:loginUser,login_password:loginPass,product_group_ids:[]});
+      allCustomers.push({customer_id:c.customer_id,shop_id:c.customer_id,name:name,assigned_driver:driver,mobile:mobile,login_username:loginUser,login_password:loginPass,last_updated_at:now});
+      msg.textContent='✅ Added! Driver: '+driver+' · Login: '+loginUser;msg.className='msg ok';
+      newCustQueue.splice(approveIdx,1);
+      setTimeout(function(){closeApproveModal();renderApproveQueue();loadQueue();},700);
+    } else { msg.textContent='❌ '+(res.error||'Failed');msg.className='msg er'; }
+  });
+}
     function rejectApprove(){if(!confirm('Reject this customer?'))return;newCustQueue.splice(approveIdx,1);closeApproveModal();renderApproveQueue();}
     function rejectFromList(i){newCustQueue.splice(i,1);renderApproveQueue();}
 
@@ -3335,7 +3356,7 @@ if(tbQueue) tbQueue.textContent = '⚠️ Queue ('+data.length+')';
     function openAddCustomer(){
       document.getElementById('custModalTitle').textContent='Add Customer';
       document.getElementById('custModalSub').textContent='';
-      ['cm-id','cm-cust-id','cm-name','cm-address','cm-area','cm-mobile','cm-flag','cm-lat','cm-lng','cm-login-user','cm-login-pass'].forEach(function(id){document.getElementById(id).value='';});
+      ['cm-id','cm-cust-id','cm-name','cm-address','cm-area','cm-mobile','cm-email','cm-flag','cm-lat','cm-lng','cm-login-user','cm-login-pass'].forEach(function(id){document.getElementById(id).value='';});
       document.getElementById('cm-driver').value='';
       renderCmGroupList([]);
       document.getElementById('cm-msg').style.display='none';
@@ -3353,6 +3374,7 @@ if(tbQueue) tbQueue.textContent = '⚠️ Queue ('+data.length+')';
       document.getElementById('cm-area').value=c.area||'';
       document.getElementById('cm-driver').value=c.assigned_driver||'';
       document.getElementById('cm-mobile').value=c.mobile||'';
+      document.getElementById('cm-email').value=c.email||'';
       document.getElementById('cm-flag').value=c.flag||'';
       document.getElementById('cm-lat').value=c.lat||'';
       document.getElementById('cm-lng').value=c.lng||'';
@@ -3640,7 +3662,7 @@ function shareCdHistoryReport(){
         address:document.getElementById('cm-address').value.trim(),area:document.getElementById('cm-area').value.trim(),
         assigned_driver:assignedDriver,
         zoho_doc_type: document.getElementById('cm-doc-type').value,
-        mobile:document.getElementById('cm-mobile').value.trim(),flag:document.getElementById('cm-flag').value.trim(),
+        mobile:document.getElementById('cm-mobile').value.trim(),email:document.getElementById('cm-email').value.trim(),flag:document.getElementById('cm-flag').value.trim(),
         lat:document.getElementById('cm-lat').value,lng:document.getElementById('cm-lng').value,
         last_updated_by:'Admin',last_updated_at:now
       }).then(function(res){
@@ -3719,7 +3741,10 @@ function shareCdHistoryReport(){
               '<span id="clpw-'+safeSid+'" style="font-size:13px;font-weight:700;font-family:monospace;flex:1;word-break:break-all;filter:blur(4px);cursor:pointer" onclick="togglePwBlur(\''+safeSid+'\')">'+(c.login_password?esc(c.login_password):'<span style="color:#c8382a">— not set —</span>')+'</span>'+
               '<span style="font-size:10px;color:#8a7a6a;font-family:monospace;cursor:pointer" onclick="togglePwBlur(\''+safeSid+'\')">👁</span>'+
             '</div>'+
-            '<button class="btn-sm btn-edit" onclick="editCustLogin(\''+safeSid+'\',\''+esc(sid)+'\')">✏️ Edit</button>'+
+            '<div style="display:flex;gap:6px">'+
+  '<button class="btn-sm btn-edit" onclick="editCustLogin(\''+safeSid+'\',\''+esc(sid)+'\')">✏️ Edit</button>'+
+  '<button class="btn-sm" style="background:#e8f5e9;color:#2d7a4f;border:1.5px solid #a5d6a7" onclick="shareCustLoginRow(\''+esc(sid)+'\')">📤 Share</button>'+
+'</div>'+
           '</div>'+
           '<div id="cledit-'+safeSid+'" style="display:none">'+
             '<div style="font-size:10px;font-weight:800;color:#4a2f14;letter-spacing:1px;margin-bottom:8px;margin-top:4px">CUSTOMER LOGIN</div>'+
@@ -3741,6 +3766,60 @@ function shareCdHistoryReport(){
         '</div>';
       }).join('');
     }
+
+    function shareCustLoginRow(shopId){
+  var c = allCustomers.find(function(x){ return (x.customer_id||x.shop_id||'') === shopId; });
+  if(!c){ alert('Customer not found.'); return; }
+  if(!c.login_username || !c.login_password){
+    alert('This customer has no login credentials set yet. Edit and save credentials first.');
+    return;
+  }
+  var url = window.location.origin+'/order.html';
+  var msg = '🥖 *IBCAB — Customer Portal*\n\nShop: *'+c.name+'*\nUsername: *'+c.login_username+'*\nPassword: *'+c.login_password+'*\n\nLogin here: '+url+'\n\n_(You can also login using your mobile number instead of username)_';
+  if(navigator.share){
+    navigator.share({title:'IBCAB Login — '+c.name, text: msg}).catch(function(){});
+  } else if(navigator.clipboard){
+    navigator.clipboard.writeText(msg).then(function(){
+      alert('Login details copied to clipboard!\n\nPaste and send to customer via WhatsApp.');
+    }).catch(function(){ prompt('Copy this and send to customer:', msg); });
+  } else {
+    prompt('Copy this and send to customer:', msg);
+  }
+}
+
+function shareAllCustLogins(){
+  var q = (document.getElementById('cl-search').value||'').toLowerCase();
+  var list = allCustomers.filter(function(c){
+    if(!q) return true;
+    return (c.name+' '+(c.login_username||'')).toLowerCase().indexOf(q) >= 0;
+  }).filter(function(c){ return c.login_username && c.login_password; });
+
+  if(!list.length){
+    alert('No customers with login credentials match this filter.');
+    return;
+  }
+
+  var url = window.location.origin+'/order.html';
+  var lines = ['🥖 *IBCAB — Customer Portal Logins*', ''];
+  list.forEach(function(c){
+    lines.push('🏪 *'+c.name+'*');
+    lines.push('Username: '+c.login_username);
+    lines.push('Password: '+c.login_password);
+    lines.push('');
+  });
+  lines.push('Login here: '+url);
+  var msg = lines.join('\n');
+
+  if(navigator.share){
+    navigator.share({title:'IBCAB Customer Logins', text: msg}).catch(function(){});
+  } else if(navigator.clipboard){
+    navigator.clipboard.writeText(msg).then(function(){
+      alert('✅ Copied '+list.length+' customer login(s) to clipboard!\n\nPaste in WhatsApp.');
+    }).catch(function(){ prompt('Copy this:', msg); });
+  } else {
+    prompt('Copy this:', msg);
+  }
+}
     function togglePwBlur(safeSid){
       var el=document.getElementById('clpw-'+safeSid);
       if(!el) return;
