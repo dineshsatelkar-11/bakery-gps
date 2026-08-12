@@ -2111,6 +2111,14 @@ function renderMyBrandList(){
           var H=rows[0].map(function(h){return(h||'').toString().trim();});
           // Auto-detect: Invoice file has 'Invoice Number' but no 'Delivery Challan Number'
           var isInvoice=H.indexOf('Invoice Number')>=0&&H.indexOf('Delivery Challan Number')===-1;
+                    function colIdx(){
+            var names = Array.prototype.slice.call(arguments);
+            for(var ni=0;ni<names.length;ni++){
+              var ix = H.indexOf(names[ni]);
+              if(ix>=0) return ix;
+            }
+            return -1;
+          }
           var C={
             dc_num:   isInvoice ? H.indexOf('Invoice Number')  : H.indexOf('Delivery Challan Number'),
             dc_date:  isInvoice ? H.indexOf('Invoice Date')    : H.indexOf('Challan Date'),
@@ -2121,9 +2129,10 @@ function renderMyBrandList(){
             prod_id:  H.indexOf('Product ID'),
             item_desc:H.indexOf('Item Desc'),
             qty:      H.indexOf('QuantityOrdered')>=0 ? H.indexOf('QuantityOrdered') : H.indexOf('Quantity'),
-            mobile:   H.indexOf('Primary Contact Mobile')
+            mobile:   H.indexOf('Primary Contact Mobile'),
+            rate:     colIdx('Rate','Item Price','Item Rate','Price','Unit Price','Sales Rate')
           };
-          // inv_date/mobile are optional — only check required columns
+          // inv_date/mobile/rate are optional
           var required=['dc_num','dc_date','cust_id','cust_name','item_name','prod_id','item_desc','qty'];
           var miss=required.filter(function(k){return C[k]===-1;});
           if(miss.length){msg.textContent='Missing columns:\n'+miss.join(', ');msg.className='msg er';return;}
@@ -2145,11 +2154,17 @@ function renderMyBrandList(){
               order.push(dc);
             }
             var qty=parseInt(r[C.qty])||0;
+            var rateVal = '';
+            if(C.rate>=0 && r[C.rate]!=null && String(r[C.rate]).trim()!==''){
+              var rp = parseFloat(String(r[C.rate]).replace(/[₹,\s]/g,''));
+              if(!isNaN(rp)) rateVal = String(rp);
+            }
             if(qty>0) map[dc].items.push({
               name:(r[C.item_name]||'').toString().trim(),
               product_id:(r[C.prod_id]||'').toString().trim(),
               desc:(r[C.item_desc]||'').toString().trim(),
-              qty:qty
+              qty:qty,
+              rate:rateVal
             });
           }
           rawChallans=order.map(function(k){return map[k];}).filter(function(c){return c.items.length>0;});
@@ -2292,26 +2307,53 @@ function renderMyBrandList(){
       parsedOrders=[];
     }
 
-    /* ── STEP 3: SAVE ── */
+      /* ── STEP 3: SAVE ──
+       - New dc_num → insert order
+       - Existing dc_num → update if items/qty/driver changed
+       - New shops → auto-add to shops table (driver = Logistics)
+       - Product prices → only from NEW orders
+    */
     function doSave(){
       if(!parsedOrders.length) return;
       var btn=document.getElementById('confirmSaveBtn');
-      btn.textContent='Checking duplicates…'; btn.disabled=true;
+      btn.textContent='Checking existing orders…'; btn.disabled=true;
 
-      // Collect all dc_nums from this upload
       var dcNums=parsedOrders.map(function(o){return o.dc_num;}).filter(Boolean);
 
-      // Query DB directly by dc_num — works across all dates, no note-parsing needed
       api({action:'checkDcNums', dc_nums:dcNums})
       .then(function(existing){
-        var savedDcNums=new Set((Array.isArray(existing)?existing:[]).map(function(r){return r.dc_num;}));
+        var existingList = Array.isArray(existing)?existing:[];
+        var byDc = {};
+        existingList.forEach(function(r){ if(r.dc_num) byDc[String(r.dc_num)] = r; });
 
-        // Filter: only save orders whose dc_num is NOT already in DB
-        var toSave=parsedOrders.filter(function(o){ return !savedDcNums.has(o.dc_num); });
-        var skippedCount=parsedOrders.length-toSave.length;
+        function norm(s){ return String(s||'').replace(/\s+/g,' ').trim(); }
+        function orderChanged(uploaded, dbRow){
+          if(!dbRow) return true;
+          if(norm(uploaded.items) !== norm(dbRow.items)) return true;
+          if(norm(uploaded.qty)   !== norm(dbRow.qty))   return true;
+          if(norm(uploaded.item_ids||'') !== norm(dbRow.item_ids||'')) return true;
+          if(norm(uploaded.driver) !== norm(dbRow.driver)) return true;
+          if(norm(uploaded.date)   !== norm(dbRow.date))   return true;
+          if(norm(uploaded.shop_name) !== norm(dbRow.shop_name)) return true;
+          return false;
+        }
 
-        // If everything already imported — just show message, do nothing
-        if(!toSave.length){
+        var toInsert = [];
+        var toUpdate = [];
+        var unchanged = 0;
+
+        parsedOrders.forEach(function(o){
+          var db = byDc[String(o.dc_num)];
+          if(!db){
+            toInsert.push(o);
+          } else if(orderChanged(o, db)){
+            toUpdate.push({ uploaded:o, db:db });
+          } else {
+            unchanged++;
+          }
+        });
+
+        if(!toInsert.length && !toUpdate.length && !newCustQueue.length){
           btn.textContent='✅ Confirm & Save All'; btn.disabled=false;
           document.getElementById('previewSection').style.display='none';
           zone.classList.remove('has-file');
@@ -2321,77 +2363,185 @@ function renderMyBrandList(){
           document.getElementById('previewBtn').style.display='none';
           document.getElementById('clearUploadBtn').style.display='none';
           var xlsMsg=document.getElementById('xlsMsg');
-          xlsMsg.textContent='⏭ All '+parsedOrders.length+' orders already imported — nothing new to save.';
+          xlsMsg.textContent='⏭ All '+parsedOrders.length+' orders already imported and unchanged.';
           xlsMsg.className='msg warn'; xlsMsg.style.display='block';
           rawChallans=[]; parsedOrders=[];
           return;
         }
 
-        btn.textContent='Saving…';
+        btn.textContent='Syncing products & shops…';
 
-        // Collect new products from toSave only
-        var seenNewProd={};
-        var newProdsToSave=[];
-        toSave.forEach(function(o){
+        // ── Products: only from NEW orders (toInsert) ──
+        var seenNewProd = {};
+        var newProdsToSave = [];
+        var priceUpdates = [];
+        var seenPrice = {};
+
+        toInsert.forEach(function(o){
           (o.raw_items||[]).forEach(function(it){
-            if(!it.product_id||seenNewProd[it.product_id]) return;
-            var sid=String(it.product_id).trim();
-            var exists=allProducts.find(function(p){return String(p.product_id||'').trim()===sid;});
-            if(!exists){
-              seenNewProd[sid]=true;
-              newProdsToSave.push({product_id:sid,name:it.name,category:'',price:'',unit:'Pieces',description:it.desc||''});
-              allProducts.push({product_id:sid,name:it.name,category:'',price:'',unit:'Pieces',description:it.desc||''});
+            if(!it.product_id) return;
+            var sid = String(it.product_id).trim();
+            var exists = allProducts.find(function(p){ return String(p.product_id||'').trim()===sid; });
+            if(!exists && !seenNewProd[sid]){
+              seenNewProd[sid] = true;
+              var price = it.rate || '';
+              newProdsToSave.push({product_id:sid, name:it.name, category:'', price:price, unit:'Pieces', description:it.desc||''});
+              allProducts.push({product_id:sid, name:it.name, category:'', price:price, unit:'Pieces', description:it.desc||''});
+            } else if(exists && it.rate && !seenPrice[sid] && !seenNewProd[sid]){
+              var oldP = String(exists.price||'').trim();
+              var newP = String(it.rate).trim();
+              if(oldP !== newP){
+                seenPrice[sid] = true;
+                priceUpdates.push({ product_id:sid, price:newP, name:it.name||exists.name });
+                exists.price = newP;
+              }
             }
           });
         });
 
-        if(newProdsToSave.length) apiPost({action:'addProducts', products:newProdsToSave});
-
-        // Batch save new orders only
-        apiPost({action:'addOrders', orders:toSave.map(function(o){
-          return {
-            customer_id:o.customer_id, shop_id:o.customer_id, shop_name:o.shop_name,
-            driver:o.driver, items:o.items, qty:o.qty, item_ids:o.item_ids||'', date:o.date,
-            note:(o.is_new?'NEW CUSTOMER ':'')+o.dc_num,
-            dc_num:o.dc_num
-          };
-        })}).then(function(res){
-          // Send notifications to each driver with orders
-          if(res&&res.ok&&toSave.length){
-            var byDriver={};
-            toSave.forEach(function(o){
-              if(!o.driver||o.driver==='Logistics')return;
-              byDriver[o.driver]=(byDriver[o.driver]||0)+1;
-            });
-            var notifs=Object.entries(byDriver).map(function(kv){
-              return{driver_name:kv[0],type:'new_orders',
-                message:kv[1]+' new order'+(kv[1]>1?'s':'')+' uploaded for '+toSave[0].date,
-                date:toSave[0].date};
-            });
-            if(notifs.length){
-              apiPost({action:'addNotifications',notifications:notifs});
-              notifs.forEach(function(n){ sendPush(n.driver_name, n.message); });
-            }
-          }
-          btn.textContent='✅ Confirm & Save All'; btn.disabled=false;
-          zone.classList.remove('has-file');
-          document.getElementById('uploadIcon').textContent='📋';
-          document.getElementById('uploadLabel').textContent='Tap to upload Delivery Challan';
-          document.getElementById('xlsFile').value='';
-          document.getElementById('previewBtn').style.display='none';
-          document.getElementById('clearUploadBtn').style.display='none';
-          document.getElementById('previewSection').style.display='none';
-          var msg=document.getElementById('xlsMsg');
-          var saved=res.ok?toSave.length:0;
-          msg.textContent=(res.ok?'✅ ':'❌ ')+saved+' orders saved'+(res.ok?'':' — '+res.error)+'.'
-            +(skippedCount>0?'\n⏭ '+skippedCount+' already imported — skipped.':'')
-            +(newCustQueue.length?'\n🆕 '+newCustQueue.length+' new customers → tap "⏳ New" tab':'')
-            +(newProdsToSave.length?'\n📦 '+newProdsToSave.length+' new products saved':'');
-          msg.className=res.ok?'msg ok':'msg er'; msg.style.display='block';
-          rawChallans=[]; parsedOrders=[];
-          if(newCustQueue.length) document.getElementById('tb-approve').textContent='⏳ New ('+newCustQueue.length+')';
-          if(res.ok) showTab('summary');
+        // ── Auto-add NEW shops (driver = Logistics) ──
+        var newShopsToAdd = [];
+        var seenNewShop = {};
+        newCustQueue.forEach(function(c){
+          var sid = String(c.customer_id||'').trim();
+          if(!sid || seenNewShop[sid]) return;
+          var exists = allCustomers.find(function(x){
+            return String(x.customer_id||x.shop_id||'').trim() === sid;
+          });
+          if(exists) return;
+          seenNewShop[sid] = true;
+          newShopsToAdd.push(c);
         });
+
+        var productJobs = [];
+        if(newProdsToSave.length) productJobs.push(apiPost({action:'addProducts', products:newProdsToSave}));
+        if(priceUpdates.length)  productJobs.push(apiPost({action:'updateProductPrices', products:priceUpdates}));
+
+        var shopJobs = newShopsToAdd.map(function(c){
+          var sid = String(c.customer_id).trim();
+          var now = new Date().toLocaleString('en-IN');
+          return apiPost({
+            action: 'addShop',
+            shop_id: sid,
+            customer_id: sid,
+            name: c.customer_name || sid,
+            address: '',
+            area: '',
+            mobile: c.mobile || '',
+            assigned_driver: (typeof LOGISTICS !== 'undefined' ? LOGISTICS : 'Logistics'),
+            lat: '', lng: '',
+            last_updated_by: 'Challan Import',
+            last_updated_at: now
+          }).then(function(res){
+            if(res && res.ok){
+              allCustomers.push({
+                customer_id: sid, shop_id: sid,
+                name: c.customer_name || sid,
+                assigned_driver: (typeof LOGISTICS !== 'undefined' ? LOGISTICS : 'Logistics'),
+                mobile: c.mobile || '',
+                last_updated_at: now
+              });
+            }
+            return res;
+          });
+        });
+
+        return Promise.all(productJobs.concat(shopJobs)).then(function(allRes){
+          var shopsAdded = shopJobs.length
+            ? allRes.slice(productJobs.length).filter(function(r){ return r && r.ok; }).length
+            : 0;
+
+          btn.textContent='Saving orders…';
+
+          var insertJob = toInsert.length
+            ? apiPost({action:'addOrders', orders:toInsert.map(function(o){
+                return {
+                  customer_id:o.customer_id, shop_id:o.customer_id, shop_name:o.shop_name,
+                  driver:o.driver, items:o.items, qty:o.qty, item_ids:o.item_ids||'', date:o.date,
+                  note:(o.is_new?'NEW CUSTOMER ':'')+o.dc_num,
+                  dc_num:o.dc_num
+                };
+              })})
+            : Promise.resolve({ok:true});
+
+          var updateJobs = toUpdate.map(function(pair){
+            var o = pair.uploaded;
+            return apiPost({
+              action:'updateOrder',
+              order_id: pair.db.order_id,
+              patch: {
+                items: o.items,
+                qty: o.qty,
+                item_ids: o.item_ids||'',
+                driver: o.driver,
+                date: o.date,
+                shop_name: o.shop_name,
+                shop_id: o.customer_id,
+                customer_id: o.customer_id,
+                note: (o.is_new?'NEW CUSTOMER ':'')+o.dc_num
+              }
+            });
+          });
+
+          return Promise.all([insertJob].concat(updateJobs)).then(function(results){
+            var insertRes = results[0];
+            var insertOk = !toInsert.length || (insertRes && insertRes.ok);
+            var updateOkCount = results.slice(1).filter(function(r){ return r && r.ok; }).length;
+
+            if(insertOk && toInsert.length){
+              var byDriver={};
+              toInsert.forEach(function(o){
+                if(!o.driver||o.driver==='Logistics')return;
+                byDriver[o.driver]=(byDriver[o.driver]||0)+1;
+              });
+              var notifs=Object.entries(byDriver).map(function(kv){
+                return{driver_name:kv[0],type:'new_orders',
+                  message:kv[1]+' new order'+(kv[1]>1?'s':'')+' uploaded for '+toInsert[0].date,
+                  date:toInsert[0].date};
+              });
+              if(notifs.length){
+                apiPost({action:'addNotifications',notifications:notifs});
+                notifs.forEach(function(n){ sendPush(n.driver_name, n.message); });
+              }
+            }
+
+            btn.textContent='✅ Confirm & Save All'; btn.disabled=false;
+            zone.classList.remove('has-file');
+            document.getElementById('uploadIcon').textContent='📋';
+            document.getElementById('uploadLabel').textContent='Tap to upload Delivery Challan';
+            document.getElementById('xlsFile').value='';
+            document.getElementById('previewBtn').style.display='none';
+            document.getElementById('clearUploadBtn').style.display='none';
+            document.getElementById('previewSection').style.display='none';
+
+            var msg=document.getElementById('xlsMsg');
+            var lines = [];
+            if(toInsert.length) lines.push((insertOk?'✅ ':'❌ ')+toInsert.length+' new orders saved'+(insertOk?'':(' — '+(insertRes.error||'error'))));
+            if(toUpdate.length) lines.push('♻️ '+updateOkCount+'/'+toUpdate.length+' existing orders updated');
+            if(unchanged) lines.push('⏭ '+unchanged+' unchanged — skipped');
+            if(shopsAdded) lines.push('🏪 '+shopsAdded+' new shop'+(shopsAdded>1?'s':'')+' added (driver: Logistics)');
+            if(newProdsToSave.length) lines.push('📦 '+newProdsToSave.length+' new products added');
+            if(priceUpdates.length) lines.push('💰 '+priceUpdates.length+' product prices updated (new orders only)');
+            if(newCustQueue.length) lines.push('🆕 '+newCustQueue.length+' → review in "⏳ New" tab');
+            if(!lines.length) lines.push('Nothing to save.');
+            msg.textContent = lines.join('\n');
+            msg.className = (insertOk && updateOkCount===toUpdate.length) ? 'msg ok' : 'msg warn';
+            msg.style.display = 'block';
+
+            rawChallans=[]; parsedOrders=[];
+            if(newCustQueue.length){
+              var tb=document.getElementById('tb-approve');
+              if(tb) tb.textContent='⏳ New ('+newCustQueue.length+')';
+            }
+            _custLoaded = false;
+            if(insertOk || updateOkCount) showTab('summary');
+          });
+        });
+      }).catch(function(err){
+        btn.textContent='✅ Confirm & Save All'; btn.disabled=false;
+        var msg=document.getElementById('xlsMsg');
+        msg.textContent='❌ Save failed: '+(err && err.message ? err.message : String(err));
+        msg.className='msg er'; msg.style.display='block';
       });
     }
 

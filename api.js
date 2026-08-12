@@ -137,14 +137,14 @@
       case 'getQueueOrders':
         return sbGet('orders', { date: p.date }, 'shop_name');
 
-      case 'checkDcNums': {
-        // Returns existing dc_num values from the given list so caller can skip duplicates
-        var inList = p.dc_nums.map(function(n){ return encodeURIComponent(n); }).join(',');
-        var url = BASE + '/orders?select=dc_num&dc_num=in.(' + inList + ')';
-        return fetch(url, { headers: hdrs() })
-          .then(function(r){ return r.ok ? r.json() : []; })
-          .catch(function(){ return []; });
-      }
+         case 'checkDcNums': {
+           // Full order fields so caller can detect updates on re-import
+           var inList = p.dc_nums.map(function(n){ return encodeURIComponent(n); }).join(',');
+           var url = BASE + '/orders?select=order_id,dc_num,items,qty,item_ids,driver,shop_id,customer_id,shop_name,date,note&dc_num=in.(' + inList + ')';
+           return fetch(url, { headers: hdrs() })
+             .then(function(r){ return r.ok ? r.json() : []; })
+             .catch(function(){ return []; });
+         }
 
       case 'getDeliveries': {
         var where = { date: p.date };
@@ -583,9 +583,23 @@
             price: p.price || '', unit: p.unit || 'Pieces', description: p.description || '',
             group_id: p.group_id || null, active: p.active !== false
           };
-        }), 'resolution=ignore-duplicates,return=minimal');
+               }), 'resolution=ignore-duplicates,return=minimal');
 
-      case 'updateProduct':
+             // Update prices only for products on NEW orders in current upload
+             case 'updateProductPrices': {
+               var list = b.products || [];
+               if (!list.length) return Promise.resolve({ ok: true, updated: 0 });
+               return Promise.all(list.map(function(p){
+                 var patch = {};
+                 if (p.price !== undefined && p.price !== null && p.price !== '') patch.price = String(p.price);
+                 if (p.name) patch.name = p.name;
+                 if (!Object.keys(patch).length) return Promise.resolve({ ok: true });
+                 return sbPatch('products', { product_id: p.product_id }, patch);
+               })).then(function(){ return { ok: true, updated: list.length }; })
+                 .catch(function(e){ return { ok: false, error: String(e) }; });
+             }
+
+             case 'updateProduct':
         return sbPatch('products', { product_id: b.product_id }, {
           name: b.name, category: b.category || '',
           price: b.price || '', unit: b.unit || 'Pieces', description: b.description || '',
