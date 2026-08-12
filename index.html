@@ -264,26 +264,26 @@ function doLogin(){
 
     api({action:'staffLogin', name:staffExact||id, password:pass}).then(function(data){
       var s = Array.isArray(data)&&data.length ? data[0] : null;
-      if(s && s.role){
-        sessionStorage.setItem('role', s.role);
-        sessionStorage.setItem('tabs', s.tabs||'[]');
-        sessionStorage.setItem('staffName', s.name);
-        localStorage.setItem('staffRole', s.role);
-        localStorage.setItem('staffTabs', s.tabs||'[]');
-        localStorage.setItem('staffNamePersist', s.name);
-        if(s.role==='chef'){
-          localStorage.setItem('kitchenStaff', s.name);
-          goto('kitchen');
-        } else if(s.role==='packer'){
-          localStorage.setItem('packStaff', s.name);
-          goto('packaging');
-        } else if(s.role==='teapost_head'){
-          goto('teapost-head');
-        } else {
-          goto('admin');
-        }
-        return;
-      }
+    if(s && s.role){
+  sessionStorage.setItem('role', s.role);
+  sessionStorage.setItem('tabs', s.tabs||'[]');
+  sessionStorage.setItem('staffName', s.name);
+  sessionStorage.setItem('staffBrand', s.brand||'');
+  localStorage.setItem('staffRole', s.role);
+  localStorage.setItem('staffTabs', s.tabs||'[]');
+  localStorage.setItem('staffNamePersist', s.name);
+  localStorage.setItem('staffBrandPersist', s.brand||'');
+  if(s.role==='chef'){
+    localStorage.setItem('kitchenStaff', s.name);
+    goto('kitchen');
+  } else if(s.role==='packer'){
+    localStorage.setItem('packStaff', s.name);
+    goto('packaging');
+  } else {
+    goto('admin');
+  }
+  return;
+}
 
       return api({action:'driverLogin', name:driverExact||id, password:pass}).then(function(data){
         var d = Array.isArray(data)&&data.length ? data[0] : null;
@@ -324,13 +324,14 @@ function doLogin(){
     sessionStorage.setItem('driver', localStorage.getItem('driverName'));
     _r='driver';
   }
-  if(!_r && localStorage.getItem('staffRole')){
-    var sr=localStorage.getItem('staffRole');
-    sessionStorage.setItem('role', sr);
-    sessionStorage.setItem('tabs', localStorage.getItem('staffTabs')||'[]');
-    sessionStorage.setItem('staffName', localStorage.getItem('staffNamePersist')||'');
-    _r=sr;
-  }
+ if(!_r && localStorage.getItem('staffRole')){
+  var sr=localStorage.getItem('staffRole');
+  sessionStorage.setItem('role', sr);
+  sessionStorage.setItem('tabs', localStorage.getItem('staffTabs')||'[]');
+  sessionStorage.setItem('staffName', localStorage.getItem('staffNamePersist')||'');
+  sessionStorage.setItem('staffBrand', localStorage.getItem('staffBrandPersist')||'');
+  _r=sr;
+}
   // Customer session — stored directly in localStorage
   if(!_r){
     try {
@@ -339,11 +340,10 @@ function doLogin(){
     } catch(e){}
   }
 
-  if(_r==='driver')       goto('driver');
-  if(_r==='chef')         goto('kitchen');
-  if(_r==='packer')       goto('packaging');
-  if(_r==='teapost_head') goto('teapost-head');
-  if(_r==='super_admin'||_r==='admin'||_r==='assistant') goto('admin');
+if(_r==='driver')       goto('driver');
+if(_r==='chef')         goto('kitchen');
+if(_r==='packer')       goto('packaging');
+if(_r==='super_admin'||_r==='admin'||_r==='assistant'||_r==='brand_owner') goto('admin');
 
 })();
 </script>

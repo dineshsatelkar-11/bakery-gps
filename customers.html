@@ -1,450 +1,354 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>IBCAB — Customers</title>
-<script src="config.js"></script>
-<script src="api.js"></script>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:520px;margin:0 auto;min-height:100vh}
-.topbar{background:#4a2f14;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:99}
-.topbar-title{color:#fff;font-size:15px;font-weight:800}
-.back{background:rgba(255,255,255,.2);border:none;color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif;text-decoration:none;display:inline-block}
-.page{padding:14px 14px 80px}
-.card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:14px;margin-bottom:10px}
-.lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:8px;text-transform:uppercase}
-select,input[type=text],input[type=tel]{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:8px}
-.btn{width:100%;padding:13px;border:none;border-radius:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:8px}
-.btn-add{background:#2d7a4f;color:#fff}
-.btn-save{background:#4a2f14;color:#fff}
-.btn-gps{background:#1a5fa8;color:#fff}
-.btn-sm{padding:7px 12px;border-radius:10px;font-size:11px;font-weight:700;border:none;cursor:pointer;font-family:-apple-system,sans-serif}
-.btn-edit{background:#e3f2fd;color:#1565c0}
-.btn-del{background:#fde8e8;color:#c8382a}
-.btn-cancel{background:#f5ede0;color:#4a2f14;border:1.5px solid #e8dfd2;width:100%}
-.msg{padding:11px 14px;border-radius:12px;font-size:12px;font-weight:600;font-family:monospace;margin-bottom:10px;line-height:1.8}
-.ok{background:#e8f5e9;color:#2d7a4f;border:1px solid #a5d6a7}
-.er{background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0}
-.in{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9}
-/* CUSTOMER ROW */
-.cust-row{background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;padding:13px 14px;margin-bottom:8px}
-.cust-name{font-size:14px;font-weight:800;color:#1e1611}
-/* DETAIL LINES */
-.detail-line{font-size:11px;font-family:monospace;padding:2px 0;display:flex;gap:6px;align-items:baseline;color:#4a2f14}
-.detail-line.muted{color:#8a7a6a}
-.gps-line{font-size:11px;font-family:monospace;color:#2d7a4f;margin:4px 0 6px}
-.flag-line{font-size:11px;font-family:monospace;color:#7a4800;background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:3px 8px;display:inline-block;margin:4px 0 6px}
-.stamp{font-size:10px;color:#b0a090;font-family:monospace;padding-top:6px;border-top:1px solid #f0e8dc;margin-top:6px}
-/* BADGE */
-.badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;font-family:monospace}
-.b-ok{background:#e8f5e9;color:#2d7a4f}
-.b-miss{background:#fde8e8;color:#c8382a}
-.DC-Bharat{background:#fff3e0;color:#c8864a}.DC-Anand{background:#e3f2fd;color:#1a5fa8}
-.DC-Vikas{background:#e8f5e9;color:#2d7a4f}.DC-Yuvraj{background:#f3e8ff;color:#6e3da8}
-.DC-Rama{background:#fde8e8;color:#c8382a}.DC-Dinesh{background:#fce4ec;color:#880e4f}
-/* FILTERS */
-.filter-row{display:flex;gap:8px;margin-bottom:10px}
-.filter-row select,.filter-row input{margin-bottom:0}
-/* STATS */
-.stat-row{display:flex;gap:8px;margin-bottom:12px}
-.stat{flex:1;background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:10px;text-align:center}
-.stat-n{font-size:20px;font-weight:900;color:#4a2f14}
-.stat-l{font-size:9px;color:#8a7a6a;font-family:monospace}
-/* INLINE REASSIGN */
-.shuffle-row{display:flex;align-items:center;gap:8px;margin-top:10px;padding:8px 10px;background:#f9f0ff;border:1.5px solid #d8b4fe;border-radius:10px}
-.shuffle-row select{flex:1;padding:7px 10px;font-size:13px;margin-bottom:0;background:#fff;border:1.5px solid #d8b4fe;border-radius:8px;outline:none}
-.shuffle-confirm{padding:7px 14px;background:#6e3da8;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;white-space:nowrap}
-.shuffle-cancel{padding:7px 10px;background:#f5ede0;color:#4a2f14;border:1.5px solid #e8dfd2;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif}
-/* BULK */
-.bulk-box{background:#fff;border:1.5px solid #d8b4fe;border-radius:14px;padding:14px;margin-bottom:12px}
-/* MODAL */
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:flex-end;justify-content:center}
-.modal{background:#f5ede0;border-radius:20px 20px 0 0;padding:20px 16px 40px;width:100%;max-width:520px;max-height:92vh;overflow-y:auto}
-.modal-title{font-size:17px;font-weight:900;color:#4a2f14;margin-bottom:4px}
-.modal-sub{font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:14px}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+    <title>IBCAB — Delivery Management by Satelkar's Logistics</title>
+    <meta property="og:title" content="IBCAB — Powered by Satelkar's Logistics">
+    <meta property="og:description" content="Smart delivery management platform — GPS tracking, order management & real-time routes.">
+    <meta property="og:image" content="icon-512.png">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="IBCAB — Satelkar's Logistics">
+    <script src="config.js"></script>
+    <script src="api.js"></script>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a3a5c">
+    <meta name="application-name" content="IBCAB">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="IBCAB">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0f1e30;color:#fff;min-height:100vh;overflow-x:hidden}
+
+        /* ── HERO ── */
+        .hero{background:linear-gradient(145deg,#0f1e30 0%,#1a3a5c 50%,#0d2a45 100%);padding:40px 24px 32px;position:relative;overflow:hidden}
+        .hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 70% 30%,rgba(41,182,246,.12) 0%,transparent 65%),radial-gradient(ellipse at 20% 80%,rgba(255,152,0,.08) 0%,transparent 55%);pointer-events:none}
+
+        .brand{display:flex;align-items:center;gap:12px;margin-bottom:36px}
+        .brand-icon{width:44px;height:44px;background:linear-gradient(135deg,#29b6f6,#0288d1);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;box-shadow:0 4px 16px rgba(41,182,246,.35)}
+        .brand-name{font-size:17px;font-weight:900;color:#fff;letter-spacing:.3px;line-height:1.2}
+        .brand-tagline{font-size:10px;color:#90caf9;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase}
+
+        .hero-headline{font-size:30px;font-weight:900;line-height:1.2;color:#fff;margin-bottom:10px;letter-spacing:-.4px}
+        .hero-headline span{background:linear-gradient(90deg,#29b6f6,#4fc3f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+        .hero-sub{font-size:14px;color:#90caf9;line-height:1.6;margin-bottom:28px;font-weight:400}
+
+        /* ── CHIPS ── */
+        .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:0}
+        .chip{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:7px 12px;font-size:11px;font-weight:700;color:#e3f2fd;font-family:monospace;letter-spacing:.3px;backdrop-filter:blur(4px)}
+        .chip .ci{font-size:13px}
+
+        /* ── STATS BAR ── */
+        .stats-bar{display:flex;background:rgba(255,255,255,.05);border-top:1px solid rgba(255,255,255,.08);border-bottom:1px solid rgba(255,255,255,.08);margin:0 -24px;padding:16px 24px;gap:0}
+        .stat-item{flex:1;text-align:center}
+        .stat-item+.stat-item{border-left:1px solid rgba(255,255,255,.08)}
+        .stat-num{font-size:22px;font-weight:900;color:#29b6f6;line-height:1}
+        .stat-lbl{font-size:9px;color:#78909c;font-family:monospace;letter-spacing:1px;text-transform:uppercase;margin-top:3px}
+
+        /* ── LOGIN SECTION ── */
+        .login-section{padding:28px 24px 48px}
+        .section-label{font-size:10px;letter-spacing:2.5px;color:#546e7a;font-family:monospace;font-weight:700;text-transform:uppercase;margin-bottom:16px}
+
+        .login-card{background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.1);border-radius:20px;padding:22px;backdrop-filter:blur(8px)}
+        .lbl{font-size:10px;letter-spacing:2px;color:#78909c;font-family:monospace;font-weight:700;margin-bottom:7px;text-transform:uppercase;display:block}
+        input{width:100%;padding:14px 15px;border:1.5px solid rgba(255,255,255,.1);border-radius:12px;font-size:15px;font-weight:600;color:#fff;background:rgba(255,255,255,.06);outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:12px;transition:border-color .2s;caret-color:#29b6f6}
+        input::placeholder{color:rgba(255,255,255,.3);font-weight:400}
+        input:focus{border-color:#29b6f6;background:rgba(41,182,246,.06)}
+        .btn-login{width:100%;padding:15px;border:none;border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;background:linear-gradient(135deg,#29b6f6,#0288d1);color:#fff;transition:opacity .2s,transform .1s;box-shadow:0 4px 20px rgba(41,182,246,.35);letter-spacing:.3px}
+        .btn-login:active{transform:scale(.98)}
+        .btn-login:disabled{opacity:.6;cursor:not-allowed;transform:none}
+        .err{color:#ef9a9a;font-size:12px;font-family:monospace;text-align:center;margin-top:10px;display:none;line-height:1.6;background:rgba(198,40,40,.15);border:1px solid rgba(198,40,40,.25);border-radius:8px;padding:8px 12px}
+        .checking{color:#90caf9;font-size:12px;font-family:monospace;text-align:center;margin-top:10px;display:none}
+
+        .user-types{display:flex;gap:8px;margin-top:16px;justify-content:center}
+        .utype{display:flex;align-items:center;gap:4px;font-size:10px;color:#546e7a;font-family:monospace;letter-spacing:.5px}
+        .utype .dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+        .dot-staff{background:#66bb6a}
+        .dot-driver{background:#ffa726}
+        .dot-cust{background:#29b6f6}
+
+        /* ── FEATURES ── */
+        .features{padding:0 24px 40px}
+        .feat-title{font-size:13px;font-weight:800;color:#546e7a;letter-spacing:.5px;margin-bottom:16px;text-transform:uppercase;font-family:monospace}
+        .feat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+        .feat-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:16px 14px}
+        .feat-icon{font-size:22px;margin-bottom:8px}
+        .feat-name{font-size:12px;font-weight:800;color:#e3f2fd;margin-bottom:3px}
+        .feat-desc{font-size:10px;color:#546e7a;line-height:1.5;font-family:monospace}
+
+        /* ── FOOTER ── */
+        .footer{text-align:center;padding:20px 24px 36px;border-top:1px solid rgba(255,255,255,.06)}
+        .footer-brand{font-size:13px;font-weight:800;color:#546e7a;margin-bottom:4px}
+        .footer-copy{font-size:10px;color:#37474f;font-family:monospace}
+    </style>
 </head>
 <body>
-<div class="topbar">
-  <div class="topbar-title">🏪 Customer Management</div>
-  <a href="admin.html" class="back">← Admin</a>
+
+<!-- ── HERO SECTION ── -->
+<div class="hero">
+    <div class="brand">
+        <div class="brand-icon">🚚</div>
+        <div>
+            <div class="brand-name">Satelkar's Logistics</div>
+            <div class="brand-tagline">Delivery Management Platform</div>
+        </div>
+    </div>
+
+    <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,152,0,.1);border:1px solid rgba(255,152,0,.25);border-radius:20px;padding:6px 14px;margin-bottom:20px">
+        <span style="font-size:16px">🥖</span>
+        <span style="font-size:11px;font-weight:800;color:#ffb74d;font-family:monospace;letter-spacing:.5px">Powering <span style="color:#fff">IBCAB</span></span>
+    </div>
+
+    <div class="hero-headline">Smart Delivery,<br><span>On Every Route.</span></div>
+    <div class="hero-sub">Real-time GPS tracking, automated order management, and seamless route coordination — built for modern logistics operations.</div>
+
+    <div class="chips">
+        <div class="chip"><span class="ci">📍</span>Live GPS Tracking</div>
+        <div class="chip"><span class="ci">🗺️</span>Route Optimization</div>
+        <div class="chip"><span class="ci">📦</span>Order Management</div>
+        <div class="chip"><span class="ci">⚡</span>Real-time Updates</div>
+    </div>
 </div>
 
-<div class="page">
-  <div class="stat-row" id="stats"></div>
-
-  <!-- BULK REASSIGN -->
-  <div class="bulk-box">
-    <div class="lbl">🔀 Bulk Reassign Driver</div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:180px">
-        <span style="font-size:12px;color:#8a7a6a;white-space:nowrap">From</span>
-        <select id="bulk-from" style="margin-bottom:0;flex:1;padding:9px 10px;font-size:13px">
-          <option value="">Any Driver</option>
-        </select>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:180px">
-        <span style="font-size:12px;color:#8a7a6a;white-space:nowrap">To</span>
-        <select id="bulk-to" style="margin-bottom:0;flex:1;padding:9px 10px;font-size:13px">
-          <option value="">— Select —</option>
-        </select>
-      </div>
-    </div>
-    <button class="btn" style="background:#6e3da8;color:#fff;margin-top:8px;margin-bottom:0;padding:11px" onclick="bulkReassign()">🔀 Move Customers</button>
-    <div id="bulk-msg" style="display:none;margin-top:8px" class="msg ok"></div>
-  </div>
-
-  <button class="btn btn-add" onclick="openAdd()">➕ Add New Customer</button>
-
-  <div class="filter-row">
-    <input type="text" id="srch" placeholder="Search name / ID / area…" oninput="renderList()" style="margin-bottom:0">
-    <select id="fDrv" onchange="renderList()" style="margin-bottom:0">
-      <option value="">All Drivers</option>
-    </select>
-  </div>
-  <div class="filter-row">
-    <select id="fGps" onchange="renderList()" style="margin-bottom:0">
-      <option value="">All GPS</option>
-      <option value="saved">GPS Saved ✅</option>
-      <option value="missing">GPS Missing ⚠️</option>
-    </select>
-    <select id="fArea" onchange="renderList()" style="margin-bottom:0">
-      <option value="">All Areas</option>
-    </select>
-  </div>
-
-  <div id="msg" style="display:none" class="msg ok"></div>
-  <div id="custList"></div>
+<!-- ── STATS ── -->
+<div class="stats-bar" style="margin:0;padding:16px 0">
+    <div class="stat-item"><div class="stat-num">GPS</div><div class="stat-lbl">Live Tracking</div></div>
+    <div class="stat-item"><div class="stat-num">24/7</div><div class="stat-lbl">Operations</div></div>
+    <div class="stat-item"><div class="stat-num">100%</div><div class="stat-lbl">On-time Focus</div></div>
 </div>
 
-<!-- ADD / EDIT MODAL -->
-<div class="modal-bg" id="modal" style="display:none" onclick="if(event.target===this)closeModal()">
-  <div class="modal">
-    <div class="modal-title" id="modalTitle">Add Customer</div>
-    <div class="modal-sub" id="modalSub"></div>
-    <input type="hidden" id="edit-id">
-    <input type="hidden" id="edit-old-driver">
-    <div class="lbl">Customer ID (Zoho) *</div>
-    <input type="text" id="f-cust-id" placeholder="e.g. 3249544000000113093">
-    <div class="lbl">Customer Name *</div>
-    <input type="text" id="f-name" placeholder="e.g. C Tea Post - Baner">
-    <div class="lbl">Address</div>
-    <input type="text" id="f-address" placeholder="Full address">
-    <div class="lbl">Area</div>
-    <input type="text" id="f-area" placeholder="e.g. Baner, Kharadi">
-    <div class="lbl">Assigned Driver</div>
-    <select id="f-driver">
-      <option value="">Unassigned</option>
-    </select>
-    <div class="lbl">Mobile</div>
-    <input type="tel" id="f-mobile" placeholder="Contact number">
-    <div class="lbl">Flag / Note</div>
-    <input type="text" id="f-flag" placeholder="e.g. New customer, Weekend only">
-    <div class="lbl">GPS Location</div>
-    <div style="display:flex;gap:8px;margin-bottom:8px">
-      <input type="text" id="f-lat" placeholder="Latitude" style="margin-bottom:0;flex:1">
-      <input type="text" id="f-lng" placeholder="Longitude" style="margin-bottom:0;flex:1">
+<!-- ── LOGIN ── -->
+<div class="login-section">
+    <div class="section-label">Access Portal</div>
+    <div class="login-card">
+        <label class="lbl">Username / Name / Mobile</label>
+        <input type="text" id="loginId" placeholder="Enter your credentials" autocomplete="off" autocorrect="off" autocapitalize="off">
+        <label class="lbl">Password</label>
+        <input type="password" id="loginPass" placeholder="Password" autocomplete="current-password">
+        <button class="btn-login" id="loginBtn" onclick="doLogin()">Login →</button>
+        <div class="checking" id="checkingMsg"></div>
+        <div class="err" id="errMsg">Wrong credentials. Please check and try again.</div>
+
+        <div class="user-types">
+            <div class="utype"><div class="dot dot-staff"></div>Staff</div>
+            <div class="utype"><div class="dot dot-driver"></div>Driver</div>
+            <div class="utype"><div class="dot dot-cust"></div>Customer</div>
+        </div>
     </div>
-    <button class="btn btn-gps" id="gpsPickBtn" onclick="pickGPS()">📍 Use Current Location</button>
-    <div id="gps-msg" style="display:none" class="msg in"></div>
-    <div id="form-msg" style="display:none" class="msg ok"></div>
-    <button class="btn btn-save" onclick="saveCust()">💾 Save Customer</button>
-    <button class="btn btn-cancel" onclick="closeModal()">Cancel</button>
-  </div>
+</div>
+
+<!-- ── FEATURES ── -->
+<div class="features">
+    <div class="feat-title">Platform Capabilities</div>
+    <div class="feat-grid">
+        <div class="feat-card">
+            <div class="feat-icon">📍</div>
+            <div class="feat-name">GPS Tracking</div>
+            <div class="feat-desc">Live driver location with real-time map updates</div>
+        </div>
+        <div class="feat-card">
+            <div class="feat-icon">📦</div>
+            <div class="feat-name">Order Flow</div>
+            <div class="feat-desc">End-to-end order lifecycle from placement to delivery</div>
+        </div>
+        <div class="feat-card">
+            <div class="feat-icon">🗺️</div>
+            <div class="feat-name">Route Engine</div>
+            <div class="feat-desc">Optimised delivery routes with live status</div>
+        </div>
+        <div class="feat-card">
+            <div class="feat-icon">🔔</div>
+            <div class="feat-name">Notifications</div>
+            <div class="feat-desc">Instant alerts to customers and staff</div>
+        </div>
+    </div>
+</div>
+
+<!-- ── FOOTER ── -->
+<div class="footer">
+    <div class="footer-brand">Satelkar's Logistics</div>
+    <div class="footer-copy">© 2026 · Logistics & Order Delivery Platform</div>
 </div>
 
 <script>
-// Restore session from localStorage if sessionStorage was cleared (phone lock / tab killed by OS)
-(function(){
-  if(!sessionStorage.getItem('role') && localStorage.getItem('staffRole')){
-    sessionStorage.setItem('role',  localStorage.getItem('staffRole'));
-    sessionStorage.setItem('tabs',  localStorage.getItem('staffTabs')||'[]');
-    sessionStorage.setItem('staffName', localStorage.getItem('staffNamePersist')||'');
-  }
-})();
-if(['super_admin','admin','assistant'].indexOf(sessionStorage.getItem('role'))<0) goto('');
-
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
-
-var DRIVERS=[];
-var DRIVER_COLORS={
-  orange:{bg:'#fff3e0',fg:'#c8864a'},blue:{bg:'#e3f2fd',fg:'#1a5fa8'},
-  green:{bg:'#e8f5e9',fg:'#2d7a4f'},purple:{bg:'#f3e8ff',fg:'#6e3da8'},
-  red:{bg:'#fde8e8',fg:'#c8382a'},pink:{bg:'#fce4ec',fg:'#880e4f'},
-  teal:{bg:'#e0f7fa',fg:'#00838f'},brown:{bg:'#efebe9',fg:'#4e342e'}
-};
-
-function injectDriverCSS(list){
-  var el=document.getElementById('driverCSS');
-  if(!el){el=document.createElement('style');el.id='driverCSS';document.head.appendChild(el);}
-  el.textContent=list.map(function(d){
-    var c=DRIVER_COLORS[d.color]||DRIVER_COLORS.blue;
-    return '.DC-'+d.name+'{background:'+c.bg+';color:'+c.fg+'}';
-  }).join('');
-}
-
-function populateDriverSelects(active){
-  var opt=active.map(function(d){return '<option value="'+esc(d.name)+'">'+esc(d.name)+'</option>';}).join('');
-  document.getElementById('bulk-from').innerHTML='<option value="">Any Driver</option>'+opt;
-  document.getElementById('bulk-to').innerHTML='<option value="">— Select —</option>'+opt;
-  document.getElementById('fDrv').innerHTML='<option value="">All Drivers</option>'+opt;
-  document.getElementById('f-driver').innerHTML='<option value="">Unassigned</option>'+opt;
-}
-
-function loadDrivers(){
-  return api({action:'getDrivers'}).then(function(data){
-    var list=Array.isArray(data)?data:[];
-    DRIVERS=list.filter(function(d){return d.active;}).map(function(d){return d.name;});
-    injectDriverCSS(list);
-    populateDriverSelects(list.filter(function(d){return d.active;}));
-  });
-}
-
-let customers=[], shuffleOpen=null;
-
-async function load(){
-  customers = await api({action:'getShops'});
-  if(!Array.isArray(customers)) customers=[];
-  renderStats();
-  populateAreaFilter();
-  renderList();
-}
-
-function renderStats(){
-  const saved=customers.filter(c=>c.lat).length;
-  const dc={};
-  customers.forEach(c=>{ const d=c.assigned_driver||'Unassigned'; dc[d]=(dc[d]||0)+1; });
-  document.getElementById('stats').innerHTML=`
-    <div class="stat"><div class="stat-n">${customers.length}</div><div class="stat-l">Total</div></div>
-    <div class="stat"><div class="stat-n" style="color:#2d7a4f">${saved}</div><div class="stat-l">GPS ✅</div></div>
-    <div class="stat"><div class="stat-n" style="color:#c8382a">${customers.length-saved}</div><div class="stat-l">No GPS</div></div>`;
-}
-
-function populateAreaFilter(){
-  const areas=[...new Set(customers.map(c=>c.area||'').filter(Boolean))].sort();
-  const sel=document.getElementById('fArea');
-  sel.innerHTML='<option value="">All Areas</option>'+areas.map(a=>`<option>${esc(a)}</option>`).join('');
-}
-
-function renderList(){
-  const q=(document.getElementById('srch').value||'').toLowerCase();
-  const fd=document.getElementById('fDrv').value;
-  const fg=document.getElementById('fGps').value;
-  const fa=document.getElementById('fArea').value;
-  let list=customers;
-  if(q) list=list.filter(c=>(c.name+' '+(c.area||'')+' '+(c.customer_id||c.shop_id||'')+' '+(c.address||'')+' '+(c.mobile||'')).toLowerCase().includes(q));
-  if(fd) list=list.filter(c=>(c.assigned_driver||'')===fd);
-  if(fg==='saved')   list=list.filter(c=>c.lat);
-  if(fg==='missing') list=list.filter(c=>!c.lat);
-  if(fa) list=list.filter(c=>c.area===fa);
-
-  const el=document.getElementById('custList');
-  if(!list.length){el.innerHTML='<div style="text-align:center;padding:30px;font-size:13px;color:#8a7a6a;font-family:monospace">No customers found.</div>';return;}
-
-  el.innerHTML=list.map(c=>{
-    const cid=c.customer_id||c.shop_id||'';
-    const drv=c.assigned_driver||'';
-    const dc=DRIVERS.includes(drv)?'DC-'+drv:'';
-    return `
-    <div class="cust-row" id="row-${cid}">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
-        <div class="cust-name">${esc(c.name)}</div>
-        <span class="badge ${c.lat?'b-ok':'b-miss'}">${c.lat?'✅ GPS':'⚠ No GPS'}</span>
-      </div>
-      <div style="margin-bottom:6px">
-        ${dc?`<span class="badge ${dc}" id="badge-${cid}">${esc(drv)}</span>`:`<span class="badge b-miss" id="badge-${cid}">Unassigned</span>`}
-      </div>
-      ${cid?`<div class="detail-line muted">🆔 ${esc(cid)}</div>`:''}
-      ${c.area?`<div class="detail-line">📍 ${esc(c.area)}</div>`:''}
-      ${c.address?`<div class="detail-line muted">🏠 ${esc(c.address)}</div>`:''}
-      ${c.mobile?`<div class="detail-line">📞 <a href="tel:${esc(c.mobile)}" style="color:#1565c0">${esc(c.mobile)}</a></div>`:''}
-      ${c.lat?`<div class="gps-line">🌐 ${c.lat}, ${c.lng} <a href="https://www.google.com/maps?q=${c.lat},${c.lng}" target="_blank" style="color:#1565c0;margin-left:4px">map ↗</a></div>`:''}
-      ${c.flag?`<span class="flag-line">🏷 ${esc(c.flag)}</span>`:''}
-      ${c.last_updated_at?`<div class="stamp">Updated ${esc(c.last_updated_at)}${c.last_updated_by?' by '+esc(c.last_updated_by):''}</div>`:''}
-
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-        <button class="btn-sm" style="background:#f3e8ff;color:#6e3da8" onclick="toggleReassign('${esc(cid)}')">🔀 Reassign</button>
-        <button class="btn-sm btn-edit" onclick='openEdit(${JSON.stringify(c).replace(/'/g,"&#39;")})'>✏️ Edit</button>
-        <button class="btn-sm btn-del" onclick="deleteCust('${esc(cid)}','${esc(c.name)}')">🗑 Delete</button>
-        ${c.lat?`<a href="https://www.google.com/maps?q=${c.lat},${c.lng}" target="_blank" class="btn-sm" style="background:#e3f2fd;color:#1565c0;text-decoration:none">🗺 Map</a>`:''}
-      </div>
-
-      <!-- Inline Reassign -->
-      <div class="shuffle-row" id="shuffle-${cid}" style="display:none">
-        <span style="font-size:12px;font-weight:700;color:#6e3da8;white-space:nowrap">Move to →</span>
-        <select id="sel-${cid}" style="flex:1;padding:7px 10px;font-size:13px;margin-bottom:0">
-          <option value="">Select driver…</option>
-          ${DRIVERS.map(d=>`<option ${drv===d?'disabled':''}>${d}</option>`).join('')}
-        </select>
-        <button class="shuffle-confirm" onclick="confirmReassign('${esc(cid)}')">✓ Move</button>
-        <button class="shuffle-cancel" onclick="toggleReassign('${esc(cid)}')">✕</button>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-/* ── REASSIGN ── */
-function toggleReassign(cid){
-  const row=document.getElementById('shuffle-'+cid);
-  const open=row.style.display!=='none';
-  if(shuffleOpen&&shuffleOpen!==cid){
-    const prev=document.getElementById('shuffle-'+shuffleOpen);
-    if(prev) prev.style.display='none';
-  }
-  row.style.display=open?'none':'flex';
-  shuffleOpen=open?null:cid;
-}
-
-async function confirmReassign(cid){
-  const newDrv=document.getElementById('sel-'+cid).value;
-  if(!newDrv){alert('Select a driver');return;}
-  const c=customers.find(c=>(c.customer_id||c.shop_id)===cid);
-  const btn=document.querySelector(`#shuffle-${cid} .shuffle-confirm`);
-  btn.textContent='Saving…';btn.disabled=true;
-  const now=new Date().toLocaleString('en-IN');
-  const res=await apiPost({
-    action:'updateShop',shop_id:cid,customer_id:cid,
-    name:c.name,address:c.address||'',area:c.area||'',
-    lat:c.lat||'',lng:c.lng||'',mobile:c.mobile||'',flag:c.flag||'',
-    assigned_driver:newDrv,last_updated_by:'Admin (Reassign)',last_updated_at:now
-  });
-  if(res.ok){
-    c.assigned_driver=newDrv;c.last_updated_at=now;c.last_updated_by='Admin (Reassign)';
-    document.getElementById('shuffle-'+cid).style.display='none';
-    shuffleOpen=null;
-    showMsg('✅ '+c.name+' → '+newDrv,'ok');
-    renderList();
-    // Also update today's + future undelivered orders for this customer
-    apiPost({action:'reassignOrdersForCustomer', shop_id:cid, driver:newDrv});
-  } else {
-    btn.textContent='✓ Move';btn.disabled=false;
-    showMsg('❌ Failed: '+(res.error||'unknown'),'er');
-  }
-}
-
-/* ── BULK REASSIGN ── */
-async function bulkReassign(){
-  const from=document.getElementById('bulk-from').value;
-  const to=document.getElementById('bulk-to').value;
-  const bmsg=document.getElementById('bulk-msg');
-  if(!to){bmsg.textContent='Select a "To" driver.';bmsg.className='msg er';bmsg.style.display='block';return;}
-  if(from===to){bmsg.textContent='From and To cannot be same.';bmsg.className='msg er';bmsg.style.display='block';return;}
-  const targets=customers.filter(c=>(from?c.assigned_driver===from:true)&&c.assigned_driver!==to);
-  if(!targets.length){bmsg.textContent='No customers to move.';bmsg.className='msg er';bmsg.style.display='block';return;}
-  if(!confirm(`Move ${targets.length} customers${from?' from '+from:''} → ${to}?`))return;
-  bmsg.textContent=`Moving ${targets.length}…`;bmsg.className='msg in';bmsg.style.display='block';
-  // Single PATCH — updates all matching rows in one request
-  const res=await apiPost({action:'bulkReassignDriver', from, to});
-  if(res.ok){
-    const now=new Date().toLocaleString('en-IN');
-    targets.forEach(c=>{c.assigned_driver=to;c.last_updated_at=now;c.last_updated_by='Admin (Bulk)';});
-    bmsg.textContent=`✅ Moved ${targets.length} → ${to}`;bmsg.className='msg ok';
-    // Also update today's + future undelivered orders for the affected driver
-    if(from) apiPost({action:'bulkReassignOrderDriver', from, to});
-  }else{
-    bmsg.textContent=`❌ Failed: ${res.error||'unknown'}`;bmsg.className='msg er';
-  }
-  renderList();
-}
-
-/* ── ADD / EDIT ── */
-function openAdd(){
-  document.getElementById('modalTitle').textContent='Add Customer';
-  document.getElementById('modalSub').textContent='';
-  ['edit-id','edit-old-driver','f-cust-id','f-name','f-address','f-area','f-mobile','f-flag','f-lat','f-lng'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('f-driver').value='';
-  document.getElementById('form-msg').style.display='none';
-  document.getElementById('gps-msg').style.display='none';
-  document.getElementById('modal').style.display='flex';
-}
-
-function openEdit(c){
-  const cid=c.customer_id||c.shop_id||'';
-  document.getElementById('modalTitle').textContent='Edit Customer';
-  document.getElementById('modalSub').textContent='ID: '+cid;
-  document.getElementById('edit-id').value=cid;
-  document.getElementById('f-cust-id').value=cid;
-  document.getElementById('f-name').value=c.name||'';
-  document.getElementById('f-address').value=c.address||'';
-  document.getElementById('f-area').value=c.area||'';
-  document.getElementById('f-driver').value=c.assigned_driver||'';
-  document.getElementById('edit-old-driver').value=c.assigned_driver||'';
-  document.getElementById('f-mobile').value=c.mobile||'';
-  document.getElementById('f-flag').value=c.flag||'';
-  document.getElementById('f-lat').value=c.lat||'';
-  document.getElementById('f-lng').value=c.lng||'';
-  document.getElementById('form-msg').style.display='none';
-  document.getElementById('gps-msg').style.display='none';
-  document.getElementById('modal').style.display='flex';
-}
-
-function closeModal(){document.getElementById('modal').style.display='none';}
-
-function pickGPS(){
-  if(!navigator.geolocation){alert('GPS not available');return;}
-  const btn=document.getElementById('gpsPickBtn');
-  btn.textContent='⏳ Getting…';btn.disabled=true;
-  const gm=document.getElementById('gps-msg');
-  gm.textContent='📡 Getting location…';gm.className='msg in';gm.style.display='block';
-  navigator.geolocation.getCurrentPosition(pos=>{
-    document.getElementById('f-lat').value=pos.coords.latitude.toFixed(6);
-    document.getElementById('f-lng').value=pos.coords.longitude.toFixed(6);
-    gm.textContent='📍 '+document.getElementById('f-lat').value+', '+document.getElementById('f-lng').value;
-    gm.className='msg ok';btn.textContent='📍 Use Current Location';btn.disabled=false;
-  },()=>{btn.textContent='📍 Use Current Location';btn.disabled=false;gm.textContent='❌ GPS failed.';gm.className='msg er';},{enableHighAccuracy:true,timeout:15000,maximumAge:0});
-}
-
-async function saveCust(){
-  const name=document.getElementById('f-name').value.trim();
-  const cid=document.getElementById('f-cust-id').value.trim();
-  const fmsg=document.getElementById('form-msg');
-  if(!name){fmsg.textContent='Customer name required.';fmsg.className='msg er';fmsg.style.display='block';return;}
-  if(!cid){fmsg.textContent='Customer ID required.';fmsg.className='msg er';fmsg.style.display='block';return;}
-  const existing=document.getElementById('edit-id').value;
-  const now=new Date().toLocaleString('en-IN');
-  const body={
-    action:existing?'updateShop':'addShop',
-    shop_id:cid, customer_id:cid, name,
-    address:document.getElementById('f-address').value.trim(),
-    area:document.getElementById('f-area').value.trim(),
-    assigned_driver:document.getElementById('f-driver').value||'',
-    mobile:document.getElementById('f-mobile').value.trim(),
-    flag:document.getElementById('f-flag').value.trim(),
-    lat:document.getElementById('f-lat').value,
-    lng:document.getElementById('f-lng').value,
-    last_updated_by:'Admin', last_updated_at:now
-  };
-  const oldDriver=document.getElementById('edit-old-driver').value;
-  const newDriver=document.getElementById('f-driver').value||'';
-  fmsg.textContent='Saving…';fmsg.className='msg in';fmsg.style.display='block';
-  const res=await apiPost(body);
-  if(res.ok){
-    fmsg.textContent='✅ Saved!';fmsg.className='msg ok';
-    // If driver changed on an existing customer, update their pending orders too
-    if(existing && newDriver && newDriver!==oldDriver){
-      apiPost({action:'reassignOrdersForCustomer', shop_id:cid, driver:newDriver});
+    // Register Service Workers
+    if('serviceWorker' in navigator){
+      window.addEventListener('load',function(){
+        // App cache SW — separate scope so it doesn't conflict with OneSignal
+        navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(function(){});
+      });
     }
-    setTimeout(()=>{closeModal();load();},700);
-  }
-  else{fmsg.textContent='❌ Failed: '+(res.error||'unknown');fmsg.className='msg er';}
-}
 
-async function deleteCust(cid,name){
-  if(!confirm(`Delete "${name}"? This cannot be undone.`))return;
-  const res=await apiPost({action:'deleteShop',shop_id:cid});
-  if(res.ok){showMsg('✅ Deleted: '+name,'ok');load();}
-  else showMsg('❌ Delete failed','er');
-}
+    // Load staff + driver names for case-insensitive matching
+    var staffNames  = [];
+    var driverNames = [];
 
-function showMsg(txt,type){
-  const el=document.getElementById('msg');el.textContent=txt;el.className='msg '+type;el.style.display='block';
-  setTimeout(()=>el.style.display='none',3500);
-}
+    var namesReady = Promise.all([
+      api({action:'getStaff'}).then(function(data){
+        staffNames = (Array.isArray(data)?data:[]).filter(function(s){return s.active;}).map(function(s){return s.name;});
+      }),
+      api({action:'getDrivers'}).then(function(data){
+        driverNames = (Array.isArray(data)?data:[]).filter(function(d){return d.active;}).map(function(d){return d.name;});
+      })
+    ]);
 
-loadDrivers();
-load();
+    function exactName(input, list){
+      var q = input.trim().toLowerCase();
+      return list.find(function(n){ return n.trim().toLowerCase() === q; }) || null;
+    }
+
+    var loginId   = document.getElementById('loginId');
+    var loginPass = document.getElementById('loginPass');
+    var loginBtn  = document.getElementById('loginBtn');
+    var errMsg    = document.getElementById('errMsg');
+    var checkMsg  = document.getElementById('checkingMsg');
+
+    loginPass.addEventListener('keydown',function(e){ if(e.key==='Enter') doLogin(); });
+    loginId.addEventListener('keydown',function(e){ if(e.key==='Enter') loginPass.focus(); });
+
+    function setChecking(msg){
+      errMsg.style.display='none';
+      checkMsg.textContent=msg;
+      checkMsg.style.display=msg?'block':'none';
+    }
+
+    // Mobile number normalisation — strips +91 / 91 / spaces / dashes, returns last 10 digits
+    function normalizePhone(input){
+      var digits = input.replace(/\D/g,'');
+      return digits.slice(-10); // last 10 digits
+    }
+    function isPhoneLike(input){
+      var digits = input.replace(/\D/g,'');
+      return digits.length >= 10 && digits.length <= 13;
+    }
+    // Build deduplicated list of username variants to try for customer login
+    function phoneVariants(input){
+      var variants = [input];
+      if(isPhoneLike(input)){
+        var ten = normalizePhone(input);
+        if(ten.length === 10){
+          [ten, '+91'+ten, '91'+ten, '+91 '+ten].forEach(function(v){
+            if(variants.indexOf(v) < 0) variants.push(v);
+          });
+        }
+      }
+      return variants;
+    }
+    // Try customer login with each variant in sequence, resolve on first hit
+    function tryCustomerLogin(variants, idx, pass){
+      if(idx >= variants.length) return Promise.resolve(null);
+      return api({action:'customerLogin', username:variants[idx], password:pass}).then(function(data){
+        var c = Array.isArray(data)&&data.length ? data[0] : null;
+        if(c && c.shop_id) return c;
+        return tryCustomerLogin(variants, idx+1, pass);
+      });
+    }
+
+    function doLogin(){
+      var id   = loginId.value.trim();
+      var pass = loginPass.value.trim();
+      if(!id){ loginId.focus(); return; }
+      if(!pass){ loginPass.focus(); return; }
+
+      loginBtn.disabled=true;
+      errMsg.style.display='none';
+      setChecking('⏳ Verifying…');
+
+      namesReady.then(function(){
+        var staffExact  = exactName(id, staffNames);
+        var driverExact = exactName(id, driverNames);
+
+        api({action:'staffLogin', name:staffExact||id, password:pass}).then(function(data){
+          var s = Array.isArray(data)&&data.length ? data[0] : null;
+        if(s && s.role){
+      sessionStorage.setItem('role', s.role);
+      sessionStorage.setItem('tabs', s.tabs||'[]');
+      sessionStorage.setItem('staffName', s.name);
+      sessionStorage.setItem('staffBrand', s.brand||'');
+      localStorage.setItem('staffRole', s.role);
+      localStorage.setItem('staffTabs', s.tabs||'[]');
+      localStorage.setItem('staffNamePersist', s.name);
+      localStorage.setItem('staffBrandPersist', s.brand||'');
+      if(s.role==='chef'){
+        localStorage.setItem('kitchenStaff', s.name);
+        goto('kitchen');
+      } else if(s.role==='packer'){
+        localStorage.setItem('packStaff', s.name);
+        goto('packaging');
+      } else if(s.role==='brand_owner'){
+        goto('teapost-head');
+      } else {
+        goto('admin');
+      }
+      return;
+    }
+
+          return api({action:'driverLogin', name:driverExact||id, password:pass}).then(function(data){
+            var d = Array.isArray(data)&&data.length ? data[0] : null;
+            if(d && d.name){
+              sessionStorage.setItem('role','driver');
+              sessionStorage.setItem('driver', d.name);
+              localStorage.setItem('driverRole','driver');
+              localStorage.setItem('driverName', d.name);
+              goto('driver');
+              return;
+            }
+
+            return tryCustomerLogin(phoneVariants(id), 0, pass).then(function(c){
+              if(c && c.shop_id){
+                localStorage.setItem('custSession', JSON.stringify(c));
+                goto('order');
+                return;
+              }
+              loginBtn.disabled=false;
+              setChecking('');
+              errMsg.style.display='block';
+            });
+          });
+        }).catch(function(){
+          loginBtn.disabled=false;
+          setChecking('');
+          errMsg.style.display='block';
+        });
+      });
+    }
+
+    // ── Auto-restore session ──
+    (function(){
+      var _r = sessionStorage.getItem('role');
+
+      if(!_r && localStorage.getItem('driverRole')==='driver'){
+        sessionStorage.setItem('role','driver');
+        sessionStorage.setItem('driver', localStorage.getItem('driverName'));
+        _r='driver';
+      }
+     if(!_r && localStorage.getItem('staffRole')){
+      var sr=localStorage.getItem('staffRole');
+      sessionStorage.setItem('role', sr);
+      sessionStorage.setItem('tabs', localStorage.getItem('staffTabs')||'[]');
+      sessionStorage.setItem('staffName', localStorage.getItem('staffNamePersist')||'');
+      sessionStorage.setItem('staffBrand', localStorage.getItem('staffBrandPersist')||'');
+      _r=sr;
+    }
+      // Customer session — stored directly in localStorage
+      if(!_r){
+        try {
+          var _cs = localStorage.getItem('custSession');
+          if(_cs){ var _cp=JSON.parse(_cs); if(_cp&&_cp.shop_id){ goto('order'); } }
+        } catch(e){}
+      }
+
+    if(_r==='driver')       goto('driver');
+    if(_r==='chef')         goto('kitchen');
+    if(_r==='packer')       goto('packaging');
+    if(_r==='super_admin'||_r==='admin'||_r==='assistant') goto('admin');
+    if(_r==='brand_owner') goto('teapost-head');
+
+    })();
 </script>
 </body>
 </html>

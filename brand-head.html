@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+    <title id="pageTitle">Brand Dashboard — IBCAB</title>
+    <script src="config.js"></script>
+    <script src="api.js"></script>
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f0f4ff;color:#1e1611;max-width:520px;margin:0 auto;min-height:100vh}
+        /* ── Top bar ── */
+        .topbar{background:linear-gradient(135deg,#1b5e20,#2e7d32);padding:13px 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:99}
+        .topbar-title{color:#fff;font-size:15px;font-weight:800;line-height:1.2}
+        .topbar-sub{color:#a5d6a7;font-size:11px;font-family:monospace;margin-top:1px}
+        .logout-btn{background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 11px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif;flex-shrink:0}
+        /* ── Tabs ── */
+        .tabs{display:flex;background:#fff;border-bottom:2px solid #e8f5e9;position:sticky;top:53px;z-index:98}
+        .tab{flex:1;padding:12px 4px;border:none;background:none;font-size:11px;font-weight:700;cursor:pointer;color:#9fa8da;font-family:-apple-system,sans-serif;border-bottom:3px solid transparent;margin-bottom:-2px}
+        .tab.on{color:#2e7d32;border-bottom-color:#2e7d32}
+        /* ── Pages ── */
+        .page{display:none;padding:14px 14px 100px}.page.on{display:block}
+        /* ── Cards ── */
+        .card{background:#fff;border:1.5px solid #e8eaf6;border-radius:16px;padding:14px;margin-bottom:10px}
+        .card-title{font-size:11px;letter-spacing:2px;color:#9fa8da;font-family:monospace;font-weight:700;text-transform:uppercase;margin-bottom:10px}
+        /* ── Status badge ── */
+        .status-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:20px;font-size:11px;font-weight:800;font-family:monospace}
+        .s-delivered{background:#e8f5e9;color:#2d7a4f;border:1px solid #a5d6a7}
+        .s-pending{background:#fff8e1;color:#7a4800;border:1px solid #ffe082}
+        .s-approved{background:#e8eaf6;color:#1a237e;border:1px solid #9fa8da}
+        .s-dispatched{background:#e0f7fa;color:#006064;border:1px solid #80deea}
+        .s-rejected{background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0}
+        .s-kitchen{background:#fff3e0;color:#c8864a;border:1px solid #ffe0b2}
+        .s-notyet{background:#f5f5f5;color:#9e9e9e;border:1px solid #e0e0e0}
+        .s-noorder{background:#f5f5f5;color:#9e9e9e;border:1px solid #e0e0e0}
+        /* ── Stat row ── */
+        .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+        .stat-box{background:#fff;border:1.5px solid #e8eaf6;border-radius:12px;padding:10px 6px;text-align:center;cursor:pointer;transition:border-color .15s}
+        .stat-box.active{border-color:#2e7d32;box-shadow:0 0 0 2px rgba(46,125,50,.15)}
+        .filter-chip{display:inline-flex;align-items:center;gap:6px;background:#e8f5e9;color:#2d7a4f;border:1px solid #a5d6a7;border-radius:20px;padding:5px 10px;font-size:11px;font-weight:700;font-family:monospace;margin-bottom:10px;cursor:pointer}
+        .stat-num{font-size:20px;font-weight:900;color:#2e7d32}
+        .stat-lbl{font-size:9px;color:#9fa8da;font-family:monospace;letter-spacing:1px;text-transform:uppercase;margin-top:2px}
+        /* ── Shop row ── */
+        .shop-row{border-bottom:1px solid #f0f4ff;padding:10px 0}
+        .shop-row:last-child{border-bottom:none}
+        .shop-name{font-size:13px;font-weight:800;color:#1e1611}
+        .shop-meta{font-size:11px;color:#546e7a;font-family:monospace;margin-top:2px}
+        .shop-row-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+        .items-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+        .item-chip{background:#e8f5e9;color:#2d7a4f;border-radius:10px;padding:2px 8px;font-size:10px;font-weight:700;font-family:monospace}
+        /* ── Call btn ── */
+        .call-btn{background:#e8f5e9;color:#2d7a4f;border:1.5px solid #a5d6a7;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;text-decoration:none;display:inline-block;font-family:-apple-system,sans-serif;flex-shrink:0}
+        /* ── Track btn ── */
+        .track-btn{display:block;width:100%;padding:12px;border:none;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;background:linear-gradient(135deg,#1b5e20,#2e7d32);color:#fff;text-align:center;text-decoration:none;margin-top:10px}
+        /* ── Driver section ── */
+        .driver-block{border:1.5px solid #e8f5e9;border-radius:12px;padding:12px;margin-bottom:10px;background:#f9fff9}
+        .driver-name{font-size:15px;font-weight:900;color:#1b5e20}
+        /* ── Date bar ── */
+        .date-bar{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+        .date-bar input{flex:1;padding:8px 10px;border:1.5px solid #c8e6c9;border-radius:10px;font-size:13px;font-family:monospace;color:#1e1611;background:#fff;outline:none}
+        /* ── Item row ── */
+        .item-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0f4ff;font-size:12px}
+        .item-row:last-child{border-bottom:none}
+        /* ── Refresh btn ── */
+        .refresh-btn{background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:10px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;color:#2e7d32;font-family:-apple-system,sans-serif;flex-shrink:0}
+        /* ── Empty ── */
+        .empty-msg{text-align:center;padding:24px;font-size:12px;color:#9fa8da;font-family:monospace}
+        /* ── Label ── */
+        .lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:8px;text-transform:uppercase;display:block}
+        /* ── Messages ── */
+        .msg{padding:11px 14px;border-radius:12px;font-size:12px;font-weight:600;font-family:monospace;margin-bottom:10px;line-height:1.8;white-space:pre-line}
+        .msg.ok{background:#e8f5e9;color:#2d7a4f;border:1px solid #a5d6a7}
+        .msg.er{background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0}
+        .msg.in{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9}
+
+        /* ── Shop tab ── */
+        .shop-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+        .shop-search-wrap{flex:1;display:flex;align-items:center;gap:7px;background:#fff;border:1.5px solid #c8e6c9;border-radius:10px;padding:0 10px}
+        .shop-search-wrap input{width:100%;border:none;outline:none;padding:9px 0;font-size:12px;font-family:-apple-system,sans-serif;background:transparent;color:#1e1611}
+        .shop-count{font-size:10px;color:#78909c;font-family:monospace;margin:0 2px 8px}
+        .shop-card{background:#fff;border:1.5px solid #e8eaf6;border-radius:14px;padding:12px;margin-bottom:8px}
+        .shop-actions{display:flex;gap:6px;margin-top:9px}
+        .shop-action{flex:1;border:1.5px solid #c8e6c9;background:#f7fff7;color:#2e7d32;border-radius:9px;padding:8px 5px;font-size:11px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif}
+        .shop-action.secondary{border-color:#bbdefb;background:#f5fbff;color:#1565c0}
+        .shop-overlay{position:fixed;inset:0;background:rgba(20,35,25,.48);z-index:200;display:flex;align-items:flex-end;justify-content:center}
+        .shop-modal{width:min(520px,100%);max-height:88vh;overflow:auto;background:#fff;border-radius:20px 20px 0 0;padding:14px}
+        .shop-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px}
+        .shop-modal-title{font-size:16px;font-weight:900;color:#1b5e20}
+        .shop-modal-sub{font-size:10px;color:#78909c;font-family:monospace;margin-top:3px}
+        .modal-close{border:none;background:#f0f4ff;border-radius:10px;width:32px;height:32px;cursor:pointer;font-weight:900;color:#546e7a}
+        .shop-form input{width:100%;padding:10px 12px;border:1.5px solid #e8eaf6;border-radius:10px;font-size:13px;margin-bottom:9px;outline:none;background:#fafcff}
+        .shop-save{width:100%;padding:12px;border:none;border-radius:12px;background:#2e7d32;color:#fff;font-size:13px;font-weight:800;cursor:pointer}
+        .history-tabs{display:flex;gap:6px;margin-bottom:10px}
+        .history-tab{flex:1;padding:9px;border:1.5px solid #e8eaf6;background:#fff;border-radius:10px;font-size:11px;font-weight:800;color:#546e7a;cursor:pointer}
+        .history-tab.on{border-color:#a5d6a7;background:#e8f5e9;color:#2e7d32}
+        .history-row{border-bottom:1px solid #edf2f7;padding:10px 0}
+        .history-row:last-child{border-bottom:none}
+        .history-top{display:flex;justify-content:space-between;gap:8px}
+        .history-date{font-size:11px;font-weight:800;color:#1e1611}
+        .history-meta{font-size:10px;color:#78909c;font-family:monospace;margin-top:3px;line-height:1.6}
+        .history-items{font-size:11px;color:#37474f;margin-top:5px;line-height:1.5}
+        .timeline{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+        .timeline-chip{background:#f0f4ff;border-radius:8px;padding:3px 6px;font-size:9px;color:#546e7a;font-family:monospace}
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <div>
+        <div class="topbar-title" id="topBrandTitle">🏪 Brand Dashboard</div>
+        <div class="topbar-sub" id="topName">Loading…</div>
+    </div>
+    <button class="logout-btn" onclick="doLogout()">Logout</button>
+</div>
+
+<div class="tabs">
+    <button class="tab on" id="tb-today"  onclick="showTab('today')">📊 Today</button>
+    <button class="tab"    id="tb-orders" onclick="showTab('orders')">📋 Orders</button>
+    <button class="tab"    id="tb-track"  onclick="showTab('track')">📍 Track</button>
+    <button class="tab"    id="tb-shop"   onclick="showTab('shop')">🏪 Shop</button>
+    <button class="tab"    id="tb-settings" onclick="showTab('settings')">⚙️ Settings</button>
+</div>
+
+<!-- ══════════════════ TODAY TAB ══════════════════ -->
+<div class="page on" id="pg-today">
+    <div class="date-bar">
+        <input type="date" id="today-date" onchange="loadToday()">
+        <button class="refresh-btn" onclick="loadToday()">🔄</button>
+    </div>
+    <div id="today-content">
+        <div class="card"><div class="empty-msg">Loading…</div></div>
+    </div>
+</div>
+
+<!-- ══════════════════ ORDERS TAB ══════════════════ -->
+<div class="page" id="pg-orders">
+    <div class="date-bar">
+        <input type="date" id="orders-date" onchange="loadOrders()">
+        <button class="refresh-btn" onclick="loadOrders()">🔄</button>
+    </div>
+    <div id="orders-content">
+        <div class="card"><div class="empty-msg">Loading…</div></div>
+    </div>
+</div>
+
+<!-- ══════════════════ TRACK TAB ══════════════════ -->
+<div class="page" id="pg-track">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:800;color:#2e7d32">Driver Tracking</div>
+        <button class="refresh-btn" onclick="loadTrack()">🔄 Refresh</button>
+    </div>
+    <div id="track-content">
+        <div class="card"><div class="empty-msg">Loading…</div></div>
+    </div>
+</div>
+
+
+<!-- ══════════════════ SHOP TAB ══════════════════ -->
+<div class="page" id="pg-shop">
+    <div class="shop-toolbar">
+        <div class="shop-search-wrap">
+            <span>🔎</span>
+            <input id="shop-search" type="search" placeholder="Search shop, mobile or ID…" oninput="renderShopList()">
+        </div>
+        <button class="refresh-btn" onclick="refreshShopList()">🔄</button>
+    </div>
+    <div id="shop-count" class="shop-count"></div>
+    <div id="shop-content">
+        <div class="card"><div class="empty-msg">Loading…</div></div>
+    </div>
+</div>
+
+<!-- Shop edit / history overlay -->
+<div id="shopOverlay" class="shop-overlay" style="display:none" onclick="closeShopOverlay(event)">
+    <div class="shop-modal" onclick="event.stopPropagation()">
+        <div class="shop-modal-head">
+            <div>
+                <div id="shopModalTitle" class="shop-modal-title">Shop</div>
+                <div id="shopModalSub" class="shop-modal-sub"></div>
+            </div>
+            <button class="modal-close" onclick="closeShopOverlay()">✕</button>
+        </div>
+        <div id="shopModalBody"></div>
+    </div>
+</div>
+
+<!-- ══════════════════ SETTINGS TAB ══════════════════ -->
+<div class="page" id="pg-settings" style="padding:0 0 80px">
+    <!-- Profile Card -->
+    <div style="background:linear-gradient(135deg,#1b5e20,#2e7d32);padding:28px 20px 24px;display:flex;flex-direction:column;align-items:center;gap:10px">
+        <div id="settingsAvatar" style="width:68px;height:68px;border-radius:50%;background:#66bb6a;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;color:#fff;letter-spacing:-1px;flex-shrink:0"></div>
+        <div style="text-align:center">
+            <div id="settingsName" style="font-size:18px;font-weight:900;color:#fff;margin-bottom:6px"></div>
+            <div id="settingsMeta" style="font-size:11px;font-family:monospace;color:#a5d6a7;line-height:1.8"></div>
+        </div>
+    </div>
+
+    <div style="padding:14px">
+
+        <!-- Account Section -->
+        <div style="font-size:10px;letter-spacing:2px;color:#546e7a;font-family:monospace;font-weight:700;text-transform:uppercase;margin:4px 0 8px">Account</div>
+
+        <!-- Change Password row -->
+        <div class="card" style="margin-bottom:2px;border-radius:16px 16px 4px 4px;cursor:pointer" onclick="toggleCpSection()">
+            <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:36px;height:36px;background:#f0f4ff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🔑</div>
+                <div style="flex:1">
+                    <div style="font-size:14px;font-weight:700;color:#1e1611">Change Password</div>
+                    <div style="font-size:11px;color:#546e7a;font-family:monospace">Update your login password</div>
+                </div>
+                <div id="cpChevron" style="font-size:16px;color:#546e7a;transition:transform .2s">›</div>
+            </div>
+        </div>
+        <div id="cpSection" style="display:none;background:#fff;border:1.5px solid #e8eaf6;border-top:none;border-radius:0 0 16px 16px;padding:14px 14px 6px;margin-bottom:10px">
+            <label class="lbl">Current Password</label>
+            <input type="password" id="cpOld" placeholder="Current password" autocomplete="current-password" style="padding:11px 14px;border:1.5px solid #e8eaf6;border-radius:10px;font-size:14px;color:#1e1611;background:#f0f4ff;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:8px;width:100%">
+            <label class="lbl">New Password</label>
+            <input type="password" id="cpNew" placeholder="New password (min 4 chars)" autocomplete="new-password" style="padding:11px 14px;border:1.5px solid #e8eaf6;border-radius:10px;font-size:14px;color:#1e1611;background:#f0f4ff;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:8px;width:100%">
+            <label class="lbl">Confirm New Password</label>
+            <input type="password" id="cpConfirm" placeholder="Repeat new password" autocomplete="new-password" style="padding:11px 14px;border:1.5px solid #e8eaf6;border-radius:10px;font-size:14px;color:#1e1611;background:#f0f4ff;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:8px;width:100%">
+            <div id="cpMsg" style="display:none;padding:11px 14px;border-radius:12px;font-size:12px;font-weight:600;font-family:monospace;margin-bottom:10px;line-height:1.8;white-space:pre-line"></div>
+            <button onclick="changePassword()" style="width:100%;padding:13px;border:none;border-radius:14px;font-size:14px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;background:#2e7d32;color:#fff">🔑 Update Password</button>
+        </div>
+
+        <!-- Support Section -->
+        <div style="font-size:10px;letter-spacing:2px;color:#546e7a;font-family:monospace;font-weight:700;text-transform:uppercase;margin:4px 0 8px">Support</div>
+
+        <div class="card" style="margin-bottom:24px">
+            <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:36px;height:36px;background:#f0f4ff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🥖</div>
+                <div style="flex:1">
+                    <div style="font-size:14px;font-weight:700;color:#1e1611">IBCAB Bakery System</div>
+                    <div style="font-size:11px;color:#546e7a;font-family:monospace">Admin Dashboard · v2.0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logout — last option -->
+        <div class="card" style="cursor:pointer;border-color:#f0b0b0" onclick="doLogout()">
+            <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:36px;height:36px;background:#fde8e8;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🚪</div>
+                <div style="flex:1">
+                    <div style="font-size:14px;font-weight:700;color:#c8382a">Logout</div>
+                    <div style="font-size:11px;color:#546e7a;font-family:monospace">Sign out of your account</div>
+                </div>
+                <div style="font-size:16px;color:#c8382a">›</div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    var staffName  = '';
+    var myBrand    = '';       // brand assigned to this logged-in admin
+    var brandShopIds = new Set(); // set of shop_id/customer_id strings belonging to myBrand
+    var shopsReady = null;     // promise that resolves once brandShopIds is populated
+
+    // ── Session guard ──
+    (function(){
+      var role = sessionStorage.getItem('role');
+      if(!role && localStorage.getItem('staffRole')){
+        role = localStorage.getItem('staffRole');
+        sessionStorage.setItem('role', role);
+        sessionStorage.setItem('staffName', localStorage.getItem('staffNamePersist')||'');
+        sessionStorage.setItem('staffBrand', localStorage.getItem('staffBrandPersist')||'');
+      }
+      // Accepts any brand admin — role 'brand_owner' (legacy 'teapost_head' still supported)
+      if(role !== 'brand_owner' && role !== 'teapost_head'){ goto(''); return; }
+      staffName = sessionStorage.getItem('staffName') || localStorage.getItem('staffNamePersist') || 'Brand Admin';
+      myBrand   = sessionStorage.getItem('staffBrand') || localStorage.getItem('staffBrandPersist') || '';
+      document.getElementById('topName').textContent = staffName;
+      document.getElementById('topBrandTitle').textContent = '🏪 ' + (myBrand || 'Brand') + ' Dashboard';
+      document.getElementById('pageTitle').textContent = (myBrand || 'Brand') + ' — IBCAB';
+      init();
+    })();
+
+    function doLogout(){
+      sessionStorage.clear();
+      localStorage.removeItem('staffRole');
+      localStorage.removeItem('staffTabs');
+      localStorage.removeItem('staffNamePersist');
+      localStorage.removeItem('staffBrandPersist');
+      goto('');
+    }
+
+    // ── SETTINGS ──
+    function renderSettingsProfile(){
+      if(!staffName) return;
+      var initials = staffName.split(' ').filter(Boolean).map(function(w){return w[0].toUpperCase();}).slice(0,2).join('');
+      document.getElementById('settingsAvatar').textContent = initials || '?';
+      document.getElementById('settingsName').textContent   = staffName;
+
+      var meta = [];
+      if(myBrand) meta.push('🏪 Brand: ' + myBrand);
+      meta.push('👤 Role: Brand Admin');
+      document.getElementById('settingsMeta').innerHTML = meta.join('<br>');
+    }
+
+    function toggleCpSection(){
+      var sec = document.getElementById('cpSection');
+      var chv = document.getElementById('cpChevron');
+      var open = sec.style.display !== 'none';
+      sec.style.display = open ? 'none' : 'block';
+      chv.style.transform = open ? '' : 'rotate(90deg)';
+      if(!open){ document.getElementById('cpOld').focus(); }
+    }
+
+    function changePassword(){
+      var old  = document.getElementById('cpOld').value;
+      var np   = document.getElementById('cpNew').value;
+      var nc   = document.getElementById('cpConfirm').value;
+      var msg  = document.getElementById('cpMsg');
+      msg.style.display='none';
+      if(!old||!np||!nc){ msg.textContent='Fill all fields.'; msg.className='msg er'; msg.style.display='block'; return; }
+      if(np.length < 4){ msg.textContent='New password must be at least 4 characters.'; msg.className='msg er'; msg.style.display='block'; return; }
+      if(np !== nc){ msg.textContent='New passwords do not match.'; msg.className='msg er'; msg.style.display='block'; return; }
+      msg.textContent='Updating…'; msg.className='msg in'; msg.style.display='block';
+      apiPost({ action:'changeStaffPassword', name:staffName, old_password:old, new_password:np })
+        .then(function(res){
+          if(res && res.ok){
+            msg.textContent='✅ Password changed successfully!'; msg.className='msg ok';
+            document.getElementById('cpOld').value='';
+            document.getElementById('cpNew').value='';
+            document.getElementById('cpConfirm').value='';
+          } else {
+            msg.textContent='❌ Current password is incorrect.'; msg.className='msg er';
+          }
+        }).catch(function(){
+          msg.textContent='❌ Network error. Try again.'; msg.className='msg er';
+        });
+    }
+
+    // ── Helpers ──
+    function esc(s){ var d=document.createElement('div');d.textContent=s||'';return d.innerHTML; }
+    function sid(o){ return String(o.shop_id||o.customer_id||'').trim(); }
+    function normBrand(b){ return (b||'').trim().toLowerCase(); }
+    // Loads every shop, keeps only the ones tagged with this admin's brand, and
+    // caches their ids so every tab can filter orders/deliveries by them.
+    function loadBrandShops(){
+      if(shopsReady) return shopsReady;
+      shopsReady = api({action:'getShops'}).then(function(d){
+        var shops = Array.isArray(d) ? d : [];
+        brandShopIds = new Set(
+          shops.filter(function(c){ return normBrand(c.brand) === normBrand(myBrand); })
+               .map(function(c){ return sid(c); })
+        );
+        return brandShopIds;
+      }).catch(function(){
+        brandShopIds = new Set();
+        return brandShopIds;
+      });
+      return shopsReady;
+    }
+    function inMyBrand(o){ return brandShopIds.has(sid(o)); }
+    function todayStr(){ var d=new Date();return d.getFullYear()+'-'+zp(d.getMonth()+1)+'-'+zp(d.getDate()); }
+    function tomorrowStr(){ var d=new Date();d.setDate(d.getDate()+1);return d.getFullYear()+'-'+zp(d.getMonth()+1)+'-'+zp(d.getDate()); }
+    function zp(n){ return String(n).padStart(2,'0'); }
+    function fmtDate(s){
+      var d=new Date(s+'T00:00:00');
+      return d.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
+    }
+    function fmtTime(t){ if(!t) return '—'; return t; }
+
+    var statusLabel = {pending:'⏳ Pending',approved:'✅ Approved',rejected:'❌ Rejected',kitchen:'👨‍🍳 Kitchen',packaging:'📦 Packaging',dispatched:'🚚 Dispatched',delivered:'✅ Delivered'};
+    var statusClass = {pending:'s-pending',approved:'s-approved',rejected:'s-rejected',kitchen:'s-kitchen',packaging:'s-dispatched',dispatched:'s-dispatched',delivered:'s-delivered'};
+
+
+    // ══════════════════════════════════════════════
+    // SHOP TAB — brand customer management + history
+    // ══════════════════════════════════════════════
+    var _shopList = [];
+    var _shopHistory = { orders: [], deliveries: [] };
+    var _historyMode = 'orders';
+
+    function loadShopList(){
+      var el = document.getElementById('shop-content');
+      if(!el) return;
+      el.innerHTML = '<div class="card"><div class="empty-msg">Loading shops…</div></div>';
+      Promise.all([
+        api({action:'getShops'}),
+        loadBrandShops()
+      ]).then(function(res){
+        var shops = Array.isArray(res[0]) ? res[0] : [];
+        _shopList = shops.filter(function(s){ return inMyBrand(s); });
+        renderShopList();
+      }).catch(function(){
+        el.innerHTML = '<div class="card msg er">Failed to load shops.</div>';
+      });
+    }
+
+    function refreshShopList(){
+      shopsReady = null;
+      loadShopList();
+    }
+
+    function renderShopList(){
+      var el = document.getElementById('shop-content');
+      var countEl = document.getElementById('shop-count');
+      if(!el) return;
+      var q = ((document.getElementById('shop-search')||{}).value || '').trim().toLowerCase();
+      var shown = _shopList.filter(function(s){
+        if(!q) return true;
+        return [s.name,s.mobile,s.shop_id,s.customer_id,s.area,s.address]
+          .some(function(v){ return String(v||'').toLowerCase().indexOf(q) >= 0; });
+      });
+      if(countEl) countEl.textContent = shown.length + ' shop' + (shown.length===1?'':'s') + ' in ' + (myBrand || 'your brand');
+      if(!shown.length){
+        el.innerHTML = '<div class="card"><div class="empty-msg">'+
+          (q ? 'No shops match your search.' : 'No shops found for this brand.')+'</div></div>';
+        return;
+      }
+
+      var html = '';
+      shown.forEach(function(s){
+        var id = sid(s);
+        html += '<div class="shop-card">';
+        html += '<div class="shop-row-top"><div style="flex:1;min-width:0">';
+        html += '<div class="shop-name">'+esc(s.name||'Unnamed Shop')+'</div>';
+        html += '<div class="shop-meta">ID: '+esc(id)+' · '+esc(s.mobile||'No mobile')+'</div>';
+        if(s.area || s.address) html += '<div class="shop-meta">📍 '+esc(s.area || s.address)+'</div>';
+        html += '</div><span class="status-badge s-approved">'+esc(s.brand||myBrand)+'</span></div>';
+        html += '<div class="shop-actions">';
+        html += '<button class="shop-action" onclick="openShopEdit(\''+escAttr(id)+'\')">✏️ Edit Customer</button>';
+        html += '<button class="shop-action secondary" onclick="openShopHistory(\''+escAttr(id)+'\')">🕘 History</button>';
+        html += '</div></div>';
+      });
+      el.innerHTML = html;
+    }
+
+    function escAttr(s){
+      return String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    }
+
+    function findShop(id){
+      return _shopList.find(function(s){ return sid(s) === String(id); }) || null;
+    }
+
+    function openShopEdit(id){
+      var s = findShop(id);
+      if(!s) return;
+      document.getElementById('shopModalTitle').textContent = 'Edit Customer';
+      document.getElementById('shopModalSub').textContent = (s.name||'Shop')+' · '+sid(s);
+      document.getElementById('shopModalBody').innerHTML =
+        '<div class="shop-form">'+
+        '<label class="lbl">Shop Name</label><input id="editShopName" value="'+esc(s.name||'')+'">'+
+        '<label class="lbl">Mobile</label><input id="editShopMobile" inputmode="tel" value="'+esc(s.mobile||'')+'">'+
+        '<label class="lbl">Username</label><input id="editShopUsername" autocomplete="username" value="'+esc(s.login_username||'')+'">'+
+        '<label class="lbl">New Password</label><input id="editShopPassword" type="password" autocomplete="new-password" placeholder="Leave blank to keep current password">'+
+        '<div id="shopEditMsg" style="display:none"></div>'+
+        '<button class="shop-save" onclick="saveShopEdit(\''+escAttr(sid(s))+'\')">💾 Save Customer</button>'+
+        '</div>';
+      document.getElementById('shopOverlay').style.display='flex';
+    }
+
+    function saveShopEdit(id){
+      var msg = document.getElementById('shopEditMsg');
+      var name = document.getElementById('editShopName').value.trim();
+      var mobile = document.getElementById('editShopMobile').value.trim();
+      var username = document.getElementById('editShopUsername').value.trim();
+      var password = document.getElementById('editShopPassword').value;
+      if(!name || !mobile || !username){
+        msg.textContent='Fill Shop Name, Mobile and Username.';
+        msg.className='msg er'; msg.style.display='block'; return;
+      }
+      if(password && password.length < 4){
+        msg.textContent='Password must be at least 4 characters.';
+        msg.className='msg er'; msg.style.display='block'; return;
+      }
+      msg.textContent='Saving…'; msg.className='msg in'; msg.style.display='block';
+
+      var body = {action:'updateBrandShop', shop_id:id, name:name, mobile:mobile, login_username:username};
+      if(password) body.login_password = password;
+
+      apiPost(body).then(function(res){
+        if(res && res.ok){
+          var s = findShop(id);
+          if(s){ s.name=name; s.mobile=mobile; s.login_username=username; }
+          msg.textContent='✅ Customer updated successfully.';
+          msg.className='msg ok';
+          setTimeout(function(){ closeShopOverlay(); renderShopList(); }, 600);
+        }else{
+          msg.textContent='❌ '+((res&&res.error)||'Update failed.');
+          msg.className='msg er';
+        }
+      }).catch(function(){
+        msg.textContent='❌ Network error. Try again.';
+        msg.className='msg er';
+      });
+    }
+
+    function openShopHistory(id){
+      var s = findShop(id);
+      if(!s) return;
+      document.getElementById('shopModalTitle').textContent = 'Shop History';
+      document.getElementById('shopModalSub').textContent = (s.name||'Shop')+' · '+sid(s);
+      document.getElementById('shopModalBody').innerHTML =
+        '<div class="history-tabs">'+
+        '<button id="historyOrdersBtn" class="history-tab on" onclick="switchHistory(\'orders\')">📋 Order History</button>'+
+        '<button id="historyDeliveryBtn" class="history-tab" onclick="switchHistory(\'deliveries\')">🚚 Delivery History</button>'+
+        '</div><div id="historyBody"><div class="empty-msg">Loading…</div></div>';
+      document.getElementById('shopOverlay').style.display='flex';
+      _historyMode='orders';
+      _shopHistory={orders:[],deliveries:[]};
+      Promise.all([
+        api({action:'getCustomerOrders', shop_id:id, limit:100}),
+        api({action:'getShopDeliveryHistory', shop_id:id, days:90})
+      ]).then(function(res){
+        _shopHistory.orders = Array.isArray(res[0]) ? res[0] : [];
+        _shopHistory.deliveries = Array.isArray(res[1]) ? res[1] : [];
+        renderHistory();
+      }).catch(function(){
+        document.getElementById('historyBody').innerHTML='<div class="msg er">Failed to load history.</div>';
+      });
+    }
+
+    function switchHistory(mode){
+      _historyMode=mode;
+      document.getElementById('historyOrdersBtn').classList.toggle('on',mode==='orders');
+      document.getElementById('historyDeliveryBtn').classList.toggle('on',mode==='deliveries');
+      renderHistory();
+    }
+
+    function formatStamp(v){
+      if(!v) return '—';
+      try { return new Date(v).toLocaleString('en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+      catch(e){ return String(v); }
+    }
+
+    function renderHistory(){
+      var el=document.getElementById('historyBody');
+      if(!el) return;
+      if(_historyMode==='orders'){
+        var rows=_shopHistory.orders||[];
+        if(!rows.length){ el.innerHTML='<div class="empty-msg">No customer orders found.</div>'; return; }
+        var html='';
+        rows.forEach(function(o){
+          var items=String(o.items||'').replace(/,/g,', ');
+          html+='<div class="history-row">';
+          html+='<div class="history-top"><div class="history-date">📋 '+esc(fmtDate(o.delivery_date||String(o.created_at||'').slice(0,10)))+'</div>';
+          html+='<span class="status-badge '+esc(statusClass[o.status]||'s-pending')+'">'+esc(statusLabel[o.status]||o.status||'Order')+'</span></div>';
+          html+='<div class="history-meta">Delivery date: '+esc(o.delivery_date||'—')+' · Created: '+esc(formatStamp(o.created_at))+'</div>';
+          if(items) html+='<div class="history-items">'+esc(items)+'</div>';
+          if(o.note) html+='<div class="history-meta">📝 '+esc(o.note)+'</div>';
+          var timeline=[];
+          if(o.created_at) timeline.push('Placed '+formatStamp(o.created_at));
+          if(o.approved_at) timeline.push('Approved '+formatStamp(o.approved_at));
+          if(o.kitchen_done_at) timeline.push('Kitchen '+formatStamp(o.kitchen_done_at));
+          if(o.packaged_at) timeline.push('Packed '+formatStamp(o.packaged_at));
+          if(timeline.length){
+            html+='<div class="timeline">'+timeline.map(function(t){return '<span class="timeline-chip">'+esc(t)+'</span>';}).join('')+'</div>';
+          }
+          html+='</div>';
+        });
+        el.innerHTML=html;
+      }else{
+        var ds=_shopHistory.deliveries||[];
+        if(!ds.length){ el.innerHTML='<div class="empty-msg">No delivery history found for the last 90 days.</div>'; return; }
+        var dh='';
+        ds.forEach(function(d){
+          dh+='<div class="history-row">';
+          dh+='<div class="history-top"><div class="history-date">🚚 '+esc(fmtDate(d.date))+'</div>';
+          dh+='<div style="font-size:12px;font-weight:900;color:#2e7d32">🕐 '+esc(fmtTime(d.time))+'</div></div>';
+          dh+='<div class="history-meta">Driver: '+esc(d.driver||'—')+'</div>';
+          dh+='</div>';
+        });
+        el.innerHTML=dh;
+      }
+    }
+
+    function closeShopOverlay(e){
+      if(e && e.target !== document.getElementById('shopOverlay')) return;
+      document.getElementById('shopOverlay').style.display='none';
+    }
+
+    function showTab(t){
+      ['today','orders','track','shop','settings'].forEach(function(x){
+        var pg=document.getElementById('pg-'+x); if(pg) pg.classList.toggle('on',x===t);
+        var tb=document.getElementById('tb-'+x); if(tb) tb.classList.toggle('on',x===t);
+      });
+      if(!myBrand && t!=='settings') return;
+      if(t==='settings'){ renderSettingsProfile(); return; }
+      loadBrandShops().then(function(){
+        if(t==='today')  loadToday();
+        if(t==='orders') loadOrders();
+        if(t==='track')  loadTrack();
+        if(t==='shop')   loadShopList();
+      });
+    }
+
+    function init(){
+      var td = document.getElementById('today-date');
+      var od = document.getElementById('orders-date');
+      if(td) td.value = todayStr();
+      if(od) od.value = todayStr();
+      if(!myBrand){
+        ['today-content','orders-content','track-content','shop-content'].forEach(function(id){
+          document.getElementById(id).innerHTML = '<div class="card"><div class="empty-msg">No brand assigned to your account.<br>Ask admin to set it in the Users tab.</div></div>';
+        });
+        return;
+      }
+      loadBrandShops().then(loadToday);
+    }
+
+    // ══════════════════════════════════════════════
+    // TODAY TAB — brand-wide delivery status
+    // ══════════════════════════════════════════════
+    var _todayCache  = null;   // {orders, delMap, driverMap, date}
+    var _todayFilter = 'all';  // 'all' | 'delivered' | 'pending'
+
+    function loadToday(){
+      var el = document.getElementById('today-content');
+      el.innerHTML = '<div class="card"><div class="empty-msg">Loading…</div></div>';
+      var dateEl = document.getElementById('today-date');
+      var date = dateEl ? dateEl.value : todayStr();
+
+      Promise.all([
+        loadBrandShops(),
+        api({action:'getOrders', date:date}),
+        api({action:'getDeliveries', date:date}),
+        api({action:'getDrivers'})
+      ]).then(function(res){
+        var raw        = Array.isArray(res[1]) ? res[1] : [];
+        var orders     = raw.filter(inMyBrand);
+        var allDel     = Array.isArray(res[2]) ? res[2] : [];
+        var drivers    = Array.isArray(res[3]) ? res[3] : [];
+
+        // Build delivery map by shop_id
+        var delMap = {};
+        allDel.forEach(function(d){ delMap[d.shop_id] = d; });
+
+        // Build driver info map
+        var driverMap = {};
+        drivers.forEach(function(d){ driverMap[d.name] = d; });
+
+        if(!orders.length){
+          el.innerHTML = '<div class="card">'+todayEmptyDiagnostic(raw, date)+'</div>';
+          return;
+        }
+
+        _todayCache  = { orders:orders, delMap:delMap, driverMap:driverMap, date:date };
+        _todayFilter = 'all';
+        renderToday();
+      }).catch(function(){
+        el.innerHTML = '<div class="card msg er">Failed to load. Check your connection.</div>';
+      });
+    }
+
+    function todayEmptyDiagnostic(raw, date){
+      if(brandShopIds.size === 0){
+        return '<div class="empty-msg">No shops are tagged to the "'+esc(myBrand)+'" brand yet.<br>Ask admin to set the Brand field for these shops in the Customers tab.</div>';
+      }
+      if(raw.length === 0){
+        return '<div class="empty-msg">No orders found for '+esc(fmtDate(date))+' at all.<br>Try a different date using the picker above.</div>';
+      }
+      return '<div class="empty-msg">There are '+raw.length+' order(s) for '+esc(fmtDate(date))+', but none are tagged to the "'+esc(myBrand)+'" brand.<br>Check the Brand field on those shops in the Customers tab.</div>';
+    }
+
+    function setTodayFilter(f){
+      _todayFilter = (_todayFilter === f) ? 'all' : f; // tap again to clear
+      renderToday();
+    }
+
+    function renderToday(){
+      var el = document.getElementById('today-content');
+      if(!_todayCache) return;
+      var orders    = _todayCache.orders, delMap = _todayCache.delMap,
+          driverMap = _todayCache.driverMap, date = _todayCache.date;
+
+      if(!orders.length){
+        el.innerHTML = '<div class="card"><div class="empty-msg">No '+esc(myBrand)+' orders found for '+esc(fmtDate(date))+'</div></div>';
+        return;
+      }
+
+      var delivered = orders.filter(function(o){ return !!delMap[o.shop_id]; }).length;
+      var pending   = orders.length - delivered;
+
+      var shown = orders.filter(function(o){
+        if(_todayFilter==='delivered') return !!delMap[o.shop_id];
+        if(_todayFilter==='pending')   return !delMap[o.shop_id];
+        return true;
+      });
+
+      var FILTER_LABEL = {all:'All', delivered:'Delivered', pending:'Pending'};
+
+      var html = '';
+
+      // ── Summary stats (tap to filter the list below) ──
+      html += '<div class="stat-grid">';
+      html += '<div class="stat-box'+(_todayFilter==='all'?' active':'')+'" onclick="setTodayFilter(\'all\')"><div class="stat-num" style="color:#2e7d32">'+orders.length+'</div><div class="stat-lbl">Total</div></div>';
+      html += '<div class="stat-box'+(_todayFilter==='delivered'?' active':'')+'" onclick="setTodayFilter(\'delivered\')"><div class="stat-num" style="color:#2d7a4f">'+delivered+'</div><div class="stat-lbl">Delivered</div></div>';
+      html += '<div class="stat-box'+(_todayFilter==='pending'?' active':'')+'" onclick="setTodayFilter(\'pending\')"><div class="stat-num" style="color:#7a4800">'+pending+'</div><div class="stat-lbl">Pending</div></div>';
+      html += '<div class="stat-box"><div class="stat-num" style="color:#1a237e">'+Math.round(delivered/orders.length*100)+'%</div><div class="stat-lbl">Done</div></div>';
+      html += '</div>';
+
+      if(_todayFilter!=='all'){
+        html += '<div class="filter-chip" onclick="setTodayFilter(\''+_todayFilter+'\')">Showing: '+FILTER_LABEL[_todayFilter]+' ('+shown.length+') ✕</div>';
+      }
+
+      // Separate delivered and pending
+      var deliveredOrders = shown.filter(function(o){ return !!delMap[o.shop_id]; });
+      var pendingOrders   = shown.filter(function(o){ return !delMap[o.shop_id]; });
+
+      // ── PENDING DELIVERIES (show first, in orange/amber) ──
+      if(pendingOrders.length > 0){
+        html += '<div style="background:#fff8e1;border:2px solid #ffe082;border-radius:16px;padding:14px;margin-bottom:12px">';
+        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">';
+        html += '<div style="font-size:24px">🚚</div>';
+        html += '<div style="flex:1"><div style="font-size:14px;font-weight:900;color:#7a4800">Pending Delivery</div><div style="font-size:10px;color:#8a7a6a;font-family:monospace">'+pendingOrders.length+' order(s) waiting to be delivered</div></div>';
+        html += '</div>';
+
+        // Group by driver
+        var byDriver = {};
+        pendingOrders.forEach(function(o){
+          var d = o.driver || '(No Driver)';
+          if(!byDriver[d]) byDriver[d] = [];
+          byDriver[d].push(o);
+        });
+
+        Object.keys(byDriver).sort().forEach(function(driverName){
+          var dInfo = driverMap[driverName] || null;
+          var dMobile = dInfo ? (dInfo.mobile||'') : '';
+          var shopList = byDriver[driverName];
+
+          html += '<div style="background:#fff;border:1.5px solid #ffe082;border-radius:12px;padding:12px;margin-bottom:10px;margin-top:10px">';
+          html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:10px;border-bottom:1.5px solid #f5ede0">';
+          html += '<div>';
+          html += '<div style="font-size:13px;font-weight:800;color:#7a4800">🚗 '+esc(driverName)+'</div>';
+          if(dMobile) html += '<div style="font-size:10px;color:#8a7a6a;font-family:monospace">📞 <a href="tel:'+esc(dMobile)+'" style="color:#7a4800;text-decoration:none">'+esc(dMobile)+'</a></div>';
+          html += '</div>';
+          html += '<div style="text-align:right;font-size:11px;font-weight:700;color:#7a4800;font-family:monospace">'+shopList.length+' stop(s)</div>';
+          html += '</div>';
+
+          shopList.forEach(function(o, idx){
+            var iArr=(o.items||'').split(','), qArr=(o.qty||'').split(',');
+            var itemsSummary=iArr.map(function(it,i){
+              var q=parseInt(qArr[i])||0; if(!it.trim()||!q) return '';
+              return '<span style="display:inline-block;background:#fff8e1;color:#7a4800;border:1px solid #ffe082;border-radius:8px;padding:3px 8px;font-size:10px;font-weight:700;font-family:monospace;margin-right:6px;margin-bottom:4px">'+esc(it.trim())+' ×'+q+'</span>';
+            }).filter(Boolean).join('');
+
+            html += '<div style="'+(idx > 0 ? 'margin-top:10px;padding-top:10px;border-top:1px dashed #f0e8dc;' : '')+'">';
+            html += '<div style="font-size:13px;font-weight:700;color:#1e1611">'+esc(o.shop_name)+'</div>';
+            html += '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px">📍 '+esc(o.address||'—')+'</div>';
+            if(itemsSummary) html += '<div style="margin-top:6px">'+itemsSummary+'</div>';
+            html += '</div>';
+          });
+          html += '</div>';
+        });
+        html += '</div>';
+      }
+
+      // ── DELIVERED (show after, in green) ──
+      if(deliveredOrders.length > 0){
+        html += '<div style="background:#e8f5e9;border:2px solid #a5d6a7;border-radius:16px;padding:14px;margin-top:12px">';
+        html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">';
+        html += '<div style="font-size:24px">✅</div>';
+        html += '<div style="flex:1"><div style="font-size:14px;font-weight:900;color:#2d7a4f">Delivered</div><div style="font-size:10px;color:#546e7a;font-family:monospace">'+deliveredOrders.length+' order(s) successfully delivered</div></div>';
+        html += '</div>';
+
+        // Group by driver
+        var byDriver = {};
+        deliveredOrders.forEach(function(o){
+          var d = o.driver || '(No Driver)';
+          if(!byDriver[d]) byDriver[d] = [];
+          byDriver[d].push(o);
+        });
+
+        Object.keys(byDriver).sort().forEach(function(driverName){
+          var dInfo = driverMap[driverName] || null;
+          var dMobile = dInfo ? (dInfo.mobile||'') : '';
+          var shopList = byDriver[driverName];
+
+          html += '<div style="background:#fff;border:1.5px solid #a5d6a7;border-radius:12px;padding:12px;margin-bottom:10px;margin-top:10px">';
+          html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:10px;border-bottom:1.5px solid #e8f5e9">';
+          html += '<div>';
+          html += '<div style="font-size:13px;font-weight:800;color:#2d7a4f">🚗 '+esc(driverName)+'</div>';
+          if(dMobile) html += '<div style="font-size:10px;color:#546e7a;font-family:monospace">📞 <a href="tel:'+esc(dMobile)+'" style="color:#2d7a4f;text-decoration:none">'+esc(dMobile)+'</a></div>';
+          html += '</div>';
+          html += '<div style="text-align:right;font-size:11px;font-weight:700;color:#2d7a4f;font-family:monospace">'+shopList.length+' delivered</div>';
+          html += '</div>';
+
+          shopList.forEach(function(o, idx){
+            var del = delMap[o.shop_id] || null;
+            var iArr=(o.items||'').split(','), qArr=(o.qty||'').split(',');
+            var itemsSummary=iArr.map(function(it,i){
+              var q=parseInt(qArr[i])||0; if(!it.trim()||!q) return '';
+              return '<span style="display:inline-block;background:#e8f5e9;color:#2d7a4f;border:1px solid #a5d6a7;border-radius:8px;padding:3px 8px;font-size:10px;font-weight:700;font-family:monospace;margin-right:6px;margin-bottom:4px">'+esc(it.trim())+' ×'+q+'</span>';
+            }).filter(Boolean).join('');
+
+            html += '<div style="'+(idx > 0 ? 'margin-top:10px;padding-top:10px;border-top:1px dashed #e8f5e9;' : '')+'">';
+            html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">';
+            html += '<div style="flex:1">';
+            html += '<div style="font-size:13px;font-weight:700;color:#1e1611">'+esc(o.shop_name)+'</div>';
+            html += '<div style="font-size:10px;color:#546e7a;font-family:monospace;margin-top:2px">📍 '+esc(o.address||'—')+'</div>';
+            html += '</div>';
+            html += '<div style="text-align:right;font-size:10px;font-weight:700;color:#2d7a4f;font-family:monospace;white-space:nowrap">🕐 '+(del?esc(fmtTime(del.time)):'—')+'</div>';
+            html += '</div>';
+            if(itemsSummary) html += '<div style="margin-top:6px">'+itemsSummary+'</div>';
+            if(del && del.lat && del.lng){
+              html += '<div style="margin-top:6px"><a href="https://www.google.com/maps?q='+del.lat+','+del.lng+'" target="_blank" style="font-size:9px;color:#1565c0;font-family:monospace">📍 View location</a></div>';
+            }
+            html += '</div>';
+          });
+          html += '</div>';
+        });
+        html += '</div>';
+      }
+
+      el.innerHTML = html;
+    }
+
+    // ══════════════════════════════════════════════
+    // ORDERS TAB — this brand's customer pre-orders
+    // ══════════════════════════════════════════════
+    var _ordersCache  = null;  // {list, date}
+    var _ordersFilter = 'all'; // 'all' | 'approved' | 'pending' | 'rejected'
+
+    function loadOrders(){
+      var el = document.getElementById('orders-content');
+      el.innerHTML = '<div class="card"><div class="empty-msg">Loading…</div></div>';
+      var dateEl = document.getElementById('orders-date');
+      var date = dateEl ? dateEl.value : todayStr();
+
+      Promise.all([
+        loadBrandShops(),
+        api({action:'getOrders', date:date}),
+        api({action:'getDeliveries', date:date})
+      ]).then(function(res){
+        var raw  = Array.isArray(res[1]) ? res[1] : [];
+        var list = raw.filter(inMyBrand);
+        var allDel = Array.isArray(res[2]) ? res[2] : [];
+
+        // Build delivery map by shop_id
+        var delMap = {};
+        allDel.forEach(function(d){ delMap[d.shop_id] = d; });
+
+        if(!list.length){
+          el.innerHTML = '<div class="card">'+ordersEmptyDiagnostic(raw, date)+'</div>';
+          return;
+        }
+
+        _ordersCache  = { list:list, date:date, delMap:delMap };
+        _ordersFilter = 'all';
+        renderOrders();
+      }).catch(function(){
+        el.innerHTML = '<div class="card msg er">Failed to load orders.</div>';
+      });
+    }
+
+    // Explains *why* the list is empty instead of a flat "No orders" —
+    // helps tell apart a date mismatch, missing brand tags, and a genuinely quiet day.
+    function ordersEmptyDiagnostic(raw, date){
+      if(brandShopIds.size === 0){
+        return '<div class="empty-msg">No shops are tagged to the "'+esc(myBrand)+'" brand yet.<br>Ask admin to set the Brand field for these shops in the Customers tab.</div>';
+      }
+      if(raw.length === 0){
+        return '<div class="empty-msg">No orders placed by anyone for '+esc(fmtDate(date))+'.<br>Try a different date using the picker above.</div>';
+      }
+      return '<div class="empty-msg">There are '+raw.length+' order(s) for '+esc(fmtDate(date))+', but none are tagged to the "'+esc(myBrand)+'" brand.<br>Check the Brand field on those shops in the Customers tab, or try a different date.</div>';
+    }
+
+    function setOrdersFilter(f){
+      _ordersFilter = (_ordersFilter === f) ? 'all' : f; // tap again to clear
+      renderOrders();
+    }
+
+    function renderOrders(){
+      var el = document.getElementById('orders-content');
+      if(!_ordersCache) return;
+      var list = _ordersCache.list, date = _ordersCache.date, delMap = _ordersCache.delMap || {};
+
+      if(!list.length){
+        el.innerHTML = '<div class="card"><div class="empty-msg">No '+esc(myBrand)+' orders for '+esc(fmtDate(date))+'</div></div>';
+        return;
+      }
+
+      var delivered = list.filter(function(o){ return !!delMap[o.shop_id]; }).length;
+      var pendingC  = list.length - delivered;
+      var rejected  = list.filter(function(o){ return o.status==='rejected'; });
+
+      var shown = list;
+      if(_ordersFilter==='delivered') shown = list.filter(function(o){ return !!delMap[o.shop_id]; });
+      if(_ordersFilter==='pending')  shown = list.filter(function(o){ return !delMap[o.shop_id]; });
+      if(_ordersFilter==='rejected') shown = rejected;
+
+      var FILTER_LABEL = {all:'All', delivered:'Delivered', pending:'Pending', rejected:'Rejected'};
+
+      var html = '';
+
+      // ── Stats (tap to filter the list below) ──
+      html += '<div class="stat-grid">';
+      html += '<div class="stat-box'+(_ordersFilter==='all'?' active':'')+'" onclick="setOrdersFilter(\'all\')"><div class="stat-num" style="color:#2e7d32">'+list.length+'</div><div class="stat-lbl">Total</div></div>';
+      html += '<div class="stat-box'+(_ordersFilter==='delivered'?' active':'')+'" onclick="setOrdersFilter(\'delivered\')"><div class="stat-num" style="color:#2d7a4f">'+delivered+'</div><div class="stat-lbl">Delivered</div></div>';
+      html += '<div class="stat-box'+(_ordersFilter==='pending'?' active':'')+'" onclick="setOrdersFilter(\'pending\')"><div class="stat-num" style="color:#7a4800">'+pendingC+'</div><div class="stat-lbl">Pending</div></div>';
+      html += '<div class="stat-box'+(_ordersFilter==='rejected'?' active':'')+'" onclick="setOrdersFilter(\'rejected\')"><div class="stat-num" style="color:#c8382a">'+rejected.length+'</div><div class="stat-lbl">Rejected</div></div>';
+      html += '</div>';
+
+      if(_ordersFilter!=='all'){
+        html += '<div class="filter-chip" onclick="setOrdersFilter(\''+_ordersFilter+'\')">Showing: '+FILTER_LABEL[_ordersFilter]+' ('+shown.length+') ✕</div>';
+      }
+
+      // ── Per shop order ──
+      html += '<div class="card"><div class="card-title">'+esc(myBrand)+' Orders — '+esc(fmtDate(date))+'</div>';
+      if(!shown.length){
+        html += '<div class="empty-msg">No shops match this filter.</div>';
+      }
+      shown.forEach(function(o){
+        var iArr=(o.items||'').split(','), qArr=(o.qty||'').split(','), tot=0;
+        var rows=iArr.map(function(item,i){
+          var q=parseInt(qArr[i])||0; if(!item.trim()||!q) return '';
+          tot+=q;
+          return '<div class="item-row"><span style="font-weight:600;color:#1e1611;flex:1">'+esc(item.trim())+'</span><span style="font-weight:800;color:#2e7d32;font-family:monospace">× '+q+'</span></div>';
+        }).filter(Boolean).join('');
+
+        var isDelivered = !!delMap[o.shop_id];
+        var s = isDelivered ? 'delivered' : o.status || 'pending';
+        html += '<div class="shop-row">';
+        html += '<div class="shop-row-top">';
+        html += '<div class="shop-name">'+esc(o.shop_name)+'</div>';
+        html += '<span class="status-badge '+esc(statusClass[s]||'s-pending')+'">'+esc(statusLabel[s]||s)+'</span>';
+        html += '</div>';
+        if(rows){
+          html += '<div style="margin-top:8px">'+rows+'</div>';
+          html += '<div style="font-size:10px;color:#9fa8da;font-family:monospace;text-align:right;margin-top:4px">Total: '+tot+' items</div>';
+        }
+        if(o.note)       html += '<div style="font-size:11px;color:#546e7a;font-family:monospace;margin-top:4px">📝 '+esc(o.note)+'</div>';
+        if(o.admin_note) html += '<div style="font-size:11px;color:#1565c0;font-family:monospace;margin-top:3px">💬 '+esc(o.admin_note)+'</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+
+      el.innerHTML = html;
+    }
+
+    // ══════════════════════════════════════════════
+    // TRACK TAB — all drivers carrying this brand's shops
+    // ══════════════════════════════════════════════
+    function loadTrack(){
+      var el = document.getElementById('track-content');
+      el.innerHTML = '<div class="card"><div class="empty-msg">Loading…</div></div>';
+      var today = todayStr();
+
+      Promise.all([
+        api({action:'getOrders', date:today}),
+        api({action:'getDeliveries', date:today}),
+        api({action:'getDrivers'})
+      ]).then(function(res){
+        var allOrders  = Array.isArray(res[0]) ? res[0] : [];
+        var allDel     = Array.isArray(res[1]) ? res[1] : [];
+        var drivers    = Array.isArray(res[2]) ? res[2] : [];
+
+        var brandOrders = allOrders.filter(inMyBrand);
+
+        // Build delivery map
+        var delMap = {};
+        allDel.forEach(function(d){ delMap[d.shop_id] = d; });
+
+        // Group this brand's orders by driver
+        var byDriver = {};
+        brandOrders.forEach(function(o){
+          var d = o.driver||'(no driver)';
+          if(!byDriver[d]) byDriver[d] = [];
+          byDriver[d].push(o);
+        });
+
+        var driverNames = Object.keys(byDriver);
+
+        var html = '';
+
+        if(!driverNames.length){
+          html = '<div class="card"><div class="empty-msg">No '+esc(myBrand)+' deliveries scheduled today.</div></div>';
+          el.innerHTML = html;
+          return;
+        }
+
+        // ── Per driver block ──
+        driverNames.forEach(function(dName){
+          var shops = byDriver[dName];
+          var dInfo = drivers.find(function(d){ return d.name === dName; }) || null;
+          var dMobile = dInfo ? (dInfo.mobile||'') : '';
+          var trackRaw = dInfo ? (dInfo.tracking_url||'') : '';
+          var trackOn  = dInfo ? !!dInfo.tracking_enabled : false;
+          var urlMatch = trackRaw.match(/https?:\/\/\S+/);
+          var trackUrl = urlMatch ? urlMatch[0] : trackRaw;
+
+          var done   = shops.filter(function(o){ return !!delMap[o.shop_id]; }).length;
+          var total  = shops.length;
+
+          html += '<div class="driver-block">';
+          html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">';
+          html += '<div>';
+          html += '<div class="driver-name">🚗 '+esc(dName)+'</div>';
+          html += '<div style="font-size:11px;color:#546e7a;font-family:monospace;margin-top:2px">🏪 '+done+' / '+total+' '+esc(myBrand)+' shops delivered</div>';
+          if(dMobile) html += '<div style="font-size:11px;color:#546e7a;font-family:monospace;margin-top:1px">📞 '+esc(dMobile)+'</div>';
+          html += '</div>';
+          if(dMobile) html += '<a href="tel:'+esc(dMobile)+'" class="call-btn">📞 Call</a>';
+          html += '</div>';
+
+          // Shops list
+          shops.forEach(function(o){
+            var del = delMap[o.shop_id] || null;
+            html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid #e8f5e9">';
+            html += '<div style="font-size:12px;font-weight:700;color:#1e1611">'+esc(o.shop_name)+'</div>';
+            if(del){
+              html += '<span class="status-badge s-delivered" style="font-size:10px;padding:2px 8px">✅ '+esc(fmtTime(del.time))+'</span>';
+            } else {
+              html += '<span class="status-badge s-dispatched" style="font-size:10px;padding:2px 8px">🚚 Pending</span>';
+            }
+            html += '</div>';
+          });
+
+          // Tracking link
+          if(trackUrl && trackOn){
+            html += '<a href="'+esc(trackUrl)+'" target="_blank" class="track-btn">📍 Track '+esc(dName)+' Live</a>';
+          } else {
+            html += '<div style="margin-top:8px;text-align:center;font-size:11px;color:#9fa8da;font-family:monospace">Live tracking not enabled for this driver</div>';
+          }
+
+          html += '</div>';
+        });
+
+        el.innerHTML = html;
+      }).catch(function(){
+        el.innerHTML = '<div class="card msg er">Failed to load tracking data.</div>';
+      });
+    }
+</script>
+</body>
+</html>

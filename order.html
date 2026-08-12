@@ -1109,21 +1109,43 @@ function submitOrder(){
   });
 }
 
-// ── HISTORY ──
 function loadHistory(){
   var el  = document.getElementById('historyList');
   var sb  = document.getElementById('histSummaryBar');
+  if (!el) return;
+  if (sb) { sb.style.display = 'none'; sb.innerHTML = ''; }
   el.innerHTML = '<div style="padding:20px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
-  sb.style.display = 'none'; sb.innerHTML = '';
-  api({ action:'getCustomerOrders', shop_id: session.shop_id, limit: 30 }).then(function(data){
-    var list = Array.isArray(data) ? data : [];
-    if (!list.length){
-      el.innerHTML = '<div style="padding:30px;text-align:center;font-size:13px;color:#8a7a6a;font-family:monospace">No orders yet.</div>';
+
+  if (!session || !session.shop_id) {
+    el.innerHTML = '<div style="padding:30px;text-align:center;font-size:13px;color:#c8382a;font-family:monospace">Session expired. Please log in again.</div>';
+    return;
+  }
+
+  // 1) App-placed orders  2) Driver deliveries  3) Order line-items (items/qty)
+  Promise.all([
+    api({ action:'getCustomerOrders', shop_id: session.shop_id, limit: 30 }),
+    api({ action:'getShopDeliveryHistory', shop_id: session.shop_id, days: 90 }),
+    api({ action:'getShopOrdersHistory', shop_id: session.shop_id, days: 90 })
+  ]).then(function(res){
+    var custOrders = Array.isArray(res[0]) ? res[0] : [];
+    var deliveries = Array.isArray(res[1]) ? res[1] : [];
+    var shopOrders = Array.isArray(res[2]) ? res[2] : [];
+
+    // Map date → order row (items/qty) for joining with deliveries
+    var orderByDate = {};
+    shopOrders.forEach(function(o){
+      if (o.date) orderByDate[o.date] = o;
+    });
+
+    if (!custOrders.length && !deliveries.length && !shopOrders.length) {
+      el.innerHTML = '<div style="padding:30px;text-align:center;font-size:13px;color:#8a7a6a;font-family:monospace">No orders or deliveries yet.</div>';
       return;
     }
-    // ── Summary counts ──
+
     var counts = {};
-    list.forEach(function(o){ counts[o.status] = (counts[o.status]||0) + 1; });
+    custOrders.forEach(function(o){ counts[o.status] = (counts[o.status]||0) + 1; });
+    if (deliveries.length) counts['delivered'] = deliveries.length;
+
     var chips = [];
     var countDefs = [
       { key:'rejected',   label:'❌ Rejected',   bg:'#fde8e8', color:'#c8382a', border:'#f0b0b0' },
@@ -1131,34 +1153,79 @@ function loadHistory(){
       { key:'approved',   label:'✅ Approved',    bg:'#e3f2fd', color:'#1565c0', border:'#90caf9' },
       { key:'dispatched', label:'🚚 Dispatched',  bg:'#e8f5e9', color:'#2d7a4f', border:'#a5d6a7' },
       { key:'kitchen',    label:'👨‍🍳 Kitchen',    bg:'#fff3e0', color:'#c8864a', border:'#ffe0b2' },
-      { key:'packaging',  label:'📦 Packaging',   bg:'#f3e8ff', color:'#6e3da8', border:'#ce93d8' }
+      { key:'packaging',  label:'📦 Packaging',   bg:'#f3e8ff', color:'#6e3da8', border:'#ce93d8' },
+      { key:'delivered',  label:'✅ Delivered',   bg:'#e8f5e9', color:'#2d7a4f', border:'#a5d6a7' }
     ];
     countDefs.forEach(function(d){
       if (!counts[d.key]) return;
       chips.push('<span style="display:inline-flex;align-items:center;gap:5px;background:'+d.bg+';border:1px solid '+d.border+';border-radius:20px;padding:5px 11px;font-size:11px;font-weight:800;color:'+d.color+';font-family:monospace">'+d.label+' <span style="background:'+d.border+';border-radius:10px;padding:1px 7px;font-size:11px">'+counts[d.key]+'</span></span>');
     });
-    if(chips.length){ sb.innerHTML = chips.join(''); sb.style.display = 'flex'; }
+    if (sb && chips.length){ sb.innerHTML = chips.join(''); sb.style.display = 'flex'; }
 
-    el.innerHTML = list.map(function(o){
-      var itemPairs = [];
-      var iArr = (o.items||'').split(',');
-      var qArr = (o.qty||'').split(',');
-      iArr.forEach(function(item,i){ if(item.trim()) itemPairs.push(qArr[i]+'× '+item.trim()); });
-      var statusLabel = {pending:'⏳ Pending Approval',approved:'✅ Approved',rejected:'❌ Rejected',kitchen:'👨‍🍳 In Kitchen',packaging:'📦 Packaging',dispatched:'🚚 Out for Delivery'};
-      var statusClass = {pending:'s-pending',approved:'s-approved',rejected:'s-rejected',kitchen:'s-kitchen',packaging:'s-packaging',dispatched:'s-dispatched'};
-      return '<div class="hist-card">'+
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">'+
-          '<div>'+
-            '<div class="hist-date">Delivery: '+fmtDate(o.delivery_date)+'</div>'+
-            '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px">Ordered: '+new Date(o.created_at).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+'</div>'+
+    function itemsHtml(items, qty){
+      var iArr = String(items||'').split(',');
+      var qArr = String(qty||'').split(',');
+      var pairs = [];
+      iArr.forEach(function(item,i){
+        var name = item.replace(/\n/g,' ').trim();
+        if (!name) return;
+        pairs.push('<div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0"><span style="flex:1;color:#1e1611">'+esc(name)+'</span><span style="font-weight:800;color:#2d7a4f;font-family:monospace;flex-shrink:0">× '+(qArr[i]||'?').trim()+'</span></div>');
+      });
+      if (!pairs.length) return '';
+      return '<div style="margin-top:8px;background:#f5ede0;border-radius:10px;padding:8px 10px;font-size:12px;line-height:1.5">'+pairs.join('')+'</div>';
+    }
+
+    var html = '';
+    var statusLabel = {pending:'⏳ Pending Approval',approved:'✅ Approved',rejected:'❌ Rejected',kitchen:'👨‍🍳 In Kitchen',packaging:'📦 Packaging',dispatched:'🚚 Out for Delivery'};
+    var statusClass = {pending:'s-pending',approved:'s-approved',rejected:'s-rejected',kitchen:'s-kitchen',packaging:'s-packaging',dispatched:'s-dispatched'};
+
+    // ── App-placed orders ──
+    if (custOrders.length) {
+      html += '<div style="font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;text-transform:uppercase;margin:4px 0 8px">📋 Orders placed by you</div>';
+      custOrders.forEach(function(o){
+        var orderedAt = '—';
+        try { if (o.created_at) orderedAt = new Date(o.created_at).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}); } catch(e){}
+        html += '<div class="hist-card">'+
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">'+
+            '<div>'+
+              '<div class="hist-date">Delivery: '+esc(fmtDate(o.delivery_date||''))+'</div>'+
+              '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px">Ordered: '+esc(orderedAt)+'</div>'+
+            '</div>'+
+            '<span class="hist-status '+(statusClass[o.status]||'s-pending')+'">'+(statusLabel[o.status]||esc(o.status||'Order'))+'</span>'+
           '</div>'+
-          '<span class="hist-status '+(statusClass[o.status]||'s-pending')+'">'+(statusLabel[o.status]||o.status)+'</span>'+
-        '</div>'+
-        '<div style="font-size:12px;font-family:monospace;background:#f5ede0;border-radius:8px;padding:8px 10px;line-height:1.8">'+itemPairs.join('<br>')+'</div>'+
-        (o.note?'<div style="font-size:11px;color:#8a7a6a;margin-top:6px;font-family:monospace">📝 '+esc(o.note)+'</div>':'')+
-        (o.admin_note?'<div style="font-size:11px;color:#1565c0;margin-top:4px;font-family:monospace">💬 Admin: '+esc(o.admin_note)+'</div>':'')+
-      '</div>';
-    }).join('');
+          itemsHtml(o.items, o.qty)+
+          (o.note?'<div style="font-size:11px;color:#8a7a6a;margin-top:6px;font-family:monospace">📝 '+esc(o.note)+'</div>':'')+
+          (o.admin_note?'<div style="font-size:11px;color:#1565c0;margin-top:4px;font-family:monospace">💬 Admin: '+esc(o.admin_note)+'</div>':'')+
+        '</div>';
+      });
+    }
+
+    // ── Past deliveries with order details ──
+    var delList = deliveries.length ? deliveries : shopOrders.map(function(o){
+      return { date: o.date, time: '', driver: o.driver||'' };
+    });
+
+    if (delList.length) {
+      html += '<div style="font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;text-transform:uppercase;margin:'+(custOrders.length?'14px':'4px')+' 0 8px">🚚 What you received</div>';
+      delList.forEach(function(d){
+        var ord = orderByDate[d.date] || null;
+        var timeStr = d.time ? ' · '+d.time : '';
+        html += '<div class="hist-card">'+
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:2px">'+
+            '<div class="hist-date">'+esc(fmtDate(d.date||''))+'</div>'+
+            '<span class="hist-status s-dispatched">✅ Delivered'+esc(timeStr)+'</span>'+
+          '</div>'+
+          '<div style="font-size:11px;color:#8a7a6a;font-family:monospace">Driver: '+esc(d.driver||(ord&&ord.driver)||'—')+'</div>'+
+          (ord ? itemsHtml(ord.items, ord.qty) : '')+
+          (ord && ord.note ? '<div style="font-size:11px;color:#8a7a6a;margin-top:6px;font-family:monospace">📄 '+esc(ord.note)+'</div>' : '')+
+        '</div>';
+      });
+    }
+
+    el.innerHTML = html || '<div style="padding:30px;text-align:center;font-size:13px;color:#8a7a6a;font-family:monospace">No orders or deliveries yet.</div>';
+  }).catch(function(err){
+    console.error('loadHistory failed', err);
+    el.innerHTML = '<div style="padding:30px;text-align:center;font-size:13px;color:#c8382a;font-family:monospace">Failed to load history.<br>Check connection and tap Refresh.</div>';
   });
 }
 

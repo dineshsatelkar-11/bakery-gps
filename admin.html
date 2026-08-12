@@ -132,6 +132,7 @@
     <button class="tab"    id="mtb-orders"    onclick="showGroup('orders')">📋 Orders</button>
     <button class="tab"    id="mtb-delivery"  onclick="showGroup('delivery')">🚚 Delivery</button>
     <button class="tab"    id="mtb-customers" onclick="showGroup('customers')">🏪 Customers</button>
+    <button class="tab" id="mtb-myBrand" onclick="showGroup('myBrand')">🏪 Franchise</button>
     <button class="tab"    id="mtb-manage"    onclick="showGroup('manage')">⚙️ Manage</button>
     <button class="tab"    id="mtb-notify"    onclick="showGroup('notify')">🔔 Notify</button>
 </div>
@@ -168,6 +169,41 @@
     <!-- Issues -->
     <div style="font-size:10px;font-weight:800;color:#8a7a6a;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">⚠️ Issues to Fix</div>
     <div id="dash-issues"></div>
+</div>
+
+<div class="page" id="pg-my-brand">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-size:13px;font-weight:900;color:#4a2f14" id="mb-title">🏪 Franchise</div>
+        <button class="btn-sm btn-grey" onclick="loadMyBrand()">🔄 Refresh</button>
+    </div>
+    <div id="mb-brand-picker" style="display:none;margin-bottom:10px"></div>
+
+    <div class="filter-row" style="margin-bottom:10px">
+        <input type="date" id="mb-date" onchange="_mbFilter='all';loadMyBrand()" style="margin-bottom:0;flex:1">
+        <input type="text" id="mb-search" placeholder="🔎 Search branch…" oninput="renderMyBrandList()" style="margin-bottom:0;flex:1.4">
+    </div>
+
+    <!-- Clickable today stats -->
+    <div class="stats-grid" id="mb-stats" style="margin-bottom:8px"></div>
+    <div id="mb-filter-chip" style="display:none;margin-bottom:10px"></div>
+
+    <!-- Progress bar -->
+    <div id="mb-progress-wrap" style="display:none;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;font-size:10px;font-family:monospace;color:#8a7a6a;margin-bottom:4px">
+            <span id="mb-progress-label">Delivery progress</span>
+            <span id="mb-progress-pct">0%</span>
+        </div>
+        <div class="progress-wrap"><div class="progress-fill" id="mb-progress-fill" style="width:0%"></div></div>
+    </div>
+
+    <div style="font-size:10px;font-weight:800;color:#8a7a6a;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Tomorrow's Pipeline</div>
+    <div class="stats-grid" id="mb-tmr-stats" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px"></div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-size:10px;font-weight:800;color:#8a7a6a;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase">Branches</div>
+        <div id="mb-list-count" style="font-size:10px;font-family:monospace;color:#8a7a6a"></div>
+    </div>
+    <div id="mb-shop-list"></div>
 </div>
 
 <!-- ORDERS -->
@@ -499,6 +535,7 @@
     </div>
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:8px">
         <button class="btn-sm" style="background:#e8f5e9;color:#2d7a4f;border:1.5px solid #a5d6a7;font-weight:800" onclick="openGroupAssignModal()">📋 Assign Groups</button>
+        <button class="btn-sm" style="background:#fff3e0;color:#c8864a;border:1.5px solid #ffcc80;font-weight:800" onclick="openBrandAssignModal()">🏷 Assign Brand</button>
         <button class="btn-sm" style="background:#e3f2fd;color:#1565c0;border:1.5px solid #90caf9;font-weight:800" onclick="openMobileAssignModal()">📱 Update Mobiles</button>
     </div>
 
@@ -1007,6 +1044,24 @@
     </div>
 </div>
 
+<div class="modal-bg" id="brandAssignModal" style="display:none" onclick="if(event.target===this)closeBrandAssignModal()">
+    <div class="modal" style="max-width:520px;width:96%;max-height:90vh;display:flex;flex-direction:column">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-shrink:0">
+            <div>
+                <div class="modal-title" style="margin-bottom:0">🏷 Assign Brand to Customers</div>
+                <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px">Set a brand for each customer, then tap Save All</div>
+            </div>
+            <button onclick="closeBrandAssignModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#8a7a6a;padding:0 4px">✖</button>
+        </div>
+        <input type="text" id="ba-search" placeholder="🔍 Search customer…" oninput="renderBAList()" style="margin-bottom:10px;flex-shrink:0">
+        <div id="ba-list" style="flex:1;overflow-y:auto;border:1.5px solid #e8dfd2;border-radius:10px;background:#fafaf8;margin-bottom:12px"></div>
+        <div style="flex-shrink:0">
+            <button class="btn" style="background:#c8864a;color:#fff;margin-bottom:0;padding:13px" onclick="saveAllBrandAssign()">💾 Save All Changes</button>
+            <div id="ba-msg" style="display:none;margin-top:8px" class="msg ok"></div>
+        </div>
+    </div>
+</div>
+
 <div class="modal-bg" id="custLoginsModal" style="display:none" onclick="if(event.target===this)closeCustLoginsModal()">
     <div class="modal">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
@@ -1030,13 +1085,16 @@
         <div class="lbl">Customer Name *</div><input type="text" id="cm-name" placeholder="e.g. C Tea Post - Baner">
         <div class="lbl">Address</div><input type="text" id="cm-address" placeholder="Full address">
         <div class="lbl">Area</div><input type="text" id="cm-area" placeholder="e.g. Baner">
+        <div class="lbl">Brand / Franchise</div>
+        <input type="text" id="cm-brand" placeholder="e.g. Tea Post, Mr Chaiwala (leave blank for regular shop)" list="cm-brand-list">
+        <datalist id="cm-brand-list"></datalist>
         <div class="lbl">Assigned Driver</div>
         <select id="cm-driver">
             <option value="">Unassigned</option>
         </select>
         <div class="lbl">Mobile</div><input type="tel" id="cm-mobile" placeholder="Contact number">
-<div class="lbl">Email</div><input type="text" id="cm-email" placeholder="shop@example.com">
-<div class="lbl">Email</div><input type="text" id="cm-email" placeholder="shop@example.com">
+        <div class="lbl">Email</div><input type="text" id="cm-email" placeholder="shop@example.com">
+        <div class="lbl">Email</div><input type="text" id="cm-email" placeholder="shop@example.com">
         <div class="lbl">Zoho Document Type</div>
         <select id="cm-doc-type" style="margin-bottom:8px">
             <option value="invoice">🧾 Invoice</option>
@@ -1281,8 +1339,10 @@
             <option value="assistant">🤝 Assistant</option>
             <option value="chef">👨‍🍳 Bakery Chef</option>
             <option value="packer">📦 Packer</option>
-            <option value="teapost_head">☕ Tea Post Head</option>
+            <option value="brand_owner">🏪 Brand Owner</option>
         </select>
+        <div class="lbl" id="sm-brand-lbl" style="display:none">Brand (which shops they see)</div>
+        <input type="text" id="sm-brand" placeholder="e.g. Tea Post" list="cm-brand-list" style="display:none">
         <div class="lbl">Tab Access</div>
         <div id="sm-tabs-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px;padding:10px;background:#fff;border:1.5px solid #e8dfd2;border-radius:10px"></div>
         <div class="lbl">Status</div>
@@ -1322,33 +1382,41 @@
       {key:'drivers',  label:'🚗 Drivers'},
       {key:'gps',      label:'📍 GPS'}
     ];
-    var ROLE_DEFAULT_TABS = {
-      admin:        ['orders','approve','queue','summary','delivery','routes','customers','products','gps'],
-      assistant:    ['orders','delivery','summary'],
-      chef:         ['summary'],
-      packer:       ['orders','summary'],
-      teapost_head: []
-    };
+   var ROLE_DEFAULT_TABS = {
+  admin:        ['orders','approve','queue','summary','delivery','routes','customers','products','gps'],
+  assistant:    ['orders','delivery','summary'],
+  chef:         ['summary'],
+  packer:       ['orders','summary'],
+  brand_owner:  ['my-brand']
+};
     // Restore session from localStorage if sessionStorage was cleared (phone lock / tab killed by OS)
-    (function(){
-      if(!sessionStorage.getItem('role') && localStorage.getItem('staffRole')){
-        sessionStorage.setItem('role',  localStorage.getItem('staffRole'));
-        sessionStorage.setItem('tabs',  localStorage.getItem('staffTabs')||'[]');
-        sessionStorage.setItem('staffName', localStorage.getItem('staffNamePersist')||'');
-      }
-    })();
+  (function(){
+  if(!sessionStorage.getItem('role') && localStorage.getItem('staffRole')){
+    sessionStorage.setItem('role',  localStorage.getItem('staffRole'));
+    sessionStorage.setItem('tabs',  localStorage.getItem('staffTabs')||'[]');
+    sessionStorage.setItem('staffName', localStorage.getItem('staffNamePersist')||'');
+    sessionStorage.setItem('staffBrand', localStorage.getItem('staffBrandPersist')||'');
+  }
+})();
 
     var _staffRole = sessionStorage.getItem('role') || 'admin';
     var _staffName = sessionStorage.getItem('staffName') || 'Admin';
+    var _staffBrand = sessionStorage.getItem('staffBrand') || '';
     var _allowedTabs = _staffRole === 'super_admin' ? null : JSON.parse(sessionStorage.getItem('tabs') || '[]');
 
-    (function(){var r=sessionStorage.getItem('role');if(['super_admin','admin','assistant','chef','packer','teapost_head'].indexOf(r)<0)goto('');if(r==='teapost_head')goto('teapost-head');})();
+    (function(){
+      var r=sessionStorage.getItem('role');
+      if(['super_admin','admin','assistant','chef','packer','brand_owner'].indexOf(r)<0){ goto(''); return; }
+      if(r==='brand_owner'){ goto('brand-head'); return; } // brand admins get the lightweight dashboard, not the full panel
+    })();
 
     var _visibleTabs = {}; // tab key → true if this role can see it
 
     function initTabVisibility(){
-      var allTabKeys = ['dashboard','orders','approve','queue','summary','delivery','routes','customers','cust-orders','manual-order','products','groups','ingredients','recipes','production','drivers','gps','users','notify','cleanup','audit', 'attendance'];
-      allTabKeys.forEach(function(t){
+      var allTabKeys = ['dashboard','orders','approve','queue','summary','delivery','routes','customers',
+'cust-orders','manual-order','products','groups','ingredients','recipes','production','drivers','gps',
+'users','notify','cleanup','audit','attendance','my-brand'];
+allTabKeys.forEach(function(t){
         var show;
         if(t === 'users' || t === 'cleanup' || t === 'audit') {
           show = (_staffRole === 'super_admin');
@@ -1362,6 +1430,8 @@
           show = (_staffRole === 'super_admin' || _staffRole === 'admin' || _staffRole === 'chef');
         } else if(t === 'cust-orders' || t === 'groups') {
           show = (_staffRole === 'admin' || _staffRole === 'assistant') || (_allowedTabs.indexOf(t) >= 0);
+        } else if(t === 'my-brand') {
+  show = (_staffRole === 'brand_owner' || _staffRole === 'admin' || _staffRole === 'super_admin');
         } else {
           show = (_allowedTabs.indexOf(t) >= 0);
         }
@@ -1469,6 +1539,7 @@
       localStorage.removeItem('staffRole');
       localStorage.removeItem('staffTabs');
       localStorage.removeItem('staffNamePersist');
+      localStorage.removeItem('staffBrandPersist');
       goto('');
     };
 
@@ -1488,6 +1559,7 @@
                    {key:'attendance',  label:'📊 Attendance'},
                   {key:'audit',       label:'🔍 Audit'}],
       customers: [{key:'customers',   label:'🏪 Customers'}],
+      myBrand: [{key:'my-brand', label:'🏪 Franchise'}],
       manage:    [{key:'products',    label:'📦 Products'},
                   {key:'ingredients', label:'🧂 Ingredients'},
                   {key:'recipes',     label:'📋 Recipes'},
@@ -1509,7 +1581,7 @@
     }
 
     function showTab(t){
-      ['dashboard','orders','approve','queue','summary','delivery','routes','customers','cust-orders','manual-order','products','groups','ingredients','recipes','production','drivers','gps','users','notify','cleanup','audit', 'attendance'].forEach(function(x){
+      ['dashboard','orders','approve','queue','summary','delivery','routes','customers','cust-orders','manual-order','products','groups','ingredients','recipes','production','drivers','gps','users','notify','cleanup','audit', 'attendance', 'my-brand'].forEach(function(x){
         var pg=document.getElementById('pg-'+x); if(pg) pg.classList.toggle('on',x===t);
       });
       // Highlight active group tab
@@ -1550,6 +1622,7 @@
       if(t==='notify')       { loadNotifyDriverList(); loadOrderWindow(); loadBroadcast(); loadNotifyCustomerList(); }
       if(t==='audit')        initAuditTab();
       if(t==='attendance')   initAttendanceTab();
+      if(t==='my-brand')   initMyBrandTab();
     }
 
     /* ── DASHBOARD ── */
@@ -1586,14 +1659,18 @@
         var delivSection = document.querySelector('#pg-dashboard .dash-deliv-lbl');
         if(delivSection) delivSection.textContent = 'Delivery Date: ' + delivDate;
 
-        /* ── Delivery stats for delivDate ── */
+             /* ── Delivery stats for delivDate ── */
         var totalOrders   = orders.length;
-        // Build delivery lookup: shop_id → delivery record
+        // Build delivery lookup — same key logic as Delivery tab
         var delivMap = {};
-        deliveries.forEach(function(d){ delivMap[d.shop_id] = d; });
+        deliveries.forEach(function(d){ delivMap[String(d.shop_id||d.customer_id)] = d; });
 
-        var delivered     = deliveries.length;
-        var pending       = totalOrders - delivered;
+        // Count ORDERS that have a matching delivery (not raw delivery rows)
+        var delivered = orders.filter(function(o){
+          return !!delivMap[String(o.customer_id||o.shop_id)];
+        }).length;
+        var pending   = Math.max(0, totalOrders - delivered);
+
         var activeDrivers = Object.keys(orders.reduce(function(m,o){
           if(o.driver && o.driver!=='—' && o.driver!=='Logistics') m[o.driver]=1; return m;
         },{})).length;
@@ -1714,6 +1791,228 @@
       });
     }
 
+    function initMyBrandTab(){
+  var d = document.getElementById('mb-date');
+  if(!d.value) d.value = todayStr();
+  loadCustomerMaster().then(function(){
+    var brands = [...new Set(allCustomers.map(function(c){return (c.brand||'').trim();}).filter(Boolean))].sort();
+    var picker = document.getElementById('mb-brand-picker');
+    if(_staffRole === 'admin' || _staffRole === 'super_admin'){
+      // Admin/super_admin can browse any brand
+      picker.style.display = 'block';
+      picker.innerHTML = '<select id="mb-brand-select" onchange="loadMyBrand()" style="margin-bottom:0">'
+        + brands.map(function(b){ return '<option value="'+esc(b)+'">'+esc(b)+'</option>'; }).join('')
+        + '</select>';
+    } else {
+      picker.style.display = 'none';
+    }
+    loadMyBrand();
+  });
+}
+
+function _mbCurrentBrand(){
+  if(_staffRole === 'admin' || _staffRole === 'super_admin'){
+    var sel = document.getElementById('mb-brand-select');
+    return sel ? sel.value : '';
+  }
+  return _staffBrand;
+}
+
+var _mbFilter = 'all'; // all | orders | delivered | pending | noorder
+var _mbCache  = null;  // { brandShops, orders, delivMap, date }
+
+function setMbFilter(f){
+  _mbFilter = (_mbFilter === f) ? 'all' : f; // tap again to clear
+  renderMyBrandList();
+}
+
+function loadMyBrand(){
+  var brand = _mbCurrentBrand();
+  var date = document.getElementById('mb-date').value || todayStr();
+  var tomorrow = tomorrowStr();
+  document.getElementById('mb-title').textContent = '🏪 ' + (brand || 'Franchise');
+
+  if(!brand){
+    document.getElementById('mb-stats').innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:12px;font-size:12px;color:#c8382a;font-family:monospace">No brand assigned to your account. Ask admin to set it in Users tab.</div>';
+    document.getElementById('mb-tmr-stats').innerHTML = '';
+    document.getElementById('mb-shop-list').innerHTML = '';
+    var pw0 = document.getElementById('mb-progress-wrap'); if(pw0) pw0.style.display = 'none';
+    var fc0 = document.getElementById('mb-filter-chip'); if(fc0) fc0.style.display = 'none';
+    return;
+  }
+
+  var brandShops = allCustomers.filter(function(c){ return (c.brand||'').trim() === brand; });
+  var shopIds = new Set(brandShops.map(function(c){ return String(c.customer_id||c.shop_id); }));
+
+  Promise.all([
+    api({action:'getOrders', date: date}),
+    api({action:'getDeliveries', date: date}),
+    api({action:'getCustomerOrders', delivery_date: tomorrow, limit: 500})
+  ]).then(function(res){
+    var orders     = (Array.isArray(res[0])?res[0]:[]).filter(function(o){ return shopIds.has(String(o.customer_id||o.shop_id)); });
+    var deliveries = (Array.isArray(res[1])?res[1]:[]).filter(function(d){ return shopIds.has(String(d.shop_id||d.customer_id)); });
+    var custOrders = (Array.isArray(res[2])?res[2]:[]).filter(function(o){ return shopIds.has(String(o.shop_id)); });
+
+    var delivMap = {};
+    deliveries.forEach(function(d){ delivMap[String(d.shop_id||d.customer_id)] = d; });
+
+    // Count against ORDERS (not raw delivery rows)
+    var delivered = orders.filter(function(o){ return !!delivMap[String(o.customer_id||o.shop_id)]; }).length;
+    var pending   = Math.max(0, orders.length - delivered);
+    var pct = orders.length ? Math.round(delivered/orders.length*100) : 0;
+
+    _mbCache = { brandShops: brandShops, orders: orders, delivMap: delivMap, date: date };
+
+    var active = function(f){ return _mbFilter===f ? 'background:#e8f5e9;border-color:#2d7a4f;box-shadow:0 0 0 2px rgba(45,122,79,.15)' : 'cursor:pointer'; };
+
+    document.getElementById('mb-stats').innerHTML =
+      '<div class="stat" style="'+active('all')+'" onclick="setMbFilter(\'all\')"><div class="stat-n">'+brandShops.length+'</div><div class="stat-l">Branches</div></div>'+
+      '<div class="stat" style="'+active('orders')+'" onclick="setMbFilter(\'orders\')"><div class="stat-n">'+orders.length+'</div><div class="stat-l">Orders</div></div>'+
+      '<div class="stat" style="'+active('delivered')+'" onclick="setMbFilter(\'delivered\')"><div class="stat-n" style="color:#2d7a4f">'+delivered+'</div><div class="stat-l">Delivered</div></div>'+
+      '<div class="stat" style="'+active('pending')+'" onclick="setMbFilter(\'pending\')"><div class="stat-n" style="color:'+(pending>0?'#c8382a':'#2d7a4f')+'">'+pending+'</div><div class="stat-l">Pending</div></div>';
+
+    // Progress bar
+    var pw = document.getElementById('mb-progress-wrap');
+    if(pw){
+      if(orders.length){
+        pw.style.display = 'block';
+        document.getElementById('mb-progress-label').textContent = delivered+' of '+orders.length+' delivered';
+        document.getElementById('mb-progress-pct').textContent = pct+'%';
+        document.getElementById('mb-progress-fill').style.width = pct+'%';
+        document.getElementById('mb-progress-fill').style.background = pct===100 ? '#2d7a4f' : (pct>=50 ? '#c8864a' : '#c8382a');
+      } else {
+        pw.style.display = 'none';
+      }
+    }
+
+    // Tomorrow pipeline
+    var STATUS_CFG = [
+      { key:'pending',    label:'⏳ Pending',   color:'#7a4800', bg:'#fff8e1' },
+      { key:'approved',   label:'👨‍🍳 Kitchen',  color:'#4a148c', bg:'#f3e8ff' },
+      { key:'packaging',  label:'📦 Packaging', color:'#2d7a4f', bg:'#e8f5e9' },
+      { key:'dispatched', label:'🚚 Dispatched', color:'#c8382a', bg:'#fde8e8' }
+    ];
+    var counts = {}; STATUS_CFG.forEach(function(s){ counts[s.key]=0; });
+    custOrders.forEach(function(o){
+      var st=(o.status||'pending').toLowerCase();
+      if(counts[st]!==undefined) counts[st]++; else counts['pending']++;
+    });
+    document.getElementById('mb-tmr-stats').innerHTML = STATUS_CFG.map(function(s){
+      var n = counts[s.key]||0;
+      return '<div class="stat" style="background:'+s.bg+';border-color:'+s.color+'20">'
+        +'<div class="stat-n" style="color:'+s.color+';font-size:18px">'+n+'</div>'
+        +'<div class="stat-l" style="font-size:8px">'+s.label+'</div></div>';
+    }).join('');
+
+    renderMyBrandList();
+  });
+}
+
+function renderMyBrandList(){
+  if(!_mbCache) return;
+  var brandShops = _mbCache.brandShops;
+  var orders     = _mbCache.orders;
+  var delivMap   = _mbCache.delivMap;
+  var date       = _mbCache.date;
+  var listEl     = document.getElementById('mb-shop-list');
+  var chipEl     = document.getElementById('mb-filter-chip');
+  var countEl    = document.getElementById('mb-list-count');
+  var q = ((document.getElementById('mb-search')||{}).value||'').trim().toLowerCase();
+
+  // Filter by status
+  var shown = brandShops.filter(function(c){
+    var sid = String(c.customer_id||c.shop_id);
+    var o = orders.find(function(x){ return String(x.customer_id||x.shop_id)===sid; });
+    var dn = !!delivMap[sid];
+    if(_mbFilter==='orders')    return !!o;
+    if(_mbFilter==='delivered') return !!o && dn;
+    if(_mbFilter==='pending')   return !!o && !dn;
+    if(_mbFilter==='noorder')   return !o;
+    return true;
+  });
+
+  // Search
+  if(q){
+    shown = shown.filter(function(c){
+      return [c.name,c.area,c.mobile,c.assigned_driver,c.shop_id,c.customer_id]
+        .some(function(v){ return String(v||'').toLowerCase().indexOf(q)>=0; });
+    });
+  }
+
+  // Active filter chip
+  var FILTER_LABEL = {all:'All', orders:'With order', delivered:'Delivered', pending:'Pending', noorder:'No order'};
+  if(chipEl){
+    if(_mbFilter!=='all'){
+      chipEl.style.display = 'block';
+      chipEl.innerHTML = '<div style="display:inline-flex;align-items:center;gap:6px;background:#e8f5e9;color:#2d7a4f;border:1px solid #a5d6a7;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;font-family:monospace;cursor:pointer" onclick="setMbFilter(\'all\')">Showing: '+FILTER_LABEL[_mbFilter]+' ('+shown.length+') ✕</div>';
+    } else {
+      chipEl.style.display = 'none';
+    }
+  }
+
+  if(countEl) countEl.textContent = shown.length + ' of ' + brandShops.length;
+
+  if(!brandShops.length){
+    listEl.innerHTML = '<div style="text-align:center;padding:20px;font-size:12px;color:#8a7a6a;font-family:monospace">No branches under this brand yet.</div>';
+    return;
+  }
+  if(!shown.length){
+    listEl.innerHTML = '<div style="text-align:center;padding:20px;font-size:12px;color:#8a7a6a;font-family:monospace">No branches match this filter.</div>';
+    return;
+  }
+
+  // Sort: pending first, then delivered, then no order
+  shown = shown.slice().sort(function(a,b){
+    function rank(c){
+      var sid = String(c.customer_id||c.shop_id);
+      var o = orders.find(function(x){ return String(x.customer_id||x.shop_id)===sid; });
+      var dn = !!delivMap[sid];
+      if(o && !dn) return 0;
+      if(o && dn)  return 1;
+      return 2;
+    }
+    return rank(a)-rank(b) || String(a.name||'').localeCompare(String(b.name||''));
+  });
+
+  listEl.innerHTML = shown.map(function(c){
+    var sid = String(c.customer_id||c.shop_id);
+    var o = orders.find(function(x){ return String(x.customer_id||x.shop_id)===sid; });
+    var dn = !!delivMap[sid];
+    var drv = c.assigned_driver||'—';
+    var dc = (typeof DRIVERS!=='undefined' && DRIVERS.indexOf(drv)>=0) ? 'DC-'+drv : '';
+
+    var itemsBlock = '';
+    if(o){
+      var iArr = String(o.items||'').split(',');
+      var qArr = String(o.qty||'').split(',');
+      var chips = [];
+      iArr.forEach(function(it,i){
+        var name = it.replace(/\n/g,' ').trim();
+        if(!name) return;
+        chips.push('<span style="display:inline-block;background:'+(dn?'#e8f5e9':'#fff8e1')+';color:'+(dn?'#2d7a4f':'#7a4800')+';border:1px solid '+(dn?'#a5d6a7':'#ffe082')+';border-radius:8px;padding:3px 8px;font-size:10px;font-weight:700;font-family:monospace;margin:0 4px 4px 0">'+esc(name)+' ×'+(qArr[i]||'?').trim()+'</span>');
+      });
+      itemsBlock = '<div style="margin-top:8px">'+chips.join('')+'</div>'+
+        (dn && delivMap[sid].time ? '<div style="font-size:10px;color:#2d7a4f;font-family:monospace;margin-top:4px">✅ Delivered at '+esc(delivMap[sid].time)+'</div>' : '');
+    }
+
+    var borderColor = o ? (dn ? '#a5d6a7' : '#ffe082') : '#e8dfd2';
+    var bgColor     = o ? (dn ? '#f9fff9' : '#fffaf4') : '#fff';
+
+    return '<div class="item-card" style="border-color:'+borderColor+';background:'+bgColor+'">'+
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:4px">'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-size:14px;font-weight:800;color:#4a2f14">'+esc(c.name)+'</div>'+
+          (c.area?'<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px">📍 '+esc(c.area)+'</div>':'')+
+        '</div>'+
+        (o ? '<span class="badge '+(dn?'b-ok':'b-warn')+'">'+(dn?'✅ Delivered':'⏳ Pending')+'</span>' : '<span class="badge b-miss">No order</span>')+
+      '</div>'+
+      (dc?'<div style="margin-bottom:4px"><span class="badge '+dc+'">🚗 '+esc(drv)+'</span></div>':'')+
+      (c.mobile?'<div style="font-size:11px;font-family:monospace;margin-bottom:2px"><a href="tel:'+esc(c.mobile)+'" style="color:#1565c0;text-decoration:none">📞 '+esc(c.mobile)+'</a></div>':'')+
+      itemsBlock+
+      (!o?'<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:4px">No order for '+esc(date)+'</div>':'')+
+    '</div>';
+  }).join('');
+}
     /* ── DASHBOARD NAV HELPERS ── */
     function dashGoOrders(){
       dashGoDelivery('all');
@@ -1724,8 +2023,11 @@
       showTab('routes');
     }
     function dashGoDelivery(filter){
+      // Sync date with dashboard + clear driver filter so counts match Home
       var el = document.getElementById('f-del-date');
       if(el && _dashDelivDate) el.value = _dashDelivDate;
+      var drvEl = document.getElementById('f-del-driver');
+      if(drvEl) drvEl.value = '';
       _delivFilter = filter || 'all';
       showTab('delivery');
     }
@@ -2737,15 +3039,15 @@ if(tbQueue) tbQueue.textContent = '⚠️ Queue ('+data.length+')';
       .then(function(res){
         _delivOrds=Array.isArray(res[0])?res[0]:[];
         var dels=Array.isArray(res[1])?res[1]:[];
-        _delivMap={};dels.forEach(function(d){_delivMap[d.shop_id||d.customer_id]=d;});
+        _delivMap={};dels.forEach(function(d){_delivMap[String(d.shop_id||d.customer_id)]=d;});
         renderDeliveries();
       });
     }
     function renderDeliveries(){
       var el=document.getElementById('deliveryList');
       var ords=_delivOrds,dM=_delivMap;
-      var doneCount=ords.filter(function(o){return !!dM[o.customer_id||o.shop_id];}).length;
-      var pendCount=ords.length-doneCount;
+            var doneCount=ords.filter(function(o){return !!dM[String(o.customer_id||o.shop_id)];}).length;
+      var pendCount=Math.max(0, ords.length-doneCount);
       // Stats with clickable filter
       document.getElementById('delivStats').innerHTML=
         '<div class="stat" onclick="setDelivFilter(\'all\')" style="cursor:pointer;'+((_delivFilter==='all')?'background:#e8f5e9;border-color:#2d7a4f':'')+'"><div class="stat-n">'+ords.length+'</div><div class="stat-l">All</div></div>'+
@@ -2753,14 +3055,14 @@ if(tbQueue) tbQueue.textContent = '⚠️ Queue ('+data.length+')';
         '<div class="stat" onclick="setDelivFilter(\'pending\')" style="cursor:pointer;'+((_delivFilter==='pending')?'background:#fde8e8;border-color:#e87a7a':'')+'"><div class="stat-n" style="color:#c8382a">'+pendCount+'</div><div class="stat-l">Pending</div></div>';
       if(!ords.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders.</div>';return;}
       var filtered=ords.filter(function(o){
-        var dn=!!dM[o.customer_id||o.shop_id];
+        var dn=!!dM[String(o.customer_id||o.shop_id)];
         if(_delivFilter==='done') return dn;
         if(_delivFilter==='pending') return !dn;
         return true;
       });
       if(!filtered.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No '+_delivFilter+' orders.</div>';return;}
       el.innerHTML=filtered.map(function(o){
-        var key=o.customer_id||o.shop_id;var dn=!!dM[key];
+                var key=String(o.customer_id||o.shop_id);var dn=!!dM[key];
         var drD=o.driver||o.assigned_driver||'—';
         var dc=DRIVERS.indexOf(drD)>=0?'DC-'+drD:'DC-Logistics';
         var del=dM[key];
@@ -3105,6 +3407,98 @@ if(tbQueue) tbQueue.textContent = '⚠️ Queue ('+data.length+')';
       }).join('');
     }
 
+    var _baCustomers = [];
+var _baPendingChanges = {};
+
+function openBrandAssignModal(){
+  loadCustomerMaster().then(function(){
+    _baCustomers = allCustomers.slice();
+    _baPendingChanges = {};
+    document.getElementById('ba-search').value = '';
+    document.getElementById('ba-msg').style.display = 'none';
+    renderBAList();
+    document.getElementById('brandAssignModal').style.display = 'flex';
+  });
+}
+function closeBrandAssignModal(){
+  document.getElementById('brandAssignModal').style.display = 'none';
+  _baPendingChanges = {};
+}
+function renderBAList(){
+  var q = (document.getElementById('ba-search').value || '').toLowerCase();
+  var list = q ? _baCustomers.filter(function(c){ return (c.name||'').toLowerCase().indexOf(q) >= 0 || (c.area||'').toLowerCase().indexOf(q) >= 0; }) : _baCustomers;
+  var el = document.getElementById('ba-list');
+  if(!list.length){ el.innerHTML='<div style="padding:16px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">No customers found.</div>'; return; }
+  var brands = [...new Set(allCustomers.map(function(c){return (c.brand||'').trim();}).filter(Boolean))].sort();
+  var brandOpts = '<option value="">— No brand —</option>' + brands.map(function(b){return '<option value="'+esc(b)+'">'+esc(b)+'</option>';}).join('');
+
+  el.innerHTML = list.map(function(c){
+    var cid = String(c.customer_id || c.shop_id || '');
+    var currentBrand = _baPendingChanges.hasOwnProperty(cid) ? _baPendingChanges[cid] : (c.brand || '');
+    var changed = _baPendingChanges.hasOwnProperty(cid);
+    var isCustom = currentBrand && brands.indexOf(currentBrand) < 0;
+
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #f0e8de;background:'+(changed?'#fff8e1':'#fff')+'">'
+      +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:13px;font-weight:800;color:#4a2f14;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(c.name)+'</div>'
+        +(c.area ? '<div style="font-size:10px;color:#8a7a6a;font-family:monospace">'+esc(c.area)+'</div>' : '')
+      +'</div>'
+      +'<select data-cid="'+cid+'" onchange="baOnChange(this)" style="flex-shrink:0;width:150px;font-size:12px;padding:7px 8px;border:1.5px solid '+(changed?'#c8864a':'#e8dfd2')+';border-radius:8px;background:#fff;font-weight:700;color:#4a2f14">'
+        + brandOpts.replace('value="'+esc(currentBrand)+'"', 'value="'+esc(currentBrand)+'" selected')
+        + (isCustom ? '<option value="'+esc(currentBrand)+'" selected>'+esc(currentBrand)+'</option>' : '')
+      +'</select>'
+    +'</div>';
+  }).join('');
+}
+function baOnChange(sel){
+  var cid = sel.getAttribute('data-cid');
+  _baPendingChanges[cid] = sel.value;
+  sel.style.borderColor = '#c8864a';
+  sel.closest('div').style.background = '#fff8e1';
+}
+function saveAllBrandAssign(){
+  var cids = Object.keys(_baPendingChanges);
+  if(!cids.length){ alert('No changes to save.'); return; }
+  var btn = document.querySelector('#brandAssignModal .btn');
+  var msg = document.getElementById('ba-msg');
+  btn.disabled = true; btn.textContent = '⏳ Saving…'; msg.style.display = 'none';
+
+  var ops = cids.map(function(cid){
+    var c = allCustomers.find(function(x){ return String(x.customer_id||x.shop_id) === cid; }) || {};
+    return apiPost({action:'updateShop', shop_id:cid,
+      customer_id: c.customer_id || cid,
+      name: c.name||'', address: c.address||'', area: c.area||'',
+      brand: _baPendingChanges[cid],
+      assigned_driver: c.assigned_driver||'', flag: c.flag||'',
+      lat: c.lat||'', lng: c.lng||'', mobile: c.mobile||'',
+      last_updated_by: sessionStorage.getItem('staffName')||'admin',
+      last_updated_at: new Date().toLocaleString('en-IN')
+    });
+  });
+
+  Promise.all(ops).then(function(){
+    cids.forEach(function(cid){
+      var c = allCustomers.find(function(x){ return String(x.customer_id||x.shop_id) === cid; });
+      if(c) c.brand = _baPendingChanges[cid];
+    });
+    _baPendingChanges = {};
+    btn.disabled = false; btn.textContent = '💾 Save All Changes';
+    msg.className = 'msg ok';
+    msg.textContent = '✅ Saved '+cids.length+' customer'+(cids.length>1?'s':'')+' successfully.';
+    msg.style.display = 'block';
+    renderCustomers(); refreshBrandDatalist();
+    renderBAList();
+  }).catch(function(e){
+    btn.disabled = false; btn.textContent = '💾 Save All Changes';
+    msg.className = 'msg er';
+    msg.textContent = '❌ Save failed. Please try again.';
+    msg.style.display = 'block';
+    window.logError('admin', 'saveAllBrandAssign', e);
+  });
+}
+
+
+
     function gaOnChange(sel){
       var cid = sel.getAttribute('data-cid');
       var gid = sel.value ? [parseInt(sel.value)] : [];
@@ -3351,12 +3745,18 @@ if(tbQueue) tbQueue.textContent = '⚠️ Queue ('+data.length+')';
       // show/hide zoho bar
       var bar = document.getElementById('zoho-cust-bar');
       if(bar) bar.style.display = (_zohoEnabled && (_staffRole==='admin'||_staffRole==='super_admin')) ? '' : 'none';
+      refreshBrandDatalist();
     }
 
+function refreshBrandDatalist(){
+  var brands=[...new Set(allCustomers.map(function(c){return (c.brand||'').trim();}).filter(Boolean))].sort();
+  var dl=document.getElementById('cm-brand-list');
+  if(dl) dl.innerHTML=brands.map(function(b){return '<option value="'+esc(b)+'">';}).join('');
+}
     function openAddCustomer(){
       document.getElementById('custModalTitle').textContent='Add Customer';
       document.getElementById('custModalSub').textContent='';
-      ['cm-id','cm-cust-id','cm-name','cm-address','cm-area','cm-mobile','cm-email','cm-flag','cm-lat','cm-lng','cm-login-user','cm-login-pass'].forEach(function(id){document.getElementById(id).value='';});
+      ['cm-id','cm-cust-id','cm-name','cm-address','cm-area','cm-mobile','cm-email','cm-flag', 'cm-brand','cm-lat','cm-lng','cm-login-user','cm-login-pass'].forEach(function(id){document.getElementById(id).value='';});
       document.getElementById('cm-driver').value='';
       renderCmGroupList([]);
       document.getElementById('cm-msg').style.display='none';
@@ -3375,6 +3775,7 @@ if(tbQueue) tbQueue.textContent = '⚠️ Queue ('+data.length+')';
       document.getElementById('cm-driver').value=c.assigned_driver||'';
       document.getElementById('cm-mobile').value=c.mobile||'';
       document.getElementById('cm-email').value=c.email||'';
+      document.getElementById('cm-brand').value = c.brand || '';
       document.getElementById('cm-flag').value=c.flag||'';
       document.getElementById('cm-lat').value=c.lat||'';
       document.getElementById('cm-lng').value=c.lng||'';
@@ -3662,6 +4063,7 @@ function shareCdHistoryReport(){
         address:document.getElementById('cm-address').value.trim(),area:document.getElementById('cm-area').value.trim(),
         assigned_driver:assignedDriver,
         zoho_doc_type: document.getElementById('cm-doc-type').value,
+        brand:document.getElementById('cm-brand').value.trim(),
         mobile:document.getElementById('cm-mobile').value.trim(),email:document.getElementById('cm-email').value.trim(),flag:document.getElementById('cm-flag').value.trim(),
         lat:document.getElementById('cm-lat').value,lng:document.getElementById('cm-lng').value,
         last_updated_by:'Admin',last_updated_at:now
@@ -5649,9 +6051,9 @@ async function zohoSyncSelectedProducts() {
         '<div class="stat"><div class="stat-n" style="color:#2d7a4f">'+active+'</div><div class="stat-l">Active</div></div>'+
         '<div class="stat"><div class="stat-n" style="color:#c8382a">'+(allStaffList.length-active)+'</div><div class="stat-l">Inactive</div></div>';
       if(!allStaffList.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No staff users yet.</div>';return;}
-      var roleIcon = {super_admin:'👑',admin:'👤',chef:'👨‍🍳',packer:'📦',assistant:'🤝',teapost_head:'☕'};
-      var roleLabel = {super_admin:'Super Admin',admin:'Admin',chef:'Bakery Chef',packer:'Packer',assistant:'Assistant',teapost_head:'Tea Post Head'};
-      el.innerHTML = allStaffList.map(function(s){
+     var roleIcon = {super_admin:'👑',admin:'👤',chef:'👨‍🍳',packer:'📦',assistant:'🤝',brand_owner:'🏪'};
+var roleLabel = {super_admin:'Super Admin',admin:'Admin',chef:'Bakery Chef',packer:'Packer',assistant:'Assistant',brand_owner:'Brand Owner'};
+ el.innerHTML = allStaffList.map(function(s){
         var tabs = s.role === 'super_admin' ? 'All tabs' : (JSON.parse(s.tabs||'[]').join(', ')||'None');
         var isSelf = (s.name === _staffName);
         return '<div class="item-card">'+
@@ -5685,10 +6087,13 @@ async function zohoSyncSelectedProducts() {
     }
 
     function onStaffRoleChange(){
-      var role = document.getElementById('sm-role').value;
-      var defaults = ROLE_DEFAULT_TABS[role] || [];
-      document.getElementById('sm-tabs-grid').innerHTML = _renderTabCheckboxes(defaults);
-    }
+  var role = document.getElementById('sm-role').value;
+  var defaults = ROLE_DEFAULT_TABS[role] || [];
+  document.getElementById('sm-tabs-grid').innerHTML = _renderTabCheckboxes(defaults);
+  var showBrand = (role === 'brand_owner');
+  document.getElementById('sm-brand-lbl').style.display = showBrand ? '' : 'none';
+  document.getElementById('sm-brand').style.display = showBrand ? '' : 'none';
+}
 
     function openAddStaff(){
       document.getElementById('staffModalTitle').textContent = 'Add Staff User';
@@ -5697,6 +6102,7 @@ async function zohoSyncSelectedProducts() {
       document.getElementById('sm-password').value = '';
       document.getElementById('sm-role').value = 'admin';
       document.getElementById('sm-active').value = 'true';
+      document.getElementById('sm-brand').value = '';
       document.getElementById('sm-msg').style.display = 'none';
       document.getElementById('sm-tabs-grid').innerHTML = _renderTabCheckboxes(ROLE_DEFAULT_TABS.admin);
       document.getElementById('staffModal').style.display = 'flex';
@@ -5711,6 +6117,8 @@ async function zohoSyncSelectedProducts() {
       document.getElementById('sm-active').value = String(s.active !== false);
       document.getElementById('sm-msg').style.display = 'none';
       var tabs = JSON.parse(s.tabs || '[]');
+      document.getElementById('sm-brand').value = s.brand || '';
+onStaffRoleChange();
       document.getElementById('sm-tabs-grid').innerHTML = _renderTabCheckboxes(tabs);
       document.getElementById('staffModal').style.display = 'flex';
     }
@@ -5730,6 +6138,7 @@ async function zohoSyncSelectedProducts() {
         action: id ? 'updateStaff' : 'addStaff',
         name:   name,
         role:   document.getElementById('sm-role').value,
+         brand:  document.getElementById('sm-brand').value.trim(),
         tabs:   JSON.stringify(checked),
         active: document.getElementById('sm-active').value === 'true'
       };

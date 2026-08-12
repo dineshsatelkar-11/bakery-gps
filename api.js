@@ -119,6 +119,7 @@
       case 'getShops': {
         // Single shop by shop_id (customer session refresh)
         if (p.shop_id)  return sbGet('shops', { shop_id: p.shop_id });
+        if (p.brand)    return sbGet('shops', { brand: p.brand }, 'name');
         // Driver app passes driverId (preferred) or falls back to name string
         if (p.driverId) return sbGet('shops', { assigned_driver_id: p.driverId }, 'name');
         if (p.driver)   return sbGet('shops', { assigned_driver: p.driver }, 'name');
@@ -264,19 +265,36 @@
           .catch(function(){ return null; });
       }
 
-      case 'getShopDeliveryHistory': {
-        // Last N days of deliveries for a specific shop (for admin modal)
-        var days = p.days || 7;
-        var since = new Date();
-        since.setDate(since.getDate() - days);
-        var sinceDate = since.toISOString().slice(0, 10);
-        var url = BASE + '/deliveries?shop_id=eq.' + encodeURIComponent(p.shop_id) +
-                  '&date=gte.' + encodeURIComponent(sinceDate) +
-                  '&select=date,time,driver&order=date.desc&limit=14';
-        return fetch(url, { headers: hdrs() })
-          .then(function(r){ return r.ok ? r.json() : []; })
-          .catch(function(){ return []; });
-      }
+         case 'getShopDeliveryHistory': {
+           // Last N days of deliveries for a specific shop
+           var days = p.days || 7;
+           var since = new Date();
+           since.setDate(since.getDate() - days);
+           var sinceDate = since.toISOString().slice(0, 10);
+           // Higher limit for longer ranges (customer history uses days:90)
+           var lim = Math.min(Math.max(days * 2, 14), 200);
+           var url = BASE + '/deliveries?shop_id=eq.' + encodeURIComponent(p.shop_id) +
+                     '&date=gte.' + encodeURIComponent(sinceDate) +
+                     '&select=date,time,driver&order=date.desc&limit=' + lim;
+           return fetch(url, { headers: hdrs() })
+             .then(function(r){ return r.ok ? r.json() : []; })
+             .catch(function(){ return []; });
+         }
+
+               // Past orders for one shop (items/qty) — used by customer History tab
+               case 'getShopOrdersHistory': {
+                 var days = p.days || 90;
+                 var since = new Date();
+                 since.setDate(since.getDate() - days);
+                 var sinceDate = since.toISOString().slice(0, 10);
+                 var lim = Math.min(Math.max(days * 2, 30), 200);
+                 var url = BASE + '/orders?shop_id=eq.' + encodeURIComponent(p.shop_id) +
+                           '&date=gte.' + encodeURIComponent(sinceDate) +
+                           '&select=date,items,qty,driver,note,shop_name&order=date.desc&limit=' + lim;
+                 return fetch(url, { headers: hdrs() })
+                   .then(function(r){ return r.ok ? r.json() : []; })
+                   .catch(function(){ return []; });
+               }
 
       case 'getDeliveriesHistory': {
         // Fetch last N days of deliveries for historical route analysis
@@ -360,6 +378,7 @@
         return sbUpsert('shops', {
           shop_id: b.shop_id, customer_id: b.customer_id || b.shop_id,
           name: b.name, address: b.address || '', area: b.area || '',
+           brand: b.brand || null,
           assigned_driver: b.assigned_driver || '', mobile: b.mobile || '', flag: b.flag || '',
           lat: b.lat !== '' && b.lat != null ? parseFloat(b.lat) : null,
           lng: b.lng !== '' && b.lng != null ? parseFloat(b.lng) : null,
@@ -377,6 +396,7 @@
         return sbPatch('shops', { shop_id: b.shop_id }, {
           customer_id: b.customer_id || b.shop_id,
           name: b.name, address: b.address || '', area: b.area || '',
+           brand: b.brand !== undefined ? (b.brand || null) : undefined,
           assigned_driver: b.assigned_driver || '', mobile: b.mobile || '', flag: b.flag || '',
           lat: b.lat !== '' && b.lat != null ? parseFloat(b.lat) : null,
           lng: b.lng !== '' && b.lng != null ? parseFloat(b.lng) : null,
@@ -634,24 +654,40 @@
         return sbPatch('shops', { shop_id: b.shop_id }, patch);
       }
 
-      // Customer: change own password (verified via RPC first)
-      case 'changeCustomerPassword':
-        return fetch(BASE.replace('/rest/v1','') + '/rest/v1/rpc/change_customer_password', {
-          method: 'POST', headers: hdrs(),
-          body: JSON.stringify({ p_shop_id: b.shop_id, p_old_password: b.old_password, p_new_password: b.new_password })
-        }).then(function(r){ return r.ok ? r.json() : false; })
-          .then(function(ok){ return { ok: !!ok }; })
-          .catch(function(){ return { ok: false }; });
+           // Customer: change own password (verified via RPC first)
+           case 'changeCustomerPassword':
+             return fetch(BASE.replace('/rest/v1','') + '/rest/v1/rpc/change_customer_password', {
+               method: 'POST', headers: hdrs(),
+               body: JSON.stringify({ p_shop_id: b.shop_id, p_old_password: b.old_password, p_new_password: b.new_password })
+             }).then(function(r){ return r.ok ? r.json() : false; })
+               .then(function(ok){ return { ok: !!ok }; })
+               .catch(function(){ return { ok: false }; });
 
-      // Customer places order
-case 'placeCustomerOrder':
-  return sbPost('customer_orders', {
-    shop_id: b.shop_id, shop_name: b.shop_name,
-    delivery_date: b.delivery_date,
-    items: b.items, qty: b.qty, note: b.note || '',
-    status: 'pending',
-    zoho_doc_type: b.zoho_doc_type || 'invoice'
-  });
+           // Staff / brand admin: change own password
+           // 1) Verify old password via staff_login RPC
+           // 2) If valid, patch the password on the staff row (matched by name)
+           case 'changeStaffPassword':
+             return fetch(BASE.replace('/rest/v1','') + '/rest/v1/rpc/staff_login', {
+               method: 'POST', headers: hdrs(),
+               body: JSON.stringify({ p_name: b.name, p_password: b.old_password })
+             })
+             .then(function(r){ return r.ok ? r.json() : []; })
+             .then(function(rows){
+               var ok = Array.isArray(rows) ? rows.length > 0 : !!rows;
+               if (!ok) return { ok: false, error: 'Current password is incorrect' };
+               return sbPatch('staff', { name: b.name }, { password: b.new_password });
+             })
+             .catch(function(){ return { ok: false, error: 'Network error' }; });
+
+           // Customer places order
+           case 'placeCustomerOrder':
+             return sbPost('customer_orders', {
+               shop_id: b.shop_id, shop_name: b.shop_name,
+               delivery_date: b.delivery_date,
+               items: b.items, qty: b.qty, note: b.note || '',
+               status: 'pending',
+               zoho_doc_type: b.zoho_doc_type || 'invoice'
+             });
 
       // Customer editing their own pending order (or amending an approved one)
       case 'updateCustomerOrder': {
@@ -734,11 +770,11 @@ case 'placeCustomerOrder':
       case 'addStaff':
         return sbPost('staff', {
           name: b.name, password: b.password,
-          role: b.role || 'admin', tabs: b.tabs || '[]', active: true
+          role: b.role || 'admin', brand: b.brand || null, tabs: b.tabs || '[]', active: true
         });
 
       case 'updateStaff': {
-        var upd = { name: b.name, role: b.role, tabs: b.tabs || '[]', active: b.active };
+        var upd = { name: b.name, brand: b.brand || null, role: b.role, tabs: b.tabs || '[]', active: b.active };
         if (b.password) upd.password = b.password;
         return sbPatch('staff', { id: b.id }, upd);
       }
