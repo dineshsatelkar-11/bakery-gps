@@ -711,12 +711,52 @@ function refreshSession(){
 
 // ── EXISTING ORDER CHECK ──
 function loadExistingOrder(){
-  return api({ action:'getCustomerOrders', shop_id: session.shop_id, limit: 10 }).then(function(data){
+  return api({ action:'getCustomerOrders', shop_id: session.shop_id, limit: 30 }).then(function(data){
     var list = Array.isArray(data) ? data : [];
     var tomorrow = tomorrowStr();
-    // Find order for tomorrow's delivery date
-    var found = list.find(function(o){ return o.delivery_date === tomorrow; });
-    existingOrder = found || null;
+    // Prefer exact delivery_date match; if multiple, take most recently updated
+    var matches = list.filter(function(o){ return o.delivery_date === tomorrow; });
+    if (matches.length > 1) {
+      matches.sort(function(a,b){
+        var ta = new Date(a.updated_at || a.created_at || 0).getTime();
+        var tb = new Date(b.updated_at || b.created_at || 0).getTime();
+        return tb - ta;
+      });
+    }
+    existingOrder = matches[0] || null;
+  });
+}
+
+// Apply existingOrder items/qty into the qty map (edit + amend)
+function applyExistingOrderQty(forceAll){
+  // forceAll = true → always pre-fill (amend mode)
+  // otherwise only when status is pending (editable)
+  if (!existingOrder || !products.length) return;
+  var s = (existingOrder.status || '').toLowerCase();
+  if (!forceAll && s !== 'pending') return;
+
+  var iArr = String(existingOrder.items||'').split(',');
+  var qArr = String(existingOrder.qty||'').split(',');
+  var idArr = String(existingOrder.item_ids||'').split(',');
+
+  if (!forceAll) qty = {};
+
+  iArr.forEach(function(name, i){
+    var n = name.replace(/\n/g,' ').trim();
+    var q = parseInt(qArr[i]) || 0;
+    if (!n || !q) return;
+    var pid = (idArr[i]||'').trim();
+    var p = null;
+    if (pid) p = products.find(function(x){ return String(x.product_id) === pid; });
+    if (!p) p = products.find(function(x){ return (x.name||'').trim().toLowerCase() === n.toLowerCase(); });
+    if (!p) p = products.find(function(x){
+      var pn = (x.name||'').trim().toLowerCase();
+      return pn === n.toLowerCase() || pn.indexOf(n.toLowerCase()) === 0 || n.toLowerCase().indexOf(pn) === 0;
+    });
+    if (p) {
+      qty[p.product_id] = q;
+      if (forceAll) _amendMinQty[p.product_id] = q;
+    }
   });
 }
 
@@ -765,22 +805,9 @@ function loadProducts(){
       var ca=(a.category||'').localeCompare(b.category||'');
       return ca !== 0 ? ca : (a.name||'').localeCompare(b.name||'');
     });
-    products = combined;
+        products = combined;
     qty = {};
-
-    // Pre-fill qty from existing order (if pending)
-    if (existingOrder && existingOrder.status === 'pending') {
-      var iArr = (existingOrder.items||'').split(',');
-      var qArr = (existingOrder.qty||'').split(',');
-      iArr.forEach(function(name, i){
-        var n = name.trim();
-        var q = parseInt(qArr[i]) || 0;
-        if (n && q) {
-          var p = products.find(function(p){ return p.name === n; });
-          if (p) qty[p.product_id] = q;
-        }
-      });
-    }
+    applyExistingOrderQty(false);
 
     if (!products.length){
       el.innerHTML = '<div style="padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace;text-align:center">No products available. Contact admin.</div>';
@@ -955,40 +982,36 @@ function renderOrderBanner(){
   }
 }
 
-// ── AMEND APPROVED ORDER ──
 function amendOrder(){
   _amendMode   = true;
   _editLocked  = false;
   _amendMinQty = {};
-  // Pre-fill qty from the approved order and lock those as minimums
   qty = {};
-  if (existingOrder) {
-    var iArr = (existingOrder.items||'').split(',');
-    var qArr = (existingOrder.qty||'').split(',');
-    iArr.forEach(function(name, i){
-      var n = name.trim();
-      var q = parseInt(qArr[i]) || 0;
-      if (n && q) {
-        var p = products.find(function(p){ return p.name === n; });
-        if (p) { qty[p.product_id] = q; _amendMinQty[p.product_id] = q; }
-      }
-    });
-  }
-  // Unlock controls and update labels
-  var submitBtn = document.getElementById('submitBtn');
-  var lockNote  = document.getElementById('orderLockedNote');
-  var label     = document.getElementById('productsCardLabel');
-  document.querySelectorAll('.qty-btn, .qty-val').forEach(function(el){ el.disabled = false; });
-  submitBtn.disabled = false;
-  submitBtn.textContent = '👁 Review & Add to Order';
-  lockNote.style.display = 'none';
-  if (label) label.textContent = 'Add or Adjust Products';
-  // Show a banner explaining what's happening
-  var banner = document.getElementById('existingOrderBanner');
-  banner.innerHTML = '<div style="background:#fff8e1;border:1.5px solid #ffe082;border-radius:12px;padding:11px 14px;margin-bottom:10px;font-size:12px;font-weight:700;color:#7a4800;font-family:monospace;line-height:1.6">➕ Adding to your approved order.<br>Your existing items are pre-filled — adjust quantities and submit.<br>Order will go back to <b>Pending</b> for admin re-approval.</div>';
-  banner.style.display = 'block';
-  renderProducts();
-  window.scrollTo({ top: document.getElementById('productsCard').offsetTop - 60, behavior: 'smooth' });
+  // Re-fetch latest order (admin may have changed qty) then pre-fill
+  loadExistingOrder().then(function(){
+    applyExistingOrderQty(true);
+    var submitBtn = document.getElementById('submitBtn');
+    var lockNote  = document.getElementById('orderLockedNote');
+    var label     = document.getElementById('productsCardLabel');
+    document.querySelectorAll('.qty-btn, .qty-val').forEach(function(el){ el.disabled = false; });
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '👁 Review & Add to Order'; }
+    if (lockNote) lockNote.style.display = 'none';
+    if (label) label.textContent = 'Add or Adjust Products';
+    var banner = document.getElementById('existingOrderBanner');
+    if (banner) {
+      banner.innerHTML = '<div style="background:#fff8e1;border:1.5px solid #ffe082;border-radius:12px;padding:11px 14px;margin-bottom:10px;font-size:12px;font-weight:700;color:#7a4800;font-family:monospace;line-height:1.6">➕ Adding to your approved order.<br>Your existing items are pre-filled — adjust quantities and submit.<br>Order will go back to <b>Pending</b> for admin re-approval.</div>';
+      banner.style.display = 'block';
+    }
+    renderOrderBanner();
+    // Keep amend mode after banner (approved status would re-lock)
+    _amendMode = true;
+    _editLocked = false;
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '👁 Review & Add to Order'; }
+    if (lockNote) lockNote.style.display = 'none';
+    document.querySelectorAll('.qty-btn, .qty-val').forEach(function(el){ el.disabled = false; });
+    renderProducts();
+    window.scrollTo({ top: document.getElementById('productsCard').offsetTop - 60, behavior: 'smooth' });
+  });
 }
 
 // ── ORDER PREVIEW ──
@@ -1441,13 +1464,25 @@ function trkToggleEsc(sectionId, btn, closedLabel){
   btn.style.color       = isOpen ? '' : '#c8382a';
 }
 
-// ── TABS ──
 function showTab(t){
   ['order','history','track','settings'].forEach(function(x){
     document.getElementById('pg-'+x).classList.toggle('on', x===t);
     document.getElementById('tb-'+x).classList.toggle('on', x===t);
   });
   document.getElementById('orderBar').style.display = (t==='order' && totalItemCount()>0 && !_orderClosed && (!_editLocked || _amendMode)) ? 'block' : 'none';
+  if(t==='order'){
+    // Always refresh order from server so admin qty changes show up
+    loadExistingOrder().then(function(){
+      applyExistingOrderQty(_amendMode);
+      renderOrderBanner();
+      if (_amendMode) {
+        _editLocked = false;
+        document.querySelectorAll('.qty-btn, .qty-val').forEach(function(el){ el.disabled = false; });
+      }
+      renderProducts();
+      updateBar();
+    });
+  }
   if(t==='track') loadTrack();
   if(t==='history') loadHistory();
   if(t==='settings'){ renderSettingsProfile(); renderNotifSettings(); }
