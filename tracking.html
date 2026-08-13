@@ -128,54 +128,47 @@ input[type=tel]:focus{border-color:#2d7a4f;background:#fff}
   </div>
 
   <!-- Contacts -->
-  <div class="card">
-    <div class="section-title">Contact Us</div>
-    <!-- Driver -->
-    <div class="contact-row">
-      <div class="contact-icon" style="background:#e8f5e9">🚗</div>
-      <div class="contact-info">
-        <div class="contact-name" id="tr-driver-name">—</div>
-        <div class="contact-role">Your Delivery Driver</div>
-      </div>
-      <a id="tr-driver-call" href="#" class="contact-call">📞 Call</a>
-    </div>
-    <!-- Level 1 escalation button -->
-    <button class="escalate-btn" id="esc-btn1" onclick="toggleEscalation(1)">⚠️ Issue not resolved? Escalate →</button>
-    <!-- Level 1: Delivery Manager (Yuvraj) -->
-    <div class="escalate-section" id="escalateSection1">
-      <div class="escalate-label">📋 Level 1 — Delivery Manager</div>
-      <div class="contact-row">
-        <div class="contact-icon" style="background:#e3f2fd">📦</div>
-        <div class="contact-info">
-          <div class="contact-name" id="tr-esc1-name"></div>
-          <div class="contact-role">Delivery Manager · <span id="tr-esc1-num" style="font-family:monospace"></span></div>
-        </div>
-        <a id="tr-esc1-call" href="#" class="contact-call">📞 Call</a>
-      </div>
-      <!-- Level 2 escalation button -->
-      <button class="escalate-btn" id="esc-btn2" onclick="toggleEscalation(2)" style="margin-top:6px;font-size:12px">🔴 Still not resolved? Escalate to Owner →</button>
-      <!-- Level 2: Owners -->
-      <div class="escalate-section" id="escalateSection2">
-        <div class="escalate-label" style="color:#c8382a">🚨 Level 2 — Company Owners</div>
+    <!-- Contacts -->
+    <div class="card">
+        <div class="section-title">Contact Us</div>
+        <!-- Driver -->
         <div class="contact-row">
-          <div class="contact-icon" style="background:#fff3e0">👑</div>
-          <div class="contact-info">
-            <div class="contact-name" id="tr-owner1-name"></div>
-            <div class="contact-role">Owner · <span id="tr-owner1-num" style="font-family:monospace"></span></div>
-          </div>
-          <a id="tr-owner1-call" href="#" class="contact-call">📞 Call</a>
+            <div class="contact-icon" style="background:#e8f5e9">🚗</div>
+            <div class="contact-info">
+                <div class="contact-name" id="tr-driver-name">—</div>
+                <div class="contact-role">Your Delivery Driver</div>
+            </div>
+            <a id="tr-driver-call" href="#" class="contact-call">📞 Call</a>
         </div>
-        <div class="contact-row">
-          <div class="contact-icon" style="background:#fce4ec">👑</div>
-          <div class="contact-info">
-            <div class="contact-name" id="tr-owner2-name"></div>
-            <div class="contact-role">Owner · <span id="tr-owner2-num" style="font-family:monospace"></span></div>
-          </div>
-          <a id="tr-owner2-call" href="#" class="contact-call">📞 Call</a>
+        <!-- Level 1 escalation button -->
+        <button class="escalate-btn" id="esc-btn1" onclick="toggleEscalation(1)">⚠️ Issue not resolved? Escalate →</button>
+        <!-- Level 1: Logistic Owner -->
+        <div class="escalate-section" id="escalateSection1">
+            <div class="escalate-label">📋 Level 1 — Logistic Owner</div>
+            <div class="contact-row">
+                <div class="contact-icon" style="background:#e3f2fd">📦</div>
+                <div class="contact-info">
+                    <div class="contact-name" id="tr-esc1-name"></div>
+                    <div class="contact-role">Logistic Owner · <span id="tr-esc1-num" style="font-family:monospace"></span></div>
+                </div>
+                <a id="tr-esc1-call" href="#" class="contact-call">📞 Call</a>
+            </div>
+            <!-- Level 2 escalation button -->
+            <button class="escalate-btn" id="esc-btn2" onclick="toggleEscalation(2)" style="margin-top:6px;font-size:12px">🔴 Still not resolved? Escalate →</button>
+            <!-- Level 2: Its Baked Manager -->
+            <div class="escalate-section" id="escalateSection2">
+                <div class="escalate-label" style="color:#c8382a">🚨 Level 2 — Its Baked Manager</div>
+                <div class="contact-row">
+                    <div class="contact-icon" style="background:#fff3e0">👑</div>
+                    <div class="contact-info">
+                        <div class="contact-name" id="tr-owner1-name">Shubham</div>
+                        <div class="contact-role">Its Baked Manager · <span id="tr-owner1-num" style="font-family:monospace">+91 95951 57111</span></div>
+                    </div>
+                    <a id="tr-owner1-call" href="tel:+919595157111" class="contact-call">📞 Call</a>
+                </div>
+            </div>
         </div>
-      </div>
     </div>
-  </div>
 
   <!-- Last delivery by driver today -->
   <div class="card">
@@ -538,11 +531,10 @@ function toggleEscalation(level){
   if(!isOpen){
     sec.style.display = 'block';
     btn.style.background = '#fde8e8'; btn.style.borderColor = '#c8382a'; btn.style.color = '#c8382a';
-    btn.textContent = level===1 ? '✖ Hide level 1 contacts' : '✖ Hide owner contacts';
+       btn.textContent = level===1 ? '✖ Hide level 1 contacts' : '✖ Hide level 2 contacts';
   } else {
-    sec.style.display = 'none';
-    // also collapse inner level if closing level 1
-    if(level===1){ document.getElementById('escalateSection2').style.display='none'; document.getElementById('esc-btn2').style.cssText=''; }
+    ...
+    btn.textContent = level===1 ? '⚠️ Issue not resolved? Escalate →' : '🔴 Still not resolved? Escalate →';}
     btn.style.cssText = '';
     btn.textContent = level===1 ? '⚠️ Issue not resolved? Escalate →' : '🔴 Still not resolved? Escalate to Owner →';
   }
