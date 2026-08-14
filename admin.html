@@ -481,8 +481,24 @@
 
     <div id="routesList"></div>
 </div>
-
 <!-- ATTENDANCE / MONTHLY REPORT -->
+<div class="page" id="pg-attendance">
+    <div class="card" style="margin-bottom:10px">
+        <div class="lbl">Month</div>
+        <div class="filter-row">
+            <input type="month" id="att-month" onchange="loadAttendanceData()" style="margin-bottom:0">
+            <select id="att-driver-filter" onchange="onAttDriverFilterChange()" style="margin-bottom:0">
+                <option value="">— All Drivers (Overview) —</option>
+            </select>
+        </div>
+        <button class="btn btn-grey" style="margin-top:8px;margin-bottom:0" onclick="loadAttendanceData()">🔄 Refresh</button>
+    </div>
+    <div id="att-month-cal" style="display:none"></div>
+    <div id="att-day-panel" style="display:none"></div>
+    <div id="att-summary"></div>
+    <div id="att-driver-detail" style="display:none"></div>
+</div>
+
 <div class="page" id="pg-attendance">
     <div class="card" style="margin-bottom:10px">
         <div class="lbl">Month</div>
@@ -1418,9 +1434,9 @@
 'users','notify','cleanup','audit','attendance','my-brand'];
 allTabKeys.forEach(function(t){
         var show;
-        if(t === 'users' || t === 'cleanup' || t === 'audit') {
+        if(t === 'users' || t === 'cleanup' || t === 'audit' || t === 'attendance') {
           show = (_staffRole === 'super_admin');
-        } else if(t === 'notify' || t === 'manual-order' || t === 'attendance') {
+        } else if(t === 'notify' || t === 'manual-order') {
           show = (_staffRole === 'super_admin' || _staffRole === 'admin');
         } else if(t === 'dashboard') {
           show = (_staffRole === 'super_admin' || _staffRole === 'admin' || _staffRole === 'assistant');
@@ -1581,6 +1597,9 @@ allTabKeys.forEach(function(t){
     }
 
     function showTab(t){
+      // Attendance is owner-only (super_admin)
+      if(t === 'attendance' && _staffRole !== 'super_admin') return;
+      if(_visibleTabs[t] === false) return;
       ['dashboard','orders','approve','queue','summary','delivery','routes','customers','cust-orders','manual-order','products','groups','ingredients','recipes','production','drivers','gps','users','notify','cleanup','audit', 'attendance', 'my-brand'].forEach(function(x){
         var pg=document.getElementById('pg-'+x); if(pg) pg.classList.toggle('on',x===t);
       });
@@ -8039,18 +8058,45 @@ function prodExpandAll(expand){
         alert('✅ Report copied! Paste in WhatsApp.');
       }
     }
-
 /* ════════════════════════════════════════════════════════════════════════════════════════════════
-   📊 DRIVER ATTENDANCE / MONTHLY REPORT (Updated: Deliveries Only + Delivery Count on Calendar)
+   📊 DRIVER ATTENDANCE / MONTHLY REPORT
+   Heatmap calendar · Drivers with ≥1 delivery only · Discrete color levels · Day drill-down
 ════════════════════════════════════════════════════════════════════════════════════════════════ */
 var _attMonth  = '';
-var _attData   = {}; // delivered counts
+var _attData   = {}; // delivered counts: key -> date -> count
 var _attOrders = {}; // total assigned order counts
 var _attSelectedDriver = '';
+var _attSelectedDate = '';
 var _custSelectedId = null;
+
+/* Discrete heatmap levels (GitHub-style) — only drivers with deliveries count */
+var _ATT_HEAT = [
+  { bg: '#ebedf0', fg: '#8a7a6a' }, // 0 — empty
+  { bg: '#9be9a8', fg: '#1a5c35' }, // 1
+  { bg: '#40c463', fg: '#fff' },    // 2
+  { bg: '#30a14e', fg: '#fff' },    // 3
+  { bg: '#216e39', fg: '#fff' }     // 4+
+];
+var _ATT_HEAT_PEND = [
+  { bg: '#ebedf0', fg: '#8a7a6a' },
+  { bg: '#ffe0b2', fg: '#7a4800' },
+  { bg: '#ffb74d', fg: '#5a3000' },
+  { bg: '#fb8c00', fg: '#fff' },
+  { bg: '#e65100', fg: '#fff' }
+];
 
 function _attKey(name){
   return (name||'').trim().toLowerCase();
+}
+
+function _attHeatLevel(count, max){
+  if(!count || count <= 0) return 0;
+  if(!max || max <= 1) return count > 0 ? 1 : 0;
+  var ratio = count / max;
+  if(ratio <= 0.25) return 1;
+  if(ratio <= 0.50) return 2;
+  if(ratio <= 0.75) return 3;
+  return 4;
 }
 
 function initAttendanceTab(){
@@ -8060,16 +8106,20 @@ function initAttendanceTab(){
     m.value = d.getFullYear()+'-'+zp(d.getMonth()+1);
   }
   _attSelectedDriver = '';
+  _attSelectedDate = '';
   document.getElementById('att-driver-detail').style.display='none';
+  var dayPanel = document.getElementById('att-day-panel');
+  if(dayPanel) dayPanel.style.display='none';
+  var monthCal = document.getElementById('att-month-cal');
+  if(monthCal) monthCal.style.display='none';
   document.getElementById('att-driver-filter').value='';
   loadDrivers().then(function(){
     var sel = document.getElementById('att-driver-filter');
     var all = allDriversList.slice().sort(function(a,b){
-      // Active drivers first, then inactive
       if(!!a.active !== !!b.active) return a.active ? -1 : 1;
       return (a.name||'').localeCompare(b.name||'');
     });
-    sel.innerHTML = '<option value="">— All Drivers (Summary) —</option>' +
+    sel.innerHTML = '<option value="">— All Drivers (Overview) —</option>' +
       all.map(function(d){
         return '<option value="'+esc(d.name)+'">'+esc(d.name)+(d.active?'':' (inactive)')+'</option>';
       }).join('');
@@ -8093,12 +8143,14 @@ function loadAttendanceData(){
   _attMonth = document.getElementById('att-month').value;
   var el = document.getElementById('att-summary');
   el.innerHTML = '<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading attendance data…</div>';
+  var dayPanel = document.getElementById('att-day-panel');
+  if(dayPanel) dayPanel.style.display='none';
+  _attSelectedDate = '';
 
   var BASE = CONFIG.SUPABASE_URL + '/rest/v1';
   var KEY  = CONFIG.SUPABASE_ANON_KEY;
   var headers = {'apikey':KEY,'Authorization':'Bearer '+KEY};
 
- // Fetch deliveries AND orders for the month
   Promise.all([
     fetch(BASE+'/deliveries?date=gte.'+r.start+'&date=lte.'+r.end+'&select=date,driver', {headers:headers}).then(function(res){return res.json();}),
     fetch(BASE+'/orders?date=gte.'+r.start+'&date=lte.'+r.end+'&select=date,driver', {headers:headers}).then(function(res){return res.json();})
@@ -8107,8 +8159,8 @@ function loadAttendanceData(){
       var delivArray  = Array.isArray(results[0]) ? results[0] : [];
       var orderArray  = Array.isArray(results[1]) ? results[1] : [];
 
-      _attData   = {}; // delivered counts: key -> date -> count
-      _attOrders = {}; // total order counts: key -> date -> count
+      _attData   = {};
+      _attOrders = {};
 
       function addCount(store, driver, date){
         if(!driver) return;
@@ -8123,12 +8175,328 @@ function loadAttendanceData(){
       orderArray.forEach(function(o){ addCount(_attOrders, o.driver, o.date); });
 
       renderAttendanceSummary();
-      if(_attSelectedDriver) renderDriverCalendar(_attSelectedDriver);
+      if(_attSelectedDriver){
+        var mc = document.getElementById('att-month-cal');
+        if(mc) mc.style.display='none';
+        renderDriverCalendar(_attSelectedDriver);
+      } else {
+        document.getElementById('att-driver-detail').style.display='none';
+        renderMonthOverviewCalendar();
+      }
     })
     .catch(function(e){
       el.innerHTML = '<div class="msg er">Failed to load attendance data. Check network / Supabase settings.</div>';
       if(window.logError) window.logError('admin','loadAttendanceData',e);
     });
+}
+
+/* Only drivers with ≥1 delivery that day */
+function _attDayAggregates(){
+  var byDate = {};
+  Object.keys(_attData).forEach(function(dk){
+    Object.keys(_attData[dk]).forEach(function(ds){
+      if(!_attData[dk][ds] || _attData[dk][ds] <= 0) return;
+      if(!byDate[ds]) byDate[ds] = { drivers: {}, deliv: 0, orders: 0 };
+      byDate[ds].drivers[dk] = true;
+      byDate[ds].deliv += _attData[dk][ds];
+    });
+  });
+  Object.keys(_attOrders).forEach(function(dk){
+    Object.keys(_attOrders[dk]).forEach(function(ds){
+      if(!byDate[ds]) byDate[ds] = { drivers: {}, deliv: 0, orders: 0 };
+      byDate[ds].orders += _attOrders[dk][ds];
+    });
+  });
+  return byDate;
+}
+
+function renderMonthOverviewCalendar(){
+  var r = _attMonthRange();
+  var today = todayStr();
+  var wrap = document.getElementById('att-month-cal');
+  if(!wrap) return;
+  var byDate = _attDayAggregates();
+  var monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var firstDow = new Date(r.y, r.mo-1, 1).getDay();
+  var activeDrivers = allDriversList.filter(function(d){ return d.active; }).length || allDriversList.length;
+
+  var maxDrivers = 0, totalDelivMonth = 0, activeDays = 0;
+  for(var day=1; day<=r.lastDay; day++){
+    var ds0 = r.y+'-'+zp(r.mo)+'-'+zp(day);
+    var info0 = byDate[ds0];
+    if(info0){
+      var n = Object.keys(info0.drivers).length;
+      if(n > maxDrivers) maxDrivers = n;
+      if(n > 0){ activeDays++; totalDelivMonth += info0.deliv; }
+    }
+  }
+
+  var cells = '';
+  for(var i=0;i<firstDow;i++) cells += '<div style="min-height:58px"></div>';
+
+  for(var day=1; day<=r.lastDay; day++){
+    var ds = r.y+'-'+zp(r.mo)+'-'+zp(day);
+    var isFuture = ds > today;
+    var isToday  = ds === today;
+    var isSel    = ds === _attSelectedDate;
+    var info = byDate[ds];
+    var driverCount = info ? Object.keys(info.drivers).length : 0;
+    var delivCount  = info ? info.deliv : 0;
+    var orderCount  = info ? info.orders : 0;
+    var pending     = Math.max(0, orderCount - delivCount);
+    var lvl = _attHeatLevel(driverCount, maxDrivers);
+    var palette = (pending > 0 && driverCount > 0) ? _ATT_HEAT_PEND : _ATT_HEAT;
+    var cell = palette[lvl];
+
+    var tip = isFuture ? '' :
+      (driverCount === 0
+        ? ds+' · No deliveries'
+        : ds+' · '+driverCount+' driver'+(driverCount!==1?'s':'')+' · '+delivCount+' deliv'+(pending>0?' · '+pending+' pending':''));
+
+    var dayNumColor = isFuture ? '#c8bda8' : (lvl === 0 ? '#b0a090' : cell.fg);
+    var border = isToday || isSel ? '2px solid #4a2f14' : '1px solid '+(lvl===0?'#e8dfd2':'transparent');
+    var extraShadow = isSel ? 'box-shadow:0 0 0 3px rgba(74,47,20,.2);' : '';
+
+    var inner = '';
+    if(isFuture){
+      inner = '<div style="font-size:12px;font-weight:800;color:#c8bda8">'+day+'</div>';
+    } else if(driverCount === 0){
+      inner =
+        '<div style="font-size:12px;font-weight:800;color:#b0a090">'+day+'</div>'+
+        '<div style="width:6px;height:6px;border-radius:50%;background:#d8d0c4;margin:6px auto 0"></div>';
+    } else {
+      inner =
+        '<div style="font-size:11px;font-weight:800;color:'+cell.fg+';opacity:.9;line-height:1">'+day+'</div>'+
+        '<div style="font-size:15px;font-weight:900;font-family:monospace;color:'+cell.fg+';line-height:1.15;margin-top:2px">'+driverCount+'</div>'+
+        '<div style="font-size:8px;font-weight:700;color:'+cell.fg+';opacity:.8;line-height:1">'+(pending>0?'⚠'+pending:delivCount+'d')+'</div>';
+    }
+
+    cells +=
+      '<div title="'+esc(tip)+'" '+
+        'onclick="'+(isFuture?'':'openAttDateDetail(\''+ds+'\')')+'" '+
+        'style="min-height:58px;border-radius:10px;background:'+(isFuture?'#faf8f5':cell.bg)+';'+
+        'border:'+border+';'+extraShadow+
+        'cursor:'+(isFuture?'default':'pointer')+';padding:5px 3px 4px;text-align:center;'+
+        'transition:transform .12s,box-shadow .12s;" '+
+        (isFuture?'':
+          'onmouseover="this.style.transform=\'scale(1.06)\';this.style.zIndex=2;this.style.boxShadow=\'0 4px 12px rgba(74,47,20,.15)\'" '+
+          'onmouseout="this.style.transform=\'\';this.style.zIndex=\'\';this.style.boxShadow=\''+(isSel?'0 0 0 3px rgba(74,47,20,.2)':'')+'\'"')+
+      '>'+inner+'</div>';
+  }
+
+  // Legend chips
+  var legendChips = [1,2,3,4].map(function(lv){
+    return '<span style="width:14px;height:14px;border-radius:3px;background:'+_ATT_HEAT[lv].bg+';display:inline-block;border:1px solid rgba(0,0,0,.06)"></span>';
+  }).join('');
+
+  wrap.style.display = 'block';
+  wrap.innerHTML =
+    '<div style="background:#fff;border-radius:20px;overflow:hidden;margin-bottom:14px;box-shadow:0 2px 12px rgba(74,47,20,.07);border:1.5px solid #f0e8dc">'+
+      '<div style="background:linear-gradient(135deg,#4a2f14 0%,#6b4423 100%);padding:14px 16px;display:flex;justify-content:space-between;align-items:center">'+
+        '<div>'+
+          '<div style="font-size:16px;font-weight:900;color:#fff">'+monthNames[r.mo-1]+' '+r.y+'</div>'+
+          '<div style="font-size:11px;color:rgba(255,255,255,.65);font-family:monospace;margin-top:2px">Heatmap · drivers with deliveries only</div>'+
+        '</div>'+
+        '<div style="text-align:right">'+
+          '<div style="font-size:20px;font-weight:900;color:#fff;line-height:1">'+activeDays+'</div>'+
+          '<div style="font-size:9px;color:rgba(255,255,255,.6);font-family:monospace;text-transform:uppercase;letter-spacing:.5px">active days</div>'+
+        '</div>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;border-bottom:1.5px solid #f0e8dc">'+
+        '<div style="padding:10px 8px;text-align:center;border-right:1.5px solid #f0e8dc">'+
+          '<div style="font-size:16px;font-weight:900;color:#4a2f14">'+activeDrivers+'</div>'+
+          '<div style="font-size:9px;font-family:monospace;color:#8a7a6a;text-transform:uppercase">Drivers</div>'+
+        '</div>'+
+        '<div style="padding:10px 8px;text-align:center;border-right:1.5px solid #f0e8dc">'+
+          '<div style="font-size:16px;font-weight:900;color:#2d7a4f">'+totalDelivMonth+'</div>'+
+          '<div style="font-size:9px;font-family:monospace;color:#8a7a6a;text-transform:uppercase">Deliveries</div>'+
+        '</div>'+
+        '<div style="padding:10px 8px;text-align:center">'+
+          '<div style="font-size:16px;font-weight:900;color:#1a5fa8">'+maxDrivers+'</div>'+
+          '<div style="font-size:9px;font-family:monospace;color:#8a7a6a;text-transform:uppercase">Peak Day</div>'+
+        '</div>'+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;padding:10px 10px 4px;background:#faf8f5">'+
+        ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(function(d){
+          return '<div style="text-align:center;font-size:10px;font-weight:800;color:#a09080;font-family:monospace;padding:2px 0">'+d+'</div>';
+        }).join('')+
+      '</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;padding:4px 10px 12px;background:#faf8f5">'+
+        cells+
+      '</div>'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:10px 14px 14px;border-top:1.5px solid #f0e8dc;background:#fff">'+
+        '<div style="display:flex;align-items:center;gap:5px;font-size:10px;font-family:monospace;color:#8a7a6a">'+
+          '<span>Less</span>'+
+          '<span style="width:14px;height:14px;border-radius:3px;background:#ebedf0;display:inline-block;border:1px solid #e0d8cc"></span>'+
+          legendChips+
+          '<span>More</span>'+
+        '</div>'+
+        '<div style="display:flex;gap:10px;font-size:10px;font-family:monospace;color:#8a7a6a">'+
+          '<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#40c463;display:inline-block"></span>Complete</span>'+
+          '<span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#ffb74d;display:inline-block"></span>Pending</span>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+}
+
+function openAttDateDetail(date){
+  _attSelectedDate = date;
+  renderMonthOverviewCalendar();
+
+  var panel = document.getElementById('att-day-panel');
+  if(!panel) return;
+  panel.style.display = 'block';
+  panel.innerHTML = '<div style="background:#fff;border-radius:16px;padding:20px;margin-bottom:14px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">Loading '+date+'…</div>';
+  panel.scrollIntoView({behavior:'smooth', block:'nearest'});
+
+  Promise.all([
+    api({action:'getOrders', date:date}),
+    api({action:'getDeliveries', date:date})
+  ]).then(function(res){
+    var orders = Array.isArray(res[0]) ? res[0] : [];
+    var delivs = Array.isArray(res[1]) ? res[1] : [];
+
+    var byDriver = {};
+    function ensure(name){
+      if(!byDriver[name]) byDriver[name] = { orders:[], delivs:[], delivMap:{} };
+      return byDriver[name];
+    }
+    orders.forEach(function(o){
+      var n = (o.driver||'Unassigned').trim() || 'Unassigned';
+      ensure(n).orders.push(o);
+    });
+    delivs.forEach(function(d){
+      var n = (d.driver||'Unassigned').trim() || 'Unassigned';
+      var g = ensure(n);
+      g.delivs.push(d);
+      g.delivMap[d.shop_id] = d;
+      if(d.shop_name) g.delivMap[d.shop_name] = d;
+    });
+
+    // Only drivers with ≥1 delivery
+    var driverNames = Object.keys(byDriver).filter(function(n){
+      return byDriver[n].delivs.length > 0;
+    }).sort(function(a,b){
+      var da = driverMap[a], db = driverMap[b];
+      var aa = da ? !!da.active : true, ab = db ? !!db.active : true;
+      if(aa !== ab) return aa ? -1 : 1;
+      return a.localeCompare(b);
+    });
+
+    var dObj = new Date(date+'T00:00:00');
+    var dateLabel = dObj.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short',year:'numeric'});
+    var totalOrders = orders.length;
+    var totalDeliv  = delivs.length;
+    var totalPend   = Math.max(0, totalOrders - totalDeliv);
+
+    var cards = driverNames.map(function(name){
+      var g = byDriver[name];
+      var shopIds = {};
+      g.orders.forEach(function(o){
+        var sid = o.customer_id || o.shop_id || o.shop_name;
+        if(sid) shopIds[sid] = o;
+      });
+      var shopList = Object.keys(shopIds).map(function(k){ return shopIds[k]; });
+      var doneCount = shopList.filter(function(o){
+        return !!(g.delivMap[o.customer_id||o.shop_id] || g.delivMap[o.shop_name]);
+      }).length;
+      if(shopList.length === 0 && g.delivs.length > 0){
+        doneCount = g.delivs.length;
+        shopList = g.delivs.map(function(d){ return { shop_id:d.shop_id, shop_name:d.shop_name, customer_id:d.shop_id }; });
+      }
+      var pendCount = Math.max(0, shopList.length - doneCount);
+      var pct = shopList.length ? Math.round((doneCount/shopList.length)*100) : 100;
+      var allDone = pendCount === 0;
+
+      var drv = driverMap[name] || {};
+      var c = DRIVER_COLORS[drv.color||'blue'] || DRIVER_COLORS.blue;
+      var initials = name.split(' ').map(function(w){return w[0]||'';}).join('').toUpperCase().slice(0,2);
+      var barColor = pct>=100 ? '#2d7a4f' : pct>=50 ? '#c8864a' : '#c8382a';
+
+      var statusBadge = allDone
+        ? '<span style="background:#e8f5e9;color:#2d7a4f;font-size:10px;font-weight:800;font-family:monospace;padding:3px 10px;border-radius:20px">✅ Complete</span>'
+        : '<span style="background:#fff3e0;color:#c8864a;font-size:10px;font-weight:800;font-family:monospace;padding:3px 10px;border-radius:20px">⏳ '+pendCount+' pending</span>';
+
+      var shopRows = shopList.map(function(o){
+        var dl = g.delivMap[o.customer_id||o.shop_id] || g.delivMap[o.shop_name];
+        return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f5ede0">'+
+          '<div style="width:8px;height:8px;border-radius:50%;background:'+(dl?'#2d7a4f':'#c8382a')+';flex-shrink:0"></div>'+
+          '<div style="flex:1;min-width:0;font-size:12px;font-weight:600;color:#1e1611;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(o.shop_name||'')+'</div>'+
+          (dl
+            ? '<span style="font-size:10px;font-weight:800;color:#2d7a4f;font-family:monospace;background:#e8f5e9;padding:2px 8px;border-radius:14px;flex-shrink:0">'+esc(dl.time||'✓')+'</span>'
+            : '<span style="font-size:10px;font-weight:800;color:#c8382a;font-family:monospace;background:#fde8e8;padding:2px 8px;border-radius:14px;flex-shrink:0">Pending</span>')+
+        '</div>';
+      }).join('');
+
+      var listId = 'att-day-shops-'+_attKey(name).replace(/\W/g,'_');
+
+      return '<div style="background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;padding:12px 14px;margin-bottom:8px">'+
+        '<div style="display:flex;align-items:center;gap:12px;cursor:pointer" onclick="var el=document.getElementById(\''+listId+'\');if(el){el.style.display=el.style.display===\'none\'?\'block\':\'none\';}">'+
+          '<div style="width:42px;height:42px;border-radius:50%;background:'+c.bg+';color:'+c.fg+';display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;flex-shrink:0">'+initials+'</div>'+
+          '<div style="flex:1;min-width:0">'+
+            '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:4px">'+
+              '<span style="font-size:14px;font-weight:800;color:#4a2f14;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(name)+'</span>'+
+              statusBadge+
+            '</div>'+
+            '<div style="display:flex;gap:6px;align-items:center;margin-bottom:5px">'+
+              '<span style="font-size:10px;font-family:monospace;color:#2d7a4f;font-weight:700">✓ '+doneCount+'</span>'+
+              (pendCount>0?'<span style="font-size:10px;font-family:monospace;color:#c8382a;font-weight:700">✕ '+pendCount+'</span>':'')+
+              '<span style="font-size:10px;font-family:monospace;color:#8a7a6a">· '+shopList.length+' shops</span>'+
+              '<span style="margin-left:auto;font-size:13px;font-weight:900;font-family:monospace;color:'+barColor+'">'+pct+'%</span>'+
+            '</div>'+
+            '<div style="background:#f0e8dc;border-radius:4px;height:5px;overflow:hidden">'+
+              '<div style="background:'+barColor+';height:100%;width:'+pct+'%;border-radius:4px"></div>'+
+            '</div>'+
+          '</div>'+
+        '</div>'+
+        '<div id="'+listId+'" style="display:none;margin-top:10px;padding-top:8px;border-top:1px solid #f0e8dc">'+
+          (shopRows || '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;text-align:center;padding:8px">No shops</div>')+
+        '</div>'+
+      '</div>';
+    }).join('');
+
+    panel.innerHTML =
+      '<div style="background:#fff;border-radius:20px;overflow:hidden;margin-bottom:14px;box-shadow:0 2px 12px rgba(74,47,20,.07);border:1.5px solid #f0e8dc">'+
+        '<div style="background:linear-gradient(135deg,#4a2f14,#6b4423);padding:14px 16px;display:flex;justify-content:space-between;align-items:center">'+
+          '<div>'+
+            '<div style="font-size:15px;font-weight:900;color:#fff">'+dateLabel+'</div>'+
+            '<div style="font-size:11px;color:rgba(255,255,255,.65);font-family:monospace;margin-top:2px">Drivers with deliveries</div>'+
+          '</div>'+
+          '<button onclick="closeAttDateDetail()" style="background:rgba(255,255,255,.2);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:14px;cursor:pointer;font-weight:700">✕</button>'+
+        '</div>'+
+        '<div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1.5px solid #f0e8dc">'+
+          '<div style="padding:12px 6px;text-align:center;border-right:1.5px solid #f0e8dc">'+
+            '<div style="font-size:18px;font-weight:900;color:#4a2f14">'+driverNames.length+'</div>'+
+            '<div style="font-size:8px;font-family:monospace;color:#8a7a6a;text-transform:uppercase">Drivers</div>'+
+          '</div>'+
+          '<div style="padding:12px 6px;text-align:center;border-right:1.5px solid #f0e8dc">'+
+            '<div style="font-size:18px;font-weight:900;color:#4a2f14">'+totalOrders+'</div>'+
+            '<div style="font-size:8px;font-family:monospace;color:#8a7a6a;text-transform:uppercase">Orders</div>'+
+          '</div>'+
+          '<div style="padding:12px 6px;text-align:center;border-right:1.5px solid #f0e8dc">'+
+            '<div style="font-size:18px;font-weight:900;color:#2d7a4f">'+totalDeliv+'</div>'+
+            '<div style="font-size:8px;font-family:monospace;color:#5a8a6a;text-transform:uppercase">Done</div>'+
+          '</div>'+
+          '<div style="padding:12px 6px;text-align:center">'+
+            '<div style="font-size:18px;font-weight:900;color:'+(totalPend>0?'#c8382a':'#8a7a6a')+'">'+totalPend+'</div>'+
+            '<div style="font-size:8px;font-family:monospace;color:'+(totalPend>0?'#a06058':'#8a7a6a')+';text-transform:uppercase">Pending</div>'+
+          '</div>'+
+        '</div>'+
+        '<div style="padding:12px 14px 14px">'+
+          (cards || '<div style="text-align:center;padding:24px;font-size:12px;color:#8a7a6a;font-family:monospace">No drivers with deliveries this day.</div>')+
+        '</div>'+
+      '</div>';
+  }).catch(function(e){
+    panel.innerHTML = '<div class="msg er">Failed to load day detail.</div>';
+    if(window.logError) window.logError('admin','openAttDateDetail',e);
+  });
+}
+
+function closeAttDateDetail(){
+  _attSelectedDate = '';
+  var panel = document.getElementById('att-day-panel');
+  if(panel) panel.style.display='none';
+  renderMonthOverviewCalendar();
 }
 
 function renderAttendanceSummary(){
@@ -8149,7 +8517,7 @@ function renderAttendanceSummary(){
       var ds = r.y+'-'+zp(r.mo)+'-'+zp(day);
       if(dData[ds] && dData[ds] > 0) present++;
     }
-   var leave = elapsedDays - present;
+    var leave = elapsedDays - present;
     var pct = elapsedDays>0 ? Math.round((present/elapsedDays)*100) : 0;
     return {name:d.name, present:present, leave:leave, pct:pct, color:d.color||'blue', active:!!d.active};
   });
@@ -8158,7 +8526,6 @@ function renderAttendanceSummary(){
   var totalLeave   = rows.reduce(function(s,x){return s+x.leave;},0);
   var avgPct = rows.length ? Math.round(rows.reduce(function(s,x){return s+x.pct;},0)/rows.length) : 0;
 
-  // ── Hero stats strip ──
   var heroHtml =
     '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px">'+
       '<div style="background:linear-gradient(135deg,#4a2f14,#6b4423);border-radius:16px;padding:14px 10px;text-align:center;color:#fff">'+
@@ -8179,8 +8546,10 @@ function renderAttendanceSummary(){
       '</div>'+
     '</div>';
 
+  var sectionLabel = '<div style="font-size:10px;font-weight:800;color:#8a7a6a;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px">Drivers · Monthly Attendance</div>';
+
   var cardsHtml = rows.sort(function(a,b){
-    if(a.active !== b.active) return a.active ? -1 : 1; // active first
+    if(a.active !== b.active) return a.active ? -1 : 1;
     return b.pct-a.pct;
   }).map(function(x){
     var c = DRIVER_COLORS[x.color] || DRIVER_COLORS.blue;
@@ -8190,18 +8559,14 @@ function renderAttendanceSummary(){
     var dim = x.active ? '' : 'opacity:.6;';
     var avatarBg = x.active ? c.bg : '#e8dfd2';
     var avatarFg = x.active ? c.fg : '#8a7a6a';
-    // Circular ring via conic-gradient
     var ringBg = x.active
       ? 'conic-gradient('+barColor+' '+(x.pct*3.6)+'deg, #ece3d4 0deg)'
       : 'conic-gradient(#c8bda8 '+(x.pct*3.6)+'deg, #ece3d4 0deg)';
 
     return '<div onclick="selectAttDriver(\''+esc(x.name)+'\')" style="background:#fff;border-radius:18px;padding:14px 16px;margin-bottom:10px;cursor:pointer;box-shadow:0 1px 3px rgba(74,47,20,.08);border:1.5px solid '+(x.active?'#f0e8dc':'#e8dfd2')+';transition:box-shadow .15s;display:flex;align-items:center;gap:14px;'+dim+'" onmouseover="this.style.boxShadow=\'0 4px 14px rgba(74,47,20,.12)\'" onmouseout="this.style.boxShadow=\'0 1px 3px rgba(74,47,20,.08)\'">'+
-
-        // Progress ring with avatar inside
         '<div style="position:relative;width:56px;height:56px;flex-shrink:0;border-radius:50%;background:'+ringBg+';display:flex;align-items:center;justify-content:center">'+
           '<div style="width:46px;height:46px;border-radius:50%;background:'+avatarBg+';color:'+avatarFg+';display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900">'+initials+'</div>'+
         '</div>'+
-
         '<div style="flex:1;min-width:0">'+
           '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;gap:8px">'+
             '<span style="font-size:14px;font-weight:800;color:#4a2f14;display:flex;align-items:center;gap:6px;min-width:0">'+
@@ -8218,17 +8583,21 @@ function renderAttendanceSummary(){
             '<div style="background:'+(x.active?barColor:'#c8bda8')+';height:100%;width:'+x.pct+'%;border-radius:6px;transition:width .4s"></div>'+
           '</div>'+
         '</div>'+
-
         '<div style="flex-shrink:0;color:#c8a87a;font-size:16px">›</div>'+
       '</div>';
   }).join('');
 
-  el.innerHTML = heroHtml + cardsHtml;
+  el.innerHTML = heroHtml + sectionLabel + cardsHtml;
 }
 
 function selectAttDriver(name){
   _attSelectedDriver = name;
+  _attSelectedDate = '';
   document.getElementById('att-driver-filter').value = name;
+  var mc = document.getElementById('att-month-cal');
+  if(mc) mc.style.display='none';
+  var dp = document.getElementById('att-day-panel');
+  if(dp) dp.style.display='none';
   renderDriverCalendar(name);
   document.getElementById('att-driver-detail').scrollIntoView({behavior:'smooth', block:'start'});
 }
@@ -8236,10 +8605,18 @@ function selectAttDriver(name){
 function onAttDriverFilterChange(){
   var name = document.getElementById('att-driver-filter').value;
   _attSelectedDriver = name;
-  if(!name){ document.getElementById('att-driver-detail').style.display='none'; }
-  else { renderDriverCalendar(name); }
+  _attSelectedDate = '';
+  var dp = document.getElementById('att-day-panel');
+  if(dp) dp.style.display='none';
+  if(!name){
+    document.getElementById('att-driver-detail').style.display='none';
+    renderMonthOverviewCalendar();
+  } else {
+    var mc = document.getElementById('att-month-cal');
+    if(mc) mc.style.display='none';
+    renderDriverCalendar(name);
+  }
 }
-
 function renderDriverCalendar(driverName){
   var r = _attMonthRange();
   var today = todayStr();

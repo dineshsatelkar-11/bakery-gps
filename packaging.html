@@ -1,592 +1,785 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>Packaging — IBCAB</title>
-<script src="config.js"></script>
-<script src="api.js"></script>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:480px;margin:0 auto;min-height:100vh}
-/* Login */
-.login-wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 20px}
-.login-logo{font-size:52px;margin-bottom:6px}
-.login-title{font-size:22px;font-weight:900;color:#4a2f14;text-align:center;margin-bottom:2px}
-.login-sub{font-size:12px;color:#8a7a6a;font-family:monospace;margin-bottom:28px;text-align:center}
-.login-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:20px;padding:22px;width:100%;max-width:360px}
-.lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:6px;text-transform:uppercase;display:block}
-select,input[type=text],input[type=password],input[type=date]{width:100%;padding:12px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:10px}
-.btn{width:100%;padding:14px;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:8px}
-.btn-purple{background:#6e3da8;color:#fff}
-.btn-green{background:#2d7a4f;color:#fff}
-.btn-grey{background:#e8dfd2;color:#4a2f14}
-.err{color:#c8382a;font-size:12px;font-family:monospace;text-align:center;margin-top:8px}
-/* App */
-.topbar{background:#6e3da8;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:99}
-.topbar-title{color:#fff;font-size:15px;font-weight:800}
-.topbar-sub{color:rgba(255,255,255,.75);font-size:11px;font-family:monospace;margin-top:1px}
-.logout-btn{background:rgba(255,255,255,.2);border:none;color:#fff;padding:6px 11px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif}
-/* Tabs */
-.tabs{display:flex;background:#fff;border-bottom:2px solid #e8dfd2;position:sticky;top:53px;z-index:98}
-.tab{flex:1;padding:12px 4px;border:none;background:none;font-size:12px;font-weight:700;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;border-bottom:3px solid transparent;margin-bottom:-2px}
-.tab.on{color:#6e3da8;border-bottom-color:#6e3da8}
-.page{display:none;padding:14px 14px 100px}.page.on{display:block}
-.card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:14px;margin-bottom:10px}
-.msg{padding:11px 14px;border-radius:12px;font-size:12px;font-weight:600;font-family:monospace;margin-bottom:10px;line-height:1.8;white-space:pre-line}
-.ok{background:#e8f5e9;color:#2d7a4f;border:1px solid #a5d6a7}
-.er{background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0}
-.in{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9}
-/* Order card */
-.order-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;margin-bottom:10px;overflow:hidden;transition:opacity .3s}
-.order-card.done{opacity:.4}
-.order-head{padding:12px 14px;background:#f3e8ff;border-bottom:1.5px solid #e8dfd2;display:flex;align-items:flex-start;justify-content:space-between}
-.order-head.kitchen-head{background:#fff8e1}
-.order-head.dispatched-head{background:#e8f5e9}
-.order-shop{font-size:14px;font-weight:800;color:#4a2f14}
-.order-driver{font-size:10px;color:#6e3da8;font-family:monospace;font-weight:700;margin-top:2px}
-.order-body{padding:12px 14px}
-.order-items{font-size:12px;font-family:monospace;background:#f5ede0;border-radius:8px;padding:8px 10px;line-height:1.9;margin-bottom:10px}
-.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;font-family:monospace}
-.b-pack{background:#f3e8ff;color:#6e3da8}
-.b-done{background:#e8f5e9;color:#2d7a4f}
-.b-kitchen{background:#fff8e1;color:#7a4800}
-.b-dispatched{background:#e8f5e9;color:#2d7a4f}
-/* Pack button */
-.pack-btn{width:100%;padding:11px;border:none;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;background:#6e3da8;color:#fff;transition:all .2s}
-.pack-btn.done-state{background:#2d7a4f;cursor:default}
-/* Stats */
-.stats-row{display:flex;gap:8px;margin-bottom:10px}
-.stat-box{flex:1;background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:10px;text-align:center}
-.stat-n{font-size:22px;font-weight:900;color:#4a2f14}
-.stat-l{font-size:9px;color:#8a7a6a;font-family:monospace;text-transform:uppercase}
-.sticky-bottom{position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;background:#fff;border-top:2px solid #e8dfd2;padding:12px 14px;z-index:90}
-/* Product count card */
-.prod-count-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:14px;margin-bottom:10px}
-.prod-count-title{font-size:11px;font-weight:900;letter-spacing:1.5px;color:#4a2f14;text-transform:uppercase;margin-bottom:10px}
-.prod-count-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f0e8d8}
-.prod-count-row:last-child{border-bottom:none}
-.prod-count-name{font-size:13px;font-weight:700;color:#1e1611}
-.prod-count-nums{font-size:11px;font-family:monospace;font-weight:700;display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:flex-end}
-.pcn-kitchen{color:#7a4800}
-.pcn-pending{color:#6e3da8}
-.pcn-done{color:#2d7a4f}
-/* Section header */
-.section-hdr{font-size:11px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;padding:7px 12px;border-radius:8px;margin-bottom:8px}
-.sh-pack{background:#f3e8ff;color:#6e3da8}
-.sh-kitchen{background:#fff8e1;color:#7a4800}
-.sh-dispatched{background:#e8f5e9;color:#2d7a4f}
-/* Summary */
-.sum-shop{background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:12px 14px;margin-bottom:8px}
-.sum-sname{font-size:13px;font-weight:800;color:#4a2f14;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between}
-.sum-sdetail{font-family:monospace;font-size:11px;color:#8a7a6a;line-height:1.9}
-/* Confirm modal */
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
-.modal{background:#fff;border-radius:20px;padding:22px;width:100%;max-width:360px}
-.modal-title{font-size:16px;font-weight:900;color:#4a2f14;margin-bottom:4px}
-.modal-sub{font-size:12px;color:#8a7a6a;font-family:monospace;margin-bottom:14px;line-height:1.6}
-.modal-items{font-size:12px;font-family:monospace;background:#f5ede0;border-radius:10px;padding:10px 12px;line-height:1.9;margin-bottom:14px}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+    <title>Packaging — IBCAB</title>
+    <script src="config.js"></script>
+    <script src="api.js"></script>
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:480px;margin:0 auto;min-height:100vh}
+        /* Login */
+        .login-wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 20px}
+        .login-logo{font-size:52px;margin-bottom:6px}
+        .login-title{font-size:22px;font-weight:900;color:#4a2f14;text-align:center;margin-bottom:2px}
+        .login-sub{font-size:12px;color:#8a7a6a;font-family:monospace;margin-bottom:28px;text-align:center}
+        .login-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:20px;padding:22px;width:100%;max-width:360px}
+        .lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:6px;text-transform:uppercase;display:block}
+        select,input[type=text],input[type=password],input[type=date]{width:100%;padding:12px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:10px}
+        .btn{width:100%;padding:14px;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:8px}
+        .btn-purple{background:#6e3da8;color:#fff}
+        .btn-green{background:#2d7a4f;color:#fff}
+        .btn-grey{background:#e8dfd2;color:#4a2f14}
+        .err{color:#c8382a;font-size:12px;font-family:monospace;text-align:center;margin-top:8px}
+        /* App */
+        .topbar{background:#6e3da8;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:99}
+        .topbar-title{color:#fff;font-size:15px;font-weight:800}
+        .topbar-sub{color:rgba(255,255,255,.75);font-size:11px;font-family:monospace;margin-top:1px}
+        .logout-btn{background:rgba(255,255,255,.2);border:none;color:#fff;padding:6px 11px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif}
+        /* Tabs */
+        .tabs{display:flex;background:#fff;border-bottom:2px solid #e8dfd2;position:sticky;top:53px;z-index:98}
+        .tab{flex:1;padding:12px 4px;border:none;background:none;font-size:12px;font-weight:700;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;border-bottom:3px solid transparent;margin-bottom:-2px}
+        .tab.on{color:#6e3da8;border-bottom-color:#6e3da8}
+        .page{display:none;padding:14px 14px 100px}.page.on{display:block}
+        .card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:14px;margin-bottom:10px}
+        .msg{padding:11px 14px;border-radius:12px;font-size:12px;font-weight:600;font-family:monospace;margin-bottom:10px;line-height:1.8;white-space:pre-line}
+        .ok{background:#e8f5e9;color:#2d7a4f;border:1px solid #a5d6a7}
+        .er{background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0}
+        .in{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9}
+        /* Order card */
+        .order-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;margin-bottom:10px;overflow:hidden;transition:opacity .3s}
+        .order-card.done{opacity:.4}
+        .order-head{padding:12px 14px;background:#f3e8ff;border-bottom:1.5px solid #e8dfd2;display:flex;align-items:flex-start;justify-content:space-between}
+        .order-head.kitchen-head{background:#fff8e1}
+        .order-head.dispatched-head{background:#e8f5e9}
+        .order-shop{font-size:14px;font-weight:800;color:#4a2f14}
+        .order-driver{font-size:10px;color:#6e3da8;font-family:monospace;font-weight:700;margin-top:2px}
+        .order-body{padding:12px 14px}
+        .order-items{font-size:12px;font-family:monospace;background:#f5ede0;border-radius:8px;padding:8px 10px;line-height:1.9;margin-bottom:10px}
+        .badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;font-family:monospace}
+        .b-pack{background:#f3e8ff;color:#6e3da8}
+        .b-done{background:#e8f5e9;color:#2d7a4f}
+        .b-kitchen{background:#fff8e1;color:#7a4800}
+        .b-dispatched{background:#e8f5e9;color:#2d7a4f}
+        /* Pack button */
+        .pack-btn{width:100%;padding:11px;border:none;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;background:#6e3da8;color:#fff;transition:all .2s}
+        .pack-btn.done-state{background:#2d7a4f;cursor:default}
+        /* Stats */
+        .stats-row{display:flex;gap:8px;margin-bottom:10px}
+        .stat-box{flex:1;background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:10px;text-align:center}
+        .stat-n{font-size:22px;font-weight:900;color:#4a2f14}
+        .stat-l{font-size:9px;color:#8a7a6a;font-family:monospace;text-transform:uppercase}
+        .sticky-bottom{position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;background:#fff;border-top:2px solid #e8dfd2;padding:12px 14px;z-index:90}
+        /* Product count card */
+        .prod-count-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:14px;margin-bottom:10px}
+        .prod-count-title{font-size:11px;font-weight:900;letter-spacing:1.5px;color:#4a2f14;text-transform:uppercase;margin-bottom:10px}
+        .prod-count-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f0e8d8}
+        .prod-count-row:last-child{border-bottom:none}
+        .prod-count-name{font-size:13px;font-weight:700;color:#1e1611}
+        .prod-count-nums{font-size:11px;font-family:monospace;font-weight:700;display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:flex-end}
+        .pcn-kitchen{color:#7a4800}
+        .pcn-pending{color:#6e3da8}
+        .pcn-done{color:#2d7a4f}
+        /* Section header */
+        .section-hdr{font-size:11px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;padding:7px 12px;border-radius:8px;margin-bottom:8px}
+        .sh-pack{background:#f3e8ff;color:#6e3da8}
+        .sh-kitchen{background:#fff8e1;color:#7a4800}
+        .sh-dispatched{background:#e8f5e9;color:#2d7a4f}
+        /* Summary */
+        .sum-shop{background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:12px 14px;margin-bottom:8px}
+        .sum-sname{font-size:13px;font-weight:800;color:#4a2f14;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between}
+        .sum-sdetail{font-family:monospace;font-size:11px;color:#8a7a6a;line-height:1.9}
+        /* Confirm modal */
+        .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
+        .modal{background:#fff;border-radius:20px;padding:22px;width:100%;max-width:360px}
+        .modal-title{font-size:16px;font-weight:900;color:#4a2f14;margin-bottom:4px}
+        .modal-sub{font-size:12px;color:#8a7a6a;font-family:monospace;margin-bottom:14px;line-height:1.6}
+        .modal-items{font-size:12px;font-family:monospace;background:#f5ede0;border-radius:10px;padding:10px 12px;line-height:1.9;margin-bottom:14px}
+    </style>
 </head>
 <body>
 
-<!-- ── LOGIN ── -->
-<div id="loginScreen" class="login-wrap">
-  <div class="login-logo">📦</div>
-  <div class="login-title">Packaging</div>
-  <div class="login-sub">IBCAB · Packaging Portal</div>
-  <div class="login-card">
-    <label class="lbl">Staff Name</label>
-    <select id="loginName"><option value="">Select name…</option></select>
-    <label class="lbl">Password</label>
-    <input type="password" id="loginPass" placeholder="Password">
-    <button class="btn btn-purple" id="loginBtn" onclick="doLogin()">📦 Packaging Login</button>
-    <div id="loginErr" class="err" style="display:none">Wrong name or password.</div>
-  </div>
-</div>
-
-<!-- ── APP ── -->
+<!-- ── APP (login only via index page) ── -->
 <div id="appScreen" style="display:none">
-  <div class="topbar">
-    <div>
-      <div class="topbar-title">📦 Packaging</div>
-      <div class="topbar-sub" id="topName"></div>
-    </div>
-    <button class="logout-btn" onclick="doLogout()">Logout</button>
-  </div>
-
-  <div class="tabs">
-    <button class="tab on" id="tb-pack" onclick="showTab('pack')">📦 Pack</button>
-    <button class="tab" id="tb-summary" onclick="showTab('summary')">📋 Summary</button>
-  </div>
-
-  <!-- ── PACK TAB ── -->
-  <div class="page on" id="pg-pack">
-    <!-- Date selector + refresh -->
-    <div class="card">
-      <div class="lbl">Delivery Date</div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <input type="date" id="packDate" onchange="loadAllOrders()" style="flex:1;margin-bottom:0">
-        <button onclick="loadAllOrders()" style="background:#f5ede0;border:1.5px solid #e8dfd2;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;color:#4a2f14;font-family:-apple-system,sans-serif;flex-shrink:0">↻</button>
-      </div>
+    <div class="topbar">
+        <div>
+            <div class="topbar-title">📦 Packaging</div>
+            <div class="topbar-sub" id="topName"></div>
+        </div>
+        <button class="logout-btn" onclick="doLogout()">Logout</button>
     </div>
 
-    <div id="packMsg" style="display:none" class="msg in"></div>
-
-    <!-- Stats: Kitchen / To Pack / Packed / Dispatched -->
-    <div id="packStats" style="display:none" class="stats-row">
-      <div class="stat-box"><div class="stat-n" id="sKitchen" style="color:#7a4800">0</div><div class="stat-l">Kitchen</div></div>
-      <div class="stat-box"><div class="stat-n" id="sPending">0</div><div class="stat-l">To Pack</div></div>
-      <div class="stat-box"><div class="stat-n" id="sDone" style="color:#2d7a4f">0</div><div class="stat-l">Packed</div></div>
-      <div class="stat-box"><div class="stat-n" id="sDispatched" style="color:#2d7a4f">0</div><div class="stat-l">Dispatched</div></div>
+    <div class="tabs">
+        <button class="tab on" id="tb-pack" onclick="showTab('pack')">📦 Pack</button>
+        <button class="tab" id="tb-drivers" onclick="showTab('drivers')">🚗 Drivers</button>
+        <button class="tab" id="tb-summary" onclick="showTab('summary')">📋 Summary</button>
     </div>
 
-    <!-- Product count across all statuses -->
-    <div class="prod-count-card" id="prodCountCard" style="display:none">
-      <div class="prod-count-title">📊 Product Totals</div>
-      <div id="prodCountBody"></div>
+    <!-- ── PACK TAB ── -->
+    <div class="page on" id="pg-pack">
+        <!-- Date selector + refresh -->
+        <div class="card">
+            <div class="lbl">Delivery Date</div>
+            <div style="display:flex;gap:8px;align-items:center">
+                <input type="date" id="packDate" onchange="loadAllOrders()" style="flex:1;margin-bottom:0">
+                <button onclick="loadAllOrders()" style="background:#f5ede0;border:1.5px solid #e8dfd2;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;color:#4a2f14;font-family:-apple-system,sans-serif;flex-shrink:0">↻</button>
+            </div>
+        </div>
+
+        <div id="packMsg" style="display:none" class="msg in"></div>
+
+        <!-- Stats: Kitchen / To Pack / Packed / Dispatched -->
+        <div id="packStats" style="display:none" class="stats-row">
+            <div class="stat-box"><div class="stat-n" id="sKitchen" style="color:#7a4800">0</div><div class="stat-l">Kitchen</div></div>
+            <div class="stat-box"><div class="stat-n" id="sPending">0</div><div class="stat-l">To Pack</div></div>
+            <div class="stat-box"><div class="stat-n" id="sDone" style="color:#2d7a4f">0</div><div class="stat-l">Packed</div></div>
+            <div class="stat-box"><div class="stat-n" id="sDispatched" style="color:#2d7a4f">0</div><div class="stat-l">Dispatched</div></div>
+        </div>
+
+        <!-- Product count across all statuses -->
+        <div class="prod-count-card" id="prodCountCard" style="display:none">
+            <div class="prod-count-title">📊 Product Totals</div>
+            <div id="prodCountBody"></div>
+        </div>
+
+        <!-- Orders ready to pack (status=packaging) -->
+        <div id="packSection" style="display:none">
+            <div class="section-hdr sh-pack">📦 Ready to Pack — <span id="packCount">0</span> orders</div>
+            <div id="ordersList"></div>
+        </div>
+
+        <!-- Orders still in kitchen (status=approved) -->
+        <div id="kitchenSection" style="display:none">
+            <div class="section-hdr sh-kitchen">🍳 Still in Kitchen — <span id="kitchenCount">0</span> orders</div>
+            <div id="kitchenList"></div>
+        </div>
     </div>
 
-    <!-- Orders ready to pack (status=packaging) -->
-    <div id="packSection" style="display:none">
-      <div class="section-hdr sh-pack">📦 Ready to Pack — <span id="packCount">0</span> orders</div>
-      <div id="ordersList"></div>
+    <!-- ── DRIVERS / ROUTE TAB ── -->
+    <div class="page" id="pg-drivers">
+        <div class="card" style="margin-bottom:10px">
+            <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">🚗 Separate by Driver Route</div>
+            <div style="font-size:11px;color:#8a7a6a;font-family:monospace;line-height:1.6">After packing, use this view to sort &amp; separate materials for each driver's route.</div>
+        </div>
+        <div id="driversMsg" class="msg in" style="display:none"></div>
+        <div id="driversBody"></div>
     </div>
 
-    <!-- Orders still in kitchen (status=approved) -->
-    <div id="kitchenSection" style="display:none">
-      <div class="section-hdr sh-kitchen">🍳 Still in Kitchen — <span id="kitchenCount">0</span> orders</div>
-      <div id="kitchenList"></div>
+    <!-- ── SUMMARY TAB ── -->
+    <div class="page" id="pg-summary">
+        <div id="sumMsg" class="msg in" style="display:none"></div>
+        <!-- Summary stats -->
+        <div id="sumStats" style="display:none" class="stats-row">
+            <div class="stat-box"><div class="stat-n" id="ss-kitchen" style="color:#7a4800">0</div><div class="stat-l">Kitchen</div></div>
+            <div class="stat-box"><div class="stat-n" id="ss-pack">0</div><div class="stat-l">To Pack</div></div>
+            <div class="stat-box"><div class="stat-n" id="ss-done" style="color:#6e3da8">0</div><div class="stat-l">Packed</div></div>
+            <div class="stat-box"><div class="stat-n" id="ss-dispatch" style="color:#2d7a4f">0</div><div class="stat-l">Dispatched</div></div>
+        </div>
+        <!-- Product grand totals -->
+        <div class="prod-count-card" id="sumProdCard" style="display:none">
+            <div class="prod-count-title">📊 All Products for Date</div>
+            <div id="sumProdBody"></div>
+        </div>
+        <div id="sumBody"></div>
     </div>
-  </div>
 
-  <!-- ── SUMMARY TAB ── -->
-  <div class="page" id="pg-summary">
-    <div id="sumMsg" class="msg in" style="display:none"></div>
-    <!-- Summary stats -->
-    <div id="sumStats" style="display:none" class="stats-row">
-      <div class="stat-box"><div class="stat-n" id="ss-kitchen" style="color:#7a4800">0</div><div class="stat-l">Kitchen</div></div>
-      <div class="stat-box"><div class="stat-n" id="ss-pack">0</div><div class="stat-l">To Pack</div></div>
-      <div class="stat-box"><div class="stat-n" id="ss-done" style="color:#6e3da8">0</div><div class="stat-l">Packed</div></div>
-      <div class="stat-box"><div class="stat-n" id="ss-dispatch" style="color:#2d7a4f">0</div><div class="stat-l">Dispatched</div></div>
+    <!-- Sticky: Mark All Packed -->
+    <div class="sticky-bottom" id="allDoneBar" style="display:none">
+        <button class="btn btn-green" id="allDoneBtn" onclick="markAllPacked()" style="margin-bottom:0">
+            ✅ Mark All Packed &amp; Send to Driver — <span id="allDoneCount">0</span> Orders
+        </button>
     </div>
-    <!-- Product grand totals -->
-    <div class="prod-count-card" id="sumProdCard" style="display:none">
-      <div class="prod-count-title">📊 All Products for Date</div>
-      <div id="sumProdBody"></div>
-    </div>
-    <div id="sumBody"></div>
-  </div>
-
-  <!-- Sticky: Mark All Packed -->
-  <div class="sticky-bottom" id="allDoneBar" style="display:none">
-    <button class="btn btn-green" id="allDoneBtn" onclick="markAllPacked()" style="margin-bottom:0">
-      ✅ Mark All Packed &amp; Send to Driver — <span id="allDoneCount">0</span> Orders
-    </button>
-  </div>
 </div>
 
 <!-- Confirm modal -->
 <div class="modal-bg" id="packModal" style="display:none">
-  <div class="modal">
-    <div class="modal-title">📦 Confirm Packed</div>
-    <div class="modal-sub" id="pm-shop"></div>
-    <div class="modal-items" id="pm-items"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      <button class="btn btn-grey" style="margin-bottom:0" onclick="closePackModal()">Cancel</button>
-      <button class="btn btn-purple" style="margin-bottom:0" onclick="confirmPacked()">✅ Confirm</button>
+    <div class="modal">
+        <div class="modal-title">📦 Confirm Packed</div>
+        <div class="modal-sub" id="pm-shop"></div>
+        <div class="modal-items" id="pm-items"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <button class="btn btn-grey" style="margin-bottom:0" onclick="closePackModal()">Cancel</button>
+            <button class="btn btn-purple" style="margin-bottom:0" onclick="confirmPacked()">✅ Confirm</button>
+        </div>
     </div>
-  </div>
 </div>
 
 <script>
-var staffName      = '';
-var packOrders     = []; // status=packaging
-var kitchenOrders  = []; // status=approved (still in kitchen)
-var dispatchOrders = []; // status=dispatched
-var shopMap        = {};
-var packedIds      = new Set();
-var confirmOrderId = null;
+    var staffName      = '';
+    var packOrders     = []; // status=packaging
+    var kitchenOrders  = []; // status=approved (still in kitchen)
+    var dispatchOrders = []; // status=dispatched
+    var shopMap        = {};
+    var packedIds      = new Set();
+    var confirmOrderId = null;
 
-// ── LOGIN ──
-(function(){
-  api({action:'getStaff'}).then(function(data){
-    var list = (Array.isArray(data)?data:[]).filter(function(s){ return s.active && (s.role==='packer'||s.role==='admin'||s.role==='super_admin'); });
-    document.getElementById('loginName').innerHTML = '<option value="">Select name…</option>' +
-      list.map(function(s){ return '<option value="'+esc(s.name)+'">📦 '+esc(s.name)+'</option>'; }).join('');
-  });
-  var sn = sessionStorage.getItem('packStaff') || localStorage.getItem('packStaff');
-  if (sn) { staffName = sn; showApp(); } else { goto(''); }
-})();
+    // ── SESSION GATE (login only via index page) ──
+    (function(){
+      // Restore session from index login
+      var role = sessionStorage.getItem('role') || localStorage.getItem('staffRole') || '';
+      var name = sessionStorage.getItem('staffName') || localStorage.getItem('staffNamePersist')
+              || sessionStorage.getItem('packStaff') || localStorage.getItem('packStaff') || '';
 
-function doLogin(){
-  var name = document.getElementById('loginName').value;
-  var pass = document.getElementById('loginPass').value;
-  var btn  = document.getElementById('loginBtn');
-  var err  = document.getElementById('loginErr');
-  err.style.display='none';
-  if (!name){alert('Select your name');return;}
-  if (!pass){err.style.display='block';return;}
-  btn.disabled=true; btn.textContent='⏳ Checking…';
-  api({action:'staffLogin', name:name, password:pass}).then(function(data){
-    btn.disabled=false; btn.textContent='📦 Packaging Login';
-    var s = Array.isArray(data)&&data.length ? data[0] : null;
-    if (!s || (s.role!=='packer'&&s.role!=='admin'&&s.role!=='super_admin')){
-      err.style.display='block'; err.textContent=s?'Access denied for this role.':'Wrong password.'; return;
+      if (!role && localStorage.getItem('staffRole')) {
+        role = localStorage.getItem('staffRole');
+        sessionStorage.setItem('role', role);
+        sessionStorage.setItem('staffName', localStorage.getItem('staffNamePersist') || '');
+        sessionStorage.setItem('tabs', localStorage.getItem('staffTabs') || '[]');
+      }
+
+      // Only packer / admin / super_admin may open this page
+      if (role !== 'packer' && role !== 'admin' && role !== 'super_admin') {
+        goto('');
+        return;
+      }
+      if (!name) {
+        goto('');
+        return;
+      }
+
+      // Keep packStaff in sync for any older code paths
+      staffName = name;
+      sessionStorage.setItem('packStaff', staffName);
+      localStorage.setItem('packStaff', staffName);
+      showApp();
+    })();
+
+    function doLogout(){
+      sessionStorage.removeItem('packStaff'); localStorage.removeItem('packStaff');
+      sessionStorage.removeItem('role'); sessionStorage.removeItem('staffName'); sessionStorage.removeItem('tabs');
+      localStorage.removeItem('staffRole'); localStorage.removeItem('staffNamePersist'); localStorage.removeItem('staffTabs');
+      staffName=''; packOrders=[]; kitchenOrders=[]; dispatchOrders=[]; packedIds=new Set();
+      goto('');
     }
-    staffName = s.name;
-    sessionStorage.setItem('packStaff', staffName);
-    localStorage.setItem('packStaff', staffName);
-    showApp();
-  });
-}
 
-function doLogout(){
-  sessionStorage.removeItem('packStaff'); localStorage.removeItem('packStaff');
-  sessionStorage.removeItem('role'); sessionStorage.removeItem('staffName');
-  localStorage.removeItem('staffRole'); localStorage.removeItem('staffNamePersist'); localStorage.removeItem('staffTabs');
-  staffName=''; packOrders=[]; kitchenOrders=[]; dispatchOrders=[]; packedIds=new Set();
-  goto('');
-}
-
-// ── APP ──
-function showApp(){
-  document.getElementById('loginScreen').style.display='none';
-  document.getElementById('appScreen').style.display='block';
-  document.getElementById('topName').textContent = staffName + ' · ' + new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'});
-  document.getElementById('packDate').value = tomorrowStr();
-  api({action:'getShops'}).then(function(data){
-    shopMap={};
-    (Array.isArray(data)?data:[]).forEach(function(s){ shopMap[s.shop_id]=s; });
-    loadAllOrders();
-  });
-}
-
-function showTab(t){
-  ['pack','summary'].forEach(function(x){
-    document.getElementById('pg-'+x).classList.toggle('on',x===t);
-    document.getElementById('tb-'+x).classList.toggle('on',x===t);
-  });
-  if(t==='summary') renderSummary();
-}
-
-function tomorrowStr(){ var d=new Date(); d.setDate(d.getDate()+1); return d.getFullYear()+'-'+zp(d.getMonth()+1)+'-'+zp(d.getDate()); }
-function zp(n){ return String(n).padStart(2,'0'); }
-
-// ── LOAD ALL ORDERS ──
-function loadAllOrders(){
-  var date = document.getElementById('packDate').value;
-  if (!date) return;
-  var msg = document.getElementById('packMsg');
-  msg.textContent='⏳ Loading…'; msg.className='msg in'; msg.style.display='block';
-  document.getElementById('packStats').style.display='none';
-  document.getElementById('packSection').style.display='none';
-  document.getElementById('kitchenSection').style.display='none';
-  document.getElementById('prodCountCard').style.display='none';
-  document.getElementById('allDoneBar').style.display='none';
-  document.getElementById('ordersList').innerHTML='';
-  document.getElementById('kitchenList').innerHTML='';
-  packedIds = new Set();
-
-  Promise.all([
-    api({action:'getCustomerOrders', delivery_date:date, status:'packaging'}),
-    api({action:'getCustomerOrders', delivery_date:date, status:'approved'}),
-    api({action:'getCustomerOrders', delivery_date:date, status:'dispatched'})
-  ]).then(function(results){
-    packOrders     = Array.isArray(results[0]) ? results[0] : [];
-    kitchenOrders  = Array.isArray(results[1]) ? results[1] : [];
-    dispatchOrders = Array.isArray(results[2]) ? results[2] : [];
-    msg.style.display='none';
-
-    var total = packOrders.length + kitchenOrders.length + dispatchOrders.length;
-    if (!total){
-      msg.textContent='No orders for this date yet.';
-      msg.className='msg in'; msg.style.display='block'; return;
-    }
-    updateStats();
-    renderProdCount();
-    renderPackOrders();
-    renderKitchenOrders();
-  });
-}
-
-// ── STATS ──
-function updateStats(){
-  var pending = packOrders.length - packedIds.size;
-  document.getElementById('sKitchen').textContent   = kitchenOrders.length;
-  document.getElementById('sPending').textContent   = pending;
-  document.getElementById('sDone').textContent      = packedIds.size;
-  document.getElementById('sDispatched').textContent= dispatchOrders.length;
-  document.getElementById('packStats').style.display= 'flex';
-  document.getElementById('allDoneCount').textContent = pending;
-  document.getElementById('allDoneBar').style.display  = pending > 0 ? 'block' : 'none';
-}
-
-// ── PRODUCT COUNT (pack tab) ──
-function renderProdCount(){
-  var kitchen={}, pending={}, packed={}, dispatched={};
-  function tally(orders, bucket){
-    orders.forEach(function(o){
-      var items=(o.items||'').split(','), qtys=(o.qty||'').split(',');
-      items.forEach(function(item,i){
-        item=item.trim(); if(!item) return;
-        var q=parseInt(qtys[i])||0;
-        bucket[item]=(bucket[item]||0)+q;
+    // ── APP ──
+    function showApp(){
+      document.getElementById('appScreen').style.display='block';
+      document.getElementById('topName').textContent = staffName + ' · ' + new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'});
+      document.getElementById('packDate').value = tomorrowStr();
+      api({action:'getShops'}).then(function(data){
+        shopMap={};
+        (Array.isArray(data)?data:[]).forEach(function(s){ shopMap[s.shop_id]=s; });
+        loadAllOrders();
       });
-    });
-  }
-  tally(kitchenOrders, kitchen);
-  packOrders.forEach(function(o){
-    var items=(o.items||'').split(','), qtys=(o.qty||'').split(',');
-    items.forEach(function(item,i){
-      item=item.trim(); if(!item) return;
-      var q=parseInt(qtys[i])||0;
-      if(packedIds.has(o.id)) packed[item]=(packed[item]||0)+q;
-      else pending[item]=(pending[item]||0)+q;
-    });
-  });
-  tally(dispatchOrders, dispatched);
-
-  var allProds=Array.from(new Set(
-    Object.keys(kitchen).concat(Object.keys(pending)).concat(Object.keys(packed)).concat(Object.keys(dispatched))
-  )).sort();
-  if(!allProds.length){ document.getElementById('prodCountCard').style.display='none'; return; }
-  document.getElementById('prodCountCard').style.display='block';
-  document.getElementById('prodCountBody').innerHTML=allProds.map(function(p){
-    var k=kitchen[p]||0, pend=pending[p]||0, pk=packed[p]||0, d=dispatched[p]||0;
-    var total=k+pend+pk+d;
-    var parts=[];
-    if(k>0)    parts.push('<span class="pcn-kitchen">🍳 '+k+' kitchen</span>');
-    if(pend>0) parts.push('<span class="pcn-pending">📦 '+pend+' to pack</span>');
-    if(pk>0)   parts.push('<span class="pcn-done">✅ '+pk+' packed</span>');
-    if(d>0)    parts.push('<span class="pcn-done">🚗 '+d+' dispatched</span>');
-    return '<div class="prod-count-row">'+
-      '<span class="prod-count-name">'+esc(p)+'</span>'+
-      '<span class="prod-count-nums">'+parts.join('')+' <span style="color:#8a7a6a">/ '+total+'</span></span>'+
-    '</div>';
-  }).join('');
-}
-
-// ── RENDER PACK ORDERS ──
-function renderPackOrders(){
-  var el = document.getElementById('ordersList');
-  if(!packOrders.length){
-    document.getElementById('packSection').style.display='none'; return;
-  }
-  document.getElementById('packCount').textContent=packOrders.length;
-  document.getElementById('packSection').style.display='block';
-  el.innerHTML = packOrders.map(function(o){
-    var isPacked = packedIds.has(o.id);
-    var shop = shopMap[o.shop_id] || {};
-    var driver = shop.assigned_driver || 'Unassigned';
-    var pairs=[];
-    var items=(o.items||'').split(','), qtys=(o.qty||'').split(',');
-    items.forEach(function(item,i){ if(item.trim()) pairs.push('<b>'+esc((qtys[i]||'')+'×')+'</b> '+esc(item.trim())); });
-    return '<div class="order-card'+(isPacked?' done':'')+'" id="oc-'+o.id+'">'+
-      '<div class="order-head">'+
-        '<div>'+
-          '<div class="order-shop">'+esc(o.shop_name)+'</div>'+
-          '<div class="order-driver">🚗 '+esc(driver)+'</div>'+
-        '</div>'+
-        '<span class="badge '+(isPacked?'b-done':'b-pack')+'" id="badge-'+o.id+'">'+(isPacked?'✅ Packed':'📦 To Pack')+'</span>'+
-      '</div>'+
-      '<div class="order-body">'+
-        '<div class="order-items">'+pairs.join('<br>')+'</div>'+
-        (o.note?'<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:8px">📝 '+esc(o.note)+'</div>':'')+
-        '<button class="pack-btn'+(isPacked?' done-state':'')+'" id="pbtn-'+o.id+'"'+
-          (isPacked?' disabled':' onclick="markOnePacked('+o.id+')"')+'>'+
-          (isPacked?'✅ Packed':'📦 Mark as Packed')+
-        '</button>'+
-      '</div>'+
-    '</div>';
-  }).join('');
-}
-
-// ── RENDER KITCHEN ORDERS ──
-function renderKitchenOrders(){
-  var el = document.getElementById('kitchenList');
-  if(!kitchenOrders.length){
-    document.getElementById('kitchenSection').style.display='none'; return;
-  }
-  document.getElementById('kitchenCount').textContent=kitchenOrders.length;
-  document.getElementById('kitchenSection').style.display='block';
-  el.innerHTML = kitchenOrders.map(function(o){
-    var shop = shopMap[o.shop_id] || {};
-    var driver = shop.assigned_driver || 'Unassigned';
-    var pairs=[];
-    var items=(o.items||'').split(','), qtys=(o.qty||'').split(',');
-    items.forEach(function(item,i){ if(item.trim()) pairs.push('<b>'+esc((qtys[i]||'')+'×')+'</b> '+esc(item.trim())); });
-    return '<div class="order-card">'+
-      '<div class="order-head kitchen-head">'+
-        '<div>'+
-          '<div class="order-shop">'+esc(o.shop_name)+'</div>'+
-          '<div class="order-driver" style="color:#7a4800">🍳 In Kitchen · 🚗 '+esc(driver)+'</div>'+
-        '</div>'+
-        '<span class="badge b-kitchen">🍳 Kitchen</span>'+
-      '</div>'+
-      '<div class="order-body">'+
-        '<div class="order-items">'+pairs.join('<br>')+'</div>'+
-        (o.note?'<div style="font-size:11px;color:#8a7a6a;font-family:monospace">📝 '+esc(o.note)+'</div>':'')+
-      '</div>'+
-    '</div>';
-  }).join('');
-}
-
-// ── SUMMARY TAB ──
-function renderSummary(){
-  var sumMsg=document.getElementById('sumMsg');
-  var all=[].concat(kitchenOrders, packOrders, dispatchOrders);
-  if(!all.length){
-    sumMsg.textContent='Load orders on the Pack tab first.';
-    sumMsg.className='msg in'; sumMsg.style.display='block';
-    document.getElementById('sumStats').style.display='none';
-    document.getElementById('sumProdCard').style.display='none';
-    document.getElementById('sumBody').innerHTML=''; return;
-  }
-  sumMsg.style.display='none';
-
-  // Stats
-  var pending=packOrders.length-packedIds.size;
-  document.getElementById('ss-kitchen').textContent  = kitchenOrders.length;
-  document.getElementById('ss-pack').textContent     = pending;
-  document.getElementById('ss-done').textContent     = packedIds.size;
-  document.getElementById('ss-dispatch').textContent = dispatchOrders.length;
-  document.getElementById('sumStats').style.display  = 'flex';
-
-  // Product grand totals
-  var prodTotals={};
-  all.forEach(function(o){
-    var items=(o.items||'').split(','), qtys=(o.qty||'').split(',');
-    items.forEach(function(item,i){
-      item=item.trim(); if(!item) return;
-      var q=parseInt(qtys[i])||0;
-      if(!prodTotals[item]) prodTotals[item]={kitchen:0,pack:0,packed:0,dispatched:0};
-      if(kitchenOrders.indexOf(o)>=0) prodTotals[item].kitchen+=q;
-      else if(dispatchOrders.indexOf(o)>=0) prodTotals[item].dispatched+=q;
-      else if(packedIds.has(o.id)) prodTotals[item].packed+=q;
-      else prodTotals[item].pack+=q;
-    });
-  });
-  var prodNames=Object.keys(prodTotals).sort();
-  if(prodNames.length){
-    document.getElementById('sumProdCard').style.display='block';
-    document.getElementById('sumProdBody').innerHTML=prodNames.map(function(p){
-      var t=prodTotals[p];
-      var total=t.kitchen+t.pack+t.packed+t.dispatched;
-      var parts=[];
-      if(t.kitchen>0)    parts.push('<span class="pcn-kitchen">🍳 '+t.kitchen+'</span>');
-      if(t.pack>0)       parts.push('<span class="pcn-pending">📦 '+t.pack+'</span>');
-      if(t.packed>0)     parts.push('<span class="pcn-done">✅ '+t.packed+'</span>');
-      if(t.dispatched>0) parts.push('<span class="pcn-done">🚗 '+t.dispatched+'</span>');
-      return '<div class="prod-count-row">'+
-        '<span class="prod-count-name">'+esc(p)+'</span>'+
-        '<span class="prod-count-nums">'+parts.join('')+' <span style="color:#8a7a6a">/ '+total+'</span></span>'+
-      '</div>';
-    }).join('');
-  } else {
-    document.getElementById('sumProdCard').style.display='none';
-  }
-
-  // Shop-wise order list grouped by status
-  function orderCard(o, statusLabel, headClass, badgeClass){
-    var shop=shopMap[o.shop_id]||{};
-    var driver=shop.assigned_driver||'Unassigned';
-    var items=(o.items||'').split(','), qtys=(o.qty||'').split(',');
-    var lines=[];
-    items.forEach(function(item,i){ if(item.trim()) lines.push(esc((qtys[i]||'')+'× '+item.trim())); });
-    return '<div class="sum-shop">'+
-      '<div class="sum-sname">'+
-        '<span>'+esc(o.shop_name)+'</span>'+
-        '<span class="badge '+badgeClass+'">'+statusLabel+'</span>'+
-      '</div>'+
-      '<div class="sum-sdetail">'+
-        '🚗 '+esc(driver)+'<br>'+
-        lines.join(' &nbsp;·&nbsp; ')+
-        (o.note?'<br>📝 '+esc(o.note):'')+
-      '</div>'+
-    '</div>';
-  }
-
-  var html='';
-  var packPending=packOrders.filter(function(o){return !packedIds.has(o.id);});
-  var packDone=packOrders.filter(function(o){return packedIds.has(o.id);});
-  if(kitchenOrders.length)  html+='<div style="margin-bottom:14px"><div class="section-hdr sh-kitchen">🍳 In Kitchen ('+kitchenOrders.length+')</div>'+kitchenOrders.map(function(o){return orderCard(o,'🍳 Kitchen','kitchen-head','b-kitchen');}).join('')+'</div>';
-  if(packPending.length)    html+='<div style="margin-bottom:14px"><div class="section-hdr sh-pack">📦 To Pack ('+packPending.length+')</div>'+packPending.map(function(o){return orderCard(o,'📦 To Pack','','b-pack');}).join('')+'</div>';
-  if(packDone.length)       html+='<div style="margin-bottom:14px"><div class="section-hdr" style="background:#f3e8ff;color:#6e3da8">✅ Packed ('+packDone.length+')</div>'+packDone.map(function(o){return orderCard(o,'✅ Packed','','b-done');}).join('')+'</div>';
-  if(dispatchOrders.length) html+='<div style="margin-bottom:14px"><div class="section-hdr sh-dispatched">🚗 Dispatched ('+dispatchOrders.length+')</div>'+dispatchOrders.map(function(o){return orderCard(o,'🚗 Dispatched','dispatched-head','b-dispatched');}).join('')+'</div>';
-  document.getElementById('sumBody').innerHTML=html||'<div style="text-align:center;padding:30px;font-size:13px;color:#8a7a6a;font-family:monospace">No data.</div>';
-}
-
-// ── MARK ONE PACKED ──
-function markOnePacked(orderId){
-  var order = packOrders.find(function(o){ return o.id===orderId; });
-  if (!order) return;
-  var shop = shopMap[order.shop_id]||{};
-  var driver = shop.assigned_driver||'Unassigned';
-  var pairs=[];
-  var items=(order.items||'').split(','), qtys=(order.qty||'').split(',');
-  items.forEach(function(item,i){ if(item.trim()) pairs.push((qtys[i]||'')+'× '+item.trim()); });
-  document.getElementById('pm-shop').textContent = order.shop_name+' · 🚗 '+driver;
-  document.getElementById('pm-items').innerHTML  = pairs.map(function(p){return '<b>'+esc(p)+'</b>';}).join('<br>');
-  confirmOrderId = orderId;
-  document.getElementById('packModal').style.display='flex';
-}
-
-function closePackModal(){ document.getElementById('packModal').style.display='none'; confirmOrderId=null; }
-
-function confirmPacked(){
-  var orderId=confirmOrderId; closePackModal();
-  var order = packOrders.find(function(o){ return o.id===orderId; });
-  if (!order) return;
-  var btn = document.getElementById('pbtn-'+orderId);
-  btn.disabled=true; btn.textContent='⏳ Saving…';
-  var shop = shopMap[order.shop_id]||{};
-  apiPost({
-    action:'dispatchCustomerOrder',
-    id: order.id, shop_id: order.shop_id, shop_name: order.shop_name,
-    driver: shop.assigned_driver||'', items: order.items, qty: order.qty,
-    note: order.note, delivery_date: order.delivery_date
-  }).then(function(res){
-    if (res&&res.ok){
-      packedIds.add(orderId);
-      btn.textContent='✅ Packed'; btn.className='pack-btn done-state';
-      var badge=document.getElementById('badge-'+orderId);
-      if(badge){ badge.className='badge b-done'; badge.textContent='✅ Packed'; }
-      document.getElementById('oc-'+orderId).classList.add('done');
-      updateStats();
-      renderProdCount();
-    } else {
-      btn.disabled=false; btn.textContent='📦 Mark as Packed';
-      alert('Failed: '+(res&&res.error||'try again'));
     }
-  });
-}
 
-// ── MARK ALL PACKED ──
-function markAllPacked(){
-  var remaining = packOrders.filter(function(o){ return !packedIds.has(o.id); });
-  if (!remaining.length) return;
-  if (!confirm('Mark all '+remaining.length+' remaining orders as packed?')) return;
-  var btn = document.getElementById('allDoneBtn');
-  btn.disabled=true; btn.textContent='⏳ Saving…';
-  var promises = remaining.map(function(o){
-    var shop=shopMap[o.shop_id]||{};
-    return apiPost({
-      action:'dispatchCustomerOrder',
-      id:o.id, shop_id:o.shop_id, shop_name:o.shop_name,
-      driver:shop.assigned_driver||'', items:o.items, qty:o.qty,
-      note:o.note, delivery_date:o.delivery_date
-    }).then(function(res){ if(res&&res.ok) packedIds.add(o.id); });
-  });
-  Promise.all(promises).then(function(){
-    btn.disabled=false;
-    updateStats();
-    renderPackOrders();
-    renderProdCount();
-  });
-}
+    function showTab(t){
+      ['pack','drivers','summary'].forEach(function(x){
+        document.getElementById('pg-'+x).classList.toggle('on',x===t);
+        document.getElementById('tb-'+x).classList.toggle('on',x===t);
+      });
+      // Sticky bar only on Pack tab
+      var pending = packOrders.length - packedIds.size;
+      document.getElementById('allDoneBar').style.display = (t==='pack' && pending > 0) ? 'block' : 'none';
+      if(t==='summary') renderSummary();
+      if(t==='drivers') renderDriverRoutes();
+    }
 
-function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+    function tomorrowStr(){ var d=new Date(); d.setDate(d.getDate()+1); return d.getFullYear()+'-'+zp(d.getMonth()+1)+'-'+zp(d.getDate()); }
+    function zp(n){ return String(n).padStart(2,'0'); }
+
+    // ── LOAD ALL ORDERS ──
+    function loadAllOrders(){
+      var date = document.getElementById('packDate').value;
+      if (!date) return;
+      var msg = document.getElementById('packMsg');
+      msg.textContent='⏳ Loading…'; msg.className='msg in'; msg.style.display='block';
+      document.getElementById('packStats').style.display='none';
+      document.getElementById('packSection').style.display='none';
+      document.getElementById('kitchenSection').style.display='none';
+      document.getElementById('prodCountCard').style.display='none';
+      document.getElementById('allDoneBar').style.display='none';
+      document.getElementById('ordersList').innerHTML='';
+      document.getElementById('kitchenList').innerHTML='';
+      packedIds = new Set();
+
+      Promise.all([
+        api({action:'getCustomerOrders', delivery_date:date, status:'packaging'}),
+        api({action:'getCustomerOrders', delivery_date:date, status:'approved'}),
+        api({action:'getCustomerOrders', delivery_date:date, status:'dispatched'})
+      ]).then(function(results){
+        packOrders     = Array.isArray(results[0]) ? results[0] : [];
+        kitchenOrders  = Array.isArray(results[1]) ? results[1] : [];
+        dispatchOrders = Array.isArray(results[2]) ? results[2] : [];
+        msg.style.display='none';
+
+        var total = packOrders.length + kitchenOrders.length + dispatchOrders.length;
+        if (!total){
+          msg.textContent='No orders for this date yet.';
+          msg.className='msg in'; msg.style.display='block'; return;
+        }
+        updateStats();
+        renderProdCount();
+        renderPackOrders();
+        renderKitchenOrders();
+      });
+    }
+
+    // ── STATS ──
+    function updateStats(){
+      var pending = packOrders.length - packedIds.size;
+      document.getElementById('sKitchen').textContent   = kitchenOrders.length;
+      document.getElementById('sPending').textContent   = pending;
+      document.getElementById('sDone').textContent      = packedIds.size;
+      document.getElementById('sDispatched').textContent= dispatchOrders.length;
+      document.getElementById('packStats').style.display= 'flex';
+      document.getElementById('allDoneCount').textContent = pending;
+      // Only show sticky bar on Pack tab
+      var onPackTab = document.getElementById('pg-pack').classList.contains('on');
+      document.getElementById('allDoneBar').style.display = (onPackTab && pending > 0) ? 'block' : 'none';
+    }
+
+    // ── PRODUCT COUNT (pack tab) ──
+    function renderProdCount(){
+      var kitchen={}, pending={}, packed={}, dispatched={};
+      function tally(orders, bucket){
+        orders.forEach(function(o){
+          var items=(o.items||'').split(','), qtys=(o.qty||'').split(',');
+          items.forEach(function(item,i){
+            item=item.trim(); if(!item) return;
+            var q=parseInt(qtys[i])||0;
+            bucket[item]=(bucket[item]||0)+q;
+          });
+        });
+      }
+      tally(kitchenOrders, kitchen);
+      packOrders.forEach(function(o){
+        var items=(o.items||'').split(','), qtys=(o.qty||'').split(',');
+        items.forEach(function(item,i){
+          item=item.trim(); if(!item) return;
+          var q=parseInt(qtys[i])||0;
+          if(packedIds.has(o.id)) packed[item]=(packed[item]||0)+q;
+          else pending[item]=(pending[item]||0)+q;
+        });
+      });
+      tally(dispatchOrders, dispatched);
+
+      var allProds=Array.from(new Set(
+        Object.keys(kitchen).concat(Object.keys(pending)).concat(Object.keys(packed)).concat(Object.keys(dispatched))
+      )).sort();
+      if(!allProds.length){ document.getElementById('prodCountCard').style.display='none'; return; }
+      document.getElementById('prodCountCard').style.display='block';
+      document.getElementById('prodCountBody').innerHTML=allProds.map(function(p){
+        var k=kitchen[p]||0, pend=pending[p]||0, pk=packed[p]||0, d=dispatched[p]||0;
+        var total=k+pend+pk+d;
+        var parts=[];
+        if(k>0)    parts.push('<span class="pcn-kitchen">🍳 '+k+' kitchen</span>');
+        if(pend>0) parts.push('<span class="pcn-pending">📦 '+pend+' to pack</span>');
+        if(pk>0)   parts.push('<span class="pcn-done">✅ '+pk+' packed</span>');
+        if(d>0)    parts.push('<span class="pcn-done">🚗 '+d+' dispatched</span>');
+        return '<div class="prod-count-row">'+
+          '<span class="prod-count-name">'+esc(p)+'</span>'+
+          '<span class="prod-count-nums">'+parts.join('')+' <span style="color:#8a7a6a">/ '+total+'</span></span>'+
+        '</div>';
+      }).join('');
+    }
+
+    // ── RENDER PACK ORDERS ──
+    function renderPackOrders(){
+      var el = document.getElementById('ordersList');
+      if(!packOrders.length){
+        document.getElementById('packSection').style.display='none'; return;
+      }
+      document.getElementById('packCount').textContent=packOrders.length;
+      document.getElementById('packSection').style.display='block';
+
+      // Sort by driver name so staff can pack route-wise
+      var sorted = packOrders.slice().sort(function(a,b){
+        var da = (shopMap[a.shop_id]||{}).assigned_driver || 'Unassigned';
+        var db = (shopMap[b.shop_id]||{}).assigned_driver || 'Unassigned';
+        if(da !== db) return da.localeCompare(db);
+        return (a.shop_name||'').localeCompare(b.shop_name||'');
+      });
+
+      var lastDriver = null;
+      var html = '';
+      sorted.forEach(function(o){
+        var isPacked = packedIds.has(o.id);
+        var shop = shopMap[o.shop_id] || {};
+        var driver = shop.assigned_driver || 'Unassigned';
+        var pairs=[];
+        var items=(o.items||'').split(','), qtys=(o.qty||'').split(',');
+        items.forEach(function(item,i){ if(item.trim()) pairs.push('<b>'+esc((qtys[i]||'')+'×')+'</b> '+esc(item.trim())); });
+
+        // Driver group header when driver changes
+        if(driver !== lastDriver){
+          lastDriver = driver;
+          var drvCount = sorted.filter(function(x){
+            return ((shopMap[x.shop_id]||{}).assigned_driver || 'Unassigned') === driver;
+          }).length;
+          html += '<div style="font-size:11px;font-weight:900;color:#6e3da8;font-family:monospace;letter-spacing:1px;text-transform:uppercase;padding:8px 4px 6px;margin-top:4px">🚗 '+esc(driver)+' · '+drvCount+' order'+(drvCount!==1?'s':'')+'</div>';
+        }
+
+        html += '<div class="order-card'+(isPacked?' done':'')+'" id="oc-'+o.id+'">'+
+          '<div class="order-head">'+
+            '<div>'+
+              '<div class="order-shop">'+esc(o.shop_name)+'</div>'+
+              '<div class="order-driver">🚗 '+esc(driver)+'</div>'+
+            '</div>'+
+            '<span class="badge '+(isPacked?'b-done':'b-pack')+'" id="badge-'+o.id+'">'+(isPacked?'✅ Packed':'📦 To Pack')+'</span>'+
+          '</div>'+
+          '<div class="order-body">'+
+            '<div class="order-items">'+pairs.join('<br>')+'</div>'+
+            (o.note?'<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:8px">📝 '+esc(o.note)+'</div>':'')+
+            '<button class="pack-btn'+(isPacked?' done-state':'')+'" id="pbtn-'+o.id+'"'+
+              (isPacked?' disabled':' onclick="markOnePacked('+o.id+')"')+'>'+
+              (isPacked?'✅ Packed':'📦 Mark as Packed')+
+            '</button>'+
+          '</div>'+
+        '</div>';
+      });
+      el.innerHTML = html;
+    }
+
+    // ── RENDER KITCHEN ORDERS ──
+    function renderKitchenOrders(){
+      var el = document.getElementById('kitchenList');
+      if(!kitchenOrders.length){
+        document.getElementById('kitchenSection').style.display='none'; return;
+      }
+      document.getElementById('kitchenCount').textContent=kitchenOrders.length;
+      document.getElementById('kitchenSection').style.display='block';
+      el.innerHTML = kitchenOrders.map(function(o){
+        var shop = shopMap[o.shop_id] || {};
+        var driver = shop.assigned_driver || 'Unassigned';
+        var pairs=[];
+        var items=(o.items||'').split(','), qtys=(o.qty||'').split(',');
+        items.forEach(function(item,i){ if(item.trim()) pairs.push('<b>'+esc((qtys[i]||'')+'×')+'</b> '+esc(item.trim())); });
+        return '<div class="order-card">'+
+          '<div class="order-head kitchen-head">'+
+            '<div>'+
+              '<div class="order-shop">'+esc(o.shop_name)+'</div>'+
+              '<div class="order-driver" style="color:#7a4800">🍳 In Kitchen · 🚗 '+esc(driver)+'</div>'+
+            '</div>'+
+            '<span class="badge b-kitchen">🍳 Kitchen</span>'+
+          '</div>'+
+          '<div class="order-body">'+
+            '<div class="order-items">'+pairs.join('<br>')+'</div>'+
+            (o.note?'<div style="font-size:11px;color:#8a7a6a;font-family:monospace">📝 '+esc(o.note)+'</div>':'')+
+          '</div>'+
+        '</div>';
+      }).join('');
+    }
+
+    function toggleDriverShops(btn){
+      var id = btn.getAttribute('data-shop-list');
+      var total = btn.getAttribute('data-shop-total') || '';
+      var el = document.getElementById(id);
+      if(!el) return;
+      var open = el.style.display === 'block';
+      el.style.display = open ? 'none' : 'block';
+      btn.textContent = open ? ('▼ Show shops ('+total+')') : '▲ Hide shops';
+    }
+
+    // ── DRIVERS / ROUTE TAB ──
+    // Groups all orders by assigned driver so packaging staff can separate materials route-wise
+    function renderDriverRoutes(){
+      var el = document.getElementById('driversBody');
+      var msg = document.getElementById('driversMsg');
+      var all = [].concat(kitchenOrders, packOrders, dispatchOrders);
+
+      if(!all.length){
+        msg.textContent = 'No orders for this date. Load from Pack tab first.';
+        msg.className = 'msg in';
+        msg.style.display = 'block';
+        el.innerHTML = '';
+        return;
+      }
+      msg.style.display = 'none';
+
+      var byDriver = {};
+      all.forEach(function(o){
+        var shop = shopMap[o.shop_id] || {};
+        var drv = shop.assigned_driver || o.driver || 'Unassigned';
+        if(!byDriver[drv]) byDriver[drv] = [];
+        byDriver[drv].push(o);
+      });
+
+      var driverNames = Object.keys(byDriver).sort(function(a,b){
+        if(a === 'Unassigned') return 1;
+        if(b === 'Unassigned') return -1;
+        return a.localeCompare(b);
+      });
+
+      var html = '';
+
+      // Overview chips
+      html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">';
+      driverNames.forEach(function(drv){
+        var orders = byDriver[drv];
+        var packed = orders.filter(function(o){
+          return o.status === 'dispatched' || packedIds.has(o.id);
+        }).length;
+        var total = orders.length;
+        var allDone = packed === total;
+        var chipBg = allDone ? '#e8f5e9' : '#fff';
+        var chipBorder = allDone ? '#a5d6a7' : '#e8dfd2';
+        var chipColor = allDone ? '#2d7a4f' : '#4a2f14';
+        html += '<div style="background:'+chipBg+';border:1.5px solid '+chipBorder+';border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;font-family:monospace;color:'+chipColor+'">';
+        html += '🚗 '+esc(drv)+' · '+packed+'/'+total;
+        html += '</div>';
+      });
+      html += '</div>';
+
+      driverNames.forEach(function(drv){
+        var orders = byDriver[drv];
+        var inKitchen = orders.filter(function(o){ return o.status === 'approved'; }).length;
+        var toPack = orders.filter(function(o){ return o.status === 'packaging' && !packedIds.has(o.id); }).length;
+        var packedN = orders.filter(function(o){ return o.status === 'packaging' && packedIds.has(o.id); }).length;
+        var dispatched = orders.filter(function(o){ return o.status === 'dispatched'; }).length;
+        var readyCount = packedN + dispatched;
+        var total = orders.length;
+        var allReady = readyCount === total && inKitchen === 0 && toPack === 0;
+
+        var prodTotals = {};
+        orders.forEach(function(o){
+          var items = (o.items || '').split(',');
+          var qtys = (o.qty || '').split(',');
+          items.forEach(function(item, i){
+            item = item.trim();
+            if(!item) return;
+            var q = parseInt(qtys[i]) || 0;
+            prodTotals[item] = (prodTotals[item] || 0) + q;
+          });
+        });
+        var prodEntries = Object.keys(prodTotals).sort().map(function(k){ return [k, prodTotals[k]]; });
+        var grandQty = 0;
+        prodEntries.forEach(function(e){ grandQty += e[1]; });
+
+        var borderColor = allReady ? '#a5d6a7' : ((toPack > 0 || inKitchen > 0) ? '#c8a87a' : '#e8dfd2');
+        var bgColor = allReady ? '#f0faf4' : '#fff';
+
+        html += '<div style="background:'+bgColor+';border:2px solid '+borderColor+';border-radius:16px;padding:14px;margin-bottom:12px">';
+
+        html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">';
+        html += '<div>';
+        html += '<div style="font-size:16px;font-weight:900;color:#4a2f14">🚗 '+esc(drv)+'</div>';
+        html += '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:2px">'+total+' shop'+(total !== 1 ? 's' : '')+' · '+grandQty+' items</div>';
+        html += '</div>';
+        if(allReady){
+          html += '<span class="badge b-done" style="font-size:11px;padding:4px 10px">✅ Ready</span>';
+        } else {
+          html += '<span class="badge b-pack" style="font-size:11px;padding:4px 10px">'+readyCount+'/'+total+' ready</span>';
+        }
+        html += '</div>';
+
+        html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">';
+        if(inKitchen) html += '<span style="background:#fff8e1;color:#7a4800;border-radius:20px;padding:3px 9px;font-size:10px;font-weight:700;font-family:monospace">🍳 Kitchen '+inKitchen+'</span>';
+        if(toPack) html += '<span style="background:#f3e8ff;color:#6e3da8;border-radius:20px;padding:3px 9px;font-size:10px;font-weight:700;font-family:monospace">📦 To Pack '+toPack+'</span>';
+        if(packedN) html += '<span style="background:#e8f5e9;color:#2d7a4f;border-radius:20px;padding:3px 9px;font-size:10px;font-weight:700;font-family:monospace">✅ Packed '+packedN+'</span>';
+        if(dispatched) html += '<span style="background:#e8f5e9;color:#2d7a4f;border-radius:20px;padding:3px 9px;font-size:10px;font-weight:700;font-family:monospace">🚗 Dispatched '+dispatched+'</span>';
+        html += '</div>';
+
+        // Materials to separate
+        html += '<div style="background:#f5ede0;border-radius:12px;padding:12px;margin-bottom:10px">';
+        html += '<div style="font-size:10px;font-weight:900;letter-spacing:1.5px;color:#4a2f14;text-transform:uppercase;margin-bottom:8px">📦 Separate these materials</div>';
+        html += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+        prodEntries.forEach(function(e){
+          html += '<span style="background:#fff;border:1.5px solid #e8dfd2;border-radius:10px;padding:5px 10px;font-size:12px;font-weight:700;font-family:monospace;color:#1e1611">';
+          html += '<b style="color:#6e3da8">'+e[1]+'x</b> '+esc(e[0]);
+          html += '</span>';
+        });
+        html += '</div></div>';
+
+        // Shop list toggle — data attributes only (no nested quotes)
+        var shopListId = 'drv-shops-'+drv.replace(/[^a-z0-9]/gi,'_');
+        html += '<button type="button" data-shop-list="'+shopListId+'" data-shop-total="'+total+'" onclick="toggleDriverShops(this)" ';
+        html += 'style="background:none;border:none;color:#6e3da8;font-size:12px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif;padding:0;margin-bottom:6px">';
+        html += '▼ Show shops ('+total+')</button>';
+        html += '<div id="'+shopListId+'" style="display:none">';
+
+        var statusOrder = { approved: 0, packaging: 1, dispatched: 2 };
+        orders.slice().sort(function(a,b){
+          var sa = (a.status === 'packaging' && packedIds.has(a.id)) ? 1.5 : (statusOrder[a.status] || 9);
+          var sb = (b.status === 'packaging' && packedIds.has(b.id)) ? 1.5 : (statusOrder[b.status] || 9);
+          return sa - sb;
+        }).forEach(function(o){
+          var isPacked = o.status === 'dispatched' || packedIds.has(o.id);
+          var statusLabel, statusColor, statusBg;
+          if(o.status === 'approved'){
+            statusLabel = '🍳 Kitchen'; statusColor = '#7a4800'; statusBg = '#fff8e1';
+          } else if(o.status === 'dispatched' || isPacked){
+            statusLabel = o.status === 'dispatched' ? '🚗 Dispatched' : '✅ Packed';
+            statusColor = '#2d7a4f'; statusBg = '#e8f5e9';
+          } else {
+            statusLabel = '📦 To Pack'; statusColor = '#6e3da8'; statusBg = '#f3e8ff';
+          }
+
+          var items = (o.items || '').split(',');
+          var qtys = (o.qty || '').split(',');
+          var itemChips = '';
+          items.forEach(function(item, i){
+            item = item.trim();
+            if(!item) return;
+            var q = parseInt(qtys[i]) || 0;
+            itemChips += '<span style="display:inline-block;background:#f5ede0;border-radius:8px;padding:2px 7px;font-size:10px;font-family:monospace;margin:2px 3px 2px 0"><b>'+q+'x</b> '+esc(item)+'</span>';
+          });
+
+          html += '<div style="background:#fff;border:1.5px solid #e8dfd2;border-radius:10px;padding:10px 12px;margin-bottom:6px">';
+          html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">';
+          html += '<div style="font-size:13px;font-weight:800;color:#1e1611">'+esc(o.shop_name)+'</div>';
+          html += '<span style="background:'+statusBg+';color:'+statusColor+';border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;font-family:monospace">'+statusLabel+'</span>';
+          html += '</div>';
+          if(itemChips) html += '<div style="margin-top:4px">'+itemChips+'</div>';
+          if(o.note) html += '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:4px">📝 '+esc(o.note)+'</div>';
+          html += '</div>';
+        });
+
+        html += '</div></div>';
+      });
+
+      el.innerHTML = html;
+    }
+
+    // ── SUMMARY TAB ──
+    function renderSummary(){
+      var sumMsg=document.getElementById('sumMsg');
+      var all=[].concat(kitchenOrders, packOrders, dispatchOrders);
+      if(!all.length){
+        sumMsg.textContent='Load orders on the Pack tab first.';
+        sumMsg.className='msg in'; sumMsg.style.display='block';
+        document.getElementById('sumStats').style.display='none';
+        document.getElementById('sumProdCard').style.display='none';
+        document.getElementById('sumBody').innerHTML=''; return;
+      }
+      sumMsg.style.display='none';
+
+      // Stats
+      var pending=packOrders.length-packedIds.size;
+      document.getElementById('ss-kitchen').textContent  = kitchenOrders.length;
+      document.getElementById('ss-pack').textContent     = pending;
+      document.getElementById('ss-done').textContent     = packedIds.size;
+      document.getElementById('ss-dispatch').textContent = dispatchOrders.length;
+      document.getElementById('sumStats').style.display  = 'flex';
+
+      // Product grand totals
+      var prodTotals={};
+      all.forEach(function(o){
+        var items=(o.items||'').split(','), qtys=(o.qty||'').split(',');
+        items.forEach(function(item,i){
+          item=item.trim(); if(!item) return;
+          var q=parseInt(qtys[i])||0;
+          if(!prodTotals[item]) prodTotals[item]={kitchen:0,pack:0,packed:0,dispatched:0};
+          if(kitchenOrders.indexOf(o)>=0) prodTotals[item].kitchen+=q;
+          else if(dispatchOrders.indexOf(o)>=0) prodTotals[item].dispatched+=q;
+          else if(packedIds.has(o.id)) prodTotals[item].packed+=q;
+          else prodTotals[item].pack+=q;
+        });
+      });
+      var prodNames=Object.keys(prodTotals).sort();
+      if(prodNames.length){
+        document.getElementById('sumProdCard').style.display='block';
+        document.getElementById('sumProdBody').innerHTML=prodNames.map(function(p){
+          var t=prodTotals[p];
+          var total=t.kitchen+t.pack+t.packed+t.dispatched;
+          var parts=[];
+          if(t.kitchen>0)    parts.push('<span class="pcn-kitchen">🍳 '+t.kitchen+'</span>');
+          if(t.pack>0)       parts.push('<span class="pcn-pending">📦 '+t.pack+'</span>');
+          if(t.packed>0)     parts.push('<span class="pcn-done">✅ '+t.packed+'</span>');
+          if(t.dispatched>0) parts.push('<span class="pcn-done">🚗 '+t.dispatched+'</span>');
+          return '<div class="prod-count-row">'+
+            '<span class="prod-count-name">'+esc(p)+'</span>'+
+            '<span class="prod-count-nums">'+parts.join('')+' <span style="color:#8a7a6a">/ '+total+'</span></span>'+
+          '</div>';
+        }).join('');
+      } else {
+        document.getElementById('sumProdCard').style.display='none';
+      }
+
+      // Shop-wise order list grouped by status
+      function orderCard(o, statusLabel, headClass, badgeClass){
+        var shop=shopMap[o.shop_id]||{};
+        var driver=shop.assigned_driver||'Unassigned';
+        var items=(o.items||'').split(','), qtys=(o.qty||'').split(',');
+        var lines=[];
+        items.forEach(function(item,i){ if(item.trim()) lines.push(esc((qtys[i]||'')+'× '+item.trim())); });
+        return '<div class="sum-shop">'+
+          '<div class="sum-sname">'+
+            '<span>'+esc(o.shop_name)+'</span>'+
+            '<span class="badge '+badgeClass+'">'+statusLabel+'</span>'+
+          '</div>'+
+          '<div class="sum-sdetail">'+
+            '🚗 '+esc(driver)+'<br>'+
+            lines.join(' &nbsp;·&nbsp; ')+
+            (o.note?'<br>📝 '+esc(o.note):'')+
+          '</div>'+
+        '</div>';
+      }
+
+      var html='';
+      var packPending=packOrders.filter(function(o){return !packedIds.has(o.id);});
+      var packDone=packOrders.filter(function(o){return packedIds.has(o.id);});
+      if(kitchenOrders.length)  html+='<div style="margin-bottom:14px"><div class="section-hdr sh-kitchen">🍳 In Kitchen ('+kitchenOrders.length+')</div>'+kitchenOrders.map(function(o){return orderCard(o,'🍳 Kitchen','kitchen-head','b-kitchen');}).join('')+'</div>';
+      if(packPending.length)    html+='<div style="margin-bottom:14px"><div class="section-hdr sh-pack">📦 To Pack ('+packPending.length+')</div>'+packPending.map(function(o){return orderCard(o,'📦 To Pack','','b-pack');}).join('')+'</div>';
+      if(packDone.length)       html+='<div style="margin-bottom:14px"><div class="section-hdr" style="background:#f3e8ff;color:#6e3da8">✅ Packed ('+packDone.length+')</div>'+packDone.map(function(o){return orderCard(o,'✅ Packed','','b-done');}).join('')+'</div>';
+      if(dispatchOrders.length) html+='<div style="margin-bottom:14px"><div class="section-hdr sh-dispatched">🚗 Dispatched ('+dispatchOrders.length+')</div>'+dispatchOrders.map(function(o){return orderCard(o,'🚗 Dispatched','dispatched-head','b-dispatched');}).join('')+'</div>';
+      document.getElementById('sumBody').innerHTML=html||'<div style="text-align:center;padding:30px;font-size:13px;color:#8a7a6a;font-family:monospace">No data.</div>';
+    }
+
+    // ── MARK ONE PACKED ──
+    function markOnePacked(orderId){
+      var order = packOrders.find(function(o){ return o.id===orderId; });
+      if (!order) return;
+      var shop = shopMap[order.shop_id]||{};
+      var driver = shop.assigned_driver||'Unassigned';
+      var pairs=[];
+      var items=(order.items||'').split(','), qtys=(order.qty||'').split(',');
+      items.forEach(function(item,i){ if(item.trim()) pairs.push((qtys[i]||'')+'× '+item.trim()); });
+      document.getElementById('pm-shop').textContent = order.shop_name+' · 🚗 '+driver;
+      document.getElementById('pm-items').innerHTML  = pairs.map(function(p){return '<b>'+esc(p)+'</b>';}).join('<br>');
+      confirmOrderId = orderId;
+      document.getElementById('packModal').style.display='flex';
+    }
+
+    function closePackModal(){ document.getElementById('packModal').style.display='none'; confirmOrderId=null; }
+
+    function confirmPacked(){
+      var orderId=confirmOrderId; closePackModal();
+      var order = packOrders.find(function(o){ return o.id===orderId; });
+      if (!order) return;
+      var btn = document.getElementById('pbtn-'+orderId);
+      btn.disabled=true; btn.textContent='⏳ Saving…';
+      var shop = shopMap[order.shop_id]||{};
+      apiPost({
+        action:'dispatchCustomerOrder',
+        id: order.id, shop_id: order.shop_id, shop_name: order.shop_name,
+        driver: shop.assigned_driver||'', items: order.items, qty: order.qty,
+        note: order.note, delivery_date: order.delivery_date
+      }).then(function(res){
+        if (res&&res.ok){
+          packedIds.add(orderId);
+          btn.textContent='✅ Packed'; btn.className='pack-btn done-state';
+          var badge=document.getElementById('badge-'+orderId);
+          if(badge){ badge.className='badge b-done'; badge.textContent='✅ Packed'; }
+          document.getElementById('oc-'+orderId).classList.add('done');
+          updateStats();
+          renderProdCount();
+          if(document.getElementById('pg-drivers').classList.contains('on')) renderDriverRoutes();
+        } else {
+          btn.disabled=false; btn.textContent='📦 Mark as Packed';
+          alert('Failed: '+(res&&res.error||'try again'));
+        }
+      });
+    }
+
+    // ── MARK ALL PACKED ──
+    function markAllPacked(){
+      var remaining = packOrders.filter(function(o){ return !packedIds.has(o.id); });
+      if (!remaining.length) return;
+      if (!confirm('Mark all '+remaining.length+' remaining orders as packed?')) return;
+      var btn = document.getElementById('allDoneBtn');
+      btn.disabled=true; btn.textContent='⏳ Saving…';
+      var promises = remaining.map(function(o){
+        var shop=shopMap[o.shop_id]||{};
+        return apiPost({
+          action:'dispatchCustomerOrder',
+          id:o.id, shop_id:o.shop_id, shop_name:o.shop_name,
+          driver:shop.assigned_driver||'', items:o.items, qty:o.qty,
+          note:o.note, delivery_date:o.delivery_date
+        }).then(function(res){ if(res&&res.ok) packedIds.add(o.id); });
+      });
+      Promise.all(promises).then(function(){
+        btn.disabled=false;
+        updateStats();
+        renderPackOrders();
+        renderProdCount();
+        if(document.getElementById('pg-drivers').classList.contains('on')) renderDriverRoutes();
+      });
+    }
+
+    function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 </script>
 </body>
 </html>
