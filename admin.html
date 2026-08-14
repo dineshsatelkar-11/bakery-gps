@@ -845,8 +845,12 @@
                 <option value="dispatched">🚚 Dispatched</option>
             </select>
         </div>
-        <button class="btn btn-grey" onclick="loadCustOrders()" style="margin-top:4px">↻ Refresh</button>
+        <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
+            <button class="btn btn-grey" onclick="loadCustOrders()" style="margin-bottom:0;flex:1">↻ Refresh</button>
+            <button class="btn btn-brown" onclick="showCustOrderProductTotals()" style="margin-bottom:0;flex:1">📊 Product Totals</button>
+        </div>
     </div>
+    <div id="coProdTotals" style="display:none" class="card"></div>
     <div class="stats-grid" id="coStats"></div>
     <div id="coMsg" style="display:none" class="msg in"></div>
     <div id="coList"></div>
@@ -2988,12 +2992,53 @@ if(tbQueue) tbQueue.textContent = '⚠️ Queue ('+data.length+')';
       Promise.all([
         api({action:'getOrders',date:summaryDate}),
         loadProductMaster(),
+        loadCustomerMaster(),
+        // Customer portal orders (pending / kitchen / packaging / dispatched) for same delivery date
+        api({action:'getCustomerOrders', delivery_date:summaryDate, limit:1000})
       ]).then(function(res){
-        var data=res[0];
-        _lastSummaryData = Array.isArray(data) ? data : [];
+        var logistics = Array.isArray(res[0]) ? res[0] : [];
+        var custOrds  = Array.isArray(res[3]) ? res[3] : [];
+        // Map shops → assigned driver
+        var shopDriver = {};
+        (allCustomers||[]).forEach(function(c){
+          var sid = String(c.shop_id || c.customer_id || '');
+          if(sid) shopDriver[sid] = c.assigned_driver || '';
+        });
+        // Convert customer_orders into same shape as logistics orders for summary/print
+        var fromPortal = custOrds
+          .filter(function(o){ return o.status && o.status !== 'rejected'; })
+          .map(function(o){
+            var sid = String(o.shop_id || '');
+            return {
+              shop_name: o.shop_name || sid,
+              shop_id: sid,
+              customer_id: sid,
+              driver: shopDriver[sid] || o.driver || '',
+              assigned_driver: shopDriver[sid] || o.driver || '',
+              items: o.items || '',
+              qty: o.qty || '',
+              item_ids: o.item_ids || '',
+              date: o.delivery_date || summaryDate,
+              order_id: 'CO-' + o.id,
+              _source: 'customer_orders',
+              _status: o.status
+            };
+          });
+        // Prefer portal rows when same shop already has logistics order (avoid double-count)
+        var logisticsShopIds = {};
+        logistics.forEach(function(o){
+          var k = String(o.customer_id || o.shop_id || o.shop_name || '');
+          if(k) logisticsShopIds[k] = true;
+        });
+        fromPortal = fromPortal.filter(function(o){
+          var k1 = String(o.shop_id||''), k2 = String(o.shop_name||'');
+          return !logisticsShopIds[k1] && !logisticsShopIds[k2];
+        });
+        var data = logistics.concat(fromPortal);
+        _lastSummaryData = data;
         var prodMap={};
         allProducts.forEach(function(p){if(p.name)prodMap[p.name.toLowerCase()]=p;});
-        if(!Array.isArray(data)||!data.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders for this date.</div>';return;}
+        if(!data.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders for this date.<br><span style="font-size:11px">Includes logistics orders + customer portal (kitchen/packaging).</span></div>';return;}
 
         function buildSummaryHTML(orders,title,badge){
           if(!orders.length) return '<div class="card" style="margin-bottom:10px"><div class="lbl">'+esc(title)+'</div><div style="font-size:12px;color:#8a7a6a;font-family:monospace">No orders.</div></div>';
@@ -6617,6 +6662,86 @@ onStaffRoleChange();
     /* ── CUSTOMER ORDERS (admin approval tab) ── */
     var allCustOrders = [];
 
+    // Product totals for Customer Orders page — works even when orders are still in kitchen
+    function showCustOrderProductTotals(){
+      var date = (document.getElementById('co-date') && document.getElementById('co-date').value) || tomorrowStr();
+      var box = document.getElementById('coProdTotals');
+      if(!box) return;
+      box.style.display = 'block';
+      box.innerHTML = '<div style="font-size:12px;color:#8a7a6a;font-family:monospace">Loading product totals…</div>';
+
+      // Fetch all non-rejected portal orders for the date (ignore current status filter)
+      api({action:'getCustomerOrders', delivery_date:date, limit:1000}).then(function(rows){
+        rows = Array.isArray(rows) ? rows : [];
+        rows = rows.filter(function(o){ return o.status && o.status !== 'rejected'; });
+        if(!rows.length){
+          box.innerHTML = '<div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">📊 Product Totals · '+esc(date)+'</div>'+
+            '<div style="font-size:12px;color:#8a7a6a;font-family:monospace">No customer orders for this date (pending / kitchen / packaging / dispatched).</div>';
+          return;
+        }
+
+        var totals = {}; // name → {qty, byStatus}
+        var statusCount = {pending:0, approved:0, packaging:0, dispatched:0};
+        rows.forEach(function(o){
+          if(statusCount[o.status] !== undefined) statusCount[o.status]++;
+          var items = String(o.items||'').split(',');
+          var qtys  = String(o.qty||'').split(',');
+          items.forEach(function(item, i){
+            item = item.trim();
+            if(!item) return;
+            var q = parseInt(qtys[i], 10) || 0;
+            if(!totals[item]) totals[item] = {qty:0, pending:0, approved:0, packaging:0, dispatched:0};
+            totals[item].qty += q;
+            if(totals[item][o.status] !== undefined) totals[item][o.status] += q;
+          });
+        });
+
+        var names = Object.keys(totals).sort(function(a,b){ return totals[b].qty - totals[a].qty; });
+        var grand = names.reduce(function(s,n){ return s + totals[n].qty; }, 0);
+
+        var stParts = [];
+        if(statusCount.pending) stParts.push('⏳ '+statusCount.pending+' pending');
+        if(statusCount.approved) stParts.push('🍳 '+statusCount.approved+' kitchen');
+        if(statusCount.packaging) stParts.push('📦 '+statusCount.packaging+' packing');
+        if(statusCount.dispatched) stParts.push('🚚 '+statusCount.dispatched+' dispatched');
+
+        var html = '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px">'+
+          '<div>'+
+            '<div style="font-size:13px;font-weight:900;color:#4a2f14">📊 Product Totals · '+esc(date)+'</div>'+
+            '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:2px">'+rows.length+' orders · '+grand+' items'+(stParts.length?' · '+stParts.join(' · '):'')+'</div>'+
+            '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px">Includes kitchen (approved) — use this to plan what to make</div>'+
+          '</div>'+
+          '<button class="btn-sm btn-grey" onclick="document.getElementById(\'coProdTotals\').style.display=\'none\'">✕ Close</button>'+
+        '</div>';
+
+        html += '<div style="display:flex;flex-direction:column;gap:6px">';
+        names.forEach(function(name){
+          var t = totals[name];
+          var chips = [];
+          if(t.pending) chips.push('<span style="background:#fff8e1;color:#7a4800;border-radius:20px;padding:2px 7px;font-size:10px;font-weight:700;font-family:monospace">⏳ '+t.pending+'</span>');
+          if(t.approved) chips.push('<span style="background:#fff8e1;color:#7a4800;border-radius:20px;padding:2px 7px;font-size:10px;font-weight:700;font-family:monospace">🍳 '+t.approved+'</span>');
+          if(t.packaging) chips.push('<span style="background:#f3e8ff;color:#6e3da8;border-radius:20px;padding:2px 7px;font-size:10px;font-weight:700;font-family:monospace">📦 '+t.packaging+'</span>');
+          if(t.dispatched) chips.push('<span style="background:#e8f5e9;color:#2d7a4f;border-radius:20px;padding:2px 7px;font-size:10px;font-weight:700;font-family:monospace">🚚 '+t.dispatched+'</span>');
+          html += '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;background:#f5ede0;border-radius:10px;padding:8px 12px">'+
+            '<div style="font-size:13px;font-weight:800;color:#1e1611">'+esc(name)+'</div>'+
+            '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end">'+
+              chips.join('')+
+              '<span style="font-size:16px;font-weight:900;font-family:monospace;color:#6e3da8;min-width:36px;text-align:right">'+t.qty+'</span>'+
+            '</div>'+
+          '</div>';
+        });
+        html += '</div>';
+        html += '<div style="margin-top:12px;padding-top:10px;border-top:2px solid #e8dfd2;display:flex;justify-content:space-between;align-items:center">'+
+          '<span style="font-size:12px;font-weight:900;color:#4a2f14">GRAND TOTAL</span>'+
+          '<span style="font-size:18px;font-weight:900;font-family:monospace;color:#4a2f14">'+grand+'</span>'+
+        '</div>';
+        box.innerHTML = html;
+      }).catch(function(){
+        box.innerHTML = '<div style="font-size:12px;color:#c8382a;font-family:monospace">Failed to load product totals.</div>';
+      });
+    }
+
+
     function loadCustOrders(){
       var date   = document.getElementById('co-date').value;
       var status = document.getElementById('co-status').value;
@@ -7051,20 +7176,20 @@ zohoCreateInvoiceReal(orderForZoho)
     var _notifOrderedIds = {}; // shop_id → true, for customers who already ordered tomorrow
 
     function loadNotifyCustomerList(){
-      var tomorrow = tomorrowStr();
-      Promise.all([
-        loadCustomerMaster(),
-        api({ action:'getOrders', date: tomorrow })
-      ]).then(function(results){
-        var orders = Array.isArray(results[1]) ? results[1] : [];
-        _notifOrderedIds = {};
-        orders.forEach(function(o){
-          var sid = String(o.customer_id || o.shop_id || '');
-          if(sid) _notifOrderedIds[sid] = true;
-        });
-        renderNotifCustomerList('');
-      });
-    }
+  var tomorrow = tomorrowStr();
+  Promise.all([
+    loadCustomerMaster(),
+    api({ action:'getCustomerOrders', delivery_date: tomorrow })
+  ]).then(function(results){
+    var orders = Array.isArray(results[1]) ? results[1] : [];
+    _notifOrderedIds = {};
+    orders.forEach(function(o){
+      var sid = String(o.shop_id || '');
+      if(sid) _notifOrderedIds[sid] = true;
+    });
+    renderNotifCustomerList('');
+  });
+}
 
     function renderNotifCustomerList(filter){
       var el = document.getElementById('custNotifList');
@@ -7080,7 +7205,7 @@ zohoCreateInvoiceReal(orderForZoho)
         return;
       }
       el.innerHTML = list.map(function(c){
-        var sid = String(c.shop_id||c.customer_id||'');
+        var sid = String(c.customer_id||c.shop_id||'');
         var ordered = !!_notifOrderedIds[sid];
         var badge = ordered
           ? '<span style="font-size:10px;font-weight:700;color:#2d7a4f;background:#e8f5e9;border-radius:6px;padding:2px 7px;font-family:monospace;flex-shrink:0">✅ Ordered</span>'
