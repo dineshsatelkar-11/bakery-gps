@@ -411,8 +411,73 @@
           last_updated_by: b.last_updated_by || '', last_updated_at: b.last_updated_at || ''
         });
 
-      case 'deleteShop':
-        return sbDelete('shops', { shop_id: b.shop_id });
+      case 'deleteShop': {
+        // Cascade: remove dependent rows first, then the shop.
+        // shop_id is the primary key; customer_id is often the same but not always.
+        var sid = b.shop_id || b.customer_id;
+        var cid = b.customer_id || b.shop_id || sid;
+        if (!sid) return Promise.resolve({ ok: false, error: 'Missing shop_id' });
+
+        function delBy(table, col, val) {
+          return fetch(BASE + '/' + table + '?' + encodeURIComponent(col) + '=eq.' + encodeURIComponent(val), {
+            method: 'DELETE',
+            headers: hdrs({ 'Prefer': 'return=minimal' })
+          }).then(function (r) {
+            if (r.ok) return { ok: true };
+            return r.json().then(function (e) {
+              return { ok: false, error: e.message || e.hint || e.details || ('Delete failed on ' + table) };
+            }).catch(function () { return { ok: false, error: 'Delete failed on ' + table + ' (HTTP ' + r.status + ')' }; });
+          }).catch(function () { return { ok: false, error: 'Network error deleting from ' + table }; });
+        }
+
+        // Child tables that reference the shop (order matters for FKs)
+        var steps = [
+          function () { return delBy('customer_notifications', 'shop_id', sid); },
+          function () { return delBy('push_subscriptions', 'shop_id', sid); },
+          function () { return delBy('customer_orders', 'shop_id', sid); },
+          function () { return delBy('deliveries', 'shop_id', sid); },
+          function () { return delBy('orders', 'shop_id', sid); }
+        ];
+        // If customer_id differs, also clear orders keyed by customer_id
+        if (cid && cid !== sid) {
+          steps.push(function () { return delBy('orders', 'customer_id', cid); });
+        }
+
+        return steps.reduce(function (chain, fn) {
+          return chain.then(function (prev) {
+            if (prev && prev.ok === false) return prev;
+            return fn();
+          });
+        }, Promise.resolve({ ok: true })).then(function (prev) {
+          if (prev && prev.ok === false) return prev;
+          // Delete the shop row and verify something was removed
+          function delShopVerify(col, val) {
+            return fetch(BASE + '/shops?' + encodeURIComponent(col) + '=eq.' + encodeURIComponent(val), {
+              method: 'DELETE',
+              headers: hdrs({ 'Prefer': 'return=representation' })
+            }).then(function (r) {
+              if (!r.ok) {
+                return r.json().then(function (e) {
+                  return { ok: false, error: e.message || e.hint || e.details || ('Delete failed (HTTP ' + r.status + ')') };
+                }).catch(function () { return { ok: false, error: 'Delete failed (HTTP ' + r.status + ')' }; });
+              }
+              return r.json().then(function (rows) {
+                var n = Array.isArray(rows) ? rows.length : 0;
+                if (n > 0) return { ok: true, deleted: n };
+                return { ok: false, error: 'No shop found with ' + col + '=' + val + ' (already deleted, or RLS blocked the delete)' };
+              }).catch(function () {
+                // return=representation may be empty body on some configs
+                return { ok: true };
+              });
+            }).catch(function () { return { ok: false, error: 'Network error deleting shop' }; });
+          }
+          return delShopVerify('shop_id', sid).then(function (res) {
+            if (res.ok) return res;
+            if (cid && cid !== sid) return delShopVerify('customer_id', cid);
+            return res;
+          });
+        });
+      }
 
       // Delete a drop-point photo: removes the file from Drive storage first,
       // and only clears the shop's photo fields once that succeeds. If Drive

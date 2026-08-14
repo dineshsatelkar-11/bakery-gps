@@ -3904,7 +3904,7 @@ function saveAllBrandAssign(){
           '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
             '<button class="btn-sm" style="background:#f3e8ff;color:#6e3da8;border:1.5px solid #d8b8f0" onclick=\'openCustDetailModal('+esc(JSON.stringify(c))+')\'>👁 View</button>'+
             '<button class="btn-sm btn-edit" onclick=\'openEditCustomer('+esc(JSON.stringify(c))+')\'>✏️ Edit</button>'+
-            '<button class="btn-sm btn-del" onclick="delCustomer(\''+esc(cid)+'\',\''+esc(c.name)+'\')">🗑 Delete</button>'+
+            '<button class="btn-sm btn-del" onclick=\'delCustomer('+JSON.stringify(String(cid))+')\'>🗑 Delete</button>'+
             (c.lat?'<a href="https://www.google.com/maps?q='+c.lat+','+c.lng+'" target="_blank" class="btn-sm" style="background:#e3f2fd;color:#1565c0;text-decoration:none">🗺 Map</a>':'')+
             (_zohoEnabled?'<button class="btn-sm" style="background:#fff8e1;border:1.5px solid #ffe082;color:#7a4800" onclick="zohoSyncCustomer(\''+esc(cid)+'\',\''+esc(c.name)+'\')">🔗 Zoho</button>':'')+
           '</div>'+
@@ -4464,11 +4464,35 @@ function shareAllCustLogins(){
       }
     }
 
-    function delCustomer(id,name){
-      if(!confirm('Delete "'+name+'"?\n\nThis will permanently remove the shop and cannot be undone.'))return;
-      apiPost({action:'deleteShop',shop_id:id}).then(function(res){
-        if(res&&res.ok){ _custLoaded=false; loadCustomers(); }
-        else alert('Delete failed: '+(res.error||'unknown error'));
+    function delCustomer(id){
+      var row = allCustomers.find(function(c){
+        return String(c.customer_id||c.shop_id||'')===String(id) || String(c.shop_id||'')===String(id);
+      }) || {};
+      var name = row.name || id;
+      if(!confirm('Delete "'+name+'"?\n\nThis will permanently remove the shop and all related orders/deliveries.\nThis cannot be undone.'))return;
+      var shopId = row.shop_id || id;
+      var custId = row.customer_id || row.shop_id || id;
+      apiPost({action:'deleteShop', shop_id:shopId, customer_id:custId}).then(function(res){
+        if(res&&res.ok){
+          allCustomers = allCustomers.filter(function(c){
+            var sid = String(c.shop_id||''), cid = String(c.customer_id||'');
+            return sid !== String(shopId) && cid !== String(custId) && sid !== String(id) && cid !== String(id);
+          });
+          _custLoaded = false;
+          loadCustomerMaster(true).then(function(){ renderCustStats(); renderCustomers(); });
+        } else {
+          var err = (res && res.error) || 'unknown error';
+          if(/foreign key|violates|constraint/i.test(err)){
+            alert('Delete failed: this customer still has linked records that could not be removed.\n\n'+err);
+          } else if(/permission|policy|row-level|401|403/i.test(err)){
+            alert('Delete failed: database permission denied.\n\nCheck Supabase RLS policies allow DELETE on shops (and related tables) for the anon key.\n\n'+err);
+          } else {
+            alert('Delete failed: '+err);
+          }
+        }
+      }).catch(function(e){
+        alert('Delete failed: network error');
+        if(window.logError) window.logError('admin','delCustomer',e);
       });
     }
     function bulkReassign(){
