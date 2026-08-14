@@ -845,12 +845,8 @@
                 <option value="dispatched">🚚 Dispatched</option>
             </select>
         </div>
-        <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
-            <button class="btn btn-grey" onclick="loadCustOrders()" style="margin-bottom:0;flex:1">↻ Refresh</button>
-            <button class="btn btn-brown" onclick="showCustOrderProductTotals()" style="margin-bottom:0;flex:1">📊 Product Totals</button>
-        </div>
+        <button class="btn btn-grey" onclick="loadCustOrders()" style="margin-top:4px">↻ Refresh</button>
     </div>
-    <div id="coProdTotals" style="display:none" class="card"></div>
     <div class="stats-grid" id="coStats"></div>
     <div id="coMsg" style="display:none" class="msg in"></div>
     <div id="coList"></div>
@@ -2929,12 +2925,6 @@ if(tbQueue) tbQueue.textContent = '⚠️ Queue ('+data.length+')';
 
     /* ── SUMMARY ── */
 
-    // Map a product name to its category using product master first, then keyword fallback
-    function getCat(name, prodMap){
-      if(prodMap){var p=prodMap[(name||'').toLowerCase()];if(p)return p.category||'Other';}
-      return 'Other';
-    }
-
     var _lastSummaryData = [];
     var _dashDelivDate = '';
 
@@ -2943,7 +2933,6 @@ if(tbQueue) tbQueue.textContent = '⚠️ Queue ('+data.length+')';
       var its=(o.items||'').split(',').map(function(s){return s.replace(/\s*\(.*?\)/g,'').trim();}).filter(Boolean);
       var qs=(o.qty||'').split(',').map(function(s){return parseInt(s)||0;});
       var ids=(o.item_ids||'').split(',').map(function(s){return s.trim();});
-      // return array of {name, qty, product_id} — callers that expect {name:qty} map still work via _toMap
       var arr=[];
       its.forEach(function(name,i){
         if(!name) return;
@@ -2960,28 +2949,42 @@ if(tbQueue) tbQueue.textContent = '⚠️ Queue ('+data.length+')';
       return r;
     }
 
-    /* Group [{name,qty,product_id}] into category buckets */
+    /* Group by product master category only — no fuzzy / keyword matching */
     function groupByCat(items){
-      // accept old {name:qty} map or new array
-      var arr=Array.isArray(items)?items:Object.entries(items).map(function(e){return{name:e[0],qty:e[1],product_id:''};});
-      var idMap={};   // product_id → product
-      var nameMap={}; // name.toLowerCase() → product
-      allProducts.forEach(function(p){
-        if(p.product_id) idMap[String(p.product_id).trim()]=p;
-        if(p.name) nameMap[p.name.toLowerCase().trim()]=p;
+      var arr = Array.isArray(items)
+        ? items
+        : Object.entries(items).map(function(e){ return {name:e[0], qty:e[1], product_id:''}; });
+
+      // product_id → product, exact name (lower) → product
+      var idMap = {};
+      var nameMap = {};
+      (allProducts || []).forEach(function(p){
+        if(p.product_id) idMap[String(p.product_id).trim()] = p;
+        if(p.name) nameMap[String(p.name).toLowerCase().trim()] = p;
       });
-      var cats={};
+
+      var cats = {};
       arr.forEach(function(item){
-        // lookup by product_id first, fall back to name
-        var p=(item.product_id&&idMap[String(item.product_id).trim()])||nameMap[(item.name||'').toLowerCase().trim()];
-        var cat=p?(p.category||'Other'):'Other';
-        if(!cats[cat])cats[cat]={total:0,items:[]};
-        cats[cat].total+=item.qty;
-       cats[cat].items.push({name:item.name,qty:item.qty,product_id:item.product_id||''});
+        var p = null;
+        if(item.product_id && idMap[String(item.product_id).trim()]){
+          p = idMap[String(item.product_id).trim()];
+        }
+        if(!p && item.name){
+          p = nameMap[String(item.name).toLowerCase().trim()] || null;
+        }
+        // Category only from product master; empty / missing → Other
+        var cat = (p && (p.category || '').trim()) ? (p.category || '').trim() : 'Other';
+        if(!cats[cat]) cats[cat] = { total:0, items:[] };
+        cats[cat].total += item.qty;
+        cats[cat].items.push({ name:item.name, qty:item.qty, product_id:item.product_id || '' });
       });
-      Object.values(cats).forEach(function(c){c.items.sort(function(a,b){return b.qty-a.qty;});});
+      Object.values(cats).forEach(function(c){
+        c.items.sort(function(a,b){ return b.qty - a.qty; });
+      });
       return cats;
     }
+
+
 
     function loadSummary(){
       var el=document.getElementById('summaryBody');
@@ -6662,86 +6665,6 @@ onStaffRoleChange();
     /* ── CUSTOMER ORDERS (admin approval tab) ── */
     var allCustOrders = [];
 
-    // Product totals for Customer Orders page — works even when orders are still in kitchen
-    function showCustOrderProductTotals(){
-      var date = (document.getElementById('co-date') && document.getElementById('co-date').value) || tomorrowStr();
-      var box = document.getElementById('coProdTotals');
-      if(!box) return;
-      box.style.display = 'block';
-      box.innerHTML = '<div style="font-size:12px;color:#8a7a6a;font-family:monospace">Loading product totals…</div>';
-
-      // Fetch all non-rejected portal orders for the date (ignore current status filter)
-      api({action:'getCustomerOrders', delivery_date:date, limit:1000}).then(function(rows){
-        rows = Array.isArray(rows) ? rows : [];
-        rows = rows.filter(function(o){ return o.status && o.status !== 'rejected'; });
-        if(!rows.length){
-          box.innerHTML = '<div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">📊 Product Totals · '+esc(date)+'</div>'+
-            '<div style="font-size:12px;color:#8a7a6a;font-family:monospace">No customer orders for this date (pending / kitchen / packaging / dispatched).</div>';
-          return;
-        }
-
-        var totals = {}; // name → {qty, byStatus}
-        var statusCount = {pending:0, approved:0, packaging:0, dispatched:0};
-        rows.forEach(function(o){
-          if(statusCount[o.status] !== undefined) statusCount[o.status]++;
-          var items = String(o.items||'').split(',');
-          var qtys  = String(o.qty||'').split(',');
-          items.forEach(function(item, i){
-            item = item.trim();
-            if(!item) return;
-            var q = parseInt(qtys[i], 10) || 0;
-            if(!totals[item]) totals[item] = {qty:0, pending:0, approved:0, packaging:0, dispatched:0};
-            totals[item].qty += q;
-            if(totals[item][o.status] !== undefined) totals[item][o.status] += q;
-          });
-        });
-
-        var names = Object.keys(totals).sort(function(a,b){ return totals[b].qty - totals[a].qty; });
-        var grand = names.reduce(function(s,n){ return s + totals[n].qty; }, 0);
-
-        var stParts = [];
-        if(statusCount.pending) stParts.push('⏳ '+statusCount.pending+' pending');
-        if(statusCount.approved) stParts.push('🍳 '+statusCount.approved+' kitchen');
-        if(statusCount.packaging) stParts.push('📦 '+statusCount.packaging+' packing');
-        if(statusCount.dispatched) stParts.push('🚚 '+statusCount.dispatched+' dispatched');
-
-        var html = '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px">'+
-          '<div>'+
-            '<div style="font-size:13px;font-weight:900;color:#4a2f14">📊 Product Totals · '+esc(date)+'</div>'+
-            '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:2px">'+rows.length+' orders · '+grand+' items'+(stParts.length?' · '+stParts.join(' · '):'')+'</div>'+
-            '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px">Includes kitchen (approved) — use this to plan what to make</div>'+
-          '</div>'+
-          '<button class="btn-sm btn-grey" onclick="document.getElementById(\'coProdTotals\').style.display=\'none\'">✕ Close</button>'+
-        '</div>';
-
-        html += '<div style="display:flex;flex-direction:column;gap:6px">';
-        names.forEach(function(name){
-          var t = totals[name];
-          var chips = [];
-          if(t.pending) chips.push('<span style="background:#fff8e1;color:#7a4800;border-radius:20px;padding:2px 7px;font-size:10px;font-weight:700;font-family:monospace">⏳ '+t.pending+'</span>');
-          if(t.approved) chips.push('<span style="background:#fff8e1;color:#7a4800;border-radius:20px;padding:2px 7px;font-size:10px;font-weight:700;font-family:monospace">🍳 '+t.approved+'</span>');
-          if(t.packaging) chips.push('<span style="background:#f3e8ff;color:#6e3da8;border-radius:20px;padding:2px 7px;font-size:10px;font-weight:700;font-family:monospace">📦 '+t.packaging+'</span>');
-          if(t.dispatched) chips.push('<span style="background:#e8f5e9;color:#2d7a4f;border-radius:20px;padding:2px 7px;font-size:10px;font-weight:700;font-family:monospace">🚚 '+t.dispatched+'</span>');
-          html += '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;background:#f5ede0;border-radius:10px;padding:8px 12px">'+
-            '<div style="font-size:13px;font-weight:800;color:#1e1611">'+esc(name)+'</div>'+
-            '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end">'+
-              chips.join('')+
-              '<span style="font-size:16px;font-weight:900;font-family:monospace;color:#6e3da8;min-width:36px;text-align:right">'+t.qty+'</span>'+
-            '</div>'+
-          '</div>';
-        });
-        html += '</div>';
-        html += '<div style="margin-top:12px;padding-top:10px;border-top:2px solid #e8dfd2;display:flex;justify-content:space-between;align-items:center">'+
-          '<span style="font-size:12px;font-weight:900;color:#4a2f14">GRAND TOTAL</span>'+
-          '<span style="font-size:18px;font-weight:900;font-family:monospace;color:#4a2f14">'+grand+'</span>'+
-        '</div>';
-        box.innerHTML = html;
-      }).catch(function(){
-        box.innerHTML = '<div style="font-size:12px;color:#c8382a;font-family:monospace">Failed to load product totals.</div>';
-      });
-    }
-
-
     function loadCustOrders(){
       var date   = document.getElementById('co-date').value;
       var status = document.getElementById('co-status').value;
@@ -6778,99 +6701,48 @@ onStaffRoleChange();
     var STATUS_COLORS = { pending:'b-warn', approved:'b-logistics', rejected:'b-miss', packaging:'b-blue', dispatched:'b-ok' };
     var STATUS_LABELS = { pending:'⏳ Pending', approved:'👨‍🍳 In Kitchen', rejected:'❌ Rejected', packaging:'📦 Packaging', dispatched:'🚚 Dispatched' };
 
-    function getTimeAgo(dateStr) {
-      var d = new Date(dateStr);
-      var now = new Date();
-      var diff = Math.floor((now - d) / 1000);
-      if (diff < 60) return 'Just now';
-      if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
-      if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
-      return Math.floor(diff / 86400) + 'd ago';
-    }
-
     function renderCustOrders(){
       var el = document.getElementById('coList');
       el.innerHTML = allCustOrders.map(function(o){
-        // Parse items and quantities
-        var pairs = [];
-        var items = (o.items || '').split(',');
-        var qtys = (o.qty || '').split(',');
-        items.forEach(function(item, i) {
-          if(item.trim()) pairs.push(esc((qtys[i] || '')) + '× ' + esc(item.trim()));
-        });
-
-        // Calculate total quantity
-        var totalQty = qtys.reduce(function(sum, q) {
-          return sum + (parseInt(q) || 0);
-        }, 0);
-
-        // Status styling
+        var pairs=[];
+        var items=(o.items||'').split(','); var qtys=(o.qty||'').split(',');
+        items.forEach(function(item,i){ if(item.trim()) pairs.push(esc((qtys[i]||''))+'× '+esc(item.trim())); });
         var cls = STATUS_COLORS[o.status] || 'b-warn';
         var lbl = STATUS_LABELS[o.status] || o.status;
-        var created = o.created_at ? new Date(o.created_at).toLocaleString('en-IN', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'}) : '';
-        var timeAgo = o.created_at ? getTimeAgo(o.created_at) : '';
-
-        // Get customer info
-        var cust = allCustomers.find(function(c) {
-          return (c.customer_id || c.shop_id || '') === String(o.shop_id || '');
-        });
-        var custPhone = cust ? (cust.mobile || '—') : '—';
-        var custArea = cust ? (cust.area || '—') : '—';
-
-        // Status color for pending orders
-        var statusBg = o.status === 'pending' ? '#fff8e1' : '#e8f5e9';
-        var statusBorder = o.status === 'pending' ? '#ffc87a' : '#a5d6a7';
-        var statusColor = o.status === 'pending' ? '#7a4800' : '#2d7a4f';
-
-        return '<div class="item-card" style="border-color:' + statusBorder + ';background:' + (o.status === 'pending' ? '#fffaf4' : '#f9f6f1') + '">'+
-          // Header with Status and Time
-          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #e8dfd2">'+
-            '<div style="display:flex;align-items:center;gap:8px;flex:1">'+
-              '<span class="badge" style="background:' + statusBg + ';color:' + statusColor + ';border:1.5px solid ' + statusBorder + ';padding:5px 10px;font-size:11px;font-weight:800">' + lbl + '</span>'+
-              '<span style="font-size:10px;color:#8a7a6a;font-family:monospace">' + timeAgo + '</span>'+
+        var created = o.created_at ? new Date(o.created_at).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+        return '<div class="item-card '+(o.status==='pending'?'pending':'')+'">'+
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">'+
+            '<div>'+
+              '<div style="font-size:14px;font-weight:800;color:#4a2f14">'+esc(o.shop_name)+'</div>'+
+              '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px">📅 Delivery: <b>'+esc(o.delivery_date)+'</b> · Ordered: '+created+'</div>'+
             '</div>'+
-            '<div style="text-align:right;font-size:10px;color:#8a7a6a;font-family:monospace">Order #' + o.id + '</div>'+
+            '<span class="badge '+cls+'">'+lbl+'</span>'+
           '</div>'+
-
-          // Customer Info
-          '<div style="margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #f5ede0">'+
-            '<div style="font-size:14px;font-weight:800;color:#4a2f14;margin-bottom:4px">' + esc(o.shop_name) + '</div>'+
-            '<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:#8a7a6a;font-family:monospace">'+
-              '<span>📍 ' + esc(custArea) + '</span>'+
-              '<span>📞 ' + esc(custPhone) + '</span>'+
-              '<span>📅 ' + esc(o.delivery_date) + '</span>'+
-            '</div>'+
-          '</div>'+
-
-          // Items Section
-          '<div style="margin-bottom:12px">'+
-            '<div style="font-size:11px;font-weight:800;color:#4a2f14;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">📦 Items (' + totalQty + ' total)</div>'+
-            '<div style="background:#f5ede0;border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.8;font-family:monospace">'+
-              pairs.map(function(p) { return '• ' + p; }).join('<br/>') +
-            '</div>'+
-          '</div>'+
-
-          // Notes Section
-          (o.note || o.admin_note ? '<div style="margin-bottom:12px">' +
-            (o.note ? '<div style="font-size:11px;color:#1565c0;background:#e3f2fd;border-left:3px solid #1565c0;border-radius:4px;padding:8px 10px;margin-bottom:6px;font-family:monospace"><strong>📝 Customer:</strong> ' + esc(o.note) + '</div>' : '') +
-            (o.admin_note ? '<div style="font-size:11px;color:#7a4800;background:#fff8e1;border-left:3px solid #ffc87a;border-radius:4px;padding:8px 10px;font-family:monospace"><strong>💬 Admin:</strong> ' + esc(o.admin_note) + '</div>' : '') +
-          '</div>' : '') +
-
-          // Zoho Section
-          (o.zoho_invoice_number || o.zoho_invoice_id
-            ? '<div style="font-size:10px;color:#c8864a;background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:6px 10px;margin-bottom:12px;display:inline-flex;align-items:center;gap:8px;font-family:monospace">' +
-              (cust && cust.zoho_doc_type === 'delivery_challan' ? '📋 DC:' : '📄 INV:') + ' <b>' + (o.zoho_invoice_number || '—') + '</b>' +
-              (o.zoho_invoice_id ? ' <span style="color:#8a7a6a;font-size:9px">ID: ' + esc(o.zoho_invoice_id) + '</span>' : '') +
-            '</div>'
-            : (o.status === 'approved' && _zohoEnabled && (!cust || cust.zoho_doc_type !== 'delivery_challan')
-              ? '<div style="font-size:10px;color:#c8382a;font-family:monospace;margin-bottom:12px">⚠️ No Zoho invoice yet</div>'
-              : '')) +
-
-          // Action Buttons
-          '<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:10px;border-top:1px solid #e8dfd2">'+
-            (o.status === 'pending' ? '<button class="btn-sm" style="background:#e8f5e9;color:#2d7a4f;border:1.5px solid #a5d6a7;flex:1" onclick="quickApprove(' + o.id + ')">✅ Approve</button>' : '') +
-            (o.status === 'pending' ? '<button class="btn-sm btn-del" style="flex:1" onclick="quickReject(' + o.id + ')">❌ Reject</button>' : '') +
-            '<button class="btn-sm btn-edit" style="flex:1" onclick=\'openCoModal(' + esc(JSON.stringify(o)) + ')\'>✏️ Edit</button>'+
+          '<div style="font-size:12px;font-family:monospace;background:#f5ede0;border-radius:8px;padding:7px 10px;line-height:1.8;margin-bottom:8px">'+pairs.join(' · ')+'</div>'+
+          (o.note?'<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:6px">📝 '+esc(o.note)+'</div>':'')+
+          (o.admin_note?'<div style="font-size:11px;color:#1565c0;font-family:monospace;margin-bottom:6px">💬 Admin: '+esc(o.admin_note)+'</div>':'')+
+(o.zoho_invoice_number || o.zoho_invoice_id
+  ? '<div style="font-size:11px;color:#c8864a;font-family:monospace;margin-bottom:6px;background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:4px 8px;display:inline-flex;align-items:center;gap:8px">'
+    + (function(){
+        var _s = allCustomers.find(function(c){ return (c.customer_id||c.shop_id||'') === String(o.shop_id||''); });
+        return (_s && _s.zoho_doc_type === 'delivery_challan') ? '📋 DC:' : '📄 INV:';
+      })()
+    + ' <b>'+(o.zoho_invoice_number||'—')+'</b>'
+    + (o.zoho_invoice_id ? ' <span style="color:#8a7a6a;font-size:10px">ID: '+esc(o.zoho_invoice_id)+'</span>' : '')
+    + '</div>'
+  : (o.status==='approved' && _zohoEnabled && (function(){
+      var _s = allCustomers.find(function(c){
+        return (c.customer_id||c.shop_id||'') === String(o.shop_id||'');
+      });
+      return !_s || _s.zoho_doc_type !== 'delivery_challan';
+    })()
+    ? '<div style="font-size:10px;color:#c8382a;font-family:monospace;margin-bottom:4px">⚠️ No Zoho invoice yet</div>'
+    : '')
+)+
+          '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+            (o.status==='pending'?'<button class="btn-sm" style="background:#e8f5e9;color:#2d7a4f" onclick="quickApprove('+o.id+')">✅ Approve</button>':'') +
+            (o.status==='pending'?'<button class="btn-sm btn-del" onclick="quickReject('+o.id+')">❌ Reject</button>':'') +
+            '<button class="btn-sm btn-edit" onclick=\'openCoModal('+esc(JSON.stringify(o))+')\'>✏️ Edit</button>'+
           '</div>'+
         '</div>';
       }).join('');
@@ -7230,12 +7102,12 @@ zohoCreateInvoiceReal(orderForZoho)
       var tomorrow = tomorrowStr();
       Promise.all([
         loadCustomerMaster(),
-        api({ action:'getCustomerOrders', delivery_date: tomorrow })
+        api({ action:'getOrders', date: tomorrow })
       ]).then(function(results){
         var orders = Array.isArray(results[1]) ? results[1] : [];
         _notifOrderedIds = {};
         orders.forEach(function(o){
-          var sid = String(o.shop_id || '');
+          var sid = String(o.customer_id || o.shop_id || '');
           if(sid) _notifOrderedIds[sid] = true;
         });
         renderNotifCustomerList('');
