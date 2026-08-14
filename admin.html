@@ -6778,48 +6778,99 @@ onStaffRoleChange();
     var STATUS_COLORS = { pending:'b-warn', approved:'b-logistics', rejected:'b-miss', packaging:'b-blue', dispatched:'b-ok' };
     var STATUS_LABELS = { pending:'⏳ Pending', approved:'👨‍🍳 In Kitchen', rejected:'❌ Rejected', packaging:'📦 Packaging', dispatched:'🚚 Dispatched' };
 
+    function getTimeAgo(dateStr) {
+      var d = new Date(dateStr);
+      var now = new Date();
+      var diff = Math.floor((now - d) / 1000);
+      if (diff < 60) return 'Just now';
+      if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+      if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+      return Math.floor(diff / 86400) + 'd ago';
+    }
+
     function renderCustOrders(){
       var el = document.getElementById('coList');
       el.innerHTML = allCustOrders.map(function(o){
-        var pairs=[];
-        var items=(o.items||'').split(','); var qtys=(o.qty||'').split(',');
-        items.forEach(function(item,i){ if(item.trim()) pairs.push(esc((qtys[i]||''))+'× '+esc(item.trim())); });
+        // Parse items and quantities
+        var pairs = [];
+        var items = (o.items || '').split(',');
+        var qtys = (o.qty || '').split(',');
+        items.forEach(function(item, i) {
+          if(item.trim()) pairs.push(esc((qtys[i] || '')) + '× ' + esc(item.trim()));
+        });
+
+        // Calculate total quantity
+        var totalQty = qtys.reduce(function(sum, q) {
+          return sum + (parseInt(q) || 0);
+        }, 0);
+
+        // Status styling
         var cls = STATUS_COLORS[o.status] || 'b-warn';
         var lbl = STATUS_LABELS[o.status] || o.status;
-        var created = o.created_at ? new Date(o.created_at).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
-        return '<div class="item-card '+(o.status==='pending'?'pending':'')+'">'+
-          '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">'+
-            '<div>'+
-              '<div style="font-size:14px;font-weight:800;color:#4a2f14">'+esc(o.shop_name)+'</div>'+
-              '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px">📅 Delivery: <b>'+esc(o.delivery_date)+'</b> · Ordered: '+created+'</div>'+
+        var created = o.created_at ? new Date(o.created_at).toLocaleString('en-IN', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'}) : '';
+        var timeAgo = o.created_at ? getTimeAgo(o.created_at) : '';
+
+        // Get customer info
+        var cust = allCustomers.find(function(c) {
+          return (c.customer_id || c.shop_id || '') === String(o.shop_id || '');
+        });
+        var custPhone = cust ? (cust.mobile || '—') : '—';
+        var custArea = cust ? (cust.area || '—') : '—';
+
+        // Status color for pending orders
+        var statusBg = o.status === 'pending' ? '#fff8e1' : '#e8f5e9';
+        var statusBorder = o.status === 'pending' ? '#ffc87a' : '#a5d6a7';
+        var statusColor = o.status === 'pending' ? '#7a4800' : '#2d7a4f';
+
+        return '<div class="item-card" style="border-color:' + statusBorder + ';background:' + (o.status === 'pending' ? '#fffaf4' : '#f9f6f1') + '">'+
+          // Header with Status and Time
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #e8dfd2">'+
+            '<div style="display:flex;align-items:center;gap:8px;flex:1">'+
+              '<span class="badge" style="background:' + statusBg + ';color:' + statusColor + ';border:1.5px solid ' + statusBorder + ';padding:5px 10px;font-size:11px;font-weight:800">' + lbl + '</span>'+
+              '<span style="font-size:10px;color:#8a7a6a;font-family:monospace">' + timeAgo + '</span>'+
             '</div>'+
-            '<span class="badge '+cls+'">'+lbl+'</span>'+
+            '<div style="text-align:right;font-size:10px;color:#8a7a6a;font-family:monospace">Order #' + o.id + '</div>'+
           '</div>'+
-          '<div style="font-size:12px;font-family:monospace;background:#f5ede0;border-radius:8px;padding:7px 10px;line-height:1.8;margin-bottom:8px">'+pairs.join(' · ')+'</div>'+
-          (o.note?'<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:6px">📝 '+esc(o.note)+'</div>':'')+
-          (o.admin_note?'<div style="font-size:11px;color:#1565c0;font-family:monospace;margin-bottom:6px">💬 Admin: '+esc(o.admin_note)+'</div>':'')+
-(o.zoho_invoice_number || o.zoho_invoice_id
-  ? '<div style="font-size:11px;color:#c8864a;font-family:monospace;margin-bottom:6px;background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:4px 8px;display:inline-flex;align-items:center;gap:8px">'
-    + (function(){
-        var _s = allCustomers.find(function(c){ return (c.customer_id||c.shop_id||'') === String(o.shop_id||''); });
-        return (_s && _s.zoho_doc_type === 'delivery_challan') ? '📋 DC:' : '📄 INV:';
-      })()
-    + ' <b>'+(o.zoho_invoice_number||'—')+'</b>'
-    + (o.zoho_invoice_id ? ' <span style="color:#8a7a6a;font-size:10px">ID: '+esc(o.zoho_invoice_id)+'</span>' : '')
-    + '</div>'
-  : (o.status==='approved' && _zohoEnabled && (function(){
-      var _s = allCustomers.find(function(c){
-        return (c.customer_id||c.shop_id||'') === String(o.shop_id||'');
-      });
-      return !_s || _s.zoho_doc_type !== 'delivery_challan';
-    })()
-    ? '<div style="font-size:10px;color:#c8382a;font-family:monospace;margin-bottom:4px">⚠️ No Zoho invoice yet</div>'
-    : '')
-)+
-          '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
-            (o.status==='pending'?'<button class="btn-sm" style="background:#e8f5e9;color:#2d7a4f" onclick="quickApprove('+o.id+')">✅ Approve</button>':'') +
-            (o.status==='pending'?'<button class="btn-sm btn-del" onclick="quickReject('+o.id+')">❌ Reject</button>':'') +
-            '<button class="btn-sm btn-edit" onclick=\'openCoModal('+esc(JSON.stringify(o))+')\'>✏️ Edit</button>'+
+
+          // Customer Info
+          '<div style="margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #f5ede0">'+
+            '<div style="font-size:14px;font-weight:800;color:#4a2f14;margin-bottom:4px">' + esc(o.shop_name) + '</div>'+
+            '<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:#8a7a6a;font-family:monospace">'+
+              '<span>📍 ' + esc(custArea) + '</span>'+
+              '<span>📞 ' + esc(custPhone) + '</span>'+
+              '<span>📅 ' + esc(o.delivery_date) + '</span>'+
+            '</div>'+
+          '</div>'+
+
+          // Items Section
+          '<div style="margin-bottom:12px">'+
+            '<div style="font-size:11px;font-weight:800;color:#4a2f14;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">📦 Items (' + totalQty + ' total)</div>'+
+            '<div style="background:#f5ede0;border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.8;font-family:monospace">'+
+              pairs.map(function(p) { return '• ' + p; }).join('<br/>') +
+            '</div>'+
+          '</div>'+
+
+          // Notes Section
+          (o.note || o.admin_note ? '<div style="margin-bottom:12px">' +
+            (o.note ? '<div style="font-size:11px;color:#1565c0;background:#e3f2fd;border-left:3px solid #1565c0;border-radius:4px;padding:8px 10px;margin-bottom:6px;font-family:monospace"><strong>📝 Customer:</strong> ' + esc(o.note) + '</div>' : '') +
+            (o.admin_note ? '<div style="font-size:11px;color:#7a4800;background:#fff8e1;border-left:3px solid #ffc87a;border-radius:4px;padding:8px 10px;font-family:monospace"><strong>💬 Admin:</strong> ' + esc(o.admin_note) + '</div>' : '') +
+          '</div>' : '') +
+
+          // Zoho Section
+          (o.zoho_invoice_number || o.zoho_invoice_id
+            ? '<div style="font-size:10px;color:#c8864a;background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:6px 10px;margin-bottom:12px;display:inline-flex;align-items:center;gap:8px;font-family:monospace">' +
+              (cust && cust.zoho_doc_type === 'delivery_challan' ? '📋 DC:' : '📄 INV:') + ' <b>' + (o.zoho_invoice_number || '—') + '</b>' +
+              (o.zoho_invoice_id ? ' <span style="color:#8a7a6a;font-size:9px">ID: ' + esc(o.zoho_invoice_id) + '</span>' : '') +
+            '</div>'
+            : (o.status === 'approved' && _zohoEnabled && (!cust || cust.zoho_doc_type !== 'delivery_challan')
+              ? '<div style="font-size:10px;color:#c8382a;font-family:monospace;margin-bottom:12px">⚠️ No Zoho invoice yet</div>'
+              : '')) +
+
+          // Action Buttons
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:10px;border-top:1px solid #e8dfd2">'+
+            (o.status === 'pending' ? '<button class="btn-sm" style="background:#e8f5e9;color:#2d7a4f;border:1.5px solid #a5d6a7;flex:1" onclick="quickApprove(' + o.id + ')">✅ Approve</button>' : '') +
+            (o.status === 'pending' ? '<button class="btn-sm btn-del" style="flex:1" onclick="quickReject(' + o.id + ')">❌ Reject</button>' : '') +
+            '<button class="btn-sm btn-edit" style="flex:1" onclick=\'openCoModal(' + esc(JSON.stringify(o)) + ')\'>✏️ Edit</button>'+
           '</div>'+
         '</div>';
       }).join('');
@@ -7176,20 +7227,20 @@ zohoCreateInvoiceReal(orderForZoho)
     var _notifOrderedIds = {}; // shop_id → true, for customers who already ordered tomorrow
 
     function loadNotifyCustomerList(){
-  var tomorrow = tomorrowStr();
-  Promise.all([
-    loadCustomerMaster(),
-    api({ action:'getCustomerOrders', delivery_date: tomorrow })
-  ]).then(function(results){
-    var orders = Array.isArray(results[1]) ? results[1] : [];
-    _notifOrderedIds = {};
-    orders.forEach(function(o){
-      var sid = String(o.shop_id || '');
-      if(sid) _notifOrderedIds[sid] = true;
-    });
-    renderNotifCustomerList('');
-  });
-}
+      var tomorrow = tomorrowStr();
+      Promise.all([
+        loadCustomerMaster(),
+        api({ action:'getCustomerOrders', delivery_date: tomorrow })
+      ]).then(function(results){
+        var orders = Array.isArray(results[1]) ? results[1] : [];
+        _notifOrderedIds = {};
+        orders.forEach(function(o){
+          var sid = String(o.shop_id || '');
+          if(sid) _notifOrderedIds[sid] = true;
+        });
+        renderNotifCustomerList('');
+      });
+    }
 
     function renderNotifCustomerList(filter){
       var el = document.getElementById('custNotifList');
@@ -7205,7 +7256,7 @@ zohoCreateInvoiceReal(orderForZoho)
         return;
       }
       el.innerHTML = list.map(function(c){
-        var sid = String(c.customer_id||c.shop_id||'');
+        var sid = String(c.shop_id||c.customer_id||'');
         var ordered = !!_notifOrderedIds[sid];
         var badge = ordered
           ? '<span style="font-size:10px;font-weight:700;color:#2d7a4f;background:#e8f5e9;border-radius:6px;padding:2px 7px;font-family:monospace;flex-shrink:0">✅ Ordered</span>'
