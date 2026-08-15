@@ -144,6 +144,16 @@
         <div style="font-size:13px;font-weight:900;color:#4a2f14">🏠 Dashboard</div>
         <button class="btn-sm btn-grey" onclick="loadDashboard()">🔄 Refresh</button>
     </div>
+    <div id="adminPushCard" class="card" style="margin-bottom:10px;padding:12px 14px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <div style="flex:1;min-width:160px">
+                <div style="font-size:12px;font-weight:800;color:#4a2f14">🔔 New-order alerts</div>
+                <div id="adminPushStatus" style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-top:3px;line-height:1.5">Checking…</div>
+            </div>
+            <button class="btn-sm" style="background:#4a2f14;color:#fff;flex-shrink:0" onclick="enableAdminPush()">Enable Push</button>
+        </div>
+        <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:8px;line-height:1.5">Works in background when this phone has the app installed (Add to Home Screen) and notifications allowed. Admin role only.</div>
+    </div>
 
     <!-- Today delivery stats -->
     <div class="dash-deliv-lbl" style="font-size:10px;font-weight:800;color:#8a7a6a;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Deliveries</div>
@@ -5110,8 +5120,10 @@ function shareAllCustLogins(){
     function sendPush(driverNames, message) {
       var appId = CONFIG.ONESIGNAL_APP_ID;
       var key   = CONFIG.ONESIGNAL_REST_API_KEY;
-      if (!appId || appId === 'YOUR_APP_ID_HERE') return; // not configured yet
+      if (!appId || appId === 'YOUR_APP_ID_HERE') return;
       var names = Array.isArray(driverNames) ? driverNames : [driverNames];
+      var body = String(message || '').replace(/\s+/g, ' ').trim();
+      if (body.length > 100) body = body.slice(0, 99) + '…';
       names.forEach(function(name) {
         if (!name || name === 'Logistics') return;
         fetch('https://onesignal.com/api/v1/notifications', {
@@ -5121,8 +5133,8 @@ function shareAllCustLogins(){
             app_id: appId,
             include_aliases: { external_id: [name] },
             target_channel: 'push',
-            headings: { en: '🥖 IBCAB — Satelkar\'s Logistics' },
-            contents: { en: message },
+            headings: { en: 'IBCAB' },
+            contents: { en: body },
             url: 'https://bakery-gps.vercel.app/driver'
           })
         }).catch(function() {});
@@ -6674,6 +6686,51 @@ onStaffRoleChange();
       renderCustOrders();
     }
 
+    // Parse order timestamps reliably (ISO / Postgres "YYYY-MM-DD HH:MM:SS+00")
+    function custOrderTimeMs(o){
+      if(!o) return 0;
+      var raw = o.created_at || o.approved_at || o.updated_at || o.packaged_at || '';
+      if(!raw) return 0;
+      var s = String(raw).trim();
+      var t = Date.parse(s);
+      if(!isNaN(t)) return t;
+      // "2026-08-15 14:30:00.123456+00" → ISO-ish
+      var norm = s.replace(' ', 'T');
+      if(/[+-]\d{2}(:?\d{2})?$/.test(norm) || /Z$/i.test(norm)){
+        t = Date.parse(norm);
+        if(!isNaN(t)) return t;
+      }
+      t = Date.parse(norm + 'Z');
+      return isNaN(t) ? 0 : t;
+    }
+    function fmtCustOrderTime(o){
+      var ms = custOrderTimeMs(o);
+      if(!ms) return '';
+      try {
+        return new Date(ms).toLocaleString('en-IN', {
+          day: '2-digit', month: 'short',
+          hour: '2-digit', minute: '2-digit', hour12: true
+        });
+      } catch(e){ return ''; }
+    }
+    // Pending on top; within status newest placed first (DESC by created_at)
+    function sortCustOrdersList(a, b){
+      var orderRank = { pending:0, approved:1, kitchen:1, packaging:2, dispatched:3, rejected:4 };
+      var sa = String(a.status || '').toLowerCase();
+      var sb = String(b.status || '').toLowerCase();
+      var ra = orderRank[sa] != null ? orderRank[sa] : 9;
+      var rb = orderRank[sb] != null ? orderRank[sb] : 9;
+      if(ra !== rb) return ra - rb;
+      var tb = custOrderTimeMs(b);
+      var ta = custOrderTimeMs(a);
+      if(tb !== ta) return tb - ta; // DESC
+      // Stable fallback: higher id first if numeric
+      var ida = parseInt(a.id, 10) || 0;
+      var idb = parseInt(b.id, 10) || 0;
+      if(idb !== ida) return idb - ida;
+      return String(a.shop_name||'').localeCompare(String(b.shop_name||''));
+    }
+
     function loadCustOrders(){
       var date   = document.getElementById('co-date').value;
       var status = document.getElementById('co-status').value || '';
@@ -6689,14 +6746,7 @@ onStaffRoleChange();
 
       api(p).then(function(data){
         allCustOrders = Array.isArray(data) ? data : [];
-        // Sort: pending first, then approved, packaging, dispatched, rejected
-        var orderRank = { pending:0, approved:1, packaging:2, dispatched:3, rejected:4 };
-        allCustOrders.sort(function(a,b){
-          var ra = orderRank[a.status] != null ? orderRank[a.status] : 9;
-          var rb = orderRank[b.status] != null ? orderRank[b.status] : 9;
-          if(ra !== rb) return ra - rb;
-          return String(a.shop_name||'').localeCompare(String(b.shop_name||''));
-        });
+        allCustOrders.sort(sortCustOrdersList);
         msg.style.display='none';
         renderCoStats();
         renderCustOrders();
@@ -6734,10 +6784,12 @@ onStaffRoleChange();
 
     function renderCustOrders(){
       var el = document.getElementById('coList');
-      var list = allCustOrders;
+      var list = allCustOrders.slice();
       if(_coStatusFilter){
-        list = allCustOrders.filter(function(o){ return o.status === _coStatusFilter; });
+        var want = String(_coStatusFilter).toLowerCase();
+        list = list.filter(function(o){ return String(o.status||'').toLowerCase() === want; });
       }
+      list.sort(sortCustOrdersList);
 
       if(!allCustOrders.length){
         el.innerHTML='<div style="text-align:center;padding:30px;font-size:13px;color:#8a7a6a;font-family:monospace">No customer orders found.</div>';
@@ -6769,7 +6821,7 @@ onStaffRoleChange();
 
         var cls = STATUS_COLORS[o.status] || 'b-warn';
         var lbl = STATUS_LABELS[o.status] || o.status;
-        var created = o.created_at ? new Date(o.created_at).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+        var created = fmtCustOrderTime(o);
 
         // Driver from shop master if available
         var shop = (typeof allCustomers !== 'undefined' ? allCustomers : []).find(function(c){
@@ -7182,16 +7234,35 @@ zohoCreateInvoiceReal(orderForZoho)
       var tomorrow = tomorrowStr();
       Promise.all([
         loadCustomerMaster(),
-        api({ action:'getOrders', date: tomorrow })
+        api({ action:'getOrders', date: tomorrow }),
+        // Portal orders live in customer_orders — required to skip shops that already ordered
+        api({ action:'getCustomerOrders', delivery_date: tomorrow })
       ]).then(function(results){
-        var orders = Array.isArray(results[1]) ? results[1] : [];
+        var dispatchOrders = Array.isArray(results[1]) ? results[1] : [];
+        var portalOrders   = Array.isArray(results[2]) ? results[2] : [];
         _notifOrderedIds = {};
-        orders.forEach(function(o){
-          var sid = String(o.customer_id || o.shop_id || '');
-          if(sid) _notifOrderedIds[sid] = true;
-        });
+        function markOrdered(o){
+          // Rejected = no active order → still allow reminder
+          if(o && o.status === 'rejected') return;
+          [o.shop_id, o.customer_id].forEach(function(id){
+            id = String(id || '').trim();
+            if(id) _notifOrderedIds[id] = true;
+          });
+        }
+        dispatchOrders.forEach(markOrdered);
+        portalOrders.forEach(markOrdered);
+        renderNotifCustomerList((document.getElementById('custNotifSearch')||{}).value || '');
+        // Default: pre-select only shops that have not ordered yet
+        notifSkipOrdered();
+      }).catch(function(){
         renderNotifCustomerList('');
       });
+    }
+
+    function _customerHasOrdered(c){
+      var a = String(c.shop_id || '').trim();
+      var b = String(c.customer_id || '').trim();
+      return !!( (a && _notifOrderedIds[a]) || (b && _notifOrderedIds[b]) );
     }
 
     function renderNotifCustomerList(filter){
@@ -7201,23 +7272,37 @@ zohoCreateInvoiceReal(orderForZoho)
       var list = allCustomers.filter(function(c){
         if(!f) return true;
         return (c.name||'').toLowerCase().indexOf(f) >= 0 || (c.area||'').toLowerCase().indexOf(f) >= 0;
-      }).sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });
+      }).sort(function(a,b){
+        // Not-ordered first, then name — easier to review who still needs a nudge
+        var oa = _customerHasOrdered(a) ? 1 : 0;
+        var ob = _customerHasOrdered(b) ? 1 : 0;
+        if(oa !== ob) return oa - ob;
+        return (a.name||'').localeCompare(b.name||'');
+      });
 
       if(!list.length){
         el.innerHTML = '<div style="padding:12px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">No customers found.</div>';
         return;
       }
-      el.innerHTML = list.map(function(c){
-        var sid = String(c.shop_id||c.customer_id||'');
-        var ordered = !!_notifOrderedIds[sid];
+
+      var orderedN = 0, pendingN = 0;
+      list.forEach(function(c){ if(_customerHasOrdered(c)) orderedN++; else pendingN++; });
+
+      var summary = '<div style="padding:8px 12px;background:#f5ede0;border-bottom:1.5px solid #e8dfd2;font-size:11px;font-family:monospace;color:#4a2f14;font-weight:700;position:sticky;top:0;z-index:1">'+
+        list.length+' shown · <span style="color:#c8382a">'+pendingN+' not ordered</span> · <span style="color:#2d7a4f">'+orderedN+' ordered</span> · tomorrow '+tomorrowStr()+
+        '</div>';
+
+      el.innerHTML = summary + list.map(function(c){
+        var sid = String(c.shop_id || c.customer_id || '');
+        var ordered = _customerHasOrdered(c);
         var badge = ordered
           ? '<span style="font-size:10px;font-weight:700;color:#2d7a4f;background:#e8f5e9;border-radius:6px;padding:2px 7px;font-family:monospace;flex-shrink:0">✅ Ordered</span>'
-          : '';
-        return '<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid #f5ede0;cursor:pointer;'+(ordered?'opacity:0.6':'')+'">'+
-          '<input type="checkbox" class="custNotifCheck" value="'+sid+'" data-name="'+esc(c.name)+'" data-ordered="'+(ordered?'1':'0')+'" style="width:16px;height:16px;accent-color:#4a2f14;flex-shrink:0" onchange="updateNotifSelected()">'+
+          : '<span style="font-size:10px;font-weight:700;color:#c8382a;background:#fde8e8;border-radius:6px;padding:2px 7px;font-family:monospace;flex-shrink:0">⏳ No order</span>';
+        return '<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid #f5ede0;cursor:pointer;'+(ordered?'opacity:0.55':'')+'">'+
+          '<input type="checkbox" class="custNotifCheck" value="'+esc(sid)+'" data-name="'+esc(c.name)+'" data-ordered="'+(ordered?'1':'0')+'" style="width:16px;height:16px;accent-color:#4a2f14;flex-shrink:0" onchange="updateNotifSelected()">'+
           '<div style="flex:1;min-width:0">'+
             '<div style="font-size:13px;font-weight:700;color:#1e1611;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(c.name)+'</div>'+
-            '<div style="font-size:10px;color:#8a7a6a;font-family:monospace">'+esc(c.area||'—')+(c.mobile?' · '+c.mobile:'')+'</div>'+
+            '<div style="font-size:10px;color:#8a7a6a;font-family:monospace">'+esc(c.area||'—')+(c.mobile?' · '+esc(c.mobile):'')+'</div>'+
           '</div>'+
           badge+
         '</label>';
@@ -7231,6 +7316,7 @@ zohoCreateInvoiceReal(orderForZoho)
     }
 
     function notifSelectAllCustomers(){
+      // Select every visible customer (including ordered)
       document.querySelectorAll('.custNotifCheck').forEach(function(c){ c.checked=true; });
       updateNotifSelected();
     }
@@ -7239,7 +7325,7 @@ zohoCreateInvoiceReal(orderForZoho)
       updateNotifSelected();
     }
     function notifSkipOrdered(){
-      // Select all, then uncheck those who already ordered
+      // Select only customers who have NOT ordered tomorrow (portal + dispatched)
       document.querySelectorAll('.custNotifCheck').forEach(function(c){
         c.checked = (c.getAttribute('data-ordered') !== '1');
       });
@@ -7264,7 +7350,10 @@ zohoCreateInvoiceReal(orderForZoho)
     }
 
     function updateNotifSelected(){
-      var checks = Array.from(document.querySelectorAll('.custNotifCheck:checked'));
+      var all = Array.from(document.querySelectorAll('.custNotifCheck'));
+      var checks = all.filter(function(c){ return c.checked; });
+      var orderedTotal = all.filter(function(c){ return c.getAttribute('data-ordered') === '1'; }).length;
+      var orderedChecked = checks.filter(function(c){ return c.getAttribute('data-ordered') === '1'; }).length;
       var sel = document.getElementById('custNotifSelected');
       if(!sel) return;
       if(!checks.length){
@@ -7272,7 +7361,15 @@ zohoCreateInvoiceReal(orderForZoho)
         sel.textContent = '';
       } else {
         sel.style.display = 'block';
-        sel.textContent = '✅ '+checks.length+' selected: '+checks.map(function(c){return c.dataset.name;}).join(', ');
+        var names = checks.map(function(c){ return c.dataset.name; });
+        var preview = names.length > 8 ? (names.slice(0,8).join(', ') + ' +'+(names.length-8)+' more') : names.join(', ');
+        var extra = '';
+        if(orderedTotal > 0 && orderedChecked === 0){
+          extra = ' · ordered skipped: '+orderedTotal;
+        } else if(orderedChecked > 0){
+          extra = ' · includes '+orderedChecked+' already ordered';
+        }
+        sel.textContent = '✅ '+checks.length+' selected'+extra+': '+preview;
       }
     }
 
@@ -7300,19 +7397,19 @@ zohoCreateInvoiceReal(orderForZoho)
     }
 
     function sendCustomerPush(shopIds, message){
-      var ids = Array.isArray(shopIds) ? shopIds : [shopIds];
+      var ids = (Array.isArray(shopIds) ? shopIds : [shopIds]).filter(Boolean).slice(0, 50);
+      var msg = String(message || '').replace(/\s+/g, ' ').trim();
+      if (msg.length > 100) msg = msg.slice(0, 99) + '…';
       fetch(CONFIG.SUPABASE_URL + '/functions/v1/clever-function', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ' + CONFIG.SUPABASE_ANON_KEY
         },
-        body: JSON.stringify({ shop_ids: ids, message: message })
+        body: JSON.stringify({ shop_ids: ids, message: msg })
       }).then(function(r){ return r.json(); }).then(function(data){
-        console.log('[Push] Edge Function response:', JSON.stringify(data));
-        if(data.error) console.error('[Push] Error:', data.error);
-        else console.log('[Push] Sent to', data.sent, 'of', data.total, 'devices');
-      }).catch(function(e){ console.error('[Push] Failed to call Edge Function:', e); });
+        if(data && data.error) console.error('[Push]', data.error);
+      }).catch(function(){});
     }
 
     function showNotifyTab(tab){
@@ -7329,28 +7426,211 @@ zohoCreateInvoiceReal(orderForZoho)
       document.getElementById('custNotifMsg').value = msg;
     }
 
-    // ── BROWSER NOTIFICATION PERMISSION ──
-    (function(){
-      if('Notification' in window && Notification.permission === 'default'){
-        Notification.requestPermission();
+    // ── ADMIN BACKGROUND WEB PUSH (works when app closed) ──
+    // Subscriptions stored as push_subscriptions.shop_id = "admin:<StaffName>"
+    // Customer order page notifies those IDs via clever-function (same as customer push).
+    var _adminPushReady = false;
+
+    function adminPushShopId(){
+      // Shared channel so notify payload is just shop_ids:["admin"] (tiny)
+      return 'admin';
+    }
+
+    function _urlB64ToUint8(b64){
+      var pad = '='.repeat((4 - (b64.length % 4)) % 4);
+      var raw = atob((b64 + pad).replace(/-/g,'+').replace(/_/g,'/'));
+      var out = new Uint8Array(raw.length);
+      for(var i=0;i<raw.length;i++) out[i] = raw.charCodeAt(i);
+      return out;
+    }
+
+    function subscribeAdminPush(force){
+      if(_staffRole !== 'admin') return Promise.resolve(false);
+      if(!('serviceWorker' in navigator) || !('PushManager' in window)) return Promise.resolve(false);
+      var vapidKey = (typeof CONFIG !== 'undefined') ? CONFIG.VAPID_PUBLIC_KEY : '';
+      if(!vapidKey || vapidKey === 'YOUR_VAPID_PUBLIC_KEY_HERE'){
+        console.warn('[AdminPush] VAPID public key not configured in config.js');
+        return Promise.resolve(false);
       }
+      return navigator.serviceWorker.ready.then(function(reg){
+        return reg.pushManager.getSubscription().then(function(existing){
+          if(existing && !force) return existing;
+          if(existing && force){
+            return existing.unsubscribe().catch(function(){}).then(function(){
+              return reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: _urlB64ToUint8(vapidKey)
+              });
+            });
+          }
+          return reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: _urlB64ToUint8(vapidKey)
+          });
+        });
+      }).then(function(sub){
+        if(!sub) return false;
+        var j = sub.toJSON();
+        return apiPost({
+          action:   'savePushSubscription',
+          shop_id:  adminPushShopId(),
+          endpoint: sub.endpoint,
+          p256dh:   (j.keys && j.keys.p256dh) || '',
+          auth:     (j.keys && j.keys.auth) || ''
+        }).then(function(res){
+          _adminPushReady = !!(res && res.ok !== false);
+          try { updateAdminPushUI(); } catch(e){}
+          return _adminPushReady;
+        });
+      }).catch(function(err){
+        console.warn('[AdminPush] subscribe failed', err);
+        return false;
+      });
+    }
+
+    function enableAdminPush(){
+      if(_staffRole !== 'admin') return;
+      if(!('Notification' in window)){
+        alert('Notifications not supported in this browser.');
+        return;
+      }
+      Notification.requestPermission().then(function(perm){
+        if(perm !== 'granted'){
+          alert('Please allow notifications to get new-order alerts when the app is closed.');
+          try { updateAdminPushUI(); } catch(e){}
+          return;
+        }
+        subscribeAdminPush(true).then(function(ok){
+          if(ok) alert('✅ Admin push enabled. You will get alerts for new customer orders even when the app is closed.');
+          else alert('Could not register this device. Check VAPID key in config.js and that the site is HTTPS.');
+          try { updateAdminPushUI(); } catch(e){}
+        });
+      });
+    }
+
+    function updateAdminPushUI(){
+      var card = document.getElementById('adminPushCard');
+      if(card) card.style.display = (_staffRole === 'admin') ? 'block' : 'none';
+      var el = document.getElementById('adminPushStatus');
+      if(!el) return;
+      if(_staffRole !== 'admin'){ el.textContent = ''; return; }
+      var perm = ('Notification' in window) ? Notification.permission : 'unsupported';
+      if(perm === 'unsupported'){ el.textContent = 'Push not supported on this browser'; el.style.color = '#c8382a'; return; }
+      if(perm === 'denied'){ el.textContent = 'Blocked — allow notifications in browser settings'; el.style.color = '#c8382a'; return; }
+      if(perm === 'granted' && _adminPushReady){ el.textContent = '✅ Background push ON for '+adminPushShopId(); el.style.color = '#2d7a4f'; return; }
+      if(perm === 'granted'){ el.textContent = 'Permission OK — registering device…'; el.style.color = '#1565c0'; return; }
+      el.textContent = 'Tap Enable to get alerts when app is closed'; el.style.color = '#7a4800';
+    }
+
+    function _pushMsg(s, max){
+      s = String(s || '').replace(/\s+/g, ' ').trim();
+      max = max || 100;
+      return s.length > max ? (s.slice(0, max - 1) + '…') : s;
+    }
+    function notifyAdminsNewOrder(shopName, isUpdate){
+      // Minimal payload: shared shop_id "admin" only + short message
+      var name = _pushMsg(shopName || 'Shop', 40);
+      var msg = _pushMsg(isUpdate ? ('Edit: ' + name + ' needs approval') : ('New order: ' + name), 100);
+      fetch(CONFIG.SUPABASE_URL + '/functions/v1/clever-function', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + CONFIG.SUPABASE_ANON_KEY
+        },
+        body: JSON.stringify({ shop_ids: ['admin'], message: msg })
+      }).catch(function(){});
+    }
+
+    // ── ADMIN NEW-ORDER ALERTS (role=admin only — not super_admin) ──
+    // Polls pending customer_orders. When count rises: system notification + beep.
+    // Works while admin page/PWA is open (or in background tab on Android Chrome).
+    if('serviceWorker' in navigator){
+      navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(function(){
+        if(_staffRole === 'admin' && 'Notification' in window && Notification.permission === 'granted'){
+          subscribeAdminPush(false);
+        }
+      }).catch(function(){});
+    }
+    (function(){
+      if(_staffRole !== 'admin') return;
+      if(!('Notification' in window)) return;
+      if(Notification.permission === 'default'){
+        // Soft prompt after short delay (user can also use Enable button)
+        setTimeout(function(){
+          Notification.requestPermission().then(function(p){
+            if(p === 'granted') subscribeAdminPush(false);
+            try { updateAdminPushUI(); } catch(e){}
+          });
+        }, 1800);
+      } else if(Notification.permission === 'granted'){
+        subscribeAdminPush(false);
+      }
+      setTimeout(function(){ try { updateAdminPushUI(); } catch(e){} }, 500);
     })();
 
+    function playAdminAlertBeep(){
+      try {
+        var Ctx = window.AudioContext || window.webkitAudioContext;
+        if(!Ctx) return;
+        var ctx = new Ctx();
+        var now = ctx.currentTime;
+        // Two short beeps (notification-like)
+        [0, 0.18].forEach(function(delay){
+          var o = ctx.createOscillator();
+          var g = ctx.createGain();
+          o.type = 'sine';
+          o.frequency.value = 880;
+          g.gain.setValueAtTime(0.0001, now + delay);
+          g.gain.exponentialRampToValueAtTime(0.22, now + delay + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, now + delay + 0.14);
+          o.connect(g); g.connect(ctx.destination);
+          o.start(now + delay);
+          o.stop(now + delay + 0.16);
+        });
+        setTimeout(function(){ try{ ctx.close(); }catch(e){} }, 600);
+      } catch(e){}
+      try { if(navigator.vibrate) navigator.vibrate([120, 60, 120]); } catch(e){}
+    }
+
     function showBrowserNotif(title, body){
-      if('Notification' in window && Notification.permission === 'granted'){
-        var n = new Notification(title, { body: body, icon: 'icon-192.png', requireInteraction: true });
-        n.onclick = function(){
-          window.focus();
-          showTab('cust-orders');
-          n.close();
+      if(!('Notification' in window) || Notification.permission !== 'granted') return;
+      try {
+        var opts = {
+          body: body,
+          icon: '/icon-192.png',
+          badge: '/icon-192.png',
+          tag: 'ibcab-new-order',
+          renotify: true,
+          requireInteraction: true,
+          silent: false
         };
-      }
+        var n;
+        if(navigator.serviceWorker && navigator.serviceWorker.ready){
+          navigator.serviceWorker.ready.then(function(reg){
+            if(reg.showNotification) reg.showNotification(title, opts);
+          }).catch(function(){
+            n = new Notification(title, opts);
+          });
+        } else {
+          n = new Notification(title, opts);
+        }
+        if(n){
+          n.onclick = function(){
+            window.focus();
+            try { showGroup('orders'); } catch(e){}
+            try { showTab('cust-orders'); } catch(e){}
+            n.close();
+          };
+        }
+      } catch(e){}
     }
 
     function pollNewOrders(){
-      if(_staffRole !== 'admin' && _staffRole !== 'assistant' && _staffRole !== 'super_admin') return;
+      // Only admin role gets new-order phone/browser alerts (per requirement)
+      if(_staffRole !== 'admin') return;
       api({ action:'getCustomerOrders', status:'pending' }).then(function(data){
-        var count = Array.isArray(data) ? data.length : 0;
+        var list = Array.isArray(data) ? data : [];
+        var count = list.length;
 
         // Tab badge
         var badge = document.getElementById('tb-cust-orders');
@@ -7367,16 +7647,30 @@ zohoCreateInvoiceReal(orderForZoho)
           if(bannerCount) bannerCount.textContent = count;
         }
 
-        // Browser notification on new orders
+        // New orders since last poll → notify + beep
         if(_lastPendingCount >= 0 && count > _lastPendingCount){
           var newCount = count - _lastPendingCount;
-          showBrowserNotif('🛒 New Order!', newCount+' new customer order'+(newCount>1?'s':'')+' waiting for approval. Tap to review.');
-          if(document.getElementById('pg-cust-orders').classList.contains('on')) loadCustOrders();
+          var newest = list[0] || {};
+          var detail = newest.shop_name
+            ? (newest.shop_name + (newCount > 1 ? (' +'+(newCount-1)+' more') : ''))
+            : (newCount + ' new order' + (newCount>1?'s':''));
+          showBrowserNotif('🛒 New Order — IBCAB', detail + ' waiting for approval.');
+          playAdminAlertBeep();
+          var coPage = document.getElementById('pg-cust-orders');
+          if(coPage && coPage.classList.contains('on')) loadCustOrders();
         }
         _lastPendingCount = count;
       }).catch(function(){});
     }
-    setInterval(pollNewOrders, 30000);
+    // Faster while tab visible; still runs in background tab on many Android browsers
+    setInterval(function(){
+      if(document.visibilityState === 'hidden') return; // save battery when fully backgrounded
+      pollNewOrders();
+    }, 20000);
+    // Also one check when user returns to tab
+    document.addEventListener('visibilitychange', function(){
+      if(document.visibilityState === 'visible') pollNewOrders();
+    });
     pollNewOrders();
 
 

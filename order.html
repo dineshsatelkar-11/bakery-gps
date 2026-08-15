@@ -1128,6 +1128,24 @@
             var wasAmend = _amendMode;
             _amendMode = false;
             msgEl.textContent = wasAmend ? '✅ Items added! Order sent back for re-approval. Delivery: '+fmtDate(date) : isEdit ? '✅ Order updated! Delivery: '+fmtDate(date) : '✅ Order placed! Delivery: '+fmtDate(date);
+            // Background push to admin (compact payload)
+            try {
+              (function(shopName, wasAmendFlag, isEditFlag){
+                var n = String(shopName || 'Shop').replace(/\s+/g, ' ').trim().slice(0, 40);
+                var msg = (wasAmendFlag || isEditFlag)
+                  ? ('Edit: ' + n + ' needs approval')
+                  : ('New order: ' + n);
+                if (msg.length > 100) msg = msg.slice(0, 99) + '…';
+                fetch(CONFIG.SUPABASE_URL + '/functions/v1/clever-function', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + CONFIG.SUPABASE_ANON_KEY
+                  },
+                  body: JSON.stringify({ shop_ids: ['admin'], message: msg })
+                }).catch(function(){});
+              })(session.shop_name || 'Customer', wasAmend, isEdit);
+            } catch(e){}
             msgEl.className = 'msg ok'; msgEl.style.display = 'block';
             loadHistory();
             window.scrollTo({ top: 0, behavior: 'smooth' });

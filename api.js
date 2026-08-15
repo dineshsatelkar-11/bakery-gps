@@ -923,17 +923,25 @@
         }).catch(function(){ return { ok: false, error: 'Network error' }; });
       }
 
-      case 'savePushSubscription':
-        return fetch(BASE + '/push_subscriptions?shop_id=eq.' + encodeURIComponent(b.shop_id), {
+      case 'savePushSubscription': {
+        // Customers: one device per shop (wipe then insert).
+        // Admin keys (admin / admin:Name): keep multiple devices — only replace same endpoint.
+        var sid = String(b.shop_id || '');
+        var isAdminKey = (sid === 'admin' || sid.indexOf('admin:') === 0);
+        var delUrl = isAdminKey
+          ? (BASE + '/push_subscriptions?endpoint=eq.' + encodeURIComponent(b.endpoint || ''))
+          : (BASE + '/push_subscriptions?shop_id=eq.' + encodeURIComponent(sid));
+        return fetch(delUrl, {
           method: 'DELETE', headers: hdrs({ 'Prefer': 'return=minimal' })
         }).catch(function(){}).then(function(){
           return sbPost('push_subscriptions', {
-            shop_id:  b.shop_id,
+            shop_id:  sid,
             endpoint: b.endpoint,
             p256dh:   b.p256dh,
             auth:     b.auth
           });
         });
+      }
 
       case 'deletePushSubscription':
         return fetch(BASE + '/push_subscriptions?shop_id=eq.' + encodeURIComponent(b.shop_id), {

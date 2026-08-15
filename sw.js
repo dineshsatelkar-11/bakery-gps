@@ -2,22 +2,45 @@
 self.addEventListener('push', function(e) {
   var data = {};
   try { data = e.data ? e.data.json() : {}; } catch(err) {}
-  var title = data.title || '🥖 Message from bakery';
-  var body  = data.body  || data.message || '';
+  // Compact keys: t=title, m=message/body, u=url, g=tag (also accepts full names)
+  var title = data.t || data.title || 'IBCAB';
+  var body  = data.m || data.body || data.message || '';
+  var tag   = data.g || data.tag || 'ibcab';
+  var url   = data.u || data.url || '';
+  var blob  = (title + ' ' + body + ' ' + tag).toLowerCase();
+  if (!url) {
+    if (tag === 'ibcab-admin' || tag === 'a' || /new order|re-approval|waiting for approval/.test(blob))
+      url = '/admin';
+    else
+      url = '/order';
+  }
+  if (url === '/admin') tag = 'ibcab-admin';
   e.waitUntil(
-    self.registration.showNotification(title, {
-      body:  body,
+    self.registration.showNotification(String(title).slice(0, 48), {
+      body:  String(body).slice(0, 120),
       icon:  '/icon-192.png',
       badge: '/icon-192.png',
-      data:  { url: '/order' }
+      data:  { u: url },
+      tag:   tag,
+      renotify: true,
+      silent: false
     })
   );
 });
 
 self.addEventListener('notificationclick', function(e) {
   e.notification.close();
-  var url = (e.notification.data && e.notification.data.url) ? e.notification.data.url : '/order';
-  e.waitUntil(clients.openWindow(url));
+  var d = e.notification.data || {};
+  var url = d.u || d.url || '/order';
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(list) {
+      for (var i = 0; i < list.length; i++) {
+        var c = list[i];
+        if (c.url && c.url.indexOf(url) >= 0 && 'focus' in c) return c.focus();
+      }
+      if (clients.openWindow) return clients.openWindow(url);
+    })
+  );
 });
 
 // ── App Cache ─────────────────────────────────────────────────────────────────

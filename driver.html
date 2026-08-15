@@ -209,9 +209,19 @@
 </div>
 
 <div class="page" id="pg-team">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;flex-wrap:wrap">
         <div style="font-size:12px;color:#8a7a6a;font-family:monospace" id="team-date-lbl"></div>
         <button onclick="loadTeamSummary()" style="background:#f5ede0;border:1.5px solid #e8dfd2;border-radius:10px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;color:#4a2f14;font-family:-apple-system,sans-serif">↻ Refresh</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+        <select id="team-filter-view" onchange="renderTeamBody()" style="flex:1;min-width:140px;margin-bottom:0;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:13px;background:#fff;color:#1e1611;font-family:-apple-system,sans-serif">
+            <option value="all">All shops</option>
+            <option value="teapost">☕ Tea Post only</option>
+            <option value="non-teapost">Other shops only</option>
+        </select>
+        <select id="team-filter-driver" onchange="renderTeamBody()" style="flex:1;min-width:140px;margin-bottom:0;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:13px;background:#fff;color:#1e1611;font-family:-apple-system,sans-serif">
+            <option value="">All Drivers</option>
+        </select>
     </div>
     <div id="team-msg" style="display:none" class="msg in"></div>
     <div id="teamBody"></div>
@@ -1286,13 +1296,12 @@
         // keep local deliveries state so UI shows it as done (already set above)
       } else if (result.ok) {
         // Notify customer — in-app + push
-        var delivMsg = '✅ Your order has been delivered at ' + time + '. Thank you! 🎉';
+        var delivMsg = 'Delivered at ' + time + '. Thank you!';
         apiPost({action:'sendCustomerNotification', shop_id:shopId, shop_name:shopName, message:delivMsg});
-        // Fire-and-forget push notification
         fetch(CONFIG.SUPABASE_URL + '/functions/v1/clever-function', {
           method: 'POST',
           headers: {'Content-Type':'application/json','Authorization':'Bearer '+CONFIG.SUPABASE_ANON_KEY},
-          body: JSON.stringify({shop_ids:[shopId], message:delivMsg})
+          body: JSON.stringify({shop_ids:[shopId], message: delivMsg.slice(0, 100)})
         }).catch(function(){});
       }
       buildRouteUI();
@@ -1755,43 +1764,15 @@ async function deleteDropPhoto(){
       }
     }
 
-    async function loadTeamSummary() {
-  const el = document.getElementById('teamBody');
-  const msg = document.getElementById('team-msg');
-  const lbl = document.getElementById('team-date-lbl');
-  const date = selectedDate || todayStr();
-  lbl.textContent = (lang==='mr' ? 'तारीख: ' : 'Date: ') + date;
-  el.innerHTML = '<div style="text-align:center;padding:24px;font-size:12px;color:#8a7a6a;font-family:monospace">'+(lang==='mr'?'लोड होत आहे…':'Loading…')+'</div>';
-  msg.style.display = 'none';
+    // Cached team data for dropdown re-render without re-fetch
+    var _teamCache = null;
 
-  try {
-    const [allOrders, allDeliveries] = await Promise.all([
-      api({action:'getOrders', date}),
-      api({action:'getDeliveries', date})
-    ]);
-
-    if (!Array.isArray(allOrders) || !allOrders.length) {
-      el.innerHTML = '<div style="text-align:center;padding:32px;font-size:13px;color:#8a7a6a;font-family:monospace">'+(lang==='mr'?'आजचे ऑर्डर नाहीत':'No orders for this date')+'</div>';
-      return;
+    function isTeaPostShop(name){
+      return (name||'').toLowerCase().includes('tea post');
     }
 
-    // Group orders by driver
-    const byDriver = {};
-    allOrders.forEach(function(o) {
-      const drv = o.driver || o.assigned_driver || 'Unassigned';
-      if (!byDriver[drv]) byDriver[drv] = [];
-      byDriver[drv].push(o);
-    });
-
-    // Build delivery lookup: shop_id → delivery record
-    const delivMap = {};
-    if (Array.isArray(allDeliveries)) {
-      allDeliveries.forEach(function(d) { delivMap[d.shop_id] = d; });
-    }
-
-    // Category keyword grouping (same logic as orders tab)
-    function getCat(name) {
-      const n = (name||'').toLowerCase();
+    function teamGetCat(name){
+      var n = (name||'').toLowerCase();
       if (/puff/.test(n))             return 'Puff';
       if (/sweet[\s-]?bun/.test(n))   return 'Sweet Bun';
       if (/white[\s-]?bun/.test(n))   return 'White Bun';
@@ -1804,126 +1785,298 @@ async function deleteDropPhoto(){
       return 'Other';
     }
 
-    // Grand total across all drivers
-    const grandTotals = {};
-    allOrders.forEach(function(o) {
-      const its = (o.items||'').split(',').map(s=>s.replace(/\s*\(.*?\)/g,'').trim()).filter(Boolean);
-      const qs  = (o.qty||'').split(',').map(s=>parseInt(s)||0);
-      its.forEach(function(name, i) { grandTotals[name] = (grandTotals[name]||0) + (qs[i]||0); });
-    });
-    const grandBycat = {};
-    Object.entries(grandTotals).forEach(function([name,qty]) {
-      const c = getCat(name);
-      if (!grandBycat[c]) grandBycat[c] = {total:0, items:[]};
-      grandBycat[c].total += qty;
-      grandBycat[c].items.push({name, qty});
-    });
-    const grandGrand = Object.values(grandTotals).reduce((s,v)=>s+v, 0);
-    const totalDoneAll = allOrders.filter(o=>!!delivMap[o.shop_id]).length;
-
-    let html = '';
-
-    // ── Grand total card ──
-    html += '<div style="background:#4a2f14;color:#fff;border-radius:14px;padding:12px 14px;margin-bottom:10px">';
-    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
-    html += '<span style="font-size:13px;font-weight:700">'+(lang==='mr'?'एकूण सर्व':'Grand Total — All Drivers')+'</span>';
-    html += '<span style="font-size:18px;font-weight:700;font-family:monospace">'+grandGrand+' items</span>';
-    html += '</div>';
-    html += '<div style="display:flex;gap:6px;flex-wrap:wrap">';
-    Object.entries(grandBycat).sort((a,b)=>b[1].total-a[1].total).forEach(function([cat,info]) {
-      html += '<span style="background:rgba(255,255,255,.15);border-radius:20px;padding:2px 10px;font-size:11px;font-family:monospace">'+cat+' <b>×'+info.total+'</b></span>';
-    });
-    html += '</div>';
-    html += '<div style="font-size:10px;color:rgba(255,255,255,.6);font-family:monospace;margin-top:6px">'+allOrders.length+' shops · '+totalDoneAll+' delivered</div>';
-    html += '</div>';
-
-    // ── Per-driver cards ──
-    const driverOrder = Object.keys(byDriver).sort(function(a,b) {
-      // Own driver first
-      if (a===driver) return -1; if (b===driver) return 1; return a.localeCompare(b);
-    });
-
-    driverOrder.forEach(function(drv) {
-      const dOrders = byDriver[drv];
-      const dDone   = dOrders.filter(function(o){ return !!delivMap[o.shop_id]; }).length;
-      const pct     = dOrders.length ? Math.round(dDone/dOrders.length*100) : 0;
-      const isMe    = drv === driver;
-
-      // Aggregate products for this driver
-      const totals = {};
-      dOrders.forEach(function(o) {
-        const its = (o.items||'').split(',').map(s=>s.replace(/\s*\(.*?\)/g,'').trim()).filter(Boolean);
-        const qs  = (o.qty||'').split(',').map(s=>parseInt(s)||0);
-        its.forEach(function(name,i){ totals[name]=(totals[name]||0)+(qs[i]||0); });
+    function teamAggregate(orders){
+      var totals = {};
+      orders.forEach(function(o){
+        var its = (o.items||'').split(',').map(function(s){ return s.replace(/\s*\(.*?\)/g,'').trim(); }).filter(Boolean);
+        var qs  = (o.qty||'').split(',').map(function(s){ return parseInt(s)||0; });
+        its.forEach(function(name, i){ totals[name] = (totals[name]||0) + (qs[i]||0); });
       });
-      const catMap = {};
-      Object.entries(totals).forEach(function([name,qty]){
-        const c=getCat(name);
-        if(!catMap[c]) catMap[c]={total:0,items:[]};
-        catMap[c].total+=qty;
-        catMap[c].items.push({name,qty});
+      var byCat = {};
+      Object.keys(totals).forEach(function(name){
+        var qty = totals[name];
+        var c = teamGetCat(name);
+        if(!byCat[c]) byCat[c] = {total:0, items:[]};
+        byCat[c].total += qty;
+        byCat[c].items.push({name:name, qty:qty});
       });
-      const catEntries = Object.entries(catMap).sort((a,b)=>b[1].total-a[1].total);
-      const dTotal = Object.values(totals).reduce((s,v)=>s+v,0);
+      var grand = Object.keys(totals).reduce(function(s,k){ return s+totals[k]; }, 0);
+      var catEntries = Object.keys(byCat).map(function(c){ return [c, byCat[c]]; })
+        .sort(function(a,b){ return b[1].total - a[1].total; });
+      return { totals:totals, byCat:byCat, catEntries:catEntries, grand:grand };
+    }
 
-      const borderColor = isMe ? '#2d7a4f' : '#e8dfd2';
-      const bgColor     = isMe ? '#f0faf4' : '#fff';
-
-      html += '<div style="background:'+bgColor+';border:1.5px solid '+borderColor+';border-radius:14px;padding:12px 14px;margin-bottom:9px">';
-
-      // Header
-      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">';
-      html += '<div style="font-size:14px;font-weight:700;color:#1e1611">'+drv+(isMe?' <span style="font-size:10px;font-family:monospace;background:#2d7a4f;color:#fff;padding:2px 7px;border-radius:20px">'+(lang==='mr'?'मी':'you')+'</span>':'')+'</div>';
-      const badgeBg = pct===100?'#e8f5e9':pct>50?'#fff8e1':'#fde8e8';
-      const badgeFg = pct===100?'#2d7a4f':pct>50?'#7a4800':'#c8382a';
-      html += '<span style="background:'+badgeBg+';color:'+badgeFg+';font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;font-family:monospace">'+dDone+' / '+dOrders.length+' '+(lang==='mr'?'झाले':'done')+'</span>';
-      html += '</div>';
-
-      // Progress bar
-      html += '<div style="background:#e8dfd2;border-radius:6px;height:5px;margin-bottom:8px"><div style="width:'+pct+'%;height:5px;border-radius:6px;background:'+(pct===100?'#2d7a4f':pct>50?'#c8864a':'#c8382a')+';transition:width .3s"></div></div>';
-
-      // Category chips
-      html += '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">';
-      catEntries.forEach(function([cat,info]){
-        html += '<span style="background:#f5ede0;border:1px solid #e8dfd2;border-radius:20px;padding:2px 9px;font-size:11px;font-family:monospace;color:#4a2f14">'+cat+' <b>×'+info.total+'</b></span>';
+    function teamCatChips(agg, dark){
+      var html = '';
+      agg.catEntries.forEach(function(ce){
+        var cat = ce[0], info = ce[1];
+        if(dark){
+          html += '<span style="background:rgba(255,255,255,.15);border-radius:20px;padding:2px 10px;font-size:11px;font-family:monospace">'+cat+' <b>×'+info.total+'</b></span>';
+        } else {
+          html += '<span style="background:#f5ede0;border:1px solid #e8dfd2;border-radius:20px;padding:2px 9px;font-size:11px;font-family:monospace;color:#4a2f14">'+cat+' <b>×'+info.total+'</b></span>';
+        }
       });
-      html += '<span style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:20px;padding:2px 9px;font-size:11px;font-family:monospace;color:#2d7a4f">Total <b>×'+dTotal+'</b></span>';
-      html += '</div>';
+      return html;
+    }
 
-      // Expanded items list
-      html += '<div style="font-size:11px;font-family:monospace;color:#6a5040;line-height:2;background:#f9f6f1;border-radius:8px;padding:7px 10px">';
-      catEntries.forEach(function([cat,info]){
+    function teamItemsBlock(agg){
+      var html = '<div style="font-size:11px;font-family:monospace;color:#6a5040;line-height:2;background:#f9f6f1;border-radius:8px;padding:7px 10px">';
+      agg.catEntries.forEach(function(ce){
+        var cat = ce[0], info = ce[1];
         html += '<div style="font-size:10px;font-weight:700;color:#8a7a6a;text-transform:uppercase;letter-spacing:.5px;margin-top:4px">'+cat+'</div>';
-        info.items.sort((a,b)=>b.qty-a.qty).forEach(function(it){
+        info.items.slice().sort(function(a,b){ return b.qty-a.qty; }).forEach(function(it){
           html += '<div><b style="color:#4a2f14">'+it.qty+'×</b> '+it.name+'</div>';
         });
       });
       html += '</div>';
+      return html;
+    }
 
-      // Shop list (collapsed by default, expand on tap)
-      const shopListId = 'team-shops-'+drv.replace(/\s/g,'_');
-      html += '<div style="margin-top:8px">';
-      html += '<button onclick="var el=document.getElementById(\''+shopListId+'\');var open=el.style.display===\'block\';el.style.display=open?\'none\':\'block\';this.textContent=open?\'▼ '+(lang==='mr'?'दुकाने':'Shops')+' ('+dOrders.length+')\':\'▲ '+(lang==='mr'?'बंद करा':'Hide')+'\';" style="background:none;border:none;color:#8a7a6a;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif;padding:0">▼ '+(lang==='mr'?'दुकाने':'Shops')+' ('+dOrders.length+')</button>';
-      html += '<div id="'+shopListId+'" style="display:none;margin-top:6px;max-height:220px;overflow-y:auto">';
-      dOrders.forEach(function(o){
-        const done = !!delivMap[o.shop_id];
-        const dtime = done ? (delivMap[o.shop_id].time||'') : '';
-        html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #f0e8dc;font-size:12px">';
-        html += '<span style="color:'+(done?'#2d7a4f':'#4a2f14')+'">'+(done?'✅ ':'⏳ ')+o.shop_name+'</span>';
-        html += '<span style="font-size:10px;font-family:monospace;color:#8a7a6a">'+dtime+'</span>';
+    async function loadTeamSummary() {
+      var el = document.getElementById('teamBody');
+      var msg = document.getElementById('team-msg');
+      var lbl = document.getElementById('team-date-lbl');
+      var date = selectedDate || todayStr();
+      lbl.textContent = (lang==='mr' ? 'तारीख: ' : 'Date: ') + date;
+      el.innerHTML = '<div style="text-align:center;padding:24px;font-size:12px;color:#8a7a6a;font-family:monospace">'+(lang==='mr'?'लोड होत आहे…':'Loading…')+'</div>';
+      msg.style.display = 'none';
+
+      try {
+        var results = await Promise.all([
+          api({action:'getOrders', date:date}),
+          api({action:'getDeliveries', date:date})
+        ]);
+        var allOrders = results[0];
+        var allDeliveries = results[1];
+
+        if (!Array.isArray(allOrders) || !allOrders.length) {
+          _teamCache = null;
+          el.innerHTML = '<div style="text-align:center;padding:32px;font-size:13px;color:#8a7a6a;font-family:monospace">'+(lang==='mr'?'आजचे ऑर्डर नाहीत':'No orders for this date')+'</div>';
+          return;
+        }
+
+        var delivMap = {};
+        if (Array.isArray(allDeliveries)) {
+          allDeliveries.forEach(function(d){ delivMap[d.shop_id] = d; });
+        }
+
+        _teamCache = { allOrders: allOrders, delivMap: delivMap, date: date };
+
+        // Populate driver dropdown
+        var drivers = [];
+        var seen = {};
+        allOrders.forEach(function(o){
+          var drv = o.driver || o.assigned_driver || 'Unassigned';
+          if(!seen[drv]){ seen[drv]=true; drivers.push(drv); }
+        });
+        drivers.sort(function(a,b){
+          if(a===driver) return -1; if(b===driver) return 1; return a.localeCompare(b);
+        });
+        var sel = document.getElementById('team-filter-driver');
+        var prev = sel ? sel.value : '';
+        if(sel){
+          sel.innerHTML = '<option value="">All Drivers</option>' +
+            drivers.map(function(d){
+              return '<option value="'+d.replace(/"/g,'&quot;')+'"'+(d===prev?' selected':'')+'>'+d+(d===driver?' (you)':'')+'</option>';
+            }).join('');
+        }
+
+        renderTeamBody();
+      } catch(e) {
+        _teamCache = null;
+        el.innerHTML = '';
+        msg.textContent = (lang==='mr'?'❌ लोड अयशस्वी':'❌ Failed to load team data');
+        msg.className = 'msg er'; msg.style.display = 'block';
+      }
+    }
+
+    function renderTeamBody(){
+      var el = document.getElementById('teamBody');
+      if(!_teamCache || !_teamCache.allOrders){
+        el.innerHTML = '<div style="text-align:center;padding:24px;font-size:12px;color:#8a7a6a;font-family:monospace">Load team data first.</div>';
+        return;
+      }
+      var allOrders = _teamCache.allOrders;
+      var delivMap = _teamCache.delivMap;
+      var viewFilter = (document.getElementById('team-filter-view')||{}).value || 'all';
+      var drvFilter = (document.getElementById('team-filter-driver')||{}).value || '';
+
+      function passView(o){
+        var tp = isTeaPostShop(o.shop_name);
+        if(viewFilter==='teapost') return tp;
+        if(viewFilter==='non-teapost') return !tp;
+        return true;
+      }
+
+      var filtered = allOrders.filter(function(o){
+        if(!passView(o)) return false;
+        if(drvFilter){
+          var d = o.driver || o.assigned_driver || 'Unassigned';
+          if(d !== drvFilter) return false;
+        }
+        return true;
+      });
+
+      if(!filtered.length){
+        el.innerHTML = '<div style="text-align:center;padding:32px;font-size:13px;color:#8a7a6a;font-family:monospace">No shops match this filter.</div>';
+        return;
+      }
+
+      var byDriver = {};
+      filtered.forEach(function(o){
+        var drv = o.driver || o.assigned_driver || 'Unassigned';
+        if(!byDriver[drv]) byDriver[drv] = [];
+        byDriver[drv].push(o);
+      });
+
+      var grandAgg = teamAggregate(filtered);
+      var totalDoneAll = filtered.filter(function(o){ return !!delivMap[o.shop_id]; }).length;
+
+      // All Tea Post (parent level) — always from full cache, then apply driver filter only
+      var tpAll = allOrders.filter(function(o){
+        if(!isTeaPostShop(o.shop_name)) return false;
+        if(drvFilter){
+          var d = o.driver || o.assigned_driver || 'Unassigned';
+          if(d !== drvFilter) return false;
+        }
+        return true;
+      });
+      var tpAgg = teamAggregate(tpAll);
+      var tpDone = tpAll.filter(function(o){ return !!delivMap[o.shop_id]; }).length;
+
+      var html = '';
+
+      // ── Grand total card ──
+      html += '<div style="background:#4a2f14;color:#fff;border-radius:14px;padding:12px 14px;margin-bottom:10px">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+      html += '<span style="font-size:13px;font-weight:700">'+(drvFilter ? ('Total — '+drvFilter) : (lang==='mr'?'एकूण सर्व':'Grand Total — All Drivers'))+'</span>';
+      html += '<span style="font-size:18px;font-weight:700;font-family:monospace">'+grandAgg.grand+' items</span>';
+      html += '</div>';
+      html += '<div style="display:flex;gap:6px;flex-wrap:wrap">'+teamCatChips(grandAgg, true)+'</div>';
+      html += '<div style="font-size:10px;color:rgba(255,255,255,.6);font-family:monospace;margin-top:6px">'+filtered.length+' shops · '+totalDoneAll+' delivered</div>';
+      html += '</div>';
+
+      // ── Parent-level Tea Post summary ──
+      if(tpAll.length && viewFilter !== 'non-teapost'){
+        html += '<div style="background:#fff8f0;border:2px solid #e8c87a;border-radius:14px;padding:12px 14px;margin-bottom:12px">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">';
+        html += '<div>';
+        html += '<div style="font-size:14px;font-weight:900;color:#4a2f14">☕ Tea Post Summary'+(drvFilter?' · '+drvFilter:'')+'</div>';
+        html += '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:2px">'+tpAll.length+' shops · '+tpAgg.grand+' items · '+tpDone+' delivered</div>';
+        html += '</div>';
+        html += '<span style="background:#fff3e0;color:#e65100;border:1px solid #ffcc80;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:800;font-family:monospace">'+tpDone+'/'+tpAll.length+'</span>';
+        html += '</div>';
+        html += '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">'+teamCatChips(tpAgg, false)+
+          '<span style="background:#fff3e0;border:1px solid #ffcc80;border-radius:20px;padding:2px 9px;font-size:11px;font-family:monospace;color:#e65100">Total <b>×'+tpAgg.grand+'</b></span></div>';
+        html += teamItemsBlock(tpAgg);
+
+        // Per-driver Tea Post breakdown (parent level)
+        var tpByDriver = {};
+        tpAll.forEach(function(o){
+          var d = o.driver || o.assigned_driver || 'Unassigned';
+          if(!tpByDriver[d]) tpByDriver[d] = [];
+          tpByDriver[d].push(o);
+        });
+        var tpDrivers = Object.keys(tpByDriver).sort(function(a,b){
+          if(a===driver) return -1; if(b===driver) return 1; return a.localeCompare(b);
+        });
+        if(tpDrivers.length > 1 && !drvFilter){
+          html += '<div style="margin-top:10px;padding-top:8px;border-top:1.5px dashed #e8c87a">';
+          html += '<div style="font-size:10px;font-weight:900;letter-spacing:1px;color:#8a7a6a;text-transform:uppercase;margin-bottom:6px">By driver</div>';
+          tpDrivers.forEach(function(d){
+            var list = tpByDriver[d];
+            var a = teamAggregate(list);
+            var done = list.filter(function(o){ return !!delivMap[o.shop_id]; }).length;
+            html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #f5e6c8;font-size:12px">';
+            html += '<span style="font-weight:700;color:#4a2f14">🚗 '+d+(d===driver?' <span style="font-size:10px;color:#2d7a4f">(you)</span>':'')+'</span>';
+            html += '<span style="font-family:monospace;color:#6a5040">'+list.length+' shops · <b>'+a.grand+'</b> items · '+done+' done</span>';
+            html += '</div>';
+          });
+          html += '</div>';
+        }
+        html += '</div>';
+      }
+
+      // ── Per-driver cards ──
+      var driverOrder = Object.keys(byDriver).sort(function(a,b){
+        if(a===driver) return -1; if(b===driver) return 1; return a.localeCompare(b);
+      });
+
+      driverOrder.forEach(function(drv){
+        var dOrders = byDriver[drv];
+        var dDone = dOrders.filter(function(o){ return !!delivMap[o.shop_id]; }).length;
+        var pct = dOrders.length ? Math.round(dDone/dOrders.length*100) : 0;
+        var isMe = drv === driver;
+        var agg = teamAggregate(dOrders);
+        var borderColor = isMe ? '#2d7a4f' : '#e8dfd2';
+        var bgColor = isMe ? '#f0faf4' : '#fff';
+
+        html += '<div style="background:'+bgColor+';border:1.5px solid '+borderColor+';border-radius:14px;padding:12px 14px;margin-bottom:9px">';
+
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">';
+        html += '<div style="font-size:14px;font-weight:700;color:#1e1611">'+drv+(isMe?' <span style="font-size:10px;font-family:monospace;background:#2d7a4f;color:#fff;padding:2px 7px;border-radius:20px">'+(lang==='mr'?'मी':'you')+'</span>':'')+'</div>';
+        var badgeBg = pct===100?'#e8f5e9':pct>50?'#fff8e1':'#fde8e8';
+        var badgeFg = pct===100?'#2d7a4f':pct>50?'#7a4800':'#c8382a';
+        html += '<span style="background:'+badgeBg+';color:'+badgeFg+';font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;font-family:monospace">'+dDone+' / '+dOrders.length+' '+(lang==='mr'?'झाले':'done')+'</span>';
+        html += '</div>';
+
+        html += '<div style="background:#e8dfd2;border-radius:6px;height:5px;margin-bottom:8px"><div style="width:'+pct+'%;height:5px;border-radius:6px;background:'+(pct===100?'#2d7a4f':pct>50?'#c8864a':'#c8382a')+';transition:width .3s"></div></div>';
+
+        html += '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px">'+teamCatChips(agg, false)+
+          '<span style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:20px;padding:2px 9px;font-size:11px;font-family:monospace;color:#2d7a4f">Total <b>×'+agg.grand+'</b></span></div>';
+
+        html += teamItemsBlock(agg);
+
+        // Per-driver Tea Post block
+        var dTp = dOrders.filter(function(o){ return isTeaPostShop(o.shop_name); });
+        if(dTp.length && viewFilter !== 'non-teapost'){
+          var dTpAgg = teamAggregate(dTp);
+          var dTpDone = dTp.filter(function(o){ return !!delivMap[o.shop_id]; }).length;
+          html += '<div style="margin-top:10px;background:#fff8f0;border:1.5px solid #e8c87a;border-radius:10px;padding:10px 12px">';
+          html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">';
+          html += '<div style="font-size:12px;font-weight:900;color:#4a2f14">☕ Tea Post</div>';
+          html += '<span style="font-size:11px;font-family:monospace;color:#e65100;font-weight:700">'+dTpDone+'/'+dTp.length+' · '+dTpAgg.grand+' items</span>';
+          html += '</div>';
+          html += '<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px">'+teamCatChips(dTpAgg, false)+'</div>';
+          // compact product list
+          html += '<div style="font-size:11px;font-family:monospace;color:#6a5040;line-height:1.9">';
+          Object.keys(dTpAgg.totals).sort(function(a,b){ return dTpAgg.totals[b]-dTpAgg.totals[a]; }).forEach(function(name){
+            html += '<span style="display:inline-block;background:#fff;border:1px solid #f0d9a0;border-radius:8px;padding:2px 7px;margin:2px 3px 2px 0"><b style="color:#e65100">'+dTpAgg.totals[name]+'×</b> '+name+'</span>';
+          });
+          html += '</div></div>';
+        }
+
+        // Shop list
+        var shopListId = 'team-shops-'+drv.replace(/[^a-z0-9]/gi,'_');
+        html += '<div style="margin-top:8px">';
+        html += '<button type="button" data-shop-list="'+shopListId+'" data-shop-total="'+dOrders.length+'" onclick="toggleTeamShops(this)" style="background:none;border:none;color:#8a7a6a;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif;padding:0">▼ '+(lang==='mr'?'दुकाने':'Shops')+' ('+dOrders.length+')</button>';
+        html += '<div id="'+shopListId+'" style="display:none;margin-top:6px;max-height:220px;overflow-y:auto">';
+        dOrders.forEach(function(o){
+          var done = !!delivMap[o.shop_id];
+          var dtime = done ? (delivMap[o.shop_id].time||'') : '';
+          var tpTag = isTeaPostShop(o.shop_name) ? ' <span style="font-size:9px;background:#fff3e0;color:#e65100;border-radius:6px;padding:1px 5px">☕</span>' : '';
+          html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #f0e8dc;font-size:12px">';
+          html += '<span style="color:'+(done?'#2d7a4f':'#4a2f14')+'">'+(done?'✅ ':'⏳ ')+o.shop_name+tpTag+'</span>';
+          html += '<span style="font-size:10px;font-family:monospace;color:#8a7a6a">'+dtime+'</span>';
+          html += '</div>';
+        });
+        html += '</div></div>';
         html += '</div>';
       });
-      html += '</div></div>';
-      html += '</div>';
-    });
 
-    el.innerHTML = html;
-  } catch(e) {
-    el.innerHTML = '';
-    msg.textContent = (lang==='mr'?'❌ लोड अयशस्वी':'❌ Failed to load team data');
-    msg.className = 'msg er'; msg.style.display = 'block';
-  }
-}
+      el.innerHTML = html;
+    }
+
+    function toggleTeamShops(btn){
+      var id = btn.getAttribute('data-shop-list');
+      var total = btn.getAttribute('data-shop-total') || '';
+      var el = document.getElementById(id);
+      if(!el) return;
+      var open = el.style.display === 'block';
+      el.style.display = open ? 'none' : 'block';
+      var label = lang==='mr' ? (open ? ('▼ दुकाने ('+total+')') : '▲ बंद करा') : (open ? ('▼ Shops ('+total+')') : '▲ Hide');
+      btn.textContent = label;
+    }
 
     function toggleSelHistory(){
       const el = document.getElementById('selHistory');
