@@ -1,133 +1,133 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>Track My Delivery — Satelkar's Logistics</title>
-<script src="config.js"></script>
-<script src="api.js"></script>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:440px;margin:0 auto;min-height:100vh}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+    <title>Track My Delivery — Satelkar's Logistics</title>
+    <script src="config.js"></script>
+    <script src="api.js"></script>
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:440px;margin:0 auto;min-height:100vh}
 
-/* ── TOP BAR ── */
-.topbar{background:linear-gradient(135deg,#2d7a4f 0%,#1a5a38 100%);padding:16px 14px 14px;text-align:center;position:relative}
-.topbar-logo{color:#fff;font-size:22px;font-weight:900;letter-spacing:.5px}
-.topbar-sub{color:#a8d5b8;font-size:11px;font-family:monospace;margin-top:3px}
+        /* ── TOP BAR ── */
+        .topbar{background:linear-gradient(135deg,#2d7a4f 0%,#1a5a38 100%);padding:16px 14px 14px;text-align:center;position:relative}
+        .topbar-logo{color:#fff;font-size:22px;font-weight:900;letter-spacing:.5px}
+        .topbar-sub{color:#a8d5b8;font-size:11px;font-family:monospace;margin-top:3px}
 
-/* ── CARDS ── */
-.card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:16px;margin:12px 14px 0}
-.lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:8px;text-transform:uppercase}
-input[type=tel]{width:100%;padding:13px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:16px;color:#1e1611;background:#f5ede0;outline:none;font-family:-apple-system,sans-serif;-webkit-appearance:none;letter-spacing:2px}
-input[type=tel]:focus{border-color:#2d7a4f;background:#fff}
-.btn-track{width:100%;padding:14px;border:none;border-radius:12px;background:#2d7a4f;color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-top:10px}
-.btn-track:active{background:#1a5a38}
-.msg{padding:11px 14px;border-radius:10px;font-size:12px;font-weight:600;font-family:monospace;margin-top:10px;line-height:1.6}
-.er{background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0}
-.ok{background:#e8f5e9;color:#2d7a4f;border:1px solid #a5d6a7}
-.in{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9}
+        /* ── CARDS ── */
+        .card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:16px;margin:12px 14px 0}
+        .lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:8px;text-transform:uppercase}
+        input[type=tel]{width:100%;padding:13px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:16px;color:#1e1611;background:#f5ede0;outline:none;font-family:-apple-system,sans-serif;-webkit-appearance:none;letter-spacing:2px}
+        input[type=tel]:focus{border-color:#2d7a4f;background:#fff}
+        .btn-track{width:100%;padding:14px;border:none;border-radius:12px;background:#2d7a4f;color:#fff;font-size:15px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-top:10px}
+        .btn-track:active{background:#1a5a38}
+        .msg{padding:11px 14px;border-radius:10px;font-size:12px;font-weight:600;font-family:monospace;margin-top:10px;line-height:1.6}
+        .er{background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0}
+        .ok{background:#e8f5e9;color:#2d7a4f;border:1px solid #a5d6a7}
+        .in{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9}
 
-/* ── TRACKING RESULT ── */
-#trackingResult{display:none}
-.section-title{font-size:11px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;text-transform:uppercase;margin-bottom:8px}
-.customer-name{font-size:19px;font-weight:900;color:#2d7a4f;margin-bottom:2px}
-.customer-area{font-size:12px;color:#8a7a6a;font-family:monospace}
+        /* ── TRACKING RESULT ── */
+        #trackingResult{display:none}
+        .section-title{font-size:11px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;text-transform:uppercase;margin-bottom:8px}
+        .customer-name{font-size:19px;font-weight:900;color:#2d7a4f;margin-bottom:2px}
+        .customer-area{font-size:12px;color:#8a7a6a;font-family:monospace}
 
-/* Contact rows */
-.contact-row{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #f5ede0}
-.contact-row:last-child{border-bottom:none}
-.contact-icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
-.contact-info{flex:1}
-.contact-name{font-size:13px;font-weight:700;color:#1e1611}
-.contact-role{font-size:10px;color:#8a7a6a;font-family:monospace}
-.contact-call{background:#e8f5e9;color:#2d7a4f;border:1.5px solid #a5d6a7;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:700;text-decoration:none;display:inline-block;font-family:-apple-system,sans-serif}
-/* Escalation */
-.escalate-btn{width:100%;background:#fff3e0;border:1.5px dashed #e67e22;border-radius:12px;padding:11px;font-size:13px;font-weight:700;color:#7a4800;cursor:pointer;font-family:-apple-system,sans-serif;margin-top:8px;text-align:center}
-.escalate-section{display:none;margin-top:4px;border-top:1.5px dashed #e8dfd2;padding-top:6px}
-.escalate-label{font-size:10px;font-family:monospace;color:#c8382a;font-weight:700;letter-spacing:1px;margin-bottom:6px;text-transform:uppercase}
+        /* Contact rows */
+        .contact-row{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #f5ede0}
+        .contact-row:last-child{border-bottom:none}
+        .contact-icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+        .contact-info{flex:1}
+        .contact-name{font-size:13px;font-weight:700;color:#1e1611}
+        .contact-role{font-size:10px;color:#8a7a6a;font-family:monospace}
+        .contact-call{background:#e8f5e9;color:#2d7a4f;border:1.5px solid #a5d6a7;border-radius:20px;padding:6px 14px;font-size:12px;font-weight:700;text-decoration:none;display:inline-block;font-family:-apple-system,sans-serif}
+        /* Escalation */
+        .escalate-btn{width:100%;background:#fff3e0;border:1.5px dashed #e67e22;border-radius:12px;padding:11px;font-size:13px;font-weight:700;color:#7a4800;cursor:pointer;font-family:-apple-system,sans-serif;margin-top:8px;text-align:center}
+        .escalate-section{display:none;margin-top:4px;border-top:1.5px dashed #e8dfd2;padding-top:6px}
+        .escalate-label{font-size:10px;font-family:monospace;color:#c8382a;font-weight:700;letter-spacing:1px;margin-bottom:6px;text-transform:uppercase}
 
-/* Last delivery */
-.deliv-box{background:#f5ede0;border-radius:10px;padding:10px 12px;margin-top:6px}
-.deliv-shop{font-size:14px;font-weight:800;color:#4a2f14}
-.deliv-time{font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:2px}
+        /* Last delivery */
+        .deliv-box{background:#f5ede0;border-radius:10px;padding:10px 12px;margin-top:6px}
+        .deliv-shop{font-size:14px;font-weight:800;color:#4a2f14}
+        .deliv-time{font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:2px}
 
-/* Live tracking button */
-.btn-live{display:block;background:linear-gradient(135deg,#e53935,#b71c1c);color:#fff;padding:14px 16px;border-radius:14px;text-align:center;text-decoration:none;font-weight:800;font-size:14px;margin:0 14px;margin-top:12px}
-.btn-live-sub{font-size:10px;opacity:.85;font-weight:500;margin-top:2px;font-family:monospace}
+        /* Live tracking button */
+        .btn-live{display:block;background:linear-gradient(135deg,#e53935,#b71c1c);color:#fff;padding:14px 16px;border-radius:14px;text-align:center;text-decoration:none;font-weight:800;font-size:14px;margin:0 14px;margin-top:12px}
+        .btn-live-sub{font-size:10px;opacity:.85;font-weight:500;margin-top:2px;font-family:monospace}
 
-/* Marketing banner */
-.marketing{background:linear-gradient(135deg,#4a2f14 0%,#7a4f24 100%);border-radius:16px;padding:18px 16px;margin:12px 14px;color:#fff;text-align:center}
-.mkt-title{font-size:18px;font-weight:900;letter-spacing:.5px;margin-bottom:4px}
-.mkt-tagline{font-size:12px;opacity:.85;font-family:monospace;margin-bottom:12px}
-.mkt-features{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:12px}
-.mkt-chip{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700}
-.mkt-cta{background:#2d7a4f;color:#fff;border:none;border-radius:10px;padding:11px 24px;font-size:13px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif}
+        /* Marketing banner */
+        .marketing{background:linear-gradient(135deg,#4a2f14 0%,#7a4f24 100%);border-radius:16px;padding:18px 16px;margin:12px 14px;color:#fff;text-align:center}
+        .mkt-title{font-size:18px;font-weight:900;letter-spacing:.5px;margin-bottom:4px}
+        .mkt-tagline{font-size:12px;opacity:.85;font-family:monospace;margin-bottom:12px}
+        .mkt-features{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:12px}
+        .mkt-chip{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700}
+        .mkt-cta{background:#2d7a4f;color:#fff;border:none;border-radius:10px;padding:11px 24px;font-size:13px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif}
 
-/* Status card states */
-.status-delivered{background:linear-gradient(135deg,#e8f5e9,#c8e6c9)!important;border-color:#a5d6a7!important}
-.status-pending{background:linear-gradient(135deg,#fff8e1,#ffecb3)!important;border-color:#ffe082!important}
+        /* Status card states */
+        .status-delivered{background:linear-gradient(135deg,#e8f5e9,#c8e6c9)!important;border-color:#a5d6a7!important}
+        .status-pending{background:linear-gradient(135deg,#fff8e1,#ffecb3)!important;border-color:#ffe082!important}
 
-/* Footer */
-.footer{text-align:center;padding:20px 14px;font-size:11px;color:#8a7a6a;font-family:monospace}
+        /* Footer */
+        .footer{text-align:center;padding:20px 14px;font-size:11px;color:#8a7a6a;font-family:monospace}
 
-/* No-delivery placeholder */
-.no-deliv{text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace;background:#f9f6f1;border-radius:10px;margin-top:6px}
+        /* No-delivery placeholder */
+        .no-deliv{text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace;background:#f9f6f1;border-radius:10px;margin-top:6px}
 
-.loading-spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:6px}
-@keyframes spin{to{transform:rotate(360deg)}}
-.shop-opt{width:100%;padding:11px 12px;border:1.5px solid #e8dfd2;border-radius:10px;background:#f9f6f1;font-size:14px;font-weight:700;color:#1e1611;cursor:pointer;font-family:-apple-system,sans-serif;text-align:left;margin-bottom:6px;display:block}
-.shop-opt.selected{border-color:#2d7a4f;background:#e8f5e9;color:#1a5a38}
-.shop-opt:active{opacity:.8}
-</style>
+        .loading-spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:6px}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .shop-opt{width:100%;padding:11px 12px;border:1.5px solid #e8dfd2;border-radius:10px;background:#f9f6f1;font-size:14px;font-weight:700;color:#1e1611;cursor:pointer;font-family:-apple-system,sans-serif;text-align:left;margin-bottom:6px;display:block}
+        .shop-opt.selected{border-color:#2d7a4f;background:#e8f5e9;color:#1a5a38}
+        .shop-opt:active{opacity:.8}
+    </style>
 </head>
 <body>
 
 <!-- TOP BAR -->
 <div class="topbar">
-  <div class="topbar-logo">🚚 Satelkar's Logistics</div>
-  <div class="topbar-sub">Delivery Tracker</div>
+    <div class="topbar-logo">🚚 Satelkar's Logistics</div>
+    <div class="topbar-sub">Delivery Tracker</div>
 </div>
 
 <!-- LOGIN SECTION -->
 <div id="loginSection">
-  <div class="card">
-    <div class="lbl">Track Your Order</div>
-    <div style="font-size:13px;color:#4a2f14;margin-bottom:12px;line-height:1.5">Enter your registered mobile number to see live delivery status.</div>
-    <input type="tel" id="phoneInput" placeholder="Enter 10-digit mobile number" maxlength="15" oninput="onPhoneInput(this.value)">
-    <div id="shopPreview" style="display:none;margin-top:8px;padding:10px 12px;background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:10px">
-      <div style="font-size:11px;color:#2d7a4f;font-family:monospace;font-weight:700;letter-spacing:1px;margin-bottom:2px">SHOP FOUND</div>
-      <div id="shopPreviewName" style="font-size:15px;font-weight:800;color:#1a5a38"></div>
-      <div id="shopPreviewArea" style="font-size:11px;color:#2d7a4f;font-family:monospace;margin-top:2px"></div>
+    <div class="card">
+        <div class="lbl">Track Your Order</div>
+        <div style="font-size:13px;color:#4a2f14;margin-bottom:12px;line-height:1.5">Enter your registered mobile number to see live delivery status.</div>
+        <input type="tel" id="phoneInput" placeholder="Enter 10-digit mobile number" maxlength="15" oninput="onPhoneInput(this.value)">
+        <div id="shopPreview" style="display:none;margin-top:8px;padding:10px 12px;background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:10px">
+            <div style="font-size:11px;color:#2d7a4f;font-family:monospace;font-weight:700;letter-spacing:1px;margin-bottom:2px">SHOP FOUND</div>
+            <div id="shopPreviewName" style="font-size:15px;font-weight:800;color:#1a5a38"></div>
+            <div id="shopPreviewArea" style="font-size:11px;color:#2d7a4f;font-family:monospace;margin-top:2px"></div>
+        </div>
+        <!-- Multi-shop selector — shown when number is linked to more than 1 shop -->
+        <div id="shopSelector" style="display:none;margin-top:10px">
+            <div style="font-size:11px;color:#7a4800;font-family:monospace;font-weight:700;letter-spacing:1px;margin-bottom:8px">MULTIPLE SHOPS FOUND — SELECT YOURS</div>
+            <div id="shopSelectorList"></div>
+        </div>
+        <button class="btn-track" onclick="trackDelivery()" id="trackBtn">🔍 Track My Delivery</button>
+        <div id="loginMsg" style="display:none" class="msg er"></div>
     </div>
-    <!-- Multi-shop selector — shown when number is linked to more than 1 shop -->
-    <div id="shopSelector" style="display:none;margin-top:10px">
-      <div style="font-size:11px;color:#7a4800;font-family:monospace;font-weight:700;letter-spacing:1px;margin-bottom:8px">MULTIPLE SHOPS FOUND — SELECT YOURS</div>
-      <div id="shopSelectorList"></div>
-    </div>
-    <button class="btn-track" onclick="trackDelivery()" id="trackBtn">🔍 Track My Delivery</button>
-    <div id="loginMsg" style="display:none" class="msg er"></div>
-  </div>
 </div>
 
 <!-- TRACKING RESULT -->
 <div id="trackingResult">
 
-  <!-- My delivery status -->
-  <div id="tr-status-card" class="card" style="text-align:center;padding:20px 16px">
-    <div id="tr-status-icon" style="font-size:40px;margin-bottom:8px">⏳</div>
-    <div id="tr-status-text" style="font-size:16px;font-weight:900;color:#4a2f14;margin-bottom:4px">Checking…</div>
-    <div id="tr-status-sub" style="font-size:12px;color:#8a7a6a;font-family:monospace;margin-bottom:14px"></div>
-    <button onclick="refreshStatus()" id="tr-refresh-btn" style="padding:9px 22px;border:1.5px solid #e8dfd2;border-radius:20px;background:#fff;color:#4a2f14;font-size:12px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif">🔄 Refresh Status</button>
-  </div>
+    <!-- My delivery status -->
+    <div id="tr-status-card" class="card" style="text-align:center;padding:20px 16px">
+        <div id="tr-status-icon" style="font-size:40px;margin-bottom:8px">⏳</div>
+        <div id="tr-status-text" style="font-size:16px;font-weight:900;color:#4a2f14;margin-bottom:4px">Checking…</div>
+        <div id="tr-status-sub" style="font-size:12px;color:#8a7a6a;font-family:monospace;margin-bottom:14px"></div>
+        <button onclick="refreshStatus()" id="tr-refresh-btn" style="padding:9px 22px;border:1.5px solid #e8dfd2;border-radius:20px;background:#fff;color:#4a2f14;font-size:12px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif">🔄 Refresh Status</button>
+    </div>
 
-  <!-- Customer greeting -->
-  <div class="card">
-    <div class="section-title">Your Shop</div>
-    <div class="customer-name" id="tr-name"></div>
-    <div class="customer-area" id="tr-area"></div>
-  </div>
+    <!-- Customer greeting -->
+    <div class="card">
+        <div class="section-title">Your Shop</div>
+        <div class="customer-name" id="tr-name"></div>
+        <div class="customer-area" id="tr-area"></div>
+    </div>
 
-  <!-- Contacts -->
+    <!-- Contacts -->
     <!-- Contacts -->
     <div class="card">
         <div class="section-title">Contact Us</div>
@@ -178,384 +178,477 @@ input[type=tel]:focus{border-color:#2d7a4f;background:#fff}
         </div>
     </div>
 
-  <!-- Last delivery by driver today -->
-  <div class="card">
-    <div class="section-title">Driver's Last Delivery Today</div>
-    <div id="tr-last-deliv">
-      <div class="no-deliv">⏳ No deliveries recorded yet today.</div>
+    <!-- Last delivery by driver today -->
+    <div class="card">
+        <div class="section-title">Driver's Last Delivery Today</div>
+        <div id="tr-last-deliv">
+            <div class="no-deliv">⏳ No deliveries recorded yet today.</div>
+        </div>
     </div>
-  </div>
 
-  <!-- Live Ajjas tracking -->
-  <a id="tr-ajjas" href="#" target="_blank" class="btn-live">
-    🔴 Track Tempo Live Location
-    <div class="btn-live-sub">Powered by Ajjas GPS · Tap to open</div>
-  </a>
+    <!-- Live Ajjas tracking -->
+    <a id="tr-ajjas" href="#" target="_blank" class="btn-live">
+        🔴 Track Tempo Live Location
+        <div class="btn-live-sub">Powered by Ajjas GPS · Tap to open</div>
+    </a>
 
-  <!-- Order history (last 7 days) -->
-  <div class="card" id="tr-history-card" style="display:none">
-    <div class="section-title">Your Last 7 Days Orders</div>
-    <div id="tr-order-history"></div>
-  </div>
+    <!-- Order history (last 7 days) -->
+    <div class="card" id="tr-history-card" style="display:none">
+        <div class="section-title">Your Last 7 Days Orders</div>
+        <div id="tr-order-history"></div>
+    </div>
 
-  <!-- Back button -->
-  <div style="margin:12px 14px 0;text-align:center">
-    <button onclick="resetTracking()" style="background:none;border:1.5px solid #e8dfd2;border-radius:10px;padding:9px 20px;font-size:12px;font-weight:700;color:#8a7a6a;cursor:pointer;font-family:-apple-system,sans-serif">← Check Another Number</button>
-  </div>
+    <!-- Back button -->
+    <div style="margin:12px 14px 0;text-align:center">
+        <button onclick="resetTracking()" style="background:none;border:1.5px solid #e8dfd2;border-radius:10px;padding:9px 20px;font-size:12px;font-weight:700;color:#8a7a6a;cursor:pointer;font-family:-apple-system,sans-serif">← Check Another Number</button>
+    </div>
 
 </div>
 
 <!-- MARKETING SECTION (always visible) -->
 <div class="marketing">
-  <div class="mkt-title">🚚 Satelkar's Logistics</div>
-  <div class="mkt-tagline">Premium Bakery Delivery · Pune & Surroundings</div>
-  <div class="mkt-features">
-    <div class="mkt-chip">⏰ Daily Routes</div>
-    <div class="mkt-chip">📍 GPS Tracked</div>
-    <div class="mkt-chip">✅ Reliable</div>
-    <div class="mkt-chip">🥖 Fresh Delivery</div>
-  </div>
-  <div style="font-size:12px;opacity:.8;margin-bottom:12px;line-height:1.5">
-    We deliver fresh bakery products to your shop every morning. Fast, tracked, and dependable.
-  </div>
-  <button class="mkt-cta" onclick="window.open('tel:'+CONFIG.LOGISTICS_OWNER2_MOBILE)">📞 Contact</button>
+    <div class="mkt-title">🚚 Satelkar's Logistics</div>
+    <div class="mkt-tagline">Premium Bakery Delivery · Pune & Surroundings</div>
+    <div class="mkt-features">
+        <div class="mkt-chip">⏰ Daily Routes</div>
+        <div class="mkt-chip">📍 GPS Tracked</div>
+        <div class="mkt-chip">✅ Reliable</div>
+        <div class="mkt-chip">🥖 Fresh Delivery</div>
+    </div>
+    <div style="font-size:12px;opacity:.8;margin-bottom:12px;line-height:1.5">
+        We deliver fresh bakery products to your shop every morning. Fast, tracked, and dependable.
+    </div>
+    <button class="mkt-cta" onclick="window.open('tel:'+CONFIG.LOGISTICS_OWNER2_MOBILE)">📞 Contact</button>
 </div>
 
 <div class="footer">Satelkar's Logistics · Pune<br>Dinesh: 8956276855 &nbsp;|&nbsp; Siddhesh: 9886527036</div>
 
 <script>
-function todayStr(){
-  var d=new Date();
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-}
-
-// Normalize any mobile format to last 10 digits
-function normalizeMobile(raw) {
-  return raw.replace(/\D/g, '').slice(-10);
-}
-
-// Module-level state for refresh
-var _trackingShop = null, _trackingDriver = '';
-var _allFoundShops = [], _selectedShopIdx = -1;
-var _hasOrderToday = false;
-
-function selectShop(idx) {
-  _selectedShopIdx = idx;
-  document.querySelectorAll('.shop-opt').forEach(function(b, i) {
-    b.classList.toggle('selected', i === idx);
-  });
-  document.getElementById('loginMsg').style.display = 'none';
-}
-
-function renderStatus(deliveries, shopId, hasOrderToday) {
-  var myDelivery = deliveries.find(function(d){ return d.shop_id === shopId; });
-  var card = document.getElementById('tr-status-card');
-  var icon = document.getElementById('tr-status-icon');
-  var text = document.getElementById('tr-status-text');
-  var sub  = document.getElementById('tr-status-sub');
-
-  if (!hasOrderToday) {
-    // No order scheduled for today
-    card.className = 'card';
-    card.style.background = '#f5f5f5';
-    card.style.borderColor = '#e0e0e0';
-    icon.textContent = '📋';
-    text.textContent = 'No Order Today';
-    text.style.color = '#8a7a6a';
-    sub.textContent  = 'No delivery is scheduled for your shop today.';
-  } else if (myDelivery) {
-    card.className = 'card status-delivered';
-    card.style.background = ''; card.style.borderColor = '';
-    icon.textContent = '✅';
-    text.textContent = 'Delivered Today!';
-    text.style.color = '#2d7a4f';
-    sub.textContent  = 'Your order was delivered at ' + (myDelivery.time || '—');
-  } else {
-    card.className = 'card status-pending';
-    card.style.background = ''; card.style.borderColor = '';
-    icon.textContent = '⏳';
-    text.textContent = 'Not Yet Delivered';
-    text.style.color = '#7a4800';
-    var done = deliveries.length;
-    sub.textContent = done > 0
-      ? 'Driver has completed ' + done + ' stop' + (done===1?'':'s') + ' so far today'
-      : 'Driver has not started deliveries yet';
-  }
-}
-
-async function refreshStatus() {
-  if (!_trackingShop || !_trackingDriver) return;
-  var btn = document.getElementById('tr-refresh-btn');
-  btn.textContent = '⏳ Checking…'; btn.disabled = true;
-  var results = await Promise.all([
-    api({ action: 'getOrders',    driver: _trackingDriver, date: todayStr() }),
-    api({ action: 'getDeliveries', driver: _trackingDriver, date: todayStr() })
-  ]);
-  var orders    = Array.isArray(results[0]) ? results[0] : [];
-  var deliveries = Array.isArray(results[1]) ? results[1] : [];
-  _hasOrderToday = orders.some(function(o){ return o.shop_id === _trackingShop.shop_id; });
-  renderStatus(deliveries, _trackingShop.shop_id, _hasOrderToday);
-  btn.textContent = '🔄 Refresh Status'; btn.disabled = false;
-}
-
-// Generate all DB format variants for a 10-digit number
-function mobileVariants(digits) {
-  return [
-    digits,                // 9876543210
-    '+91' + digits,        // +919876543210
-    '+91-' + digits,       // +91-9876543210
-    '91' + digits,         // 919876543210
-    "'" + digits,          // '9876543210
-    "'" + '91' + digits,   // '919876543210
-    "'" + '91-' + digits,  // '91-9876543210
-    '+' + digits,          // +9876543210
-  ];
-}
-
-async function trackDelivery() {
-  var raw = document.getElementById('phoneInput').value.trim();
-  var digits = normalizeMobile(raw);
-  if(digits.length !== 10){ showLoginMsg('Please enter a valid 10-digit mobile number.'); return; }
-
-  var btn = document.getElementById('trackBtn');
-  btn.innerHTML = '<span class="loading-spinner"></span>Tracking…';
-  btn.disabled = true;
-  document.getElementById('loginMsg').style.display = 'none';
-
-  try {
-    // 1. Look up shop by mobile — match any stored format using LIKE
-    // Use already-fetched shops if available (from onPhoneInput), else fetch now
-    var shops = _allFoundShops.length ? _allFoundShops : await api({ action: 'getShopByMobile', digits: digits });
-    if (!shops || !shops.length) {
-      showLoginMsg('Mobile number not found. Please check the number or contact us.');
-      btn.innerHTML = '🔍 Track My Delivery'; btn.disabled = false;
-      return;
+    function todayStr(){
+      var d=new Date();
+      return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
     }
 
-    // If multiple shops and none selected, ask user to pick
-    if (shops.length > 1 && _selectedShopIdx < 0) {
-      showLoginMsg('Please select your shop from the list above.');
-      btn.innerHTML = '🔍 Track My Delivery'; btn.disabled = false;
-      return;
+    // Normalize any mobile format to last 10 digits
+    function normalizeMobile(raw) {
+      return raw.replace(/\D/g, '').slice(-10);
     }
 
-    var shop = shops[_selectedShopIdx >= 0 ? _selectedShopIdx : 0];
-    _trackingShop   = shop;
-    var driverName  = shop.assigned_driver || '';
-    _trackingDriver = driverName;
+    // Module-level state for refresh
+    var _trackingShop = null, _trackingDriver = '';
+    var _allFoundShops = [], _selectedShopIdx = -1;
+    var _hasOrderToday = false;
 
-    // 2. Get driver details + orders + deliveries in parallel
-    var driverInfo = null;
-    var results = await Promise.all([
-      driverName ? api({ action: 'getDrivers' }) : Promise.resolve([]),
-      driverName ? api({ action: 'getOrders', driver: driverName, date: todayStr() }) : Promise.resolve([]),
-      driverName ? api({ action: 'getDeliveries', driver: driverName, date: todayStr() }) : Promise.resolve([])
-    ]);
-    var allDrivers = Array.isArray(results[0]) ? results[0] : [];
-    var todayOrders = Array.isArray(results[1]) ? results[1] : [];
-    var deliveries  = Array.isArray(results[2]) ? results[2] : [];
-    driverInfo = allDrivers.find(function(d){ return d.name === driverName; }) || null;
-
-    // Check if this shop has an order today
-    var hasOrderToday = todayOrders.some(function(o){ return o.shop_id === shop.shop_id; });
-
-    // 4. Find last delivery (most recent time)
-    var lastDeliv = null;
-    if (deliveries.length) {
-      deliveries.sort(function(a,b){ return (b.time||'') > (a.time||'') ? 1 : -1; });
-      lastDeliv = deliveries[0];
+    function selectShop(idx) {
+      _selectedShopIdx = idx;
+      document.querySelectorAll('.shop-opt').forEach(function(b, i) {
+        b.classList.toggle('selected', i === idx);
+      });
+      document.getElementById('loginMsg').style.display = 'none';
     }
 
-    _hasOrderToday = hasOrderToday;
-
-    // ── Render result ──
-    renderStatus(deliveries, shop.shop_id, hasOrderToday);
-    document.getElementById('tr-name').textContent = shop.name || 'Your Shop';
-    document.getElementById('tr-area').textContent = (shop.area ? '📍 ' + shop.area : '') + (shop.address ? ' · ' + shop.address : '');
-
-    // Driver contact
-    var driverMobile = (driverInfo && driverInfo.mobile) ? driverInfo.mobile : '';
-    document.getElementById('tr-driver-name').textContent = driverName || 'Not assigned';
-    if (driverMobile) {
-      document.getElementById('tr-driver-call').href = 'tel:' + driverMobile;
-      document.getElementById('tr-driver-call').style.display = '';
-    } else {
-      document.getElementById('tr-driver-call').style.display = 'none';
+    function shopIdMatch(a, b){
+      return String(a||'') === String(b||'');
+    }
+    function orderBelongsToShop(o, shop){
+      if(!shop) return false;
+      var sid = String(shop.shop_id||'');
+      var cid = String(shop.customer_id||shop.shop_id||'');
+      return shopIdMatch(o.shop_id, sid) || shopIdMatch(o.shop_id, cid)
+          || shopIdMatch(o.customer_id, sid) || shopIdMatch(o.customer_id, cid);
     }
 
-    // Level 1: Logistic Owner
-document.getElementById('tr-esc1-name').textContent = CONFIG.LOGISTICS_OWNER1_NAME || 'Logistic Owner';
-document.getElementById('tr-esc1-num').textContent  = CONFIG.LOGISTICS_OWNER1_MOBILE || '';
-document.getElementById('tr-esc1-call').href = 'tel:' + (CONFIG.LOGISTICS_OWNER1_MOBILE || '');
+    function renderStatus(deliveries, shopId, hasOrderToday, portalStatus) {
+      var myDelivery = (deliveries||[]).find(function(d){ return shopIdMatch(d.shop_id, shopId); });
+      var card = document.getElementById('tr-status-card');
+      var icon = document.getElementById('tr-status-icon');
+      var text = document.getElementById('tr-status-text');
+      var sub  = document.getElementById('tr-status-sub');
 
-// Siddhesh Satelkar (fixed) — or use CONFIG.LOGISTICS_OWNER2 if set
-    document.getElementById('tr-esc1b-name').textContent = CONFIG.LOGISTICS_OWNER2_NAME || 'Siddhesh Satelkar';
-    document.getElementById('tr-esc1b-num').textContent  = CONFIG.LOGISTICS_OWNER2_MOBILE || '9886527036';
-    document.getElementById('tr-esc1b-call').href = 'tel:' + (CONFIG.LOGISTICS_OWNER2_MOBILE || '9886527036');
-
-// Level 2: Its Baked Manager — Shubham
-document.getElementById('tr-owner1-name').textContent = 'Shubham';
-document.getElementById('tr-owner1-num').textContent  = '+91 95951 57111';
-document.getElementById('tr-owner1-call').href = 'tel:+919595157111';
-    // Reset escalation sections on each login
-    document.getElementById('escalateSection1').style.display = 'none';
-    document.getElementById('escalateSection2').style.display = 'none';
-
-    // Last delivery box
-    var ldEl = document.getElementById('tr-last-deliv');
-    if (lastDeliv) {
-      var mapLink = (lastDeliv.lat && lastDeliv.lng)
-        ? '<a href="https://www.google.com/maps?q='+lastDeliv.lat+','+lastDeliv.lng+'" target="_blank" style="font-size:11px;color:#1565c0;font-family:monospace;font-weight:700;margin-top:4px;display:inline-block">📍 View on Map ↗</a>'
-        : '';
-      ldEl.innerHTML = '<div class="deliv-box">'
-        + '<div class="deliv-shop">📦 ' + esc(lastDeliv.shop_name || '—') + '</div>'
-        + '<div class="deliv-time">🕐 Delivered at ' + (lastDeliv.time || '—') + '</div>'
-        + mapLink
-        + '</div>'
-        + '<div style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-top:6px">Total deliveries today: <b>' + deliveries.length + '</b></div>';
-    } else {
-      ldEl.innerHTML = '<div class="no-deliv">⏳ No deliveries recorded yet today. The driver may be on their way.</div>';
-    }
-
-    // Live tracking link — from driver record (enable/disable per driver)
-    // tracking_url may be a full Ajjas share text like: See "..." live location in Ajjas  https://...
-    // Extract just the https:// URL from it if present
-    var trackingRaw    = (driverInfo && driverInfo.tracking_url)     ? driverInfo.tracking_url     : '';
-    var trackingOn     = (driverInfo && driverInfo.tracking_enabled)  ? driverInfo.tracking_enabled : false;
-    var urlMatch       = trackingRaw.match(/https?:\/\/\S+/);
-    var trackingUrl    = urlMatch ? urlMatch[0] : trackingRaw;
-    var ajjasEl = document.getElementById('tr-ajjas');
-    if (trackingUrl && trackingOn) {
-      ajjasEl.href = trackingUrl;
-      ajjasEl.style.display = 'block';
-    } else {
-      ajjasEl.style.display = 'none';
-    }
-
-    // Show result, hide login
-    document.getElementById('loginSection').style.display = 'none';
-    document.getElementById('trackingResult').style.display = 'block';
-
-    // Load last 7 days of order history for this shop
-    loadOrderHistory(shop.shop_id);
-
-  } catch(e) {
-    showLoginMsg('Something went wrong. Please try again.');
-  }
-
-  btn.innerHTML = '🔍 Track My Delivery'; btn.disabled = false;
-}
-
-function loadOrderHistory(shopId){
-  var card = document.getElementById('tr-history-card');
-  var el   = document.getElementById('tr-order-history');
-  card.style.display = 'none';
-  api({action:'getCustomerOrders', shop_id:shopId, limit:20}).then(function(orders){
-    if(!orders||!orders.length){ return; }
-    // Show last 7 days max
-    var cutoff = new Date(); cutoff.setDate(cutoff.getDate()-7);
-    var recent = orders.filter(function(o){
-      return o.delivery_date && new Date(o.delivery_date) >= cutoff;
-    });
-    if(!recent.length) return;
-    card.style.display = 'block';
-    el.innerHTML = recent.map(function(o){
-      var statusColor = o.status==='delivered'?'#2d7a4f':o.status==='approved'?'#1565c0':'#7a4800';
-      var statusLabel = o.status==='delivered'?'✅ Delivered':o.status==='approved'?'📋 Approved':'⏳ '+o.status;
-      return '<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:7px 0;border-bottom:1px solid #f0e8dc">'
-        +'<div>'
-          +'<div style="font-size:12px;font-weight:700;color:#4a2f14">'+esc(o.delivery_date||o.created_at||'')+'</div>'
-          +'<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px">'+esc(o.items||'—')+'</div>'
-        +'</div>'
-        +'<span style="font-size:10px;font-weight:800;font-family:monospace;color:'+statusColor+';white-space:nowrap;margin-left:8px">'+statusLabel+'</span>'
-        +'</div>';
-    }).join('');
-  }).catch(function(){});
-}
-
-var _phoneTimer = null;
-function onPhoneInput(val) {
-  var digits = normalizeMobile(val);
-  var preview  = document.getElementById('shopPreview');
-  var selector = document.getElementById('shopSelector');
-  if (digits.length !== 10) {
-    preview.style.display = 'none';
-    selector.style.display = 'none';
-    _allFoundShops = []; _selectedShopIdx = -1;
-    return;
-  }
-  clearTimeout(_phoneTimer);
-  _phoneTimer = setTimeout(function() {
-    api({ action: 'getShopByMobile', digits: digits }).then(function(shops) {
-      _allFoundShops = shops || [];
-      _selectedShopIdx = -1;
-      if (!_allFoundShops.length) {
-        preview.style.display = 'none';
-        selector.style.display = 'none';
-      } else if (_allFoundShops.length === 1) {
-        // Single shop — show simple preview
-        selector.style.display = 'none';
-        document.getElementById('shopPreviewName').textContent = _allFoundShops[0].name || '';
-        document.getElementById('shopPreviewArea').textContent = _allFoundShops[0].area ? '📍 ' + _allFoundShops[0].area : '';
-        preview.style.display = 'block';
-        _selectedShopIdx = 0;
+      if (!hasOrderToday) {
+        card.className = 'card';
+        card.style.background = '#f5f5f5';
+        card.style.borderColor = '#e0e0e0';
+        icon.textContent = '📋';
+        text.textContent = 'No Order Today';
+        text.style.color = '#8a7a6a';
+        sub.textContent  = 'No delivery is scheduled for your shop today.';
+      } else if (myDelivery) {
+        card.className = 'card status-delivered';
+        card.style.background = ''; card.style.borderColor = '';
+        icon.textContent = '✅';
+        text.textContent = 'Delivered Today!';
+        text.style.color = '#2d7a4f';
+        sub.textContent  = 'Your order was delivered at ' + (myDelivery.time || '—');
       } else {
-        // Multiple shops — show selector
-        preview.style.display = 'none';
-        var list = document.getElementById('shopSelectorList');
-        list.innerHTML = _allFoundShops.map(function(s, i) {
-          return '<button class="shop-opt" onclick="selectShop('+i+')">'
-            + '🏪 ' + (s.name || 'Shop') + (s.area ? ' <span style="font-size:11px;color:#8a7a6a;font-weight:500">· ' + s.area + '</span>' : '')
-            + '</button>';
-        }).join('');
-        selector.style.display = 'block';
+        card.className = 'card status-pending';
+        card.style.background = ''; card.style.borderColor = '';
+        var st = (portalStatus||'').toLowerCase();
+        if(st === 'dispatched' || st === 'packaging'){
+          icon.textContent = '🚚';
+          text.textContent = st === 'dispatched' ? 'Out for Delivery' : 'Being Packed';
+          text.style.color = '#7a4800';
+        } else if(st === 'approved'){
+          icon.textContent = '🍳';
+          text.textContent = 'In Kitchen';
+          text.style.color = '#7a4800';
+        } else {
+          icon.textContent = '⏳';
+          text.textContent = 'Not Yet Delivered';
+          text.style.color = '#7a4800';
+        }
+        var done = (deliveries||[]).length;
+        var st = (portalStatus||'').toLowerCase();
+        if(done > 0){
+          sub.textContent = 'Driver has completed ' + done + ' stop' + (done===1?'':'s') + ' so far today';
+        } else if(st === 'dispatched' || st === 'packaging'){
+          sub.textContent = 'Your order is on the route. Stop updates appear when the driver marks each shop.';
+        } else {
+          sub.textContent = 'Waiting for the driver to start the route.';
+        }
       }
-    }).catch(function(){ preview.style.display = 'none'; selector.style.display = 'none'; });
-  }, 400);
-}
+    }
 
-function showLoginMsg(msg) {
-  var el = document.getElementById('loginMsg');
-  el.textContent = msg; el.style.display = 'block';
-}
+    function normDriver(s){
+      return String(s||'').toLowerCase().replace(/\s+/g,' ').trim();
+    }
+    function sameDriver(a,b){
+      return normDriver(a) && normDriver(a) === normDriver(b);
+    }
+    function filterDelsByDriver(allDel, driverName){
+      if(!driverName) return allDel.slice();
+      return allDel.filter(function(d){ return sameDriver(d.driver, driverName); });
+    }
 
-function resetTracking() {
-  document.getElementById('loginSection').style.display = 'block';
-  document.getElementById('trackingResult').style.display = 'none';
-  document.getElementById('loginMsg').style.display = 'none';
-  document.getElementById('shopPreview').style.display = 'none';
-  document.getElementById('shopSelector').style.display = 'none';
-  document.getElementById('phoneInput').value = '';
-  _trackingShop = null; _trackingDriver = '';
-  _allFoundShops = []; _selectedShopIdx = -1;
-  var card = document.getElementById('tr-status-card');
-  card.className = 'card';
-  document.getElementById('tr-status-icon').textContent = '⏳';
-  document.getElementById('tr-status-text').textContent = 'Checking…';
-  document.getElementById('tr-status-sub').textContent = '';
-}
+    async function resolveTodayDriver(shop){
+      // Prefer driver on today's logistics order (leave reassignment), else shop default.
+      // If that driver has 0 stops but the other candidate has stops, switch.
+      var today = todayStr();
+      var results = await Promise.all([
+        api({ action: 'getOrders', date: today }),
+        api({ action: 'getCustomerOrders', shop_id: shop.shop_id, delivery_date: today, limit: 20 }),
+        api({ action: 'getDeliveries', date: today })
+      ]);
+      var orders = Array.isArray(results[0]) ? results[0] : [];
+      var portal = (Array.isArray(results[1]) ? results[1] : []).filter(function(o){ return o.status && o.status !== 'rejected'; });
+      var allDel = Array.isArray(results[2]) ? results[2] : [];
+      var myOrder = orders.find(function(o){ return orderBelongsToShop(o, shop); }) || null;
 
-function toggleEscalation(level){
-  var secId = 'escalateSection' + level;
-  var btnId = 'esc-btn' + level;
-  var sec = document.getElementById(secId);
-  var btn = document.getElementById(btnId);
-  var isOpen = sec.style.display === 'block';
-  if(!isOpen){
-    sec.style.display = 'block';
-    btn.style.background = '#fde8e8'; btn.style.borderColor = '#c8382a'; btn.style.color = '#c8382a';
-       btn.textContent = level===1 ? '✖ Hide level 1 contacts' : '✖ Hide level 2 contacts';
-  } else {
-    ...
-    btn.textContent = level===1 ? '⚠️ Issue not resolved? Escalate →' : '🔴 Still not resolved? Escalate →';}
-    btn.style.cssText = '';
-    btn.textContent = level===1 ? '⚠️ Issue not resolved? Escalate →' : '🔴 Still not resolved? Escalate to Owner →';
-  }
-}
+      var orderDrv = (myOrder && myOrder.driver) ? myOrder.driver : '';
+      var shopDrv  = shop.assigned_driver || '';
+      var driverName = orderDrv || shopDrv;
 
-function esc(s){
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
+      // If this shop already delivered under someone, that is the truth
+      var mineDel = allDel.find(function(d){ return shopIdMatch(d.shop_id, shop.shop_id); });
+      if(mineDel && mineDel.driver){
+        driverName = mineDel.driver;
+      } else {
+        // Pick candidate with active route (most deliveries today)
+        var cands = [];
+        if(orderDrv) cands.push(orderDrv);
+        if(shopDrv && !sameDriver(shopDrv, orderDrv)) cands.push(shopDrv);
+        if(cands.length > 1){
+          var best = driverName, bestN = filterDelsByDriver(allDel, driverName).length;
+          cands.forEach(function(c){
+            var n = filterDelsByDriver(allDel, c).length;
+            if(n > bestN){ best = c; bestN = n; }
+          });
+          driverName = best;
+        }
+      }
+
+      return {
+        driverName: driverName,
+        myOrder: myOrder,
+        portal: portal,
+        allDeliveries: allDel,
+        deliveries: filterDelsByDriver(allDel, driverName),
+        hasOrder: !!(myOrder || portal.length),
+        portalStatus: portal[0] ? portal[0].status : ''
+      };
+    }
+
+    async function refreshStatus() {
+      if (!_trackingShop) return;
+      var btn = document.getElementById('tr-refresh-btn');
+      btn.textContent = '⏳ Checking…'; btn.disabled = true;
+      var shop = _trackingShop;
+      try {
+        var resolved = await resolveTodayDriver(shop);
+        var driverName = resolved.driverName;
+        _trackingDriver = driverName;
+        var deliveries = resolved.deliveries || [];
+        _hasOrderToday = resolved.hasOrder;
+        renderStatus(deliveries, shop.shop_id, _hasOrderToday, resolved.portalStatus);
+        var nameEl = document.getElementById('tr-driver-name');
+        if(nameEl && driverName){
+          var permanent = shop.assigned_driver || '';
+          nameEl.textContent = (permanent && driverName && !sameDriver(permanent, driverName))
+            ? (driverName + ' (today)') : driverName;
+        }
+      } catch(e){}
+      btn.textContent = '🔄 Refresh Status'; btn.disabled = false;
+    }
+
+    // Generate all DB format variants for a 10-digit number
+    function mobileVariants(digits) {
+      return [
+        digits,                // 9876543210
+        '+91' + digits,        // +919876543210
+        '+91-' + digits,       // +91-9876543210
+        '91' + digits,         // 919876543210
+        "'" + digits,          // '9876543210
+        "'" + '91' + digits,   // '919876543210
+        "'" + '91-' + digits,  // '91-9876543210
+        '+' + digits,          // +9876543210
+      ];
+    }
+
+    async function trackDelivery() {
+      var raw = document.getElementById('phoneInput').value.trim();
+      var digits = normalizeMobile(raw);
+      if(digits.length !== 10){ showLoginMsg('Please enter a valid 10-digit mobile number.'); return; }
+
+      var btn = document.getElementById('trackBtn');
+      btn.innerHTML = '<span class="loading-spinner"></span>Tracking…';
+      btn.disabled = true;
+      document.getElementById('loginMsg').style.display = 'none';
+
+      try {
+        // 1. Look up shop by mobile — match any stored format using LIKE
+        // Use already-fetched shops if available (from onPhoneInput), else fetch now
+        var shops = _allFoundShops.length ? _allFoundShops : await api({ action: 'getShopByMobile', digits: digits });
+        if (!shops || !shops.length) {
+          showLoginMsg('Mobile number not found. Please check the number or contact us.');
+          btn.innerHTML = '🔍 Track My Delivery'; btn.disabled = false;
+          return;
+        }
+
+        // If multiple shops and none selected, ask user to pick
+        if (shops.length > 1 && _selectedShopIdx < 0) {
+          showLoginMsg('Please select your shop from the list above.');
+          btn.innerHTML = '🔍 Track My Delivery'; btn.disabled = false;
+          return;
+        }
+
+        var shop = shops[_selectedShopIdx >= 0 ? _selectedShopIdx : 0];
+        _trackingShop = shop;
+
+        // 2. Resolve TODAY's actual driver (order / delivery / active route)
+        var resolved = await resolveTodayDriver(shop);
+        var driverName = resolved.driverName || '';
+        _trackingDriver = driverName;
+        var hasOrderToday = resolved.hasOrder;
+        var portalStatus = resolved.portalStatus;
+        var deliveries = resolved.deliveries || [];
+
+        var allDrivers = await api({ action: 'getDrivers' });
+        allDrivers = Array.isArray(allDrivers) ? allDrivers : [];
+        var driverInfo = allDrivers.find(function(d){ return sameDriver(d.name, driverName); }) || null;
+
+        // 4. Find last delivery (most recent time) on this driver's route
+        var lastDeliv = null;
+        if (deliveries.length) {
+          deliveries.sort(function(a,b){ return (b.time||'') > (a.time||'') ? 1 : -1; });
+          lastDeliv = deliveries[0];
+        }
+
+        _hasOrderToday = hasOrderToday;
+
+        // ── Render result ──
+        renderStatus(deliveries, shop.shop_id, hasOrderToday, portalStatus);
+        document.getElementById('tr-name').textContent = shop.name || 'Your Shop';
+        document.getElementById('tr-area').textContent = (shop.area ? '📍 ' + shop.area : '') + (shop.address ? ' · ' + shop.address : '');
+
+        // Driver contact — today's route driver (may differ from permanent assignment)
+        var driverMobile = (driverInfo && driverInfo.mobile) ? driverInfo.mobile : '';
+        var permanent = shop.assigned_driver || '';
+        var driverLabel = driverName || 'Not assigned';
+        if(driverName && permanent && driverName !== permanent){
+          driverLabel = driverName + ' (today)';
+        }
+        document.getElementById('tr-driver-name').textContent = driverLabel;
+        if (driverMobile) {
+          document.getElementById('tr-driver-call').href = 'tel:' + driverMobile;
+          document.getElementById('tr-driver-call').style.display = '';
+        } else {
+          document.getElementById('tr-driver-call').style.display = 'none';
+        }
+
+        // Level 1: Logistic Owner
+    document.getElementById('tr-esc1-name').textContent = CONFIG.LOGISTICS_OWNER1_NAME || 'Logistic Owner';
+    document.getElementById('tr-esc1-num').textContent  = CONFIG.LOGISTICS_OWNER1_MOBILE || '';
+    document.getElementById('tr-esc1-call').href = 'tel:' + (CONFIG.LOGISTICS_OWNER1_MOBILE || '');
+
+    // Siddhesh Satelkar (fixed) — or use CONFIG.LOGISTICS_OWNER2 if set
+        document.getElementById('tr-esc1b-name').textContent = CONFIG.LOGISTICS_OWNER2_NAME || 'Siddhesh Satelkar';
+        document.getElementById('tr-esc1b-num').textContent  = CONFIG.LOGISTICS_OWNER2_MOBILE || '9886527036';
+        document.getElementById('tr-esc1b-call').href = 'tel:' + (CONFIG.LOGISTICS_OWNER2_MOBILE || '9886527036');
+
+    // Level 2: Its Baked Manager — Shubham
+    document.getElementById('tr-owner1-name').textContent = 'Shubham';
+    document.getElementById('tr-owner1-num').textContent  = '+91 95951 57111';
+    document.getElementById('tr-owner1-call').href = 'tel:+919595157111';
+        // Reset escalation sections on each login
+        document.getElementById('escalateSection1').style.display = 'none';
+        document.getElementById('escalateSection2').style.display = 'none';
+
+        // Last delivery box
+        var ldEl = document.getElementById('tr-last-deliv');
+        if (lastDeliv) {
+          var mapLink = (lastDeliv.lat && lastDeliv.lng)
+            ? '<a href="https://www.google.com/maps?q='+lastDeliv.lat+','+lastDeliv.lng+'" target="_blank" style="font-size:11px;color:#1565c0;font-family:monospace;font-weight:700;margin-top:4px;display:inline-block">📍 View on Map ↗</a>'
+            : '';
+          ldEl.innerHTML = '<div class="deliv-box">'
+            + '<div class="deliv-shop">📦 ' + esc(lastDeliv.shop_name || '—') + '</div>'
+            + '<div class="deliv-time">🕐 Delivered at ' + (lastDeliv.time || '—') + '</div>'
+            + mapLink
+            + '</div>'
+            + '<div style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-top:6px">Total deliveries today: <b>' + deliveries.length + '</b></div>';
+        } else {
+          ldEl.innerHTML = '<div class="no-deliv">⏳ No deliveries recorded yet today. The driver may be on their way.</div>';
+        }
+
+        // Live tracking link — from driver record (enable/disable per driver)
+        // tracking_url may be a full Ajjas share text like: See "..." live location in Ajjas  https://...
+        // Extract just the https:// URL from it if present
+        var trackingRaw    = (driverInfo && driverInfo.tracking_url)     ? driverInfo.tracking_url     : '';
+        var trackingOn     = (driverInfo && driverInfo.tracking_enabled)  ? driverInfo.tracking_enabled : false;
+        var urlMatch       = trackingRaw.match(/https?:\/\/\S+/);
+        var trackingUrl    = urlMatch ? urlMatch[0] : trackingRaw;
+        var ajjasEl = document.getElementById('tr-ajjas');
+        if (trackingUrl && trackingOn) {
+          ajjasEl.href = trackingUrl;
+          ajjasEl.style.display = 'block';
+        } else {
+          ajjasEl.style.display = 'none';
+        }
+
+        // Show result, hide login
+        document.getElementById('loginSection').style.display = 'none';
+        document.getElementById('trackingResult').style.display = 'block';
+
+        // Load last 7 days of order history for this shop
+        loadOrderHistory(shop.shop_id);
+
+      } catch(e) {
+        showLoginMsg('Something went wrong. Please try again.');
+      }
+
+      btn.innerHTML = '🔍 Track My Delivery'; btn.disabled = false;
+    }
+
+    function loadOrderHistory(shopId){
+      var card = document.getElementById('tr-history-card');
+      var el   = document.getElementById('tr-order-history');
+      card.style.display = 'none';
+      api({action:'getCustomerOrders', shop_id:shopId, limit:20}).then(function(orders){
+        if(!orders||!orders.length){ return; }
+        // Show last 7 days max
+        var cutoff = new Date(); cutoff.setDate(cutoff.getDate()-7);
+        var recent = orders.filter(function(o){
+          return o.delivery_date && new Date(o.delivery_date) >= cutoff;
+        });
+        if(!recent.length) return;
+        card.style.display = 'block';
+        el.innerHTML = recent.map(function(o){
+          var statusColor = o.status==='delivered'?'#2d7a4f':o.status==='approved'?'#1565c0':'#7a4800';
+          var statusLabel = o.status==='delivered'?'✅ Delivered':o.status==='approved'?'📋 Approved':'⏳ '+o.status;
+          return '<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:7px 0;border-bottom:1px solid #f0e8dc">'
+            +'<div>'
+              +'<div style="font-size:12px;font-weight:700;color:#4a2f14">'+esc(o.delivery_date||o.created_at||'')+'</div>'
+              +'<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px">'+esc(o.items||'—')+'</div>'
+            +'</div>'
+            +'<span style="font-size:10px;font-weight:800;font-family:monospace;color:'+statusColor+';white-space:nowrap;margin-left:8px">'+statusLabel+'</span>'
+            +'</div>';
+        }).join('');
+      }).catch(function(){});
+    }
+
+    var _phoneTimer = null;
+    function onPhoneInput(val) {
+      var digits = normalizeMobile(val);
+      var preview  = document.getElementById('shopPreview');
+      var selector = document.getElementById('shopSelector');
+      if (digits.length !== 10) {
+        preview.style.display = 'none';
+        selector.style.display = 'none';
+        _allFoundShops = []; _selectedShopIdx = -1;
+        return;
+      }
+      clearTimeout(_phoneTimer);
+      _phoneTimer = setTimeout(function() {
+        api({ action: 'getShopByMobile', digits: digits }).then(function(shops) {
+          _allFoundShops = shops || [];
+          _selectedShopIdx = -1;
+          if (!_allFoundShops.length) {
+            preview.style.display = 'none';
+            selector.style.display = 'none';
+          } else if (_allFoundShops.length === 1) {
+            // Single shop — show simple preview
+            selector.style.display = 'none';
+            document.getElementById('shopPreviewName').textContent = _allFoundShops[0].name || '';
+            document.getElementById('shopPreviewArea').textContent = _allFoundShops[0].area ? '📍 ' + _allFoundShops[0].area : '';
+            preview.style.display = 'block';
+            _selectedShopIdx = 0;
+          } else {
+            // Multiple shops — show selector
+            preview.style.display = 'none';
+            var list = document.getElementById('shopSelectorList');
+            list.innerHTML = _allFoundShops.map(function(s, i) {
+              return '<button class="shop-opt" onclick="selectShop('+i+')">'
+                + '🏪 ' + (s.name || 'Shop') + (s.area ? ' <span style="font-size:11px;color:#8a7a6a;font-weight:500">· ' + s.area + '</span>' : '')
+                + '</button>';
+            }).join('');
+            selector.style.display = 'block';
+          }
+        }).catch(function(){ preview.style.display = 'none'; selector.style.display = 'none'; });
+      }, 400);
+    }
+
+    function showLoginMsg(msg) {
+      var el = document.getElementById('loginMsg');
+      el.textContent = msg; el.style.display = 'block';
+    }
+
+    function resetTracking() {
+      document.getElementById('loginSection').style.display = 'block';
+      document.getElementById('trackingResult').style.display = 'none';
+      document.getElementById('loginMsg').style.display = 'none';
+      document.getElementById('shopPreview').style.display = 'none';
+      document.getElementById('shopSelector').style.display = 'none';
+      document.getElementById('phoneInput').value = '';
+      _trackingShop = null; _trackingDriver = '';
+      _allFoundShops = []; _selectedShopIdx = -1;
+      var card = document.getElementById('tr-status-card');
+      card.className = 'card';
+      document.getElementById('tr-status-icon').textContent = '⏳';
+      document.getElementById('tr-status-text').textContent = 'Checking…';
+      document.getElementById('tr-status-sub').textContent = '';
+    }
+
+    function toggleEscalation(level){
+      var secId = 'escalateSection' + level;
+      var btnId = 'esc-btn' + level;
+      var sec = document.getElementById(secId);
+      var btn = document.getElementById(btnId);
+      var isOpen = sec.style.display === 'block';
+      if(!isOpen){
+        sec.style.display = 'block';
+        btn.style.background = '#fde8e8';
+        btn.style.borderColor = '#c8382a';
+        btn.style.color = '#c8382a';
+        btn.textContent = level===1 ? '✖ Hide level 1 contacts' : '✖ Hide level 2 contacts';
+      } else {
+        sec.style.display = 'none';
+        btn.style.cssText = '';
+        btn.textContent = level===1 ? '⚠️ Issue not resolved? Escalate →' : '🔴 Still not resolved? Escalate →';
+      }
+    }
+
+    function esc(s){
+      return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
 </script>
 </body>
 </html>
