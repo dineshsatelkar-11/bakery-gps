@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance & Billing Dashboard Preview</title>
+    <!-- Bootstrap 5 CSS for UI styling -->
+    <link href="https://jsdelivr.net" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; }
+        .dashboard-card { background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 24px; margin-bottom: 20px; }
+        .calendar-grid-header div { padding: 10px; color: #555; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        .calendar-day-cell { transition: all 0.2s ease-in-out; border-right: 1px solid #e9ecef; border-bottom: 1px solid #e9ecef; }
+        .calendar-day-cell:hover { transform: scale(1.02); z-index: 2; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .active-cell { border: 2px solid #0d6efd !important; box-shadow: inset 0 0 0 1px #0d6efd; }
+        .badge-route { font-size: 0.75rem; padding: 4px 8px; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- Mock Header mirroring your UI -->
+    <div class="d-flex align-items-center mb-4 pb-2 border-bottom">
+        <h2 class="text-dark m-0">🥖 IBCAB Admin Dashboard</h2>
+        <span class="badge bg-secondary ms-3">Interactive Live Preview</span>
+    </div>
+
+    <!-- Attendance Control Card -->
+    <div class="dashboard-card">
+        <h4 class="mb-3 text-primary">🚛 Tempo Attendance & Route Audit Pipeline</h4>
+        <p class="text-muted small">Select a month to see vehicle dispatch metrics. Click on any green active day box to audit route runs for client billing records.</p>
+
+        <div class="d-flex align-items-center gap-2 mb-4">
+            <label for="attendanceMonth" class="fw-bold text-secondary">Select Month:</label>
+            <input type="month" id="attendanceMonth" class="form-control" style="width:220px;" value="2026-08">
+        </div>
+
+        <!-- Calendar Container Grid -->
+        <div id="calendarWidgetContainer" class="border rounded overflow-hidden">
+            <div class="calendar-grid-header bg-light border-bottom" style="display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-weight: bold;">
+                <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+            </div>
+            <div id="calendarDaysGrid" style="display: grid; grid-template-columns: repeat(7, 1fr);">
+                <!-- Injected via JavaScript below -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Breakdown Card -->
+    <div id="dailyRouteDetails" class="dashboard-card" style="display:none;">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 id="selectedDateTitle" class="m-0 text-dark">Deliveries Breakdown</h4>
+            <button class="btn btn-sm btn-outline-primary" onclick="window.print()">🖨 Print Invoice Report</button>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle border">
+                <thead class="table-light">
+                <tr>
+                    <th>Driver Name</th>
+                    <th>Shop / Client Serviced</th>
+                    <th>Delivery Timestamp</th>
+                    <th>Log Verification Status</th>
+                </tr>
+                </thead>
+                <tbody id="dailyDetailsBody">
+                <!-- Injected via JavaScript below -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Simulated Mock Data Engine -->
+<script>
+    // Simulated database arrays imitating Supabase response layers matching your data schemas
+    const mockRoutes = [
+      { date: "2026-08-03", driver: "Bharat" },
+      { date: "2026-08-03", driver: "Rahul" },
+      { date: "2026-08-03", driver: "Satish" },
+      { date: "2026-08-04", driver: "Bharat" },
+      { date: "2026-08-04", driver: "Satish" },
+      { date: "2026-08-05", driver: "Bharat" },
+      { date: "2026-08-05", driver: "Rahul" },
+      { date: "2026-08-05", driver: "Amit" },
+      { date: "2026-08-05", driver: "Satish" },
+      { date: "2026-08-07", driver: "Bharat" }
+    ];
+
+    const mockDeliveries = [
+      { date: "2026-08-03", driver: "Bharat", shop_name: "Tea Post · Kharadi Node", time: "07:15 AM" },
+      { date: "2026-08-03", driver: "Rahul", shop_name: "Tea Post · Viman Nagar", time: "07:45 AM" },
+      { date: "2026-08-03", driver: "Satish", shop_name: "Tea Post · Hadapsar Cross", time: "08:10 AM" },
+      { date: "2026-08-04", driver: "Bharat", shop_name: "Tea Post · Kharadi Node", time: "07:22 AM" },
+      { date: "2026-08-04", driver: "Satish", shop_name: "Tea Post · Hadapsar Cross", time: "07:55 AM" },
+      { date: "2026-08-05", driver: "Bharat", shop_name: "Tea Post · Kharadi Node", time: "07:05 AM" },
+      { date: "2026-08-05", driver: "Rahul", shop_name: "Tea Post · Viman Nagar", time: "07:30 AM" },
+      { date: "2026-08-05", driver: "Amit", shop_name: "Tea Post · Wagholi Branch", time: "08:40 AM" },
+      { date: "2026-08-05", driver: "Satish", shop_name: "Tea Post · Hadapsar Cross", time: "07:50 AM" },
+      { date: "2026-08-07", driver: "Bharat", shop_name: "Tea Post · Kharadi Node", time: "07:12 AM" },
+      { date: "2026-08-07", driver: "Unknown Driver", shop_name: "Direct Franchise Counter Sale", time: "11:30 AM" } // Test case for Direct Entry flag
+    ];
+
+    // Initialize view on load
+    document.addEventListener("DOMContentLoaded", () => {
+      renderCalendar("2026-08");
+      document.getElementById('attendanceMonth').addEventListener('change', (e) => renderCalendar(e.target.value));
+    });
+
+    function renderCalendar(yearMonth) {
+      const grid = document.getElementById('calendarDaysGrid');
+      document.getElementById('dailyRouteDetails').style.display = 'none';
+      grid.innerHTML = '';
+
+      const [year, month] = yearMonth.split('-').map(Number);
+      const firstDayIndex = new Date(year, month - 1, 1).getDay();
+      const totalDays = new Date(year, month, 0).getDate();
+
+      // 1. Generate padding days for grid alignment
+      for (let i = 0; i < firstDayIndex; i++) {
+        const padCell = document.createElement('div');
+        padCell.style.cssText = "background: #fdfdfd; height: 85px; border-right: 1px solid #e9ecef; border-bottom: 1px solid #e9ecef;";
+        grid.appendChild(padCell);
+      }
+
+      // 2. Generate actual month operational squares
+      for (let d = 1; d <= totalDays; d++) {
+        const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+
+        // Calculate distinct active tempos via Set logic
+        const activeDrivers = new Set(mockRoutes.filter(r => r.date === dateStr).map(r => r.driver));
+        const tempoCount = activeDrivers.size;
+
+        const cell = document.createElement('div');
+        cell.className = 'calendar-day-cell';
+        cell.dataset.date = dateStr;
+
+        // Theme states based on tempo activity
+        const hasActivity = tempoCount > 0;
+        cell.style.cssText = `padding: 8px; height: 85px; position: relative; cursor: pointer; background: ${hasActivity ? '#f4fbf7' : '#ffffff'};`;
+
+        cell.innerHTML = `
+          <span class="fw-bold ${hasActivity ? 'text-success' : 'text-secondary'}" style="font-size: 0.95rem;">${d}</span>
+          <div class="text-center mt-2" style="font-size: 0.8rem; font-weight: 600; color: ${hasActivity ? '#198754' : '#adb5bd'};">
+            ${hasActivity ? `🚛 ${tempoCount} Tempos` : '•'}
+          </div>
+        `;
+
+        cell.addEventListener('click', function() {
+          document.querySelectorAll('.calendar-day-cell').forEach(c => c.classList.remove('active-cell'));
+          this.classList.add('active-cell');
+          loadDailyBreakdown(dateStr);
+        });
+
+        grid.appendChild(cell);
+      }
+    }
+
+    function loadDailyBreakdown(selectedDate) {
+      const reportSection = document.getElementById('dailyRouteDetails');
+      const title = document.getElementById('selectedDateTitle');
+      const tbody = document.getElementById('dailyDetailsBody');
+
+      const formattedDate = new Date(selectedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+      title.innerHTML = `📋 Active Route Deliveries Audit — <strong>${formattedDate}</strong>`;
+      tbody.innerHTML = '';
+
+      const dailyDeliveries = mockDeliveries.filter(d => d.date === selectedDate);
+      const dailyRoutes = mockRoutes.filter(r => r.date === selectedDate);
+
+      if (dailyDeliveries.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-muted">No route runs or deliveries logged for this date.</td></tr>`;
+      } else {
+        dailyDeliveries.forEach(del => {
+          // Validation check logic
+          const isVerified = dailyRoutes.some(r => r.driver === del.driver);
+          const statusBadge = isVerified
+            ? `<span class="badge bg-success-subtle text-success border border-success-subtle badge-route">✓ Route Logged</span>`
+            : `<span class="badge bg-warning-subtle text-warning border border-warning-subtle badge-route">⚠ Manual Override Entry</span>`;
+
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td><strong>${del.driver}</strong></td>
+            <td>${del.shop_name}</td>
+            <td><code class="text-dark">${del.time}</code></td>
+            <td>${statusBadge}</td>
+          `;
+          tbody.appendChild(row);
+        });
+      }
+
+      reportSection.style.display = 'block';
+      reportSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+</script>
+
+</body>
+</html>
