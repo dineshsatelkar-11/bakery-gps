@@ -168,6 +168,48 @@
     return catFromProductId(pid);
   }
 
+  // ── Puff packet calculator (15 & 10 packs) ───────────────────────────────
+  /**
+   * Calculate optimal packets for Puff products.
+   * Prefers maximum number of 15-packs, then fills remainder with 10-packs.
+   * Example: 25 → 1×15 + 1×10
+   *          50 → 2×15 + 2×10
+   */
+  function calcPuffPackets(qty) {
+    qty = parseInt(qty, 10) || 0;
+    if (qty <= 0) return { fifteen: 0, ten: 0, text: '0' };
+
+    // Prefer as many 15-packs as possible
+    for (var a = Math.floor(qty / 15); a >= 0; a--) {
+      var rem = qty - 15 * a;
+      if (rem % 10 === 0) {
+        var b = rem / 10;
+        var parts = [];
+        if (a > 0) parts.push(a + '×15');
+        if (b > 0) parts.push(b + '×10');
+        return {
+          fifteen: a,
+          ten: b,
+          text: parts.join(' + ') || '0'
+        };
+      }
+    }
+    // Fallback when qty is not divisible by 5
+    return { fifteen: 0, ten: 0, text: qty + ' (manual)' };
+  }
+
+  function isPuffProduct(name) {
+    return /puff/i.test(String(name || ''));
+  }
+
+  /** Format quantity with packet breakdown for Puff products */
+  function formatQtyWithPackets(name, qty) {
+    qty = parseInt(qty, 10) || 0;
+    if (!isPuffProduct(name)) return String(qty);
+    var p = calcPuffPackets(qty);
+    return qty + (p.text && p.text !== '0' ? ' (' + p.text + ')' : '');
+  }
+
   global.ProductsShared = {
     loadProductMaster: loadProductMaster,
     setProductMaster: setProductMaster,
@@ -177,6 +219,9 @@
     groupByCat: groupByCat,
     groupByCatEntries: groupByCatEntries,
     catForName: catForName,
+    calcPuffPackets: calcPuffPackets,
+    isPuffProduct: isPuffProduct,
+    formatQtyWithPackets: formatQtyWithPackets,
     getAll: function () {
       return _products;
     },
