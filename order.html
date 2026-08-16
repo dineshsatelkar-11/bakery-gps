@@ -146,6 +146,13 @@
         <!-- Existing order status banner -->
         <div id="existingOrderBanner" style="display:none"></div>
 
+        <!-- Mark no-order for tomorrow -->
+        <div id="noOrderCard" class="card" style="display:none;margin-bottom:10px">
+            <div style="font-size:13px;font-weight:700;color:#4a2f14;margin-bottom:6px">Not ordering tomorrow?</div>
+            <div style="font-size:11px;color:#8a7a6a;font-family:monospace;line-height:1.6;margin-bottom:10px">Tell us you don't need delivery tomorrow. Admin will see this and won't send order reminders.</div>
+            <button type="button" id="noOrderBtn" onclick="markNoOrder()" style="width:100%;padding:12px;border:1.5px solid #c8382a;background:#fde8e8;border-radius:12px;font-size:14px;font-weight:800;color:#c8382a;cursor:pointer;font-family:-apple-system,sans-serif">🚫 No Order for Tomorrow</button>
+        </div>
+
         <!-- Read-only order summary — shown when order is approved/locked, independent of order window state -->
         <div id="orderSummaryCard" style="display:none" class="card">
             <div class="lbl" id="orderSummaryLabel">Your Order for Tomorrow</div>
@@ -927,6 +934,11 @@
       var summaryCard = document.getElementById('orderSummaryCard');
       var summaryItems = document.getElementById('orderSummaryItems');
       var summaryLabel = document.getElementById('orderSummaryLabel');
+      var noOrderCard = document.getElementById('noOrderCard');
+
+      function showNoOrderBtn(show){
+        if (noOrderCard) noOrderCard.style.display = (show && !_orderClosed) ? 'block' : 'none';
+      }
 
       if (!existingOrder) {
         banner.style.display = 'none';
@@ -936,11 +948,32 @@
         lockNote.style.display = 'none';
         if (label) label.textContent = 'Select Products';
         _editLocked = false;
+        showNoOrderBtn(true);
         return;
       }
 
-      var statusLabel = {pending:'⏳ Pending Approval', approved:'✅ Approved', rejected:'❌ Rejected', kitchen:'👨‍🍳 In Kitchen', packaging:'📦 Packaging', dispatched:'🚚 Out for Delivery'};
+      var statusLabel = {pending:'⏳ Pending Approval', approved:'✅ Approved', rejected:'❌ Rejected', kitchen:'👨‍🍳 In Kitchen', packaging:'📦 Packaging', dispatched:'🚚 Out for Delivery', no_order:'🚫 No Order'};
       var s = existingOrder.status;
+
+      if (s === 'no_order') {
+        banner.innerHTML = '<div style="background:#f5ede0;border:1.5px solid #e0d0c0;border-radius:12px;padding:11px 14px;margin-bottom:10px;font-size:12px;font-weight:700;color:#4a2f14;font-family:monospace;line-height:1.6">🚫 You marked <b>No Order</b> for tomorrow.<br>Admin has been informed. You will not get order reminders.</div>' +
+          '<button type="button" onclick="cancelNoOrder()" style="width:100%;margin-bottom:10px;padding:11px;border:1.5px solid #4a2f14;background:#fff;border-radius:12px;font-size:13px;font-weight:800;color:#4a2f14;cursor:pointer;font-family:-apple-system,sans-serif">✏️ Change mind — place an order</button>';
+        banner.style.display = 'block';
+        summaryCard.style.display = 'none';
+        submitBtn.disabled = true;
+        lockNote.style.display = 'none';
+        if (label) label.textContent = 'Select Products';
+        _editLocked = true;
+        showNoOrderBtn(false);
+        document.getElementById('productsCard').style.display = 'none';
+        document.getElementById('orderNoteCard').style.display = 'none';
+        document.getElementById('orderBar').style.display = 'none';
+        return;
+      }
+
+      // Restore product UI if returning from no_order
+      document.getElementById('productsCard').style.display = '';
+      document.getElementById('orderNoteCard').style.display = '';
 
       if (s === 'pending') {
         banner.innerHTML = '<div style="background:#e3f2fd;border:1.5px solid #90caf9;border-radius:12px;padding:11px 14px;margin-bottom:10px;font-size:12px;font-weight:700;color:#1565c0;font-family:monospace;line-height:1.6">✏️ You already have an order for tomorrow.<br>You can update quantities below until admin approves it.</div>';
@@ -951,6 +984,7 @@
         lockNote.style.display = 'none';
         if (label) label.textContent = 'Update Your Order';
         _editLocked = false;
+        showNoOrderBtn(true); // can still switch to no-order while pending
       } else {
         // Locked — show status banner + read-only order summary card
         var statusColor = s === 'rejected' ? '#c8382a' : '#2d7a4f';
@@ -990,7 +1024,76 @@
         if (label) label.textContent = 'Your Order (read-only)';
         _editLocked = true;
         document.querySelectorAll('.qty-btn, .qty-val').forEach(function(el){ el.disabled = true; });
+        showNoOrderBtn(false);
       }
+    }
+
+    function markNoOrder(){
+      if (_orderClosed) {
+        var msgEl = document.getElementById('orderMsg');
+        msgEl.textContent = '🔒 Orders are closed.';
+        msgEl.className = 'msg er'; msgEl.style.display = 'block';
+        return;
+      }
+      if (!confirm('Mark NO ORDER for tomorrow?\n\nAdmin will see that you are not ordering. You can change this later if needed.')) return;
+      var btn = document.getElementById('noOrderBtn');
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving…'; }
+      apiPost({
+        action: 'markNoOrder',
+        shop_id: session.shop_id,
+        shop_name: session.shop_name,
+        delivery_date: tomorrowStr(),
+        note: 'No order for this day'
+      }).then(function(res){
+        if (btn) { btn.disabled = false; btn.textContent = '🚫 No Order for Tomorrow'; }
+        if (res && res.ok) {
+          // Notify admin
+          try {
+            var n = String(session.shop_name || 'Shop').replace(/\s+/g, ' ').trim().slice(0, 40);
+            fetch(CONFIG.SUPABASE_URL + '/functions/v1/clever-function', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + CONFIG.SUPABASE_ANON_KEY
+              },
+              body: JSON.stringify({ shop_ids: ['admin'], message: 'No order: ' + n })
+            }).catch(function(){});
+          } catch(e){}
+          loadExistingOrder().then(function(){
+            renderOrderBanner();
+            loadHistory();
+          });
+          var msgEl = document.getElementById('orderMsg');
+          msgEl.textContent = '🚫 Marked as No Order for ' + fmtDate(tomorrowStr());
+          msgEl.className = 'msg ok'; msgEl.style.display = 'block';
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          alert((res && res.error) || 'Failed to save. Try again.');
+        }
+      }).catch(function(){
+        if (btn) { btn.disabled = false; btn.textContent = '🚫 No Order for Tomorrow'; }
+        alert('Network error. Try again.');
+      });
+    }
+
+    function cancelNoOrder(){
+      if (!existingOrder || existingOrder.status !== 'no_order') return;
+      if (!confirm('Remove No Order mark and place an order instead?')) return;
+      apiPost({ action: 'cancelNoOrder', id: existingOrder.id }).then(function(res){
+        existingOrder = null;
+        _editLocked = false;
+        document.getElementById('productsCard').style.display = '';
+        document.getElementById('orderNoteCard').style.display = '';
+        loadExistingOrder().then(function(){
+          qty = {};
+          renderProducts();
+          renderOrderBanner();
+          loadHistory();
+        });
+        var msgEl = document.getElementById('orderMsg');
+        msgEl.textContent = 'You can place an order now.';
+        msgEl.className = 'msg in'; msgEl.style.display = 'block';
+      }).catch(function(){ alert('Failed. Try again.'); });
     }
 
     function amendOrder(){
@@ -1079,6 +1182,7 @@
 
       var items  = selected.map(function(p){ return p.name; }).join(',');
       var qtys   = selected.map(function(p){ return qty[p.product_id]; }).join(',');
+      var ids    = selected.map(function(p){ return p.product_id || ''; }).join(',');
       var note   = document.getElementById('orderNote').value.trim();
       var date   = tomorrowStr();
       var btn    = document.getElementById('confirmBtn');
@@ -1112,8 +1216,8 @@
         btn.textContent = isEdit ? '⏳ Updating…' : '⏳ Placing…';
 
         var apiCall = isEdit
-          ? apiPost({ action:'updateCustomerOrder', id: existingOrder.id, items: items, qty: qtys, note: note, reset_to_pending: _amendMode })
-          : apiPost({ action:'placeCustomerOrder', shop_id: session.shop_id, shop_name: session.shop_name, delivery_date: date, items: items, qty: qtys, note: note });
+          ? apiPost({ action:'updateCustomerOrder', id: existingOrder.id, items: items, qty: qtys, item_ids: ids, note: note, reset_to_pending: _amendMode })
+          : apiPost({ action:'placeCustomerOrder', shop_id: session.shop_id, shop_name: session.shop_name, delivery_date: date, items: items, qty: qtys, item_ids: ids, note: note });
 
         apiCall.then(function(res){
           btn.disabled = false; btn.textContent = '✅ Confirm';
@@ -1228,8 +1332,8 @@
         }
 
         var html = '';
-        var statusLabel = {pending:'⏳ Pending Approval',approved:'✅ Approved',rejected:'❌ Rejected',kitchen:'👨‍🍳 In Kitchen',packaging:'📦 Packaging',dispatched:'🚚 Out for Delivery'};
-        var statusClass = {pending:'s-pending',approved:'s-approved',rejected:'s-rejected',kitchen:'s-kitchen',packaging:'s-packaging',dispatched:'s-dispatched'};
+        var statusLabel = {pending:'⏳ Pending Approval',approved:'✅ Approved',rejected:'❌ Rejected',kitchen:'👨‍🍳 In Kitchen',packaging:'📦 Packaging',dispatched:'🚚 Out for Delivery',no_order:'🚫 No Order'};
+        var statusClass = {pending:'s-pending',approved:'s-approved',rejected:'s-rejected',kitchen:'s-kitchen',packaging:'s-packaging',dispatched:'s-dispatched',no_order:'s-rejected'};
 
         // ── App-placed orders ──
         if (custOrders.length) {
@@ -1310,11 +1414,14 @@
           if(productsCard)  productsCard.style.display  = 'none';
           if(orderNoteCard) orderNoteCard.style.display  = 'none';
           if(orderBar)      orderBar.style.display       = 'none';
+          var noc = document.getElementById('noOrderCard');
+          if(noc) noc.style.display = 'none';
         } else {
           closedEl.style.display = 'none';
           if(productsCard)  productsCard.style.display  = '';
           if(orderNoteCard) orderNoteCard.style.display  = '';
           updateBar(); // re-show bar if items selected
+          renderOrderBanner(); // refresh no-order button visibility
         }
 
         // Broadcast banner — only show if admin has it enabled

@@ -6,6 +6,7 @@
     <title>Packaging — IBCAB</title>
     <script src="config.js"></script>
     <script src="api.js"></script>
+    <script src="products-shared.js"></script>
     <style>
         *{box-sizing:border-box;margin:0;padding:0}
         body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:480px;margin:0 auto;min-height:100vh}
@@ -264,9 +265,12 @@
       document.getElementById('appScreen').style.display='block';
       document.getElementById('topName').textContent = staffName + ' · ' + new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'});
       document.getElementById('packDate').value = tomorrowStr();
-      api({action:'getShops'}).then(function(data){
+      Promise.all([
+        api({action:'getShops'}),
+        window.ProductsShared ? ProductsShared.loadProductMaster() : Promise.resolve([])
+      ]).then(function(res){
         shopMap={};
-        (Array.isArray(data)?data:[]).forEach(function(s){
+        (Array.isArray(res[0])?res[0]:[]).forEach(function(s){
           if(s.shop_id) shopMap[s.shop_id]=s;
           if(s.customer_id && s.customer_id!==s.shop_id) shopMap[s.customer_id]=s;
         });
@@ -349,47 +353,77 @@
 
     // ── PRODUCT COUNT (pack tab) ──
     function renderProdCount(){
-      var kitchen={}, pending={}, packed={}, dispatched={};
+      var kitchen={}, pending={}, packed={}, dispatched={}, nameToPid={};
       function tally(orders, bucket){
         orders.forEach(function(o){
-          var items=(o.items||'').split(','), qtys=(o.qty||'').split(',');
+          var items=(o.items||'').split(','), qtys=(o.qty||'').split(','), ids=(o.item_ids||'').split(',');
           items.forEach(function(item,i){
             item=item.trim(); if(!item) return;
             var q=parseInt(qtys[i])||0;
             bucket[item]=(bucket[item]||0)+q;
+            var pid=String(ids[i]||'').trim();
+            if(pid && !nameToPid[item]) nameToPid[item]=pid;
           });
         });
       }
       tally(kitchenOrders, kitchen);
       packOrders.forEach(function(o){
-        var items=(o.items||'').split(','), qtys=(o.qty||'').split(',');
+        var items=(o.items||'').split(','), qtys=(o.qty||'').split(','), ids=(o.item_ids||'').split(',');
         items.forEach(function(item,i){
           item=item.trim(); if(!item) return;
           var q=parseInt(qtys[i])||0;
           if(packedIds.has(o.id)) packed[item]=(packed[item]||0)+q;
           else pending[item]=(pending[item]||0)+q;
+          var pid=String(ids[i]||'').trim();
+          if(pid && !nameToPid[item]) nameToPid[item]=pid;
         });
       });
       tally(dispatchOrders, dispatched);
 
       var allProds=Array.from(new Set(
         Object.keys(kitchen).concat(Object.keys(pending)).concat(Object.keys(packed)).concat(Object.keys(dispatched))
-      )).sort();
+      ));
       if(!allProds.length){ document.getElementById('prodCountCard').style.display='none'; return; }
+
+      function catFor(name){
+        if (window.ProductsShared) return ProductsShared.catForName(name, nameToPid);
+        return 'Other';
+      }
+      var byCat={};
+      allProds.forEach(function(p){
+        var c=catFor(p);
+        if(!byCat[c]) byCat[c]=[];
+        byCat[c].push(p);
+      });
+      var catNames=Object.keys(byCat).sort(function(a,b){
+        if(a==='Other') return 1; if(b==='Other') return -1; return a.localeCompare(b);
+      });
+
       document.getElementById('prodCountCard').style.display='block';
-      document.getElementById('prodCountBody').innerHTML=allProds.map(function(p){
-        var k=kitchen[p]||0, pend=pending[p]||0, pk=packed[p]||0, d=dispatched[p]||0;
-        var total=k+pend+pk+d;
-        var parts=[];
-        if(k>0)    parts.push('<span class="pcn-kitchen">🍳 '+k+' kitchen</span>');
-        if(pend>0) parts.push('<span class="pcn-pending">📦 '+pend+' to pack</span>');
-        if(pk>0)   parts.push('<span class="pcn-done">✅ '+pk+' packed</span>');
-        if(d>0)    parts.push('<span class="pcn-done">🚗 '+d+' dispatched</span>');
-        return '<div class="prod-count-row">'+
-          '<span class="prod-count-name">'+esc(p)+'</span>'+
-          '<span class="prod-count-nums">'+parts.join('')+' <span style="color:#8a7a6a">/ '+total+'</span></span>'+
-        '</div>';
-      }).join('');
+      var html='';
+      catNames.forEach(function(cat){
+        var names=byCat[cat].sort();
+        var catTotal=0;
+        names.forEach(function(p){
+          catTotal+=(kitchen[p]||0)+(pending[p]||0)+(packed[p]||0)+(dispatched[p]||0);
+        });
+        html+='<div style="font-size:11px;font-weight:900;color:#4a2f14;text-transform:uppercase;letter-spacing:.5px;margin:10px 0 4px;display:flex;justify-content:space-between">'+
+          '<span>'+esc(cat)+'</span><span style="background:#6e3da8;color:#fff;border-radius:20px;padding:1px 10px;font-family:monospace">'+catTotal+'</span></div>';
+        names.forEach(function(p){
+          var k=kitchen[p]||0, pend=pending[p]||0, pk=packed[p]||0, d=dispatched[p]||0;
+          var total=k+pend+pk+d;
+          var parts=[];
+          if(k>0)    parts.push('<span class="pcn-kitchen">🍳 '+k+' kitchen</span>');
+          if(pend>0) parts.push('<span class="pcn-pending">📦 '+pend+' to pack</span>');
+          if(pk>0)   parts.push('<span class="pcn-done">✅ '+pk+' packed</span>');
+          if(d>0)    parts.push('<span class="pcn-done">🚗 '+d+' dispatched</span>');
+          html+='<div class="prod-count-row">'+
+            '<span class="prod-count-name">'+esc(p)+'</span>'+
+            '<span class="prod-count-nums">'+parts.join('')+' <span style="color:#8a7a6a">/ '+total+'</span></span>'+
+          '</div>';
+        });
+      });
+      document.getElementById('prodCountBody').innerHTML=html;
     }
 
     // ── RENDER PACK ORDERS ──
@@ -979,7 +1013,7 @@
         action:'dispatchCustomerOrder',
         id: order.id, shop_id: order.shop_id, shop_name: order.shop_name,
         driver: shop.assigned_driver||'', items: order.items, qty: order.qty,
-        note: order.note, delivery_date: order.delivery_date
+        item_ids: order.item_ids||'', note: order.note, delivery_date: order.delivery_date
       }).then(function(res){
         if (res&&res.ok){
           packedIds.add(orderId);
@@ -1011,7 +1045,7 @@
           action:'dispatchCustomerOrder',
           id:o.id, shop_id:o.shop_id, shop_name:o.shop_name,
           driver:shop.assigned_driver||'', items:o.items, qty:o.qty,
-          note:o.note, delivery_date:o.delivery_date
+          item_ids:o.item_ids||'', note:o.note, delivery_date:o.delivery_date
         }).then(function(res){ if(res&&res.ok) packedIds.add(o.id); });
       });
       Promise.all(promises).then(function(){

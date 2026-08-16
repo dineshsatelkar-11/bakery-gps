@@ -6,6 +6,7 @@
 <title>Kitchen — IBCAB</title>
 <script src="config.js"></script>
 <script src="api.js"></script>
+    <script src="products-shared.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:480px;margin:0 auto;min-height:100vh}
@@ -222,6 +223,7 @@ var productCounts   = {}; // pname → total needed from orders
 var madeSoFar       = {}; // pname → cumulative qty chef has made (persisted)
 var sentToPackaging = {}; // orderId → true (persisted)
 var allProducts     = []; // for pre-production dropdown
+var productIdByName = {}; // order line name → product_id
 var confirmProd     = null;
 var kitchenDate     = '';
 
@@ -235,8 +237,9 @@ var kitchenDate     = '';
       list.map(function(s){return '<option value="'+esc(s.name)+'">👨‍🍳 '+esc(s.name)+'</option>';}).join('');
   });
   // Load products for pre-production dropdown
-  api({action:'getProducts'}).then(function(data){
-    allProducts=Array.isArray(data)?data.filter(function(p){return p.active!==false;}):[];
+  (window.ProductsShared ? ProductsShared.loadProductMaster() : api({action:'getProducts'}).then(function(d){ return Array.isArray(d)?d:[]; })).then(function(data){
+    allProducts = (Array.isArray(data)?data:[]).filter(function(p){ return p.active!==false; });
+    if (window.ProductsShared) ProductsShared.setProductMaster(allProducts);
     populatePpDropdown();
   });
   var sn=sessionStorage.getItem('kitchenStaff')||localStorage.getItem('kitchenStaff');
@@ -391,14 +394,18 @@ function loadKitchenOrders(){
       return;
     }
 
-    // Build product totals from orders
+    // Build product totals from orders (+ product_id for category)
     productCounts={};
+    productIdByName={}; // name → product_id (from item_ids)
     kitchenOrders.forEach(function(o){
       var items=(o.items||'').split(',');
       var qtys=(o.qty||'').split(',');
+      var ids=(o.item_ids||'').split(',');
       items.forEach(function(item,i){
         item=item.trim();if(!item)return;
         productCounts[item]=(productCounts[item]||0)+(parseInt(qtys[i])||0);
+        var pid=String(ids[i]||'').trim();
+        if(pid && !productIdByName[item]) productIdByName[item]=pid;
       });
     });
 
@@ -420,39 +427,59 @@ function loadKitchenOrders(){
 
 // ── PRODUCT GRID ──
 function renderCountGrid(){
-  var sorted=Object.entries(productCounts).sort(function(a,b){return a[0].localeCompare(b[0]);});
-  document.getElementById('countGrid').innerHTML=sorted.map(function(e){
-    var pname=e[0], total=e[1];
-    var made=madeSoFar[pname]||0;
-    // remaining = how much still needs to be made (after pre-prod + confirmations)
-    var remaining=Math.max(0, total-made);
-    var fullyDone=made>=total;
-    var partialDone=made>0&&made<total;
-    var pct=Math.min(100,Math.round(made/total*100));
-
-    var badgeClass=fullyDone?'pb-done':partialDone?'pb-partial':'pb-pending';
-    var badgeText=fullyDone?'✅ All done':partialDone?'⚡ '+made+'/'+total:' ⏳ Need ×'+total;
-    var rowClass='prod-row'+(fullyDone?' fully-done':partialDone?' partial':'');
-
-    return '<div class="'+rowClass+'" id="cr-'+sid(pname)+'">'+
-      '<div class="prod-top">'+
-        '<span class="prod-name">'+esc(pname)+'</span>'+
-        '<span class="prod-badge '+badgeClass+'">'+badgeText+'</span>'+
-      '</div>'+
-      '<div class="prod-bar-row">'+
-        '<div class="prod-bar"><div class="prod-bar-fill" style="width:'+pct+'%"></div></div>'+
-        '<span class="prod-nums">'+(fullyDone?'✓ '+made:remaining+' left to make')+'</span>'+
-      '</div>'+
-      (fullyDone?'':
-        '<div class="prod-bot">'+
-          '<span style="font-size:11px;color:#8a7a6a;font-family:monospace;flex-shrink:0">Made:</span>'+
-          '<input type="number" class="prod-inp" id="inp-'+sid(pname)+'" value="'+remaining+'" min="1" max="'+remaining+'" inputmode="numeric">'+
-          '<span style="font-size:11px;color:#8a7a6a;font-family:monospace;flex-shrink:0">/ '+remaining+' needed</span>'+
-          '<button class="mark-btn" onclick="openConfirm(\''+esc(pname)+'\')">✅ Mark Done</button>'+
-        '</div>'
-      )+
-    '</div>';
-  }).join('');
+  // Group products by master category via product_id (no name fuzzy)
+  function catForName(pname){
+    if (window.ProductsShared) return ProductsShared.catForName(pname, productIdByName);
+    return 'Other';
+  }
+  var byCat={};
+  Object.keys(productCounts).forEach(function(pname){
+    var c=catForName(pname);
+    if(!byCat[c]) byCat[c]=[];
+    byCat[c].push(pname);
+  });
+  var catNames=Object.keys(byCat).sort(function(a,b){
+    if(a==='Other') return 1;
+    if(b==='Other') return -1;
+    return a.localeCompare(b);
+  });
+  var html='';
+  catNames.forEach(function(cat){
+    var names=byCat[cat].sort(function(a,b){ return a.localeCompare(b); });
+    var catTotal=names.reduce(function(s,n){ return s+(productCounts[n]||0); },0);
+    html+='<div style="font-size:11px;font-weight:900;color:#4a2f14;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 6px;display:flex;justify-content:space-between;align-items:center">'+
+      '<span>'+esc(cat)+'</span><span style="background:#c8a87a;color:#fff;border-radius:20px;padding:2px 10px;font-family:monospace">'+catTotal+'</span></div>';
+    names.forEach(function(pname){
+      var total=productCounts[pname];
+      var made=madeSoFar[pname]||0;
+      var remaining=Math.max(0, total-made);
+      var fullyDone=made>=total;
+      var partialDone=made>0&&made<total;
+      var pct=Math.min(100,Math.round(made/total*100));
+      var badgeClass=fullyDone?'pb-done':partialDone?'pb-partial':'pb-pending';
+      var badgeText=fullyDone?'✅ All done':partialDone?'⚡ '+made+'/'+total:' ⏳ Need ×'+total;
+      var rowClass='prod-row'+(fullyDone?' fully-done':partialDone?' partial':'');
+      html+='<div class="'+rowClass+'" id="cr-'+sid(pname)+'">'+
+        '<div class="prod-top">'+
+          '<span class="prod-name">'+esc(pname)+'</span>'+
+          '<span class="prod-badge '+badgeClass+'">'+badgeText+'</span>'+
+        '</div>'+
+        '<div class="prod-bar-row">'+
+          '<div class="prod-bar"><div class="prod-bar-fill" style="width:'+pct+'%"></div></div>'+
+          '<span class="prod-nums">'+(fullyDone?'✓ '+made:remaining+' left to make')+'</span>'+
+        '</div>'+
+        (fullyDone?'':
+          '<div class="prod-bot">'+
+            '<span style="font-size:11px;color:#8a7a6a;font-family:monospace;flex-shrink:0">Made:</span>'+
+            '<input type="number" class="prod-inp" id="inp-'+sid(pname)+'" value="'+remaining+'" min="1" max="'+remaining+'" inputmode="numeric">'+
+            '<span style="font-size:11px;color:#8a7a6a;font-family:monospace;flex-shrink:0">/ '+remaining+' needed</span>'+
+            '<button class="mark-btn" onclick="openConfirm(\''+esc(pname)+'\')">✅ Mark Done</button>'+
+          '</div>'
+        )+
+      '</div>';
+    });
+  });
+  document.getElementById('countGrid').innerHTML=html;
 }
 
 function sid(s){return s.replace(/[^a-z0-9]/gi,'_');}

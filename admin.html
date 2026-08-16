@@ -6,6 +6,7 @@
     <title>IBCAB — Admin</title>
     <script src="config.js"></script>
     <script src="api.js"></script>
+    <script src="products-shared.js"></script>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#4a2f14">
     <meta name="mobile-web-app-capable" content="yes">
@@ -135,6 +136,7 @@
     <button class="tab" id="mtb-myBrand" onclick="showGroup('myBrand')">🏪 Franchise</button>
     <button class="tab"    id="mtb-manage"    onclick="showGroup('manage')">⚙️ Manage</button>
     <button class="tab"    id="mtb-notify"    onclick="showGroup('notify')">🔔 Notify</button>
+    <button class="tab"    id="mtb-zoho"      onclick="showGroup('zoho')">🔗 Zoho</button>
 </div>
 <div id="subTabs" style="display:flex"></div>
 
@@ -683,12 +685,36 @@
 
     <!-- SECTION TABS -->
     <div style="display:flex;gap:0;margin-bottom:14px;border-radius:14px;overflow:hidden;border:1.5px solid #e8dfd2">
-        <button id="ntab-customer" onclick="showNotifyTab('customer')" style="flex:1;padding:12px;border:none;font-size:13px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;background:#4a2f14;color:#fff;border-radius:0">👥 Customer</button>
-        <button id="ntab-driver"   onclick="showNotifyTab('driver')"   style="flex:1;padding:12px;border:none;font-size:13px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;background:#f5ede0;color:#4a2f14;border-radius:0">🚚 Driver</button>
+        <button id="ntab-customer" onclick="showNotifyTab('customer')" style="flex:1;padding:12px;border:none;font-size:12px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;background:#4a2f14;color:#fff;border-radius:0">👥 Customer</button>
+        <button id="ntab-driver"   onclick="showNotifyTab('driver')"   style="flex:1;padding:12px;border:none;font-size:12px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;background:#f5ede0;color:#4a2f14;border-radius:0">🚚 Driver</button>
+        <button id="ntab-manage"   onclick="showNotifyTab('manage')"   style="flex:1;padding:12px;border:none;font-size:12px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;background:#f5ede0;color:#4a2f14;border-radius:0">⚙️ Manage</button>
     </div>
 
     <!-- ═══ CUSTOMER SECTION ═══ -->
     <div id="nsec-customer">
+
+        <!-- Route delay → notify all customers on that driver's route -->
+        <div class="card" style="margin-bottom:12px;border-color:#f5c87a">
+            <div style="font-size:13px;font-weight:900;color:#7a4800;margin-bottom:4px">⏰ Route Delay Alert</div>
+            <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:12px;line-height:1.6">When a driver starts late, notify <b>all customers on that route</b> (from today's/selected date orders).</div>
+            <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+                <select id="routeDelayDriver" onchange="previewRouteDelayCustomers()" style="flex:1;min-width:140px;margin-bottom:0;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:13px;background:#f9f6f1;color:#4a2f14">
+                    <option value="">Select driver / route…</option>
+                </select>
+                <input type="date" id="routeDelayDate" onchange="previewRouteDelayCustomers()" style="margin-bottom:0;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:13px;background:#f9f6f1">
+            </div>
+            <div id="routeDelayPreview" style="display:none;background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;font-weight:700;color:#7a4800;font-family:monospace;line-height:1.6"></div>
+            <div id="routeDelayShopList" style="display:none;max-height:140px;overflow-y:auto;border:1.5px solid #e8dfd2;border-radius:10px;margin-bottom:10px;background:#f9f6f1;padding:6px 0"></div>
+            <div class="lbl" style="margin-bottom:6px">Quick Templates</div>
+            <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+                <button type="button" class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082;text-align:left;padding:9px 12px" onclick="routeDelayTemplate('⏰ Delivery is running late today. Our driver will reach you soon. Thank you for your patience.')">⏰ Delivery is running late today. Our driver will reach you soon…</button>
+                <button type="button" class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082;text-align:left;padding:9px 12px" onclick="routeDelayTemplate('🚚 Your route is delayed. Expected delivery later than usual today. Sorry for the inconvenience.')">🚚 Your route is delayed. Expected delivery later than usual…</button>
+                <button type="button" class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1.5px solid #f0b0b0;text-align:left;padding:9px 12px" onclick="routeDelayTemplate('⚠️ Significant delay on your route today. We will update you. Call us if urgent.')">⚠️ Significant delay on your route today…</button>
+            </div>
+            <textarea id="routeDelayMsg" rows="2" placeholder="Delay message for all customers on this route…" style="resize:vertical;margin-bottom:8px"></textarea>
+            <button class="btn" style="margin-bottom:0;background:#c8864a;color:#fff" onclick="sendRouteDelayNotif()">📢 Notify Route Customers</button>
+            <div id="routeDelay-result" style="display:none;margin-top:8px" class="msg ok"></div>
+        </div>
 
         <!-- Send to Specific Customers -->
         <div class="card" style="margin-bottom:12px">
@@ -781,6 +807,116 @@
         </div>
 
     </div><!-- end driver section -->
+
+    <!-- ═══ MANAGE SECTION ═══ -->
+    <div id="nsec-manage" style="display:none">
+
+        <div class="card" style="margin-bottom:12px">
+            <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">⚙️ Notification Channels</div>
+            <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:12px;line-height:1.6">Turn system notifications on/off by role. When off, admin send actions skip that channel.</div>
+            <div id="notifChannelToggles" style="display:flex;flex-direction:column;gap:8px">
+                <div style="padding:12px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>
+            </div>
+            <div id="notifChannelMsg" style="display:none;margin-top:10px" class="msg ok"></div>
+        </div>
+
+        <div class="card" style="margin-bottom:12px">
+            <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">📊 Push Status Overview</div>
+            <div id="notifStatusStats" class="stats-grid" style="margin-bottom:10px">
+                <div class="stat"><div class="stat-n">—</div><div class="stat-l">Customers</div></div>
+                <div class="stat"><div class="stat-n">—</div><div class="stat-l">Push ON</div></div>
+                <div class="stat"><div class="stat-n">—</div><div class="stat-l">Push OFF</div></div>
+                <div class="stat"><div class="stat-n">—</div><div class="stat-l">Admin devices</div></div>
+            </div>
+            <div style="font-size:11px;color:#8a7a6a;font-family:monospace;line-height:1.6;margin-bottom:8px">
+                Customers use web push (order app). Drivers use OneSignal (driver app login). Kitchen / Packaging push not registered yet.
+            </div>
+            <button class="btn btn-grey" style="margin-bottom:0" onclick="loadNotifManage()">🔄 Refresh Status</button>
+        </div>
+
+        <div class="card" style="margin-bottom:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;flex-wrap:wrap">
+                <div style="font-size:13px;font-weight:900;color:#4a2f14">👥 Customers — Notification Enabled</div>
+                <input type="text" id="notifManageSearch" placeholder="🔍 Filter…" oninput="renderNotifCustomerGrid()" style="margin-bottom:0;width:160px;padding:8px 10px;font-size:12px">
+            </div>
+            <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+                <button class="btn-sm" style="background:#e8f5e9;color:#1a5a38;border:1.5px solid #a5d6a7;padding:6px 10px;font-size:11px" onclick="_notifGridFilter='on';renderNotifCustomerGrid()">✅ Push ON</button>
+                <button class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1.5px solid #f0b0b0;padding:6px 10px;font-size:11px" onclick="_notifGridFilter='off';renderNotifCustomerGrid()">❌ Push OFF</button>
+                <button class="btn-sm" style="background:#e8dfd2;color:#4a2f14;border:1.5px solid #d0c0aa;padding:6px 10px;font-size:11px" onclick="_notifGridFilter='all';renderNotifCustomerGrid()">All</button>
+            </div>
+            <div id="notifCustomerGrid" style="max-height:360px;overflow-y:auto;border:1.5px solid #e8dfd2;border-radius:10px;background:#f9f6f1">
+                <div style="padding:14px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">Open Manage tab to load…</div>
+            </div>
+        </div>
+
+        <div class="card" style="margin-bottom:12px">
+            <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:8px">🔑 Staff / Role Devices</div>
+            <div id="notifStaffGrid" style="font-size:12px;font-family:monospace;color:#4a2f14;line-height:1.8">—</div>
+        </div>
+
+    </div><!-- end manage section -->
+</div>
+
+
+<!-- ZOHO INTEGRATION -->
+<div class="page" id="pg-zoho">
+  <div class="card" style="margin-bottom:12px;border-color:#ffe082;background:#fffaf0">
+    <div style="font-size:15px;font-weight:900;color:#7a4800;margin-bottom:4px">🔗 Zoho Books Integration</div>
+    <div style="font-size:12px;color:#8a7a6a;font-family:monospace;line-height:1.6;margin-bottom:10px">
+      Pull customers &amp; products from Zoho → review changes → confirm to update this app.<br>
+      <span style="color:#c8864a">Nothing is written to the app until you confirm.</span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <span id="zoho-page-status" style="font-size:11px;font-family:monospace;font-weight:700;color:#8a7a6a">…</span>
+      <button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082;padding:8px 14px" onclick="openZohoSettingsModal()">⚙️ Configure</button>
+      <button class="btn-sm" style="background:#e8dfd2;color:#4a2f14;border:1.5px solid #d0c0aa;padding:8px 14px" onclick="toggleZohoIntegration()">Toggle ON/OFF</button>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:12px">
+    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">👥 Pull Customers / Shops from Zoho</div>
+    <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:10px;line-height:1.6">Fetches contacts from Zoho Books. Shows new vs changed vs already matched. Apply only after review.</div>
+    <button class="btn btn-brown" style="margin-bottom:8px" onclick="zohoPullCustomers()">⬇ Sync from Zoho (Customers)</button>
+    <div id="zoho-pull-cust-msg" style="display:none;margin-bottom:8px;font-size:11px;font-family:monospace;padding:8px 10px;border-radius:8px"></div>
+    <div id="zoho-pull-cust-summary" style="display:none;margin-bottom:8px"></div>
+    <div id="zoho-pull-cust-list" style="display:none;max-height:280px;overflow-y:auto;border:1.5px solid #e8dfd2;border-radius:10px;background:#f9f6f1;margin-bottom:8px"></div>
+    <button id="zoho-apply-cust-btn" class="btn" style="display:none;margin-bottom:0;background:#2d7a4f;color:#fff" onclick="zohoApplyCustomerPull()">✅ Confirm — Update App Customers</button>
+  </div>
+
+  <div class="card" style="margin-bottom:12px">
+    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">📦 Pull Products from Zoho</div>
+    <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:10px;line-height:1.6">Fetches items from Zoho Books. Review new / price changes, then confirm.</div>
+    <button class="btn btn-brown" style="margin-bottom:8px" onclick="zohoPullProducts()">⬇ Sync from Zoho (Products)</button>
+    <div id="zoho-pull-prod-msg" style="display:none;margin-bottom:8px;font-size:11px;font-family:monospace;padding:8px 10px;border-radius:8px"></div>
+    <div id="zoho-pull-prod-summary" style="display:none;margin-bottom:8px"></div>
+    <div id="zoho-pull-prod-list" style="display:none;max-height:280px;overflow-y:auto;border:1.5px solid #e8dfd2;border-radius:10px;background:#f9f6f1;margin-bottom:8px"></div>
+    <button id="zoho-apply-prod-btn" class="btn" style="display:none;margin-bottom:0;background:#2d7a4f;color:#fff" onclick="zohoApplyProductPull()">✅ Confirm — Update App Products</button>
+  </div>
+
+  <div class="card" style="margin-bottom:12px">
+    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">🚚 Default shipping (fallback only)</div>
+    <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:10px;line-height:1.6">
+      Used only when a customer has <b>no</b> shipping set.<br>
+      Set each shop’s charge under <b>Customers → Edit → Shipping charge</b> (different per customer).
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <span style="font-size:13px;font-weight:700">₹</span>
+      <input type="number" id="zoho-shipping-input" min="0" step="1" value="20" style="width:100px;margin-bottom:0;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;font-weight:700">
+      <button class="btn-sm" style="background:#c8864a;color:#fff;border:none;padding:10px 16px" onclick="saveZohoShippingUI()">Save default</button>
+      <span id="zoho-shipping-msg" style="font-size:11px;font-family:monospace;color:#2d7a4f;display:none"></span>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:12px">
+    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">📄 Invoice / Challan data checklist</div>
+    <div style="font-size:11px;font-family:monospace;color:#4a2f14;line-height:1.7;background:#f9f6f1;border-radius:10px;padding:10px 12px">
+      <div><b>Sent now:</b> customer_id, date, reference, line <b>name + qty + rate</b>, item_id (if Zoho id), <b>shipping_charge</b>, notes, invoice vs delivery_challan</div>
+      <div style="margin-top:6px;color:#2d7a4f"><b>Tax:</b> set <b>Zoho Tax ID</b> on each product (Products → Edit). Blank = no tax on that line.</div>
+      <div style="margin-top:6px;color:#c8382a"><b>Still from Zoho templates:</b></div>
+      <div>• Place of supply / GSTIN / billing address block</div>
+      <div>• Bank details on tax invoice</div>
+    </div>
+  </div>
 </div>
 
 <!-- CLEANUP (super_admin only) -->
@@ -999,6 +1135,8 @@
             <option value="invoice">🧾 Invoice</option>
             <option value="delivery_challan">📋 Delivery Challan</option>
         </select>
+        <div class="lbl">Shipping charge (₹)</div>
+        <input type="number" id="apm-shipping" min="0" step="1" value="20" placeholder="e.g. 20">
         <div class="lbl">Driver Note</div><input type="text" id="apm-flag" placeholder="e.g. back gate, opens 7am, ring twice">
         <div class="lbl">Assign Driver *</div>
         <select id="apm-driver">
@@ -1126,6 +1264,8 @@
             <option value="invoice">🧾 Invoice</option>
             <option value="delivery_challan">📋 Delivery Challan</option>
         </select>
+        <div class="lbl">Shipping charge (₹) — this customer</div>
+        <input type="number" id="cm-shipping" min="0" step="1" placeholder="e.g. 20 (0 = no shipping)" style="margin-bottom:8px">
         <div class="lbl">Driver Note</div><input type="text" id="cm-flag" placeholder="e.g. back gate, opens 7am, ring twice">
         <div class="lbl">Drop Point Photo</div><div id="cm-drop-photo-preview" style="margin-bottom:8px"></div>
         <div class="lbl">GPS Latitude</div><input type="text" id="cm-lat" placeholder="18.560123">
@@ -1198,6 +1338,22 @@
     </div>
 </div>
 
+<!-- ZOHO INVOICE PREVIEW (approve → confirm send) -->
+<div class="modal-bg" id="zohoInvPreviewModal" style="display:none;z-index:300" onclick="if(event.target===this)closeZohoInvPreview(false)">
+  <div class="modal" style="max-width:440px;max-height:92vh;overflow-y:auto;padding:0">
+    <div style="padding:14px 16px 10px;border-bottom:1.5px solid #e8dfd2;position:sticky;top:0;background:#fff;z-index:2">
+      <div style="font-size:14px;font-weight:900;color:#7a4800">📄 Zoho Document Preview</div>
+      <div id="zoho-inv-preview-sub" style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:4px;line-height:1.5"></div>
+    </div>
+    <div id="zoho-inv-preview-body" style="padding:14px 16px;font-size:12px;color:#1e1611"></div>
+    <div style="padding:12px 16px 16px;border-top:1.5px solid #e8dfd2;position:sticky;bottom:0;background:#fff">
+      <div id="zoho-inv-preview-msg" style="display:none;margin-bottom:8px" class="msg ok"></div>
+      <button class="btn" style="background:#c8864a;color:#fff;margin-bottom:8px" id="zoho-inv-send-btn" onclick="confirmZohoInvPreviewSend()">✅ Send to Zoho</button>
+      <button class="btn btn-grey" style="margin-bottom:0" onclick="closeZohoInvPreview(false)">⏭ Keep in app only (no Zoho)</button>
+    </div>
+  </div>
+</div>
+
 <!-- PRODUCT MODAL -->
 <div class="modal-bg" id="productModal" style="display:none" onclick="if(event.target===this)closeProductModal()">
     <div class="modal">
@@ -1207,6 +1363,9 @@
         <div class="lbl">Product ID (Zoho)</div><input type="text" id="pm-pid" placeholder="e.g. 3249544000000041334">
         <div class="lbl">Category</div><input type="text" id="pm-cat" placeholder="e.g. Puff, Bread, Bun">
         <div class="lbl">Unit Price (₹)</div><input type="text" id="pm-price" placeholder="18">
+        <div class="lbl">Zoho Tax ID</div>
+        <input type="text" id="pm-tax-id" placeholder="e.g. 32495440000000… (from Zoho Books tax)">
+        <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin:-4px 0 10px;line-height:1.5">Used on invoice/challan lines for CGST/SGST. Leave blank for 0% items (e.g. some breads).</div>
         <div class="lbl">Unit</div><input type="text" id="pm-unit" placeholder="Pieces">
         <div class="lbl">Notes</div><textarea id="pm-desc" placeholder="Size, specs…"></textarea>
         <div class="lbl">Product Group</div>
@@ -1409,7 +1568,7 @@
       {key:'gps',      label:'📍 GPS'}
     ];
    var ROLE_DEFAULT_TABS = {
-  admin:        ['orders','approve','queue','summary','delivery','routes','customers','products','gps'],
+  admin:        ['orders','approve','queue','summary','delivery','routes','customers','products','gps','zoho'],
   assistant:    ['orders','delivery','summary'],
   chef:         ['summary'],
   packer:       ['orders','summary'],
@@ -1441,12 +1600,12 @@
     function initTabVisibility(){
       var allTabKeys = ['dashboard','orders','approve','queue','summary','delivery','routes','customers',
 'cust-orders','manual-order','products','groups','ingredients','recipes','production','drivers','gps',
-'users','notify','cleanup','audit','attendance','my-brand'];
+'users','notify','zoho','cleanup','audit','attendance','my-brand'];
 allTabKeys.forEach(function(t){
         var show;
         if(t === 'users' || t === 'cleanup' || t === 'audit' || t === 'attendance') {
           show = (_staffRole === 'super_admin');
-        } else if(t === 'notify' || t === 'manual-order') {
+        } else if(t === 'notify' || t === 'zoho' || t === 'manual-order') {
           show = (_staffRole === 'super_admin' || _staffRole === 'admin');
         } else if(t === 'dashboard') {
           show = (_staffRole === 'super_admin' || _staffRole === 'admin' || _staffRole === 'assistant');
@@ -1593,7 +1752,8 @@ allTabKeys.forEach(function(t){
                   {key:'drivers',     label:'🚗 Drivers'},
                   {key:'users',       label:'👥 Users'},
                   {key:'cleanup',     label:'🗑 Cleanup'}],
-      notify:    [{key:'notify',      label:'🔔 Notify'}]
+      notify:    [{key:'notify',      label:'🔔 Notify'}],
+      zoho:      [{key:'zoho',        label:'🔗 Zoho'}]
     };
     var TAB_TO_GROUP = {};
     Object.keys(GROUP_MAP).forEach(function(g){
@@ -1610,12 +1770,12 @@ allTabKeys.forEach(function(t){
       // Attendance is owner-only (super_admin)
       if(t === 'attendance' && _staffRole !== 'super_admin') return;
       if(_visibleTabs[t] === false) return;
-      ['dashboard','orders','approve','queue','summary','delivery','routes','customers','cust-orders','manual-order','products','groups','ingredients','recipes','production','drivers','gps','users','notify','cleanup','audit', 'attendance', 'my-brand'].forEach(function(x){
+      ['dashboard','orders','approve','queue','summary','delivery','routes','customers','cust-orders','manual-order','products','groups','ingredients','recipes','production','drivers','gps','users','notify','zoho','cleanup','audit', 'attendance', 'my-brand'].forEach(function(x){
         var pg=document.getElementById('pg-'+x); if(pg) pg.classList.toggle('on',x===t);
       });
       // Highlight active group tab
       var group = TAB_TO_GROUP[t] || 'home';
-      ['home','orders','delivery','customers','manage','notify'].forEach(function(g){
+      ['home','orders','delivery','customers','manage','notify','zoho'].forEach(function(g){
         var el=document.getElementById('mtb-'+g); if(el) el.classList.toggle('on',g===group);
       });
       // Build sub-tabs for this group
@@ -1648,7 +1808,12 @@ allTabKeys.forEach(function(t){
       if(t==='production')   loadProduction();
       if(t==='drivers')      loadDrivers().then(renderDrivers);
       if(t==='users')        { loadStaff().then(renderStaff); loadFeatureSettings(); }
-      if(t==='notify')       { loadNotifyDriverList(); loadOrderWindow(); loadBroadcast(); loadNotifyCustomerList(); }
+      if(t==='notify')       { loadNotifyDriverList(); loadOrderWindow(); loadBroadcast(); loadNotifyCustomerList(); loadNotifManage(); initRouteDelayAlert(); }
+      if(t==='zoho')         {
+        if(!_zohoEnabled && _staffRole!=='super_admin' && _staffRole!=='admin') return;
+        refreshZohoPageStatus();
+        applyZohoUiGates();
+      }
       if(t==='audit')        initAuditTab();
       if(t==='attendance')   initAttendanceTab();
       if(t==='my-brand')   initMyBrandTab();
@@ -1760,7 +1925,8 @@ allTabKeys.forEach(function(t){
           { key:'pending',    label:'⏳ Pending',   color:'#7a4800', bg:'#fff8e1' },
           { key:'approved',   label:'👨‍🍳 Appr/Kitchen', color:'#4a148c', bg:'#f3e8ff' },
           { key:'packaging',  label:'📦 Packaging', color:'#2d7a4f', bg:'#e8f5e9' },
-          { key:'dispatched', label:'🚚 Dispatched', color:'#c8382a', bg:'#fde8e8' }
+          { key:'dispatched', label:'🚚 Dispatched', color:'#c8382a', bg:'#fde8e8' },
+          { key:'no_order',   label:'🚫 No Order', color:'#8a7a6a', bg:'#f5ede0' }
         ];
         var counts = {};
         STATUS_CFG.forEach(function(s){ counts[s.key] = 0; });
@@ -2092,9 +2258,11 @@ function renderMyBrandList(){
       return api({action:'getProducts'}).then(function(d){
         allProducts = Array.isArray(d) ? d : [];
         _prodLoaded  = true;
+        if (window.ProductsShared) ProductsShared.setProductMaster(allProducts);
       }).catch(function(){
         allProducts  = [];
         _prodLoaded  = true;
+        if (window.ProductsShared) ProductsShared.setProductMaster([]);
       });
     }
 
@@ -2810,6 +2978,7 @@ if(tbApprove) tbApprove.textContent = newCustQueue.length ? '⏳ New ('+newCustQ
     area:document.getElementById('apm-area').value.trim(),
     mobile:mobile,
     zoho_doc_type: document.getElementById('apm-doc-type').value,
+    shipping_charge: (function(){ var v=document.getElementById('apm-shipping'); var n=v?parseFloat(v.value):NaN; return isNaN(n)?20:n; })(),
     flag:document.getElementById('apm-flag').value.trim(),
     assigned_driver:driver,lat:'',lng:'',
     last_updated_by:'Logistics Owner',last_updated_at:now
@@ -2959,42 +3128,34 @@ if(tbQueue) tbQueue.textContent = '⚠️ Queue ('+data.length+')';
       return r;
     }
 
-    /* Group by product master category only — no fuzzy / keyword matching */
+    /* Category via products-shared.js — product_id only */
     function groupByCat(items){
-      var arr = Array.isArray(items)
-        ? items
-        : Object.entries(items).map(function(e){ return {name:e[0], qty:e[1], product_id:''}; });
-
-      // product_id → product, exact name (lower) → product
+      if (window.ProductsShared) {
+        // Keep admin allProducts in sync with shared index
+        if (typeof allProducts !== 'undefined' && allProducts && allProducts.length)
+          ProductsShared.setProductMaster(allProducts);
+        return ProductsShared.groupByCat(items);
+      }
+      // Fallback if shared script missing
+      var arr = Array.isArray(items) ? items : Object.entries(items||{}).map(function(e){ return {name:e[0], qty:e[1], product_id:''}; });
       var idMap = {};
-      var nameMap = {};
-      (allProducts || []).forEach(function(p){
-        if(p.product_id) idMap[String(p.product_id).trim()] = p;
-        if(p.name) nameMap[String(p.name).toLowerCase().trim()] = p;
-      });
-
+      (allProducts||[]).forEach(function(p){ var pid=String(p.product_id||'').trim(); if(pid) idMap[pid]=p; });
       var cats = {};
       arr.forEach(function(item){
-        var p = null;
-        if(item.product_id && idMap[String(item.product_id).trim()]){
-          p = idMap[String(item.product_id).trim()];
-        }
-        if(!p && item.name){
-          p = nameMap[String(item.name).toLowerCase().trim()] || null;
-        }
-        // Category only from product master; empty / missing → Other
-        var cat = (p && (p.category || '').trim()) ? (p.category || '').trim() : 'Other';
+        var pid = String(item.product_id||'').trim();
+        var p = pid ? idMap[pid] : null;
+        var cat = (p && String(p.category||'').trim()) ? String(p.category).trim() : 'Other';
         if(!cats[cat]) cats[cat] = { total:0, items:[] };
+        var existing = cats[cat].items.find(function(x){
+          return (pid && x.product_id===pid) || (!pid && x.name===item.name);
+        });
+        if(existing) existing.qty += item.qty;
+        else cats[cat].items.push({ name:item.name, qty:item.qty, product_id:pid||'' });
         cats[cat].total += item.qty;
-        cats[cat].items.push({ name:item.name, qty:item.qty, product_id:item.product_id || '' });
       });
-      Object.values(cats).forEach(function(c){
-        c.items.sort(function(a,b){ return b.qty - a.qty; });
-      });
+      Object.values(cats).forEach(function(c){ c.items.sort(function(a,b){ return b.qty-a.qty; }); });
       return cats;
     }
-
-
 
     function loadSummary(){
       var el=document.getElementById('summaryBody');
@@ -3019,7 +3180,13 @@ if(tbQueue) tbQueue.textContent = '⚠️ Queue ('+data.length+')';
         });
         // Convert customer_orders into same shape as logistics orders for summary/print
         var fromPortal = custOrds
-          .filter(function(o){ return o.status && o.status !== 'rejected'; })
+          .filter(function(o){
+            // Skip rejected, explicit no-order, and empty rows (no products)
+            var st = (o.status || '').toLowerCase();
+            if(!st || st === 'rejected' || st === 'no_order') return false;
+            var hasItems = String(o.items||'').trim() && String(o.qty||'').trim();
+            return !!hasItems;
+          })
           .map(function(o){
             var sid = String(o.shop_id || '');
             return {
@@ -3983,7 +4150,7 @@ function refreshBrandDatalist(){
     function openAddCustomer(){
       document.getElementById('custModalTitle').textContent='Add Customer';
       document.getElementById('custModalSub').textContent='';
-      ['cm-id','cm-cust-id','cm-name','cm-address','cm-area','cm-mobile','cm-email','cm-flag', 'cm-brand','cm-lat','cm-lng','cm-login-user','cm-login-pass'].forEach(function(id){document.getElementById(id).value='';});
+      ['cm-id','cm-cust-id','cm-name','cm-address','cm-area','cm-mobile','cm-email','cm-flag', 'cm-brand','cm-lat','cm-lng','cm-login-user','cm-login-pass','cm-shipping'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
       document.getElementById('cm-driver').value='';
       renderCmGroupList([]);
       document.getElementById('cm-msg').style.display='none';
@@ -4008,6 +4175,8 @@ function refreshBrandDatalist(){
       document.getElementById('cm-lng').value=c.lng||'';
       document.getElementById('cm-login-user').value=c.login_username||'';
       document.getElementById('cm-doc-type').value = c.zoho_doc_type || 'invoice';
+      var shipEl=document.getElementById('cm-shipping');
+      if(shipEl) shipEl.value = (c.shipping_charge!=null && c.shipping_charge!=='') ? c.shipping_charge : '';
       document.getElementById('cm-login-pass').value=''; // never pre-fill password
       var dpEl = document.getElementById('cm-drop-photo-preview');
 dpEl.innerHTML = c.drop_photo_url
@@ -4086,6 +4255,7 @@ function openCustDetailModal(c){
   html += '<div><b>📞 Mobile:</b> '+(c.mobile?('<a href="tel:'+esc(c.mobile)+'" style="color:#1565c0">'+esc(c.mobile)+'</a>'):'—')+'</div>';
   html += '<div><b>📋 Groups:</b> '+(groupNames.length?esc(groupNames.join(', ')):'<span style="color:#c8382a">None</span>')+'</div>';
   html += '<div><b>📄 Doc Type:</b> '+(c.zoho_doc_type==='delivery_challan'?'📋 Delivery Challan':'🧾 Invoice')+'</div>';
+  html += '<div><b>🚚 Shipping:</b> '+(c.shipping_charge!=null && c.shipping_charge!=='' ? ('₹'+c.shipping_charge) : '— (use default)')+'</div>';
   html += '<div><b>🏷 Note:</b> '+esc(c.flag||'—')+'</div>';
   html += '<div><b>🌐 GPS:</b> '+(c.lat?(esc(c.lat)+', '+esc(c.lng)+' <a href="https://www.google.com/maps?q='+c.lat+','+c.lng+'" target="_blank" style="color:#1565c0">map ↗</a>'):'<span style="color:#c8382a">Not saved</span>')+'</div>';
   html += '<div><b>🔐 Login Username:</b> '+esc(c.login_username||'—')+'</div>';
@@ -4290,6 +4460,7 @@ function shareCdHistoryReport(){
         address:document.getElementById('cm-address').value.trim(),area:document.getElementById('cm-area').value.trim(),
         assigned_driver:assignedDriver,
         zoho_doc_type: document.getElementById('cm-doc-type').value,
+        shipping_charge: (function(){ var v=document.getElementById('cm-shipping'); var n=v?parseFloat(v.value):NaN; return isNaN(n)?'':n; })(),
         brand:document.getElementById('cm-brand').value.trim(),
         mobile:document.getElementById('cm-mobile').value.trim(),email:document.getElementById('cm-email').value.trim(),flag:document.getElementById('cm-flag').value.trim(),
         lat:document.getElementById('cm-lat').value,lng:document.getElementById('cm-lng').value,
@@ -4758,7 +4929,7 @@ function shareAllCustLogins(){
     }
     function openAddProduct(){
       document.getElementById('productModalTitle').textContent='Add Product';
-      ['pm-id','pm-name','pm-pid','pm-cat','pm-price','pm-unit','pm-desc'].forEach(function(id){document.getElementById(id).value='';});
+      ['pm-id','pm-name','pm-pid','pm-cat','pm-price','pm-tax-id','pm-unit','pm-desc'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
       document.getElementById('pm-group').value='';
       document.getElementById('pm-active').value='true';
       document.getElementById('pm-msg').style.display='none';
@@ -4772,6 +4943,8 @@ function shareAllCustLogins(){
       document.getElementById('pm-pid').value=p.product_id||'';
       document.getElementById('pm-cat').value=p.category||'';
       document.getElementById('pm-price').value=p.price||'';
+      var taxEl=document.getElementById('pm-tax-id');
+      if(taxEl) taxEl.value=p.tax_id||p.zoho_tax_id||'';
       document.getElementById('pm-unit').value=p.unit||'';
       document.getElementById('pm-desc').value=p.description||'';
       document.getElementById('pm-active').value=p.active===false?'false':'true';
@@ -4796,7 +4969,7 @@ function shareAllCustLogins(){
       var gid=document.getElementById('pm-group').value;
       var pid=String(document.getElementById('pm-pid').value.trim()||id);
       var actVal=document.getElementById('pm-active').value;
-      apiPost({action:id?'updateProduct':'addProduct',product_id:pid,name:name,category:document.getElementById('pm-cat').value.trim(),price:document.getElementById('pm-price').value.trim(),unit:document.getElementById('pm-unit').value.trim(),description:document.getElementById('pm-desc').value.trim(),group_id:gid?parseInt(gid):null,active:actVal!=='false'})
+      apiPost({action:id?'updateProduct':'addProduct',product_id:pid,name:name,category:document.getElementById('pm-cat').value.trim(),price:document.getElementById('pm-price').value.trim(),tax_id:(document.getElementById('pm-tax-id')||{}).value?document.getElementById('pm-tax-id').value.trim():'',unit:document.getElementById('pm-unit').value.trim(),description:document.getElementById('pm-desc').value.trim(),group_id:gid?parseInt(gid):null,active:actVal!=='false'})
       .then(function(res){
         if(res&&res.ok){
           // Sync junction table: remove from old group, add to new group
@@ -5090,6 +5263,9 @@ function shareAllCustLogins(){
       var message  = document.getElementById('notif-message').value.trim();
       var resultMsg = document.getElementById('notif-send-msg');
 
+      if(_notifChannelState.driver === 'false'){
+        resultMsg.textContent='❌ Driver notifications are disabled in Manage tab.'; resultMsg.className='msg er'; resultMsg.style.display='block'; return;
+      }
       if(!selected.length){ resultMsg.textContent='❌ Select at least one driver.'; resultMsg.className='msg er'; resultMsg.style.display='block'; return; }
       if(!message){ resultMsg.textContent='❌ Type a message first.'; resultMsg.className='msg er'; resultMsg.style.display='block'; return; }
 
@@ -6023,27 +6199,426 @@ apiPost({
     function _updateZohoToggleUI(){
       var lbl = document.getElementById('zoho-status-lbl');
       var btn = document.getElementById('zoho-toggle-btn');
-      if(!lbl||!btn) return;
-      if(_zohoEnabled){
-        lbl.textContent='ENABLED'; lbl.style.color='#2d7a4f';
-        btn.textContent='Disable'; btn.style.background='#fde8e8'; btn.style.color='#c8382a';
-      } else {
-        lbl.textContent='DISABLED'; lbl.style.color='#c8382a';
-        btn.textContent='Enable'; btn.style.background='#e8f5e9'; btn.style.color='#2d7a4f';
+      if(lbl && btn){
+        if(_zohoEnabled){
+          lbl.textContent='ENABLED'; lbl.style.color='#2d7a4f';
+          btn.textContent='Disable'; btn.style.background='#fde8e8'; btn.style.color='#c8382a';
+        } else {
+          lbl.textContent='DISABLED'; lbl.style.color='#c8382a';
+          btn.textContent='Enable'; btn.style.background='#e8f5e9'; btn.style.color='#2d7a4f';
+        }
       }
+      applyZohoUiGates();
+    }
+
+    /** Show/hide ALL Zoho UI based on integration toggle */
+    function applyZohoUiGates(){
+      var on = !!_zohoEnabled;
+      var isAdmin = (_staffRole === 'admin' || _staffRole === 'super_admin');
+      var show = on && isAdmin;
+
+      // Main 🔗 Zoho tab
+      var mtb = document.getElementById('mtb-zoho');
+      if(mtb) mtb.style.display = show ? '' : 'none';
+      _visibleTabs['zoho'] = show;
+
+      // Sync bars on Customers / Products / Orders
+      ['zoho-cust-bar','zoho-prod-bar','zoho-orders-bar'].forEach(function(id){
+        var el = document.getElementById(id);
+        if(el) el.style.display = show ? '' : 'none';
+      });
+
+      // Fields that only matter for Zoho
+      var zohoFieldIds = [
+        'cm-doc-type','cm-shipping','apm-doc-type','apm-shipping','pm-tax-id','com-doc-type'
+      ];
+      zohoFieldIds.forEach(function(id){
+        var el = document.getElementById(id);
+        if(!el) return;
+        // Hide the field and its preceding label row when possible
+        var wrap = el.closest ? el.closest('.zoho-only') : null;
+        if(wrap){ wrap.style.display = on ? '' : 'none'; return; }
+        var prev = el.previousElementSibling;
+        if(prev && (prev.classList && prev.classList.contains('lbl') || prev.className === 'lbl'))
+          prev.style.display = on ? '' : 'none';
+        // helper text under tax id
+        var next = el.nextElementSibling;
+        if(next && next.style && next.tagName === 'DIV' && (next.textContent||'').indexOf('CGST')>=0)
+          next.style.display = on ? '' : 'none';
+        el.style.display = on ? '' : 'none';
+      });
+
+      // Zoho page body sections (keep toggle/status visible)
+      var pg = document.getElementById('pg-zoho');
+      if(pg){
+        var cards = pg.querySelectorAll('.card');
+        cards.forEach(function(card, idx){
+          // first card = status/toggle — always show for admins
+          if(idx === 0){ card.style.display = isAdmin ? '' : 'none'; return; }
+          card.style.display = show ? '' : 'none';
+        });
+        if(!on){
+          var offNote = document.getElementById('zoho-off-banner');
+          if(!offNote){
+            offNote = document.createElement('div');
+            offNote.id = 'zoho-off-banner';
+            offNote.className = 'card';
+            offNote.style.cssText = 'margin-bottom:12px;background:#fde8e8;border-color:#f0b0b0';
+            offNote.innerHTML = '<div style="font-size:13px;font-weight:800;color:#c8382a">Zoho Integration is OFF</div>'+
+              '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:6px;line-height:1.6">Enable the toggle above (or in Users → Feature Settings) to use pull sync, invoices, and Zoho fields.</div>';
+            if(cards[0] && cards[0].nextSibling) pg.insertBefore(offNote, cards[0].nextSibling);
+            else pg.appendChild(offNote);
+          }
+          offNote.style.display = isAdmin ? '' : 'none';
+        } else {
+          var bn = document.getElementById('zoho-off-banner');
+          if(bn) bn.style.display = 'none';
+        }
+      }
+
+      // If user is on Zoho tab while disabled, stay but only status visible
+      try {
+        var pageStatus = document.getElementById('zoho-page-status');
+        if(pageStatus){
+          pageStatus.textContent = on ? '✅ Integration ON' : '❌ Integration OFF';
+          pageStatus.style.color = on ? '#2d7a4f' : '#c8382a';
+        }
+      } catch(e){}
     }
 
     function toggleZohoIntegration(){
       var btn = document.getElementById('zoho-toggle-btn');
-      btn.disabled=true; btn.textContent='…';
+      if(btn){ btn.disabled=true; btn.textContent='…'; }
       var newVal = _zohoEnabled ? '0' : '1';
       apiPost({action:'setSetting', key:'zoho_integration', value:newVal}).then(function(){
         _zohoEnabled = (newVal==='1');
         _updateZohoToggleUI();
-        btn.disabled=false;
-        // re-render to show/hide Zoho buttons
-        renderCustomers();
-        renderProducts();
+        if(btn) btn.disabled=false;
+        try { renderCustomers(); } catch(e){}
+        try { renderProducts(); } catch(e){}
+        try { loadCustOrders && loadCustOrders(); } catch(e){}
+      }).catch(function(){
+        if(btn){ btn.disabled=false; btn.textContent=_zohoEnabled?'Disable':'Enable'; }
+        alert('Failed to update Zoho setting');
+      });
+    }
+
+    /* ── ZOHO PULL → REVIEW → CONFIRM (app tab) ── */
+    var _zohoPullCustomers = []; // staged rows {kind, zoho, local, changes}
+    var _zohoPullProducts  = [];
+
+    function refreshZohoPageStatus(){
+      var el = document.getElementById('zoho-page-status');
+      if(!el) return;
+      api({action:'getSetting', key:'zoho_integration'}).then(function(row){
+        _zohoEnabled = !!(row && row.value === '1');
+        el.textContent = _zohoEnabled ? '✅ Integration ON' : '❌ Integration OFF';
+        el.style.color = _zohoEnabled ? '#2d7a4f' : '#c8382a';
+      }).catch(function(){
+        el.textContent = _zohoEnabled ? 'ON' : 'OFF';
+      });
+      loadZohoShippingCharge().then(function(amt){
+        var inp = document.getElementById('zoho-shipping-input');
+        if(inp) inp.value = amt;
+      });
+      try { _updateZohoToggleUI(); } catch(e){}
+    }
+    function saveZohoShippingUI(){
+      var inp = document.getElementById('zoho-shipping-input');
+      var msg = document.getElementById('zoho-shipping-msg');
+      setZohoShippingCharge(inp ? inp.value : 20).then(function(n){
+        if(msg){ msg.style.display='inline'; msg.textContent='✅ Saved ₹'+n; setTimeout(function(){ msg.style.display='none'; }, 2500); }
+      }).catch(function(){ alert('Failed to save shipping'); });
+    }
+
+    function _zohoPullMsg(id, txt, type){
+      var el = document.getElementById(id);
+      if(!el) return;
+      el.style.display = 'block';
+      el.textContent = txt;
+      el.style.background = type==='ok'?'#e8f5e9':type==='er'?'#fde8e8':'#fff8e1';
+      el.style.color = type==='ok'?'#2d7a4f':type==='er'?'#c8382a':'#7a4800';
+      el.style.border = '1px solid '+(type==='ok'?'#a5d6a7':type==='er'?'#f0b0b0':'#ffe082');
+    }
+
+    function zohoEdge(action, extra){
+      return loadZohoCreds().then(function(){
+        _zohoAccessToken = null;
+        _zohoTokenExpires = 0;
+        return zohoGetAccessToken();
+      }).then(function(token){
+        var body = Object.assign({
+          action: action,
+          access_token: token,
+          org_id: _zohoCreds.org_id,
+          dc: _zohoCreds.dc || 'in'
+        }, extra || {});
+        return fetch(CONFIG.SUPABASE_URL + '/functions/v1/zoho-token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + CONFIG.SUPABASE_ANON_KEY
+          },
+          body: JSON.stringify(body)
+        }).then(function(r){ return r.json(); });
+      });
+    }
+
+    function zohoPullCustomers(){
+      if(!_zohoEnabled){
+        _zohoPullMsg('zoho-pull-cust-msg', 'Turn on Zoho Integration first (Users settings or Toggle).', 'er');
+        return;
+      }
+      _zohoPullMsg('zoho-pull-cust-msg', '⏳ Pulling contacts from Zoho…', 'in');
+      document.getElementById('zoho-apply-cust-btn').style.display = 'none';
+      document.getElementById('zoho-pull-cust-list').style.display = 'none';
+      document.getElementById('zoho-pull-cust-summary').style.display = 'none';
+      Promise.all([
+        zohoEdge('list_contacts', { page: 1, per_page: 200 }),
+        loadCustomerMaster(true)
+      ]).then(function(res){
+        var data = res[0] || {};
+        if(data.code !== 0 && data.code !== undefined){
+          throw data.message || ('Zoho error ' + data.code);
+        }
+        var contacts = data.contacts || data.contact || [];
+        if(!Array.isArray(contacts)) contacts = [];
+        if(!contacts.length && data.message){
+          throw data.message + ' — ensure zoho-token edge function supports action list_contacts';
+        }
+        _zohoPullCustomers = contacts.map(function(z){
+          var zid = String(z.contact_id || '');
+          var zname = (z.contact_name || z.company_name || '').trim();
+          var zmobile = '';
+          if(z.mobile) zmobile = String(z.mobile);
+          else if(z.phone) zmobile = String(z.phone);
+          else if(z.contact_persons && z.contact_persons[0]){
+            zmobile = String(z.contact_persons[0].mobile || z.contact_persons[0].phone || '');
+          }
+          var local = (allCustomers||[]).find(function(c){
+            return String(c.zoho_contact_id||'') === zid
+              || String(c.customer_id||'') === zid
+              || String(c.shop_id||'') === zid
+              || (zname && (c.name||'').trim().toLowerCase() === zname.toLowerCase());
+          });
+          var changes = [];
+          if(!local) return { kind:'new', zoho:z, zid:zid, zname:zname, zmobile:zmobile, local:null, changes:['New customer'] };
+          if(zname && zname !== (local.name||'')) changes.push('Name: '+(local.name||'')+' → '+zname);
+          if(zmobile && zmobile !== (local.mobile||'')) changes.push('Mobile: '+(local.mobile||'—')+' → '+zmobile);
+          var zaddr = (z.billing_address && (z.billing_address.address || z.billing_address.street)) || '';
+          if(zaddr && zaddr !== (local.address||'')) changes.push('Address changed');
+          return {
+            kind: changes.length ? 'changed' : 'same',
+            zoho:z, zid:zid, zname:zname, zmobile:zmobile, local:local, changes:changes
+          };
+        });
+        var nNew = _zohoPullCustomers.filter(function(r){ return r.kind==='new'; }).length;
+        var nChg = _zohoPullCustomers.filter(function(r){ return r.kind==='changed'; }).length;
+        var nSame = _zohoPullCustomers.filter(function(r){ return r.kind==='same'; }).length;
+        var sum = document.getElementById('zoho-pull-cust-summary');
+        sum.style.display = 'block';
+        sum.innerHTML = '<div class="stats-grid">'+
+          '<div class="stat" style="background:#e8f5e9"><div class="stat-n" style="color:#2d7a4f">'+nNew+'</div><div class="stat-l">New</div></div>'+
+          '<div class="stat" style="background:#fff8e1"><div class="stat-n" style="color:#7a4800">'+nChg+'</div><div class="stat-l">Changed</div></div>'+
+          '<div class="stat"><div class="stat-n">'+nSame+'</div><div class="stat-l">Unchanged</div></div>'+
+          '<div class="stat"><div class="stat-n">'+_zohoPullCustomers.length+'</div><div class="stat-l">From Zoho</div></div></div>';
+        var list = document.getElementById('zoho-pull-cust-list');
+        list.style.display = 'block';
+        var rows = _zohoPullCustomers.filter(function(r){ return r.kind!=='same'; });
+        if(!rows.length){
+          list.innerHTML = '<div style="padding:12px;font-size:12px;color:#8a7a6a;font-family:monospace">No new or changed customers.</div>';
+          document.getElementById('zoho-apply-cust-btn').style.display = 'none';
+        } else {
+          list.innerHTML = rows.map(function(r,i){
+            var badge = r.kind==='new'
+              ? '<span style="background:#e8f5e9;color:#2d7a4f;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">NEW</span>'
+              : '<span style="background:#fff8e1;color:#7a4800;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">CHANGED</span>';
+            return '<label style="display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border-bottom:1px solid #f0e8dc;cursor:pointer">'+
+              '<input type="checkbox" class="zoho-pull-cust-cb" data-idx="'+_zohoPullCustomers.indexOf(r)+'" checked style="margin-top:3px;accent-color:#2d7a4f">'+
+              '<div style="flex:1;min-width:0">'+
+                '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+badge+
+                  '<span style="font-size:13px;font-weight:700">'+esc(r.zname||'—')+'</span></div>'+
+                '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px">ID '+esc(r.zid)+(r.zmobile?' · '+esc(r.zmobile):'')+'</div>'+
+                (r.changes.length?'<div style="font-size:11px;color:#4a2f14;margin-top:3px">'+esc(r.changes.join(' · '))+'</div>':'')+
+              '</div></label>';
+          }).join('');
+          document.getElementById('zoho-apply-cust-btn').style.display = 'block';
+        }
+        _zohoPullMsg('zoho-pull-cust-msg', '✅ Pulled '+_zohoPullCustomers.length+' contacts. Review & confirm to apply.', 'ok');
+      }).catch(function(err){
+        _zohoPullMsg('zoho-pull-cust-msg', '❌ '+(err && err.message ? err.message : String(err)), 'er');
+      });
+    }
+
+    function zohoApplyCustomerPull(){
+      var cbs = Array.from(document.querySelectorAll('.zoho-pull-cust-cb:checked'));
+      if(!cbs.length){ alert('Select at least one row.'); return; }
+      if(!confirm('Apply '+cbs.length+' customer change(s) to the app?')) return;
+      _zohoPullMsg('zoho-pull-cust-msg', '⏳ Applying…', 'in');
+      var jobs = cbs.map(function(cb){
+        var row = _zohoPullCustomers[parseInt(cb.dataset.idx,10)];
+        if(!row) return Promise.resolve();
+        var z = row.zoho || {};
+        var addr = (z.billing_address && (z.billing_address.address || z.billing_address.street)) || '';
+        var city = (z.billing_address && z.billing_address.city) || '';
+        if(row.kind==='new'){
+          var cid = row.zid || ('Z'+Date.now());
+          return apiPost({
+            action:'addShop',
+            shop_id: cid, customer_id: cid,
+            name: row.zname || cid,
+            address: addr, area: city,
+            mobile: row.zmobile || '',
+            assigned_driver: '',
+            zoho_contact_id: row.zid,
+            zoho_doc_type: 'invoice',
+            last_updated_by: 'Zoho Pull',
+            last_updated_at: new Date().toLocaleString('en-IN')
+          });
+        }
+        var loc = row.local;
+        return apiPost({
+          action:'updateShop',
+          shop_id: loc.shop_id || loc.customer_id,
+          customer_id: loc.customer_id || loc.shop_id,
+          name: row.zname || loc.name,
+          address: addr || loc.address || '',
+          area: city || loc.area || '',
+          mobile: row.zmobile || loc.mobile || '',
+          assigned_driver: loc.assigned_driver || '',
+          zoho_contact_id: row.zid || loc.zoho_contact_id || '',
+          zoho_doc_type: loc.zoho_doc_type || 'invoice',
+          flag: loc.flag || '',
+          lat: loc.lat || '', lng: loc.lng || '',
+          last_updated_by: 'Zoho Pull',
+          last_updated_at: new Date().toLocaleString('en-IN')
+        });
+      });
+      Promise.all(jobs).then(function(){
+        _zohoPullMsg('zoho-pull-cust-msg', '✅ Applied '+cbs.length+' customer update(s).', 'ok');
+        document.getElementById('zoho-apply-cust-btn').style.display = 'none';
+        loadCustomerMaster(true);
+      }).catch(function(e){
+        _zohoPullMsg('zoho-pull-cust-msg', '❌ Apply failed: '+(e && e.message ? e.message : e), 'er');
+      });
+    }
+
+    function zohoPullProducts(){
+      if(!_zohoEnabled){
+        _zohoPullMsg('zoho-pull-prod-msg', 'Turn on Zoho Integration first.', 'er');
+        return;
+      }
+      _zohoPullMsg('zoho-pull-prod-msg', '⏳ Pulling items from Zoho…', 'in');
+      document.getElementById('zoho-apply-prod-btn').style.display = 'none';
+      document.getElementById('zoho-pull-prod-list').style.display = 'none';
+      document.getElementById('zoho-pull-prod-summary').style.display = 'none';
+      Promise.all([
+        zohoEdge('list_items', { page: 1, per_page: 200 }),
+        loadProductMaster(true)
+      ]).then(function(res){
+        var data = res[0] || {};
+        if(data.code !== 0 && data.code !== undefined){
+          throw data.message || ('Zoho error ' + data.code);
+        }
+        var items = data.items || data.item || [];
+        if(!Array.isArray(items)) items = [];
+        if(!items.length && data.message){
+          throw data.message + ' — ensure zoho-token edge function supports action list_items';
+        }
+        _zohoPullProducts = items.map(function(z){
+          var zid = String(z.item_id || '');
+          var zname = (z.name || '').trim();
+          var zrate = z.rate != null ? String(z.rate) : '';
+          var zsku = (z.sku || '').trim();
+          var local = (allProducts||[]).find(function(p){
+            return String(p.product_id||'') === zid
+              || (zsku && String(p.product_id||'') === zsku)
+              || (zname && (p.name||'').trim().toLowerCase() === zname.toLowerCase());
+          });
+          var changes = [];
+          if(!local) return { kind:'new', zoho:z, zid:zid, zname:zname, zrate:zrate, zsku:zsku, local:null, changes:['New product'] };
+          if(zname && zname !== (local.name||'')) changes.push('Name: '+(local.name||'')+' → '+zname);
+          if(zrate && String(local.price||'') !== zrate) changes.push('Price: '+(local.price||'—')+' → '+zrate);
+          return { kind: changes.length?'changed':'same', zoho:z, zid:zid, zname:zname, zrate:zrate, zsku:zsku, local:local, changes:changes };
+        });
+        var nNew = _zohoPullProducts.filter(function(r){ return r.kind==='new'; }).length;
+        var nChg = _zohoPullProducts.filter(function(r){ return r.kind==='changed'; }).length;
+        var nSame = _zohoPullProducts.filter(function(r){ return r.kind==='same'; }).length;
+        var sum = document.getElementById('zoho-pull-prod-summary');
+        sum.style.display = 'block';
+        sum.innerHTML = '<div class="stats-grid">'+
+          '<div class="stat" style="background:#e8f5e9"><div class="stat-n" style="color:#2d7a4f">'+nNew+'</div><div class="stat-l">New</div></div>'+
+          '<div class="stat" style="background:#fff8e1"><div class="stat-n" style="color:#7a4800">'+nChg+'</div><div class="stat-l">Changed</div></div>'+
+          '<div class="stat"><div class="stat-n">'+nSame+'</div><div class="stat-l">Unchanged</div></div>'+
+          '<div class="stat"><div class="stat-n">'+_zohoPullProducts.length+'</div><div class="stat-l">From Zoho</div></div></div>';
+        var list = document.getElementById('zoho-pull-prod-list');
+        list.style.display = 'block';
+        var rows = _zohoPullProducts.filter(function(r){ return r.kind!=='same'; });
+        if(!rows.length){
+          list.innerHTML = '<div style="padding:12px;font-size:12px;color:#8a7a6a;font-family:monospace">No new or changed products.</div>';
+          document.getElementById('zoho-apply-prod-btn').style.display = 'none';
+        } else {
+          list.innerHTML = rows.map(function(r){
+            var badge = r.kind==='new'
+              ? '<span style="background:#e8f5e9;color:#2d7a4f;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">NEW</span>'
+              : '<span style="background:#fff8e1;color:#7a4800;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">CHANGED</span>';
+            return '<label style="display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border-bottom:1px solid #f0e8dc;cursor:pointer">'+
+              '<input type="checkbox" class="zoho-pull-prod-cb" data-idx="'+_zohoPullProducts.indexOf(r)+'" checked style="margin-top:3px;accent-color:#2d7a4f">'+
+              '<div style="flex:1">'+
+                '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+badge+
+                  '<span style="font-size:13px;font-weight:700">'+esc(r.zname||'—')+'</span></div>'+
+                '<div style="font-size:10px;color:#8a7a6a;font-family:monospace">ID '+esc(r.zid)+(r.zrate?' · ₹'+esc(r.zrate):'')+(r.zsku?' · SKU '+esc(r.zsku):'')+'</div>'+
+                (r.changes.length?'<div style="font-size:11px;margin-top:3px">'+esc(r.changes.join(' · '))+'</div>':'')+
+              '</div></label>';
+          }).join('');
+          document.getElementById('zoho-apply-prod-btn').style.display = 'block';
+        }
+        _zohoPullMsg('zoho-pull-prod-msg', '✅ Pulled '+_zohoPullProducts.length+' items. Review & confirm to apply.', 'ok');
+      }).catch(function(err){
+        _zohoPullMsg('zoho-pull-prod-msg', '❌ '+(err && err.message ? err.message : String(err)), 'er');
+      });
+    }
+
+    function zohoApplyProductPull(){
+      var cbs = Array.from(document.querySelectorAll('.zoho-pull-prod-cb:checked'));
+      if(!cbs.length){ alert('Select at least one row.'); return; }
+      if(!confirm('Apply '+cbs.length+' product change(s) to the app?')) return;
+      _zohoPullMsg('zoho-pull-prod-msg', '⏳ Applying…', 'in');
+      var jobs = cbs.map(function(cb){
+        var row = _zohoPullProducts[parseInt(cb.dataset.idx,10)];
+        if(!row) return Promise.resolve();
+        var z = row.zoho || {};
+        var pid = row.zsku || row.zid || ('ZITEM'+Date.now());
+        if(row.kind==='new'){
+          return apiPost({
+            action:'addProduct',
+            product_id: pid,
+            name: row.zname || pid,
+            category: '',
+            price: row.zrate || '',
+            unit: z.unit || 'Pieces',
+            description: z.description || '',
+            active: true
+          });
+        }
+        var loc = row.local;
+        return apiPost({
+          action:'updateProduct',
+          product_id: loc.product_id,
+          name: row.zname || loc.name,
+          category: loc.category || '',
+          price: row.zrate || loc.price || '',
+          unit: z.unit || loc.unit || 'Pieces',
+          description: z.description || loc.description || '',
+          active: loc.active !== false
+        });
+      });
+      Promise.all(jobs).then(function(){
+        _zohoPullMsg('zoho-pull-prod-msg', '✅ Applied '+cbs.length+' product update(s).', 'ok');
+        document.getElementById('zoho-apply-prod-btn').style.display = 'none';
+        loadProductMaster(true);
+      }).catch(function(e){
+        _zohoPullMsg('zoho-pull-prod-msg', '❌ Apply failed: '+(e && e.message ? e.message : e), 'er');
       });
     }
 
@@ -6754,7 +7329,7 @@ onStaffRoleChange();
     }
 
     function renderCoStats(){
-      var counts = {pending:0, approved:0, rejected:0, packaging:0, dispatched:0};
+      var counts = {pending:0, approved:0, rejected:0, packaging:0, dispatched:0, no_order:0};
       allCustOrders.forEach(function(o){ if(counts[o.status]!==undefined) counts[o.status]++; });
       var total = allCustOrders.length;
       var f = _coStatusFilter;
@@ -6776,11 +7351,12 @@ onStaffRoleChange();
         chip('pending', 'Pending', counts.pending, '#7a4800', '#ffe082') +
         chip('approved', 'Kitchen', counts.approved, '#e67e22', '#f5c87a') +
         chip('packaging', 'Packaging', counts.packaging, '#6e3da8', '#ce93d8') +
-        chip('dispatched', 'Dispatched', counts.dispatched, '#2d7a4f', '#a5d6a7');
+        chip('dispatched', 'Dispatched', counts.dispatched, '#2d7a4f', '#a5d6a7') +
+        chip('no_order', 'No Order', counts.no_order, '#8a7a6a', '#e0d0c0');
     }
 
-    var STATUS_COLORS = { pending:'b-warn', approved:'b-logistics', rejected:'b-miss', packaging:'b-blue', dispatched:'b-ok' };
-    var STATUS_LABELS = { pending:'⏳ Pending', approved:'👨‍🍳 In Kitchen', rejected:'❌ Rejected', packaging:'📦 Packaging', dispatched:'🚚 Dispatched' };
+    var STATUS_COLORS = { pending:'b-warn', approved:'b-logistics', rejected:'b-miss', packaging:'b-blue', dispatched:'b-ok', no_order:'b-miss' };
+    var STATUS_LABELS = { pending:'⏳ Pending', approved:'👨‍🍳 In Kitchen', rejected:'❌ Rejected', packaging:'📦 Packaging', dispatched:'🚚 Dispatched', no_order:'🚫 No Order' };
 
     function renderCustOrders(){
       var el = document.getElementById('coList');
@@ -6884,55 +7460,26 @@ onStaffRoleChange();
   var order = allCustOrders.find(function(o){ return String(o.id) === String(id); });
   if(!order){ updateCoStatus(id,'approved'); return; }
 
-  // Update status first
   var body = { action:'updateCustomerOrderStatus', id:id, status:'approved' };
   apiPost(body).then(function(res){
     if(!res || !res.ok){ alert('Failed to approve.'); return; }
-
-    // Reload list to reflect approved status
     loadCustOrders();
-
-    // Create Zoho invoice if enabled
     if(_zohoEnabled){
-      console.log('🔍 quickApprove → creating Zoho invoice for order', id);
-      var _qaShop = allCustomers.find(function(c){
+      var shop = allCustomers.find(function(c){
         return (c.customer_id || c.shop_id || '') === String(order.shop_id || '');
       });
-      var orderForZoho = {
-        id:            order.id,
-        shop_id:       order.shop_id,
-        shop_name:     order.shop_name,
+      openZohoInvPreview({
+        id: order.id,
+        shop_id: order.shop_id,
+        shop_name: order.shop_name,
         delivery_date: order.delivery_date,
-        items:         order.items,
-        qty:           order.qty,
-        zoho_doc_type: order.zoho_doc_type || (_qaShop && _qaShop.zoho_doc_type) || 'invoice'
-      };
-zohoCreateInvoiceReal(orderForZoho)
-  .then(function(inv){
-    console.log('✅ Invoice created:', inv.invoice_number, '₹'+inv.total);
-    // Save invoice reference back to DB
-    apiPost({
-      action:              'updateCustomerOrderStatus',
-      id:                  id,                        // ← always the order id
-      status:              'approved',                // ← keep status unchanged
-      zoho_invoice_id:     inv.invoice_id,
-      zoho_invoice_number: inv.invoice_number
-    });
-          // Show a brief success toast
-          var banner = document.getElementById('pendingOrdersBanner');
-          if(banner){
-            var toast = document.createElement('div');
-            toast.className = 'msg ok';
-            toast.textContent = '📄 Zoho Invoice: ' + inv.invoice_number + ' · ₹' + inv.total;
-            toast.style.marginBottom = '8px';
-            banner.parentNode.insertBefore(toast, banner.nextSibling);
-            setTimeout(function(){ toast.remove(); }, 4000);
-          }
-          loadCustOrders(); // reload again to show invoice number
-        })
-        .catch(function(err){
-          console.error('❌ Zoho invoice failed:', err);
-        });
+        items: order.items,
+        qty: order.qty,
+        item_ids: order.item_ids || '',
+        zoho_doc_type: order.zoho_doc_type || (shop && shop.zoho_doc_type) || 'invoice',
+        zoho_invoice_id: order.zoho_invoice_id || '',
+        zoho_invoice_number: order.zoho_invoice_number || ''
+      });
     }
   });
 }
@@ -7000,7 +7547,7 @@ zohoCreateInvoiceReal(orderForZoho)
           '</div>'+
           '<div style="display:flex;align-items:center;gap:0;flex-shrink:0">'+
             '<button type="button" style="width:32px;height:32px;border:1.5px solid #e8dfd2;background:#fff;border-radius:8px;font-size:18px;font-weight:700;cursor:pointer;color:#4a2f14;flex-shrink:0" onclick="coQtyChg(this,-1)">−</button>'+
-            '<input type="number" value="'+q+'" min="0" inputmode="numeric" style="width:52px;text-align:center;font-size:15px;font-weight:800;color:#4a2f14;font-family:monospace;border:1.5px solid #e8dfd2;border-left:none;border-right:none;background:#f9f6f1;padding:5px 2px;outline:none;-webkit-appearance:none;-moz-appearance:textfield" data-name="'+esc(p.name)+'" onchange="this.value=Math.max(0,parseInt(this.value)||0)">'+
+            '<input type="number" value="'+q+'" min="0" inputmode="numeric" style="width:52px;text-align:center;font-size:15px;font-weight:800;color:#4a2f14;font-family:monospace;border:1.5px solid #e8dfd2;border-left:none;border-right:none;background:#f9f6f1;padding:5px 2px;outline:none;-webkit-appearance:none;-moz-appearance:textfield" data-name="'+esc(p.name)+'" data-pid="'+esc((p.product_id&&String(p.product_id).charAt(0)!=='_')?p.product_id:'')+'" onchange="this.value=Math.max(0,parseInt(this.value)||0)">'+
             '<button type="button" style="width:32px;height:32px;border:1.5px solid #e8dfd2;background:#fff;border-radius:8px;font-size:18px;font-weight:700;cursor:pointer;color:#4a2f14;flex-shrink:0" onclick="coQtyChg(this,1)">+</button>'+
           '</div>'+
         '</div>';
@@ -7025,10 +7572,14 @@ zohoCreateInvoiceReal(orderForZoho)
   var msg       = document.getElementById('com-msg');
   var orderObj  = allCustOrders.find(function(o){ return String(o.id) === String(id); }) || {};
 
-  var itemsArr = [], qtyArr = [];
+  var itemsArr = [], qtyArr = [], idsArr = [];
   document.querySelectorAll('#com-prod-list input[type=number]').forEach(function(inp) {
     var q = parseInt(inp.value) || 0;
-    if (q > 0) { itemsArr.push(inp.dataset.name); qtyArr.push(q); }
+    if (q > 0) {
+      itemsArr.push(inp.dataset.name);
+      qtyArr.push(q);
+      idsArr.push(inp.dataset.pid || '');
+    }
   });
   if (!itemsArr.length) {
     msg.textContent = 'Add at least one item with quantity > 0.';
@@ -7043,8 +7594,12 @@ zohoCreateInvoiceReal(orderForZoho)
     status:     status,
     items:      itemsArr.join(','),
     qty:        qtyArr.join(','),
+    item_ids:   idsArr.join(','),
     note:       note,
     admin_note: adminNote,
+    shop_id:    orderObj.shop_id || document.getElementById('com-shop-id').value,
+    shop_name:  orderObj.shop_name || '',
+    delivery_date: orderObj.delivery_date || '',
     zoho_doc_type: (document.getElementById('com-doc-type') || {}).value || orderObj.zoho_doc_type || 'invoice'
 
      })
@@ -7054,48 +7609,24 @@ zohoCreateInvoiceReal(orderForZoho)
       msg.className   = 'msg er'; return;
     }
 
- // ── AUTO-SEND TO ZOHO BOOKS ON APPROVAL ──
+ // ── ZOHO PREVIEW ON APPROVAL (send only if admin confirms) ──
     if (status === 'approved' && _zohoEnabled) {
-      msg.textContent = '✅ Approved! Sending to Zoho Books…';
+      msg.textContent = '✅ Approved in app. Review Zoho document…';
       msg.className   = 'msg ok';
-
-      var existingInvoiceId = orderObj.zoho_invoice_id || '';
-
-      var orderForZoho = {
+      closeCoModal();
+      openZohoInvPreview({
         id:            id,
         shop_id:       orderObj.shop_id || document.getElementById('com-shop-id').value,
-        shop_name:     orderObj.shop_name || document.getElementById('com-title').textContent,
+        shop_name:     orderObj.shop_name || '',
         delivery_date: orderObj.delivery_date || todayStr(),
-        items:         itemsArr.join(', '),
-        qty:           qtyArr.join(', '),
-        zoho_doc_type: (document.getElementById('com-doc-type') || {}).value || orderObj.zoho_doc_type || 'invoice'
-      };
-
-      // If invoice already exists → UPDATE it; otherwise CREATE new
-      var zohoPromise = existingInvoiceId
-        ? zohoUpdateInvoiceReal(existingInvoiceId, orderForZoho)
-        : zohoCreateInvoiceReal(orderForZoho);
-
-      zohoPromise
-        .then(function(inv) {
-          apiPost({
-            action:              'updateCustomerOrderStatus',
-            id:                  id,
-            status:              'approved',
-            zoho_invoice_id:     inv.invoice_id,
-            zoho_invoice_number: inv.invoice_number
-          });
-          msg.textContent = '✅ Approved!\n📄 Zoho Invoice: ' + inv.invoice_number
-            + (inv.total ? ' · ₹' + inv.total : '');
-          msg.className = 'msg ok';
-          setTimeout(function(){ closeCoModal(); loadCustOrders(); }, 2500);
-        })
-        .catch(function(err) {
-          msg.textContent = '✅ Order approved (saved).\n⚠️ Zoho invoice failed: '
-            + (err || 'unknown') + '\nRetry from Orders tab.';
-          msg.className = 'msg warn';
-          setTimeout(function(){ closeCoModal(); loadCustOrders(); }, 4500);
-        });
+        items:         itemsArr.join(','),
+        qty:           qtyArr.join(','),
+        item_ids:      idsArr.join(','),
+        zoho_doc_type: (document.getElementById('com-doc-type') || {}).value || orderObj.zoho_doc_type || 'invoice',
+        zoho_invoice_id: orderObj.zoho_invoice_id || '',
+        zoho_invoice_number: orderObj.zoho_invoice_number || ''
+      });
+      loadCustOrders();
     } else {
       msg.textContent = '✅ Saved!'; msg.className = 'msg ok';
       setTimeout(function(){ closeCoModal(); loadCustOrders(); }, 600);
@@ -7229,6 +7760,7 @@ zohoCreateInvoiceReal(orderForZoho)
 
     // ── SEND TO SPECIFIC CUSTOMER(S) ──
     var _notifOrderedIds = {}; // shop_id → true, for customers who already ordered tomorrow
+    var _notifNoOrderIds = {}; // shop_id → true, customer marked "no order"
 
     function loadNotifyCustomerList(){
       var tomorrow = tomorrowStr();
@@ -7241,12 +7773,17 @@ zohoCreateInvoiceReal(orderForZoho)
         var dispatchOrders = Array.isArray(results[1]) ? results[1] : [];
         var portalOrders   = Array.isArray(results[2]) ? results[2] : [];
         _notifOrderedIds = {};
+        _notifNoOrderIds = {};
         function markOrdered(o){
           // Rejected = no active order → still allow reminder
+          // no_order = customer explicitly skipped → treat like ordered (skip reminder)
           if(o && o.status === 'rejected') return;
           [o.shop_id, o.customer_id].forEach(function(id){
             id = String(id || '').trim();
-            if(id) _notifOrderedIds[id] = true;
+            if(id) {
+              _notifOrderedIds[id] = true;
+              if(o.status === 'no_order') _notifNoOrderIds[id] = true;
+            }
           });
         }
         dispatchOrders.forEach(markOrdered);
@@ -7285,19 +7822,26 @@ zohoCreateInvoiceReal(orderForZoho)
         return;
       }
 
-      var orderedN = 0, pendingN = 0;
-      list.forEach(function(c){ if(_customerHasOrdered(c)) orderedN++; else pendingN++; });
+      var orderedN = 0, pendingN = 0, noOrderN = 0;
+      list.forEach(function(c){
+        if(_customerHasNoOrder(c)) noOrderN++;
+        else if(_customerHasOrdered(c)) orderedN++;
+        else pendingN++;
+      });
 
       var summary = '<div style="padding:8px 12px;background:#f5ede0;border-bottom:1.5px solid #e8dfd2;font-size:11px;font-family:monospace;color:#4a2f14;font-weight:700;position:sticky;top:0;z-index:1">'+
-        list.length+' shown · <span style="color:#c8382a">'+pendingN+' not ordered</span> · <span style="color:#2d7a4f">'+orderedN+' ordered</span> · tomorrow '+tomorrowStr()+
+        list.length+' shown · <span style="color:#c8382a">'+pendingN+' not ordered</span> · <span style="color:#2d7a4f">'+orderedN+' ordered</span> · <span style="color:#8a7a6a">'+noOrderN+' no-order</span> · tomorrow '+tomorrowStr()+
         '</div>';
 
       el.innerHTML = summary + list.map(function(c){
         var sid = String(c.shop_id || c.customer_id || '');
         var ordered = _customerHasOrdered(c);
-        var badge = ordered
+        var isNoOrder = _customerHasNoOrder(c);
+        var badge = isNoOrder
+          ? '<span style="font-size:10px;font-weight:700;color:#8a7a6a;background:#f5ede0;border-radius:6px;padding:2px 7px;font-family:monospace;flex-shrink:0">🚫 No Order</span>'
+          : ordered
           ? '<span style="font-size:10px;font-weight:700;color:#2d7a4f;background:#e8f5e9;border-radius:6px;padding:2px 7px;font-family:monospace;flex-shrink:0">✅ Ordered</span>'
-          : '<span style="font-size:10px;font-weight:700;color:#c8382a;background:#fde8e8;border-radius:6px;padding:2px 7px;font-family:monospace;flex-shrink:0">⏳ No order</span>';
+          : '<span style="font-size:10px;font-weight:700;color:#c8382a;background:#fde8e8;border-radius:6px;padding:2px 7px;font-family:monospace;flex-shrink:0">⏳ Not ordered</span>';
         return '<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid #f5ede0;cursor:pointer;'+(ordered?'opacity:0.55':'')+'">'+
           '<input type="checkbox" class="custNotifCheck" value="'+esc(sid)+'" data-name="'+esc(c.name)+'" data-ordered="'+(ordered?'1':'0')+'" style="width:16px;height:16px;accent-color:#4a2f14;flex-shrink:0" onchange="updateNotifSelected()">'+
           '<div style="flex:1;min-width:0">'+
@@ -7308,6 +7852,12 @@ zohoCreateInvoiceReal(orderForZoho)
         '</label>';
       }).join('');
       updateNotifSelected();
+    }
+
+    function _customerHasNoOrder(c){
+      var a = String(c.shop_id || '').trim();
+      var b = String(c.customer_id || '').trim();
+      return !!( (a && _notifNoOrderIds[a]) || (b && _notifNoOrderIds[b]) );
     }
 
     function filterNotifCustomers(){
@@ -7373,12 +7923,155 @@ zohoCreateInvoiceReal(orderForZoho)
       }
     }
 
-    function sendToCustomers(){
+    // ── ROUTE DELAY: notify all customers on a driver's route ──
+    var _routeDelayShops = []; // [{shop_id, shop_name}]
+
+    function initRouteDelayAlert(){
+      var dateEl = document.getElementById('routeDelayDate');
+      if(dateEl && !dateEl.value) dateEl.value = todayStr();
+      var sel = document.getElementById('routeDelayDriver');
+      if(!sel) return;
+      var cur = sel.value;
+      // Prefer active drivers list
+      var names = [];
+      if(typeof DRIVERS !== 'undefined' && DRIVERS && DRIVERS.length){
+        names = DRIVERS.slice();
+      } else if(typeof allDrivers !== 'undefined' && allDrivers){
+        names = allDrivers.map(function(d){ return d.name || d; }).filter(Boolean);
+      }
+      Promise.resolve(names.length ? names : null).then(function(list){
+        if(!list){
+          return api({action:'getDrivers'}).then(function(d){
+            return (Array.isArray(d)?d:[]).filter(function(x){ return x.active!==false; }).map(function(x){ return x.name; });
+          }).catch(function(){ return []; });
+        }
+        return list;
+      }).then(function(list){
+        sel.innerHTML = '<option value="">Select driver / route…</option>' +
+          (list||[]).map(function(n){ return '<option value="'+esc(n)+'">'+esc(n)+'</option>'; }).join('');
+        if(cur) sel.value = cur;
+        previewRouteDelayCustomers();
+      });
+    }
+
+    function routeDelayTemplate(msg){
+      var el = document.getElementById('routeDelayMsg');
+      if(el){ el.value = msg; el.focus(); }
+    }
+
+    function previewRouteDelayCustomers(){
+      var driver = (document.getElementById('routeDelayDriver')||{}).value || '';
+      var date = (document.getElementById('routeDelayDate')||{}).value || todayStr();
+      var preview = document.getElementById('routeDelayPreview');
+      var listEl = document.getElementById('routeDelayShopList');
+      _routeDelayShops = [];
+      if(!preview) return;
+      if(!driver){
+        preview.style.display = 'none';
+        if(listEl) listEl.style.display = 'none';
+        return;
+      }
+      preview.style.display = 'block';
+      preview.textContent = 'Loading shops on route…';
+      if(listEl){ listEl.style.display = 'none'; listEl.innerHTML = ''; }
+
+      Promise.all([
+        api({ action:'getOrders', date: date, driver: driver }),
+        loadCustomerMaster()
+      ]).then(function(res){
+        var orders = Array.isArray(res[0]) ? res[0] : [];
+        var byShop = {};
+        orders.forEach(function(o){
+          var sid = String(o.shop_id || o.customer_id || '').trim();
+          if(!sid) return;
+          if(!byShop[sid]){
+            byShop[sid] = {
+              shop_id: sid,
+              shop_name: o.shop_name || sid
+            };
+          }
+        });
+        // Fallback: shops assigned to this driver if no orders for date
+        if(!Object.keys(byShop).length){
+          (allCustomers||[]).forEach(function(c){
+            if((c.assigned_driver||'') !== driver) return;
+            var sid = String(c.shop_id || c.customer_id || '').trim();
+            if(!sid) return;
+            byShop[sid] = { shop_id: sid, shop_name: c.name || sid };
+          });
+        }
+        _routeDelayShops = Object.keys(byShop).map(function(k){ return byShop[k]; })
+          .sort(function(a,b){ return (a.shop_name||'').localeCompare(b.shop_name||''); });
+
+        if(!_routeDelayShops.length){
+          preview.textContent = 'No shops found for '+driver+' on '+date+'.';
+          if(listEl) listEl.style.display = 'none';
+          return;
+        }
+        preview.textContent = '📢 '+_routeDelayShops.length+' customer(s) on '+driver+' · '+date;
+        if(listEl){
+          listEl.style.display = 'block';
+          listEl.innerHTML = _routeDelayShops.map(function(s){
+            return '<div style="padding:5px 12px;font-size:12px;border-bottom:1px solid #f0e8dc;color:#1e1611">'+esc(s.shop_name)+'</div>';
+          }).join('');
+        }
+      }).catch(function(){
+        preview.textContent = 'Failed to load route shops.';
+      });
+    }
+
+    function sendRouteDelayNotif(){
+      var el = document.getElementById('routeDelay-result');
+      var msg = (document.getElementById('routeDelayMsg')||{}).value || '';
+      msg = msg.trim();
+      var driver = (document.getElementById('routeDelayDriver')||{}).value || '';
+      if(!driver){ el.textContent='Select a driver / route.'; el.className='msg er'; el.style.display='block'; return; }
+      if(!_routeDelayShops.length){ el.textContent='No customers on this route to notify.'; el.className='msg er'; el.style.display='block'; return; }
+      if(!msg){ el.textContent='Enter a delay message.'; el.className='msg er'; el.style.display='block'; return; }
+      if(_notifChannelState.customer === 'false'){
+        el.textContent='Customer notifications are disabled in Manage tab.'; el.className='msg er'; el.style.display='block'; return;
+      }
+      if(!confirm('Send delay alert to '+_routeDelayShops.length+' customer(s) on route: '+driver+'?')) return;
+      el.textContent='Sending to '+_routeDelayShops.length+'…'; el.className='msg in'; el.style.display='block';
+
+      var shops = _routeDelayShops.slice();
+      // In-app notification rows
+      var ops = shops.map(function(s){
+        return apiPost({
+          action: 'sendCustomerNotification',
+          shop_id: s.shop_id,
+          shop_name: s.shop_name,
+          message: msg
+        });
+      });
+      Promise.all(ops).then(function(){
+        // Web push in batches of 50
+        var ids = shops.map(function(s){ return s.shop_id; });
+        function batchPush(start){
+          if(start >= ids.length) return Promise.resolve();
+          return Promise.resolve(sendCustomerPush(ids.slice(start, start+50), msg))
+            .then(function(){ return batchPush(start+50); });
+        }
+        return batchPush(0);
+      }).then(function(){
+        el.textContent = '✅ Delay alert sent to '+shops.length+' customer(s) on '+driver+' route.';
+        el.className = 'msg ok';
+        setTimeout(function(){ el.style.display='none'; }, 5000);
+      }).catch(function(){
+        el.textContent = '❌ Failed to send. Try again.';
+        el.className = 'msg er';
+      });
+    }
+
+        function sendToCustomers(){
       var checks = Array.from(document.querySelectorAll('.custNotifCheck:checked'));
       var msg = (document.getElementById('custNotifMsg').value||'').trim();
       var el  = document.getElementById('custNotif-result');
       if(!checks.length){ el.textContent='Select at least one customer.'; el.className='msg er'; el.style.display='block'; return; }
       if(!msg){ el.textContent='Enter a message.'; el.className='msg er'; el.style.display='block'; return; }
+      if(_notifChannelState.customer === 'false'){
+        el.textContent='Customer notifications are disabled in Manage tab.'; el.className='msg er'; el.style.display='block'; return;
+      }
       el.textContent='Sending…'; el.className='msg in'; el.style.display='block';
       Promise.all(checks.map(function(c){
         return apiPost({ action:'sendCustomerNotification', shop_id: c.value, shop_name: c.dataset.name, message: msg });
@@ -7415,13 +8108,229 @@ zohoCreateInvoiceReal(orderForZoho)
     function showNotifyTab(tab){
       document.getElementById('nsec-customer').style.display = tab==='customer' ? 'block' : 'none';
       document.getElementById('nsec-driver').style.display   = tab==='driver'   ? 'block' : 'none';
-      var cBtn = document.getElementById('ntab-customer');
-      var dBtn = document.getElementById('ntab-driver');
-      cBtn.style.background = tab==='customer' ? '#4a2f14' : '#f5ede0';
-      cBtn.style.color      = tab==='customer' ? '#fff'    : '#4a2f14';
-      dBtn.style.background = tab==='driver'   ? '#4a2f14' : '#f5ede0';
-      dBtn.style.color      = tab==='driver'   ? '#fff'    : '#4a2f14';
+      var mSec = document.getElementById('nsec-manage');
+      if(mSec) mSec.style.display = tab==='manage' ? 'block' : 'none';
+      ['customer','driver','manage'].forEach(function(t){
+        var btn = document.getElementById('ntab-'+t);
+        if(!btn) return;
+        var on = tab===t;
+        btn.style.background = on ? '#4a2f14' : '#f5ede0';
+        btn.style.color      = on ? '#fff' : '#4a2f14';
+      });
+      if(tab==='manage') loadNotifManage();
     }
+
+    // ── NOTIFY MANAGE: channel toggles + customer push grid ──
+    var _notifChannelKeys = {
+      customer:  'notif_channel_customer',
+      driver:    'notif_channel_driver',
+      admin:     'notif_channel_admin',
+      kitchen:   'notif_channel_kitchen',
+      packaging: 'notif_channel_packaging'
+    };
+    var _notifChannelState = {}; // key → 'true'|'false'
+    var _notifPushShopIds = {};  // shop_id → true
+    var _notifPushRows = [];
+    var _notifGridFilter = 'all';
+
+    function _notifChannelDefault(role){
+      // kitchen/packaging default off until push is wired
+      if(role==='kitchen' || role==='packaging') return 'false';
+      return 'true';
+    }
+
+    function loadNotifManage(){
+      var roles = Object.keys(_notifChannelKeys);
+      var settingPromises = roles.map(function(r){
+        return api({action:'getSetting', key: _notifChannelKeys[r]}).then(function(row){
+          var v = row && row.value;
+          if(v !== 'true' && v !== 'false') v = _notifChannelDefault(r);
+          _notifChannelState[r] = v;
+        }).catch(function(){ _notifChannelState[r] = _notifChannelDefault(r); });
+      });
+      Promise.all([
+        Promise.all(settingPromises),
+        loadCustomerMaster(),
+        api({action:'getPushSubscriptions'})
+      ]).then(function(res){
+        _notifPushRows = Array.isArray(res[2]) ? res[2] : [];
+        _notifPushShopIds = {};
+        _notifPushRows.forEach(function(r){
+          var sid = String(r.shop_id||'').trim();
+          if(sid) _notifPushShopIds[sid] = true;
+        });
+        renderNotifChannelToggles();
+        renderNotifStatusStats();
+        renderNotifCustomerGrid();
+        renderNotifStaffGrid();
+      }).catch(function(){
+        renderNotifChannelToggles();
+        renderNotifStatusStats();
+        renderNotifCustomerGrid();
+      });
+    }
+
+    function renderNotifChannelToggles(){
+      var el = document.getElementById('notifChannelToggles');
+      if(!el) return;
+      var meta = [
+        { role:'customer',  label:'👥 Customer',  hint:'Order reminders & private messages (web push)' },
+        { role:'driver',    label:'🚚 Driver',    hint:'Route / order alerts (OneSignal)' },
+        { role:'admin',     label:'🛡️ Admin',     hint:'New order alerts on admin devices (web push)' },
+        { role:'kitchen',   label:'👨‍🍳 Kitchen',  hint:'Reserved — push not registered yet' },
+        { role:'packaging', label:'📦 Packaging', hint:'Reserved — push not registered yet' }
+      ];
+      el.innerHTML = meta.map(function(m){
+        var on = _notifChannelState[m.role] !== 'false';
+        var trackBg = on ? '#2d7a4f' : '#e0d0c0';
+        var thumbLeft = on ? '26px' : '3px';
+        return '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:#fff;border:1.5px solid #e8dfd2;border-radius:14px">'+
+          '<div style="flex:1;min-width:0">'+
+            '<div style="font-size:14px;font-weight:800;color:#1e1611">'+m.label+'</div>'+
+            '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:3px;line-height:1.5">'+m.hint+'</div>'+
+            '<div style="font-size:10px;font-weight:700;font-family:monospace;margin-top:4px;color:'+(on?'#2d7a4f':'#c8382a')+'">'+(on?'Enabled':'Disabled')+'</div>'+
+          '</div>'+
+          '<label style="position:relative;display:inline-block;width:52px;height:30px;flex-shrink:0;cursor:pointer">'+
+            '<input type="checkbox" '+(on?'checked ':'')+'data-role="'+m.role+'" onchange="onNotifChannelSwitch(this)" style="opacity:0;width:0;height:0;position:absolute">'+
+            '<span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:'+trackBg+';border-radius:30px;transition:.25s">'+
+              '<span style="position:absolute;height:24px;width:24px;left:'+thumbLeft+';bottom:3px;background:#fff;border-radius:50%;transition:.25s;box-shadow:0 1px 4px rgba(0,0,0,.25)"></span>'+
+            '</span>'+
+          '</label>'+
+        '</div>';
+      }).join('');
+    }
+
+    function onNotifChannelSwitch(input){
+      var role = input.getAttribute('data-role');
+      if(!role) return;
+      var wantOn = !!input.checked;
+      var key = _notifChannelKeys[role];
+      if(!key) return;
+      var next = wantOn ? 'true' : 'false';
+      input.disabled = true;
+      apiPost({ action:'setSetting', key:key, value:next }).then(function(res){
+        input.disabled = false;
+        if(res && res.ok === false){
+          input.checked = !wantOn;
+          alert('Failed to save');
+          return;
+        }
+        _notifChannelState[role] = next;
+        renderNotifChannelToggles();
+        var msg = document.getElementById('notifChannelMsg');
+        if(msg){
+          msg.style.display='block';
+          msg.className='msg ok';
+          msg.textContent = (role.charAt(0).toUpperCase()+role.slice(1))+' notifications '+(wantOn?'enabled':'disabled')+'.';
+          setTimeout(function(){ msg.style.display='none'; }, 2500);
+        }
+      }).catch(function(){
+        input.disabled = false;
+        input.checked = !wantOn;
+        alert('Network error');
+      });
+    }
+
+    function toggleNotifChannel(role){
+      var key = _notifChannelKeys[role];
+      if(!key) return;
+      var next = _notifChannelState[role] === 'false' ? 'true' : 'false';
+      apiPost({ action:'setSetting', key:key, value:next }).then(function(res){
+        if(res && res.ok === false){ alert('Failed to save'); return; }
+        _notifChannelState[role] = next;
+        renderNotifChannelToggles();
+        var msg = document.getElementById('notifChannelMsg');
+        if(msg){
+          msg.style.display='block';
+          msg.className='msg ok';
+          msg.textContent = (role.charAt(0).toUpperCase()+role.slice(1))+' notifications '+(next==='true'?'enabled':'disabled')+'.';
+          setTimeout(function(){ msg.style.display='none'; }, 2500);
+        }
+      });
+    }
+
+    function isNotifChannelOn(role){
+      if(_notifChannelState[role] === undefined) return role!=='kitchen' && role!=='packaging';
+      return _notifChannelState[role] !== 'false';
+    }
+
+    function renderNotifStatusStats(){
+      var el = document.getElementById('notifStatusStats');
+      if(!el) return;
+      var total = (allCustomers||[]).length;
+      var on = 0;
+      (allCustomers||[]).forEach(function(c){
+        var sid = String(c.shop_id||c.customer_id||'').trim();
+        if(sid && _notifPushShopIds[sid]) on++;
+      });
+      var off = Math.max(0, total - on);
+      var adminDev = 0;
+      Object.keys(_notifPushShopIds).forEach(function(sid){
+        if(sid==='admin' || sid.indexOf('admin:')===0) adminDev++;
+      });
+      // count admin subscription rows more accurately
+      adminDev = _notifPushRows.filter(function(r){
+        var sid=String(r.shop_id||'');
+        return sid==='admin' || sid.indexOf('admin:')===0;
+      }).length;
+      el.innerHTML =
+        '<div class="stat"><div class="stat-n">'+total+'</div><div class="stat-l">Customers</div></div>'+
+        '<div class="stat" style="background:#e8f5e9;border-color:#2d7a4f40"><div class="stat-n" style="color:#2d7a4f">'+on+'</div><div class="stat-l">Push ON</div></div>'+
+        '<div class="stat" style="background:#fde8e8;border-color:#c8382a40"><div class="stat-n" style="color:#c8382a">'+off+'</div><div class="stat-l">Push OFF</div></div>'+
+        '<div class="stat"><div class="stat-n">'+adminDev+'</div><div class="stat-l">Admin devices</div></div>';
+    }
+
+    function renderNotifCustomerGrid(){
+      var el = document.getElementById('notifCustomerGrid');
+      if(!el) return;
+      var q = ((document.getElementById('notifManageSearch')||{}).value||'').toLowerCase().trim();
+      var list = (allCustomers||[]).slice().sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });
+      list = list.filter(function(c){
+        var sid = String(c.shop_id||c.customer_id||'').trim();
+        var has = !!(sid && _notifPushShopIds[sid]);
+        if(_notifGridFilter==='on' && !has) return false;
+        if(_notifGridFilter==='off' && has) return false;
+        if(!q) return true;
+        return (c.name||'').toLowerCase().indexOf(q)>=0 || (c.area||'').toLowerCase().indexOf(q)>=0 || sid.indexOf(q)>=0;
+      });
+      if(!list.length){
+        el.innerHTML = '<div style="padding:14px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">No customers match.</div>';
+        return;
+      }
+      el.innerHTML = list.map(function(c){
+        var sid = String(c.shop_id||c.customer_id||'').trim();
+        var has = !!(sid && _notifPushShopIds[sid]);
+        return '<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid #f0e8dc">'+
+          '<div style="flex:1;min-width:0">'+
+            '<div style="font-size:13px;font-weight:700;color:#1e1611;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(c.name||'—')+'</div>'+
+            '<div style="font-size:10px;color:#8a7a6a;font-family:monospace">'+esc(c.area||'—')+(c.mobile?' · '+esc(c.mobile):'')+'</div>'+
+          '</div>'+
+          (has
+            ? '<span style="flex-shrink:0;font-size:10px;font-weight:800;color:#2d7a4f;background:#e8f5e9;border-radius:8px;padding:3px 9px;font-family:monospace">✅ ON</span>'
+            : '<span style="flex-shrink:0;font-size:10px;font-weight:800;color:#c8382a;background:#fde8e8;border-radius:8px;padding:3px 9px;font-family:monospace">OFF</span>')+
+        '</div>';
+      }).join('');
+    }
+
+    function renderNotifStaffGrid(){
+      var el = document.getElementById('notifStaffGrid');
+      if(!el) return;
+      var adminRows = _notifPushRows.filter(function(r){
+        var sid=String(r.shop_id||'');
+        return sid==='admin' || sid.indexOf('admin:')===0;
+      });
+      var lines = [];
+      lines.push('<div style="margin-bottom:6px"><b>Admin web push:</b> '+adminRows.length+' device(s) registered</div>');
+      adminRows.forEach(function(r,i){
+        var ep = String(r.endpoint||'');
+        var short = ep.length>48 ? ep.slice(0,28)+'…'+ep.slice(-12) : ep;
+        lines.push('<div style="color:#8a7a6a;font-size:10px">#'+(i+1)+' · '+esc(String(r.shop_id))+ ' · '+esc(short)+'</div>');
+      });
+      lines.push('<div style="margin-top:10px"><b>Drivers:</b> OneSignal (per driver login) — not listed in this table</div>');
+      lines.push('<div style="margin-top:6px"><b>Kitchen / Packaging:</b> no push registration yet</div>');
+      el.innerHTML = lines.join('');
+    }
+
     function custNotifTemplate(msg){
       document.getElementById('custNotifMsg').value = msg;
     }
@@ -9344,8 +10253,227 @@ function zohoGetAccessToken() {
   });
 }
 
+/* Build Zoho line items with rate + optional shipping (matches printed challan/invoice) */
+function _zohoParseRate(v){
+  if(v == null || v === '') return null;
+  var n = parseFloat(String(v).replace(/[₹,\s]/g,''));
+  return isNaN(n) ? null : n;
+}
+function _zohoFindProduct(name, productId){
+  var pid = String(productId || '').trim();
+  var list = allProducts || [];
+  if(pid){
+    var byId = list.find(function(p){ return String(p.product_id||'').trim() === pid; });
+    if(byId) return byId;
+  }
+  var n = (name || '').trim().toLowerCase();
+  if(!n) return null;
+  return list.find(function(p){ return (p.name||'').trim().toLowerCase() === n; }) || null;
+}
+/** Default shipping ₹20 (as on Tea Post challans). Override: settings key zoho_shipping_charge */
+var _zohoShippingCharge = null; // null = not loaded
+function loadZohoShippingCharge(){
+  if(_zohoShippingCharge != null) return Promise.resolve(_zohoShippingCharge);
+  return api({action:'getSetting', key:'zoho_shipping_charge'}).then(function(row){
+    var v = row && row.value != null ? parseFloat(row.value) : 20;
+    _zohoShippingCharge = isNaN(v) ? 20 : v;
+    return _zohoShippingCharge;
+  }).catch(function(){ _zohoShippingCharge = 20; return 20; });
+}
+function setZohoShippingCharge(val){
+  var n = parseFloat(val);
+  if(isNaN(n) || n < 0) n = 0;
+  return apiPost({action:'setSetting', key:'zoho_shipping_charge', value:String(n)}).then(function(){
+    _zohoShippingCharge = n;
+    return n;
+  });
+}
+function buildZohoLineItems(order){
+  var names = (order.items || '').split(',').map(function(s){ return s.replace(/\s*\(.*?\)/g,'').trim(); });
+  var qtys  = (order.qty || '').split(',').map(function(s){ return parseInt(s,10)||0; });
+  var ids   = (order.item_ids || '').split(',').map(function(s){ return s.trim(); });
+  // Optional per-line rates from import/order (comma-separated)
+  var rates = (order.rates || order.item_rates || '').split(',').map(function(s){ return _zohoParseRate(s); });
+
+  var lineItems = [];
+  for(var i=0;i<names.length;i++){
+    if(!names[i] || !(qtys[i]>0)) continue;
+    var prod = _zohoFindProduct(names[i], ids[i]);
+    var rate = null;
+    if(rates[i] != null) rate = rates[i];
+    else if(prod) rate = _zohoParseRate(prod.price);
+    if(rate == null) rate = 0;
+
+    var line = {
+      name: names[i],
+      quantity: qtys[i],
+      rate: rate
+    };
+    // Zoho item_id when we have a real Zoho-style id
+    if(prod && prod.product_id && String(prod.product_id).length > 10){
+      line.item_id = String(prod.product_id);
+    } else if(ids[i] && String(ids[i]).length > 10){
+      line.item_id = String(ids[i]);
+    }
+    // GST tax from product master (Zoho Books tax_id)
+    var taxId = prod && (prod.tax_id || prod.zoho_tax_id);
+    if(taxId && String(taxId).trim()){
+      line.tax_id = String(taxId).trim();
+    }
+    lineItems.push(line);
+  }
+  return lineItems;
+}
+function applyZohoShipping(payload, shipping){
+  var amt = shipping != null ? Number(shipping) : (_zohoShippingCharge != null ? _zohoShippingCharge : 20);
+  if(isNaN(amt) || amt < 0) amt = 0;
+  if(amt > 0){
+    payload.shipping_charge = amt;
+  }
+  return payload;
+}
+
+var _zohoPreviewOrder = null;
+
+function openZohoInvPreview(order){
+  _zohoPreviewOrder = order || null;
+  if(!_zohoPreviewOrder) return;
+  var shop = (allCustomers||[]).find(function(c){
+    return (c.customer_id||c.shop_id||'') === String(order.shop_id||'');
+  });
+  var docType = order.zoho_doc_type || (shop && shop.zoho_doc_type) || 'invoice';
+  var isDC = docType === 'delivery_challan';
+  var existing = order.zoho_invoice_id || '';
+
+  var sub = document.getElementById('zoho-inv-preview-sub');
+  if(sub){
+    sub.innerHTML = (isDC ? '📋 Delivery Challan' : '🧾 Tax Invoice')
+      + ' · ' + esc(order.shop_name||'')
+      + ' · ' + esc(order.delivery_date||'')
+      + (existing ? '<br><span style="color:#c8864a">Will <b>UPDATE</b> existing Zoho doc: '+esc(order.zoho_invoice_number||existing)+'</span>'
+                 : '<br><span style="color:#2d7a4f">Will <b>create</b> a new document in Zoho</span>');
+  }
+
+  var body = document.getElementById('zoho-inv-preview-body');
+  if(body) body.innerHTML = renderZohoInvPreviewHtml(order, shop, isDC);
+
+  var msg = document.getElementById('zoho-inv-preview-msg');
+  if(msg) msg.style.display='none';
+  var btn = document.getElementById('zoho-inv-send-btn');
+  if(btn){
+    btn.disabled = false;
+    btn.textContent = existing ? '✏️ Update in Zoho' : '✅ Send to Zoho';
+  }
+  document.getElementById('zohoInvPreviewModal').style.display = 'flex';
+}
+
+function renderZohoInvPreviewHtml(order, shop, isDC){
+  var lines = buildZohoLineItems(order);
+  var ship = null;
+  if(order.shipping_charge != null && order.shipping_charge !== '') ship = Number(order.shipping_charge);
+  else if(shop && shop.shipping_charge != null && shop.shipping_charge !== '') ship = Number(shop.shipping_charge);
+  else ship = (_zohoShippingCharge != null ? _zohoShippingCharge : 20);
+
+  var sub = 0;
+  lines.forEach(function(l){ sub += (Number(l.rate)||0) * (Number(l.quantity)||0); });
+  var shipAmt = (!isNaN(ship) && ship > 0) ? ship : 0;
+  var total = sub + shipAmt;
+
+  var addr = (shop && (shop.address||'')) || '';
+  var area = (shop && (shop.area||'')) || '';
+  var mobile = (shop && (shop.mobile||'')) || '';
+
+  var rows = lines.map(function(l, idx){
+    var amt = (Number(l.rate)||0) * (Number(l.quantity)||0);
+    return '<tr>'+
+      '<td style="padding:6px 4px;border-bottom:1px solid #f0e8dc;color:#8a7a6a">'+(idx+1)+'</td>'+
+      '<td style="padding:6px 4px;border-bottom:1px solid #f0e8dc">'+esc(l.name)+
+        (l.tax_id?'<div style="font-size:9px;color:#8a7a6a;font-family:monospace">tax '+esc(l.tax_id)+'</div>':'')+
+        (l.item_id?'<div style="font-size:9px;color:#8a7a6a;font-family:monospace">item '+esc(String(l.item_id).slice(0,12))+'…</div>':'')+
+      '</td>'+
+      '<td style="padding:6px 4px;border-bottom:1px solid #f0e8dc;text-align:right;font-family:monospace">'+l.quantity+'</td>'+
+      '<td style="padding:6px 4px;border-bottom:1px solid #f0e8dc;text-align:right;font-family:monospace">'+Number(l.rate).toFixed(2)+'</td>'+
+      '<td style="padding:6px 4px;border-bottom:1px solid #f0e8dc;text-align:right;font-family:monospace;font-weight:700">'+amt.toFixed(2)+'</td>'+
+    '</tr>';
+  }).join('');
+
+  return '<div style="border:1.5px solid #e8dfd2;border-radius:12px;padding:12px;background:#f9f6f1">'+
+    '<div style="font-size:11px;font-weight:900;letter-spacing:1px;color:#7a4800;margin-bottom:8px">'+(isDC?'DELIVERY CHALLAN':'TAX INVOICE')+' PREVIEW</div>'+
+    '<div style="font-size:13px;font-weight:800;margin-bottom:4px">'+esc(order.shop_name||'—')+'</div>'+
+    '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;line-height:1.6;margin-bottom:10px">'+
+      (addr?esc(addr)+'<br>':'')+(area?esc(area)+'<br>':'')+(mobile?esc(mobile)+'<br>':'')+
+      'Date: <b>'+esc(order.delivery_date||'')+'</b> · Ref: IBCAB-'+esc(String(order.id||''))+
+    '</div>'+
+    '<table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:10px">'+
+      '<thead><tr style="background:#fff8e1">'+
+        '<th style="text-align:left;padding:6px 4px">#</th>'+
+        '<th style="text-align:left;padding:6px 4px">Item</th>'+
+        '<th style="text-align:right;padding:6px 4px">Qty</th>'+
+        '<th style="text-align:right;padding:6px 4px">Rate</th>'+
+        '<th style="text-align:right;padding:6px 4px">Amt</th>'+
+      '</tr></thead><tbody>'+rows+'</tbody></table>'+
+    '<div style="font-family:monospace;font-size:12px;line-height:1.8">'+
+      '<div style="display:flex;justify-content:space-between"><span>Sub Total</span><b>₹'+sub.toFixed(2)+'</b></div>'+
+      (shipAmt>0?'<div style="display:flex;justify-content:space-between"><span>Shipping</span><b>₹'+shipAmt.toFixed(2)+'</b></div>':'')+
+      '<div style="display:flex;justify-content:space-between;border-top:1.5px solid #e8dfd2;margin-top:6px;padding-top:6px;font-size:14px"><span>Total</span><b>₹'+total.toFixed(2)+'</b></div>'+
+    '</div>'+
+    '<div style="margin-top:10px;font-size:10px;color:#8a7a6a;font-family:monospace;line-height:1.5">Tax % applied by Zoho from product tax_id. GST amounts appear on the Zoho PDF.</div>'+
+  '</div>';
+}
+
+function closeZohoInvPreview(sent){
+  document.getElementById('zohoInvPreviewModal').style.display = 'none';
+  _zohoPreviewOrder = null;
+  if(!sent) loadCustOrders();
+}
+
+function confirmZohoInvPreviewSend(){
+  var order = _zohoPreviewOrder;
+  if(!order){ closeZohoInvPreview(false); return; }
+  if(!_zohoEnabled){ alert('Zoho integration is OFF'); return; }
+
+  var btn = document.getElementById('zoho-inv-send-btn');
+  var msg = document.getElementById('zoho-inv-preview-msg');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ Sending…'; }
+  if(msg){ msg.style.display='block'; msg.className='msg in'; msg.textContent='Sending to Zoho Books…'; }
+
+  var existingId = order.zoho_invoice_id || '';
+  var promise = existingId
+    ? zohoUpdateInvoiceReal(existingId, order)
+    : zohoCreateInvoiceReal(order);
+
+  promise.then(function(inv){
+    return apiPost({
+      action: 'updateCustomerOrderStatus',
+      id: order.id,
+      status: 'approved',
+      zoho_invoice_id: inv.invoice_id || existingId || '',
+      zoho_invoice_number: inv.invoice_number || ''
+    }).then(function(){ return inv; });
+  }).then(function(inv){
+    if(msg){
+      msg.className='msg ok';
+      msg.textContent = '✅ Zoho '+(existingId?'updated':'created')+': '+(inv.invoice_number||inv.invoice_id||'OK')
+        + (inv.total ? ' · ₹'+inv.total : '');
+    }
+    if(btn) btn.textContent = '✅ Done';
+    setTimeout(function(){
+      closeZohoInvPreview(true);
+      loadCustOrders();
+    }, 1800);
+  }).catch(function(err){
+    if(msg){
+      msg.className='msg er';
+      msg.textContent = '❌ Zoho failed: '+(err && err.message ? err.message : String(err||'unknown'))
+        + ' — Order stays approved in app only.';
+    }
+    if(btn){ btn.disabled=false; btn.textContent = existingId ? '✏️ Retry update' : '✅ Retry send'; }
+  });
+}
+
 async function zohoCreateInvoiceReal(order) {
   return loadZohoCreds()
+    .then(function(){ return loadZohoShippingCharge(); })
     .then(function() {
       // Always force a fresh token — never risk a stale cached one
       _zohoAccessToken = null;
@@ -9366,28 +10494,9 @@ async function zohoCreateInvoiceReal(order) {
         || 'invoice';
       var isDeliveryChallan = docType === 'delivery_challan';
 
-      var itemNames = (order.items || '').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
-      var qtys      = (order.qty   || '').split(',').map(function(s){ return parseInt(s) || 0; });
+      var lineItems = buildZohoLineItems(order);
 
-      var lineItems = itemNames.map(function(name, i) {
-        var prod = allProducts.find(function(p){
-          return (p.name || '').trim().toLowerCase() === name.toLowerCase();
-        });
-        var line = {
-          name:     name,
-          quantity: qtys[i] || 1
-        };
-        if (prod && prod.product_id && String(prod.product_id).length > 10) {
-          line.item_id = prod.product_id;
-        }
-         else {
-    // Fallback if product not found in master
-    line.name = name;
-  }
-        return line;
-      }).filter(function(l){ return l.quantity > 0; });
-
-      // ── build payload — same fields, different endpoint ──
+      // ── build payload — rate on lines + shipping (default ₹20) ──
       var payload = {
         customer_id:      String(order.shop_id || ''),
         customer_name:    order.shop_name,
@@ -9396,6 +10505,13 @@ async function zohoCreateInvoiceReal(order) {
         line_items:       lineItems,
         notes:            'Auto-generated by IBCAB'
       };
+      // Per-customer shipping: order override → shop.shipping_charge → global default
+      var shipAmt = order.shipping_charge;
+      if(shipAmt == null || shipAmt === ''){
+        if(shop && shop.shipping_charge != null && shop.shipping_charge !== '')
+          shipAmt = shop.shipping_charge;
+      }
+      applyZohoShipping(payload, shipAmt);
 
       // invoice has due_date, delivery challan does not
       if (!isDeliveryChallan) {
@@ -9450,6 +10566,7 @@ return {
 
 async function zohoUpdateInvoiceReal(invoiceId, order) {
   return loadZohoCreds()
+    .then(function(){ return loadZohoShippingCharge(); })
     .then(function() {
       _zohoAccessToken = null;
       _zohoTokenExpires = 0;
@@ -9464,26 +10581,19 @@ async function zohoUpdateInvoiceReal(invoiceId, order) {
         || 'invoice';
       var isDeliveryChallan = docType === 'delivery_challan';
 
-      var itemNames = (order.items || '').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
-      var qtys      = (order.qty   || '').split(',').map(function(s){ return parseInt(s) || 0; });
-
-      var lineItems = itemNames.map(function(name, i) {
-        var prod = allProducts.find(function(p){
-          return (p.name || '').trim().toLowerCase() === name.toLowerCase();
-        });
-        var line = { name: name, quantity: qtys[i] || 1
-         };
-        if (prod && prod.product_id && String(prod.product_id).length > 10) {
-          line.item_id = prod.product_id;
-        }
-        return line;
-      }).filter(function(l){ return l.quantity > 0; });
+      var lineItems = buildZohoLineItems(order);
 
       var payload = {
         line_items:       lineItems,
         reference_number: 'IBCAB-' + (order.id || ''),
         notes:            'Updated by IBCAB admin'
       };
+      var shipAmt = order.shipping_charge;
+      if(shipAmt == null || shipAmt === ''){
+        if(shop && shop.shipping_charge != null && shop.shipping_charge !== '')
+          shipAmt = shop.shipping_charge;
+      }
+      applyZohoShipping(payload, shipAmt);
 
       var action = isDeliveryChallan ? 'update_delivery_challan' : 'update_invoice';
 

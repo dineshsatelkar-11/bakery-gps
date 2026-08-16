@@ -6,6 +6,7 @@
     <title>IBCAB Driver</title>
     <script src="config.js"></script>
     <script src="api.js"></script>
+    <script src="products-shared.js"></script>
     <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
     <link rel="manifest" href="manifest-driver.json">
     <meta name="theme-color" content="#2d7a4f">
@@ -562,6 +563,10 @@
     // ── LOAD ──
     async function init() {
       applyLang();
+      // Product master for category summary (shared module)
+      if (window.ProductsShared) {
+        try { await ProductsShared.loadProductMaster(); } catch(e){}
+      }
       const today = todayStr();
       // Use today if it has orders, otherwise find the latest date with orders for this driver
       const todayOrders = await api({action:'getOrders', driver, date:today});
@@ -685,6 +690,14 @@
     }
 
     // ── ORDERS ──
+    // Thin wrappers → products-shared.js
+    function drvParseLines(o){
+      return window.ProductsShared ? ProductsShared.parseOrderLines(o) : [];
+    }
+    function drvGroupByCat(orderList){
+      return window.ProductsShared ? ProductsShared.groupByCatEntries(orderList) : [];
+    }
+
     function renderOrdersList() {
       const el = document.getElementById('ordersList');
       if(!orders.length){
@@ -692,37 +705,9 @@
         el.innerHTML=`<div style="text-align:center;padding:40px;font-size:13px;color:#8a7a6a;font-family:monospace">${t('noOrders')}</div>`;
         return;
       }
-      // ── Product summary with category grouping ──
-      const totals={};
-      orders.forEach(o=>{
-        const its=(o.items||'').split(',').map(s=>s.replace(/\s*\(.*?\)/g,'').trim()).filter(Boolean);
-        const qs=(o.qty||'').split(',').map(s=>parseInt(s)||0);
-        its.forEach((it,i)=>{ totals[it]=(totals[it]||0)+(qs[i]||0); });
-      });
-      // Category keyword grouping
-      function drvGetCat(name){
-        const n=(name||'').toLowerCase();
-        if(/puff/.test(n))            return 'Puff';
-        if(/sweet[\s-]?bun/.test(n)) return 'Sweet Bun';
-        if(/white[\s-]?bun/.test(n)) return 'White Bun';
-        if(/bun/.test(n))             return 'Bun';
-        if(/bread/.test(n))           return 'Bread';
-        if(/cake/.test(n))            return 'Cake';
-        if(/toast/.test(n))           return 'Toast';
-        if(/rusk/.test(n))            return 'Rusk';
-        if(/cookie|biscuit/.test(n)) return 'Cookie';
-        return 'Other';
-      }
-      // Group totals by category
-      const cats={};
-      Object.entries(totals).forEach(([name,qty])=>{
-        const cat=drvGetCat(name);
-        if(!cats[cat]) cats[cat]={total:0,items:[]};
-        cats[cat].total+=qty;
-        cats[cat].items.push({name,qty});
-      });
-      const catEntries=Object.entries(cats).sort((a,b)=>b[1].total-a[1].total);
-      const grandTotal=Object.values(totals).reduce((s,v)=>s+v,0);
+      // ── Product summary with category grouping (product_id → master category only) ──
+      const catEntries=drvGroupByCat(orders);
+      const grandTotal=catEntries.reduce((s,ce)=>s+ce[1].total,0);
       const doneCount=Object.values(deliveries).length;
 
       document.getElementById('orderSummaryBody').innerHTML=
@@ -763,21 +748,8 @@
         (()=>{
           const tpOrders=orders.filter(o=>(o.shop_name||'').toLowerCase().includes('tea post'));
           if(!tpOrders.length) return '';
-          const tpTotals={};
-          tpOrders.forEach(o=>{
-            const its=(o.items||'').split(',').map(s=>s.replace(/\s*\(.*?\)/g,'').trim()).filter(Boolean);
-            const qs=(o.qty||'').split(',').map(s=>parseInt(s)||0);
-            its.forEach((it,i)=>{ tpTotals[it]=(tpTotals[it]||0)+(qs[i]||0); });
-          });
-          const tpCats={};
-          Object.entries(tpTotals).forEach(([name,qty])=>{
-            const cat=drvGetCat(name);
-            if(!tpCats[cat]) tpCats[cat]={total:0,items:[]};
-            tpCats[cat].total+=qty;
-            tpCats[cat].items.push({name,qty});
-          });
-          const tpCatEntries=Object.entries(tpCats).sort((a,b)=>b[1].total-a[1].total);
-          const tpTotal=Object.values(tpTotals).reduce((s,v)=>s+v,0);
+          const tpCatEntries=drvGroupByCat(tpOrders);
+          const tpTotal=tpCatEntries.reduce((s,ce)=>s+ce[1].total,0);
           return `<div style="border-top:2px dashed #e8dfd2;margin:10px 0 8px"></div>`+
             `<div style="font-size:12px;font-weight:900;color:#4a2f14;margin-bottom:6px">☕ Tea Post Summary`+
             `<span style="font-size:11px;font-weight:700;color:#8a7a6a;font-family:monospace;margin-left:8px">${tpOrders.length} shops · ${tpTotal} items</span></div>`+
@@ -795,18 +767,9 @@
               </div>`
             ).join('')+
             tpOrders.map(o=>{
-              const iq={};
-              const its=(o.items||'').split(',').map(s=>s.replace(/\s*\(.*?\)/g,'').trim()).filter(Boolean);
-              const qs=(o.qty||'').split(',').map(s=>parseInt(s)||0);
-              its.forEach((it,i)=>{ iq[it]=(iq[it]||0)+(qs[i]||0); });
-              const shopCats={};
-              Object.entries(iq).forEach(([name,qty])=>{
-                const cat=drvGetCat(name);
-                if(!shopCats[cat]) shopCats[cat]=0;
-                shopCats[cat]+=qty;
-              });
-              const chips=Object.entries(shopCats).sort((a,b)=>b[1]-a[1])
-                .map(([cat,qty])=>`<span style="background:#f5ede0;border:1px solid #c8a87a;border-radius:5px;padding:1px 7px;font-size:10px;font-family:monospace">${cat} <b>×${qty}</b></span>`)
+              const shopEntries=drvGroupByCat([o]);
+              const chips=shopEntries
+                .map(([cat,info])=>`<span style="background:#f5ede0;border:1px solid #c8a87a;border-radius:5px;padding:1px 7px;font-size:10px;font-family:monospace">${cat} <b>×${info.total}</b></span>`)
                 .join('');
               return `<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;padding:3px 0;border-top:1px solid #f5ede0">
                 <span style="font-size:12px;font-weight:700;flex:1;min-width:90px">${o.shop_name}</span>
@@ -1771,38 +1734,18 @@ async function deleteDropPhoto(){
       return (name||'').toLowerCase().includes('tea post');
     }
 
-    function teamGetCat(name){
-      var n = (name||'').toLowerCase();
-      if (/puff/.test(n))             return 'Puff';
-      if (/sweet[\s-]?bun/.test(n))   return 'Sweet Bun';
-      if (/white[\s-]?bun/.test(n))   return 'White Bun';
-      if (/bun/.test(n))              return 'Bun';
-      if (/bread/.test(n))            return 'Bread';
-      if (/cake/.test(n))             return 'Cake';
-      if (/toast/.test(n))            return 'Toast';
-      if (/rusk/.test(n))             return 'Rusk';
-      if (/cookie|biscuit/.test(n))   return 'Cookie';
-      return 'Other';
-    }
-
     function teamAggregate(orders){
-      var totals = {};
-      orders.forEach(function(o){
-        var its = (o.items||'').split(',').map(function(s){ return s.replace(/\s*\(.*?\)/g,'').trim(); }).filter(Boolean);
-        var qs  = (o.qty||'').split(',').map(function(s){ return parseInt(s)||0; });
-        its.forEach(function(name, i){ totals[name] = (totals[name]||0) + (qs[i]||0); });
-      });
+      // product_id → master category only (same as orders tab summary)
+      var catEntries = drvGroupByCat(orders||[]);
       var byCat = {};
-      Object.keys(totals).forEach(function(name){
-        var qty = totals[name];
-        var c = teamGetCat(name);
-        if(!byCat[c]) byCat[c] = {total:0, items:[]};
-        byCat[c].total += qty;
-        byCat[c].items.push({name:name, qty:qty});
+      var totals = {};
+      catEntries.forEach(function(ce){
+        byCat[ce[0]] = ce[1];
+        (ce[1].items||[]).forEach(function(it){
+          totals[it.name] = (totals[it.name]||0) + it.qty;
+        });
       });
-      var grand = Object.keys(totals).reduce(function(s,k){ return s+totals[k]; }, 0);
-      var catEntries = Object.keys(byCat).map(function(c){ return [c, byCat[c]]; })
-        .sort(function(a,b){ return b[1].total - a[1].total; });
+      var grand = catEntries.reduce(function(s,ce){ return s+ce[1].total; }, 0);
       return { totals:totals, byCat:byCat, catEntries:catEntries, grand:grand };
     }
 

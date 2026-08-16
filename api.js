@@ -346,6 +346,12 @@
         return sbGet('settings', {key: p.key})
           .then(function(rows){ return rows&&rows.length ? rows[0] : null; });
 
+      // All web-push subscriptions (customers shop_id, admin keys)
+      case 'getPushSubscriptions':
+        return fetch(BASE + '/push_subscriptions?select=shop_id,endpoint,created_at&order=shop_id', { headers: hdrs() })
+          .then(function(r){ return r.ok ? r.json() : []; })
+          .catch(function(){ return []; });
+
       case 'getCustomerNotifications':
         return sbGet('customer_notifications', { shop_id: p.shop_id, is_read: false }, 'created_at.desc');
 
@@ -370,6 +376,85 @@
     }
   };
 
+  // Sync approved customer_orders → driver `orders` table (so drivers see next-day
+  // orders as soon as admin approves, without waiting for packaging dispatch).
+  function syncCustomerOrderToDriverOrders(b) {
+    var shopId = b.shop_id || b.customer_id;
+    var date   = b.delivery_date;
+    var items  = b.items;
+    var qty    = b.qty;
+    var itemIds = b.item_ids || '';
+    var note   = b.note || '';
+    var coId   = b.id;
+    if (!shopId || !date || items === undefined) {
+      // Fetch full order row if caller only passed id/status
+      if (!coId) return Promise.resolve();
+      return fetch(BASE + '/customer_orders?id=eq.' + encodeURIComponent(coId) + '&select=*&limit=1', { headers: hdrs() })
+        .then(function(r){ return r.ok ? r.json() : []; })
+        .then(function(rows){
+          if (!rows || !rows[0]) return;
+          var o = rows[0];
+          return syncCustomerOrderToDriverOrders({
+            id: o.id, shop_id: o.shop_id, shop_name: o.shop_name,
+            delivery_date: o.delivery_date, items: o.items, qty: o.qty,
+            item_ids: o.item_ids || '', note: o.note || ''
+          });
+        });
+    }
+    var dc = 'CO-' + coId;
+    // Resolve assigned driver from shops
+    return fetch(BASE + '/shops?shop_id=eq.' + encodeURIComponent(shopId) + '&select=assigned_driver,name&limit=1', { headers: hdrs() })
+      .then(function(r){ return r.ok ? r.json() : []; })
+      .then(function(shops){
+        var driver = (shops && shops[0] && shops[0].assigned_driver) || b.driver || '';
+        var shopName = b.shop_name || (shops && shops[0] && shops[0].name) || '';
+        var payload = {
+          customer_id: shopId, shop_id: shopId,
+          shop_name: shopName, driver: driver,
+          items: items, qty: qty, item_ids: itemIds, note: note,
+          date: date, dc_num: dc
+        };
+        // Upsert by dc_num first, then shop_id+date
+        var findDc = BASE + '/orders?dc_num=eq.' + encodeURIComponent(dc) + '&select=order_id&limit=1';
+        return fetch(findDc, { headers: hdrs() })
+          .then(function(r){ return r.ok ? r.json() : []; })
+          .then(function(rows){
+            if (Array.isArray(rows) && rows[0] && rows[0].order_id) {
+              return sbPatch('orders', { order_id: rows[0].order_id }, payload);
+            }
+            var findShop = BASE + '/orders?shop_id=eq.' + encodeURIComponent(shopId) +
+              '&date=eq.' + encodeURIComponent(date) + '&select=order_id&limit=3';
+            return fetch(findShop, { headers: hdrs() })
+              .then(function(r2){ return r2.ok ? r2.json() : []; })
+              .then(function(rows2){
+                if (Array.isArray(rows2) && rows2[0] && rows2[0].order_id) {
+                  return sbPatch('orders', { order_id: rows2[0].order_id }, payload);
+                }
+                return sbPost('orders', payload);
+              });
+          });
+      });
+  }
+
+  function removeDriverOrderForCustomer(b) {
+    var coId = b.id;
+    var shopId = b.shop_id || b.customer_id;
+    var date = b.delivery_date;
+    var ops = [];
+    if (coId) {
+      ops.push(fetch(BASE + '/orders?dc_num=eq.' + encodeURIComponent('CO-' + coId), {
+        method: 'DELETE', headers: hdrs()
+      }));
+    }
+    if (shopId && date) {
+      ops.push(fetch(BASE + '/orders?shop_id=eq.' + encodeURIComponent(shopId) +
+        '&date=eq.' + encodeURIComponent(date) + '&dc_num=like.CO-*', {
+        method: 'DELETE', headers: hdrs()
+      }));
+    }
+    return Promise.all(ops).then(function(){ return { ok: true }; });
+  }
+
   // ── POST handler ─────────────────────────────────────────────────────────────
   window.apiPost = function (b) {
     switch (b.action) {
@@ -379,6 +464,10 @@
           shop_id: b.shop_id, customer_id: b.customer_id || b.shop_id,
           name: b.name, address: b.address || '', area: b.area || '',
            brand: b.brand || null,
+          zoho_doc_type: b.zoho_doc_type || 'invoice',
+          zoho_contact_id: b.zoho_contact_id || null,
+          shipping_charge: b.shipping_charge !== undefined && b.shipping_charge !== '' && b.shipping_charge != null
+            ? parseFloat(b.shipping_charge) : null,
           assigned_driver: b.assigned_driver || '', mobile: b.mobile || '', flag: b.flag || '',
           lat: b.lat !== '' && b.lat != null ? parseFloat(b.lat) : null,
           lng: b.lng !== '' && b.lng != null ? parseFloat(b.lng) : null,
@@ -401,6 +490,10 @@
           lat: b.lat !== '' && b.lat != null ? parseFloat(b.lat) : null,
           lng: b.lng !== '' && b.lng != null ? parseFloat(b.lng) : null,
           zoho_doc_type:   b.zoho_doc_type,
+          zoho_contact_id: b.zoho_contact_id !== undefined ? (b.zoho_contact_id || null) : undefined,
+          shipping_charge: b.shipping_charge !== undefined
+            ? (b.shipping_charge === '' || b.shipping_charge == null ? null : parseFloat(b.shipping_charge))
+            : undefined,
           drop_photo_url:        b.drop_photo_url,
               drop_photo_by:         b.drop_photo_by,
               drop_photo_updated_at: b.drop_photo_updated_at,
@@ -637,6 +730,7 @@
         return sbPost('products', {
           product_id: b.product_id, name: b.name, category: b.category || '',
           price: b.price || '', unit: b.unit || 'Pieces', description: b.description || '',
+          tax_id: b.tax_id || null,
           group_id: b.group_id || null, active: b.active !== false
         });
 
@@ -668,6 +762,7 @@
         return sbPatch('products', { product_id: b.product_id }, {
           name: b.name, category: b.category || '',
           price: b.price || '', unit: b.unit || 'Pieces', description: b.description || '',
+          tax_id: b.tax_id !== undefined ? (b.tax_id || null) : undefined,
           group_id: b.group_id || null, active: b.active !== false
         });
 
@@ -763,14 +858,66 @@
              return sbPost('customer_orders', {
                shop_id: b.shop_id, shop_name: b.shop_name,
                delivery_date: b.delivery_date,
-               items: b.items, qty: b.qty, note: b.note || '',
+               items: b.items, qty: b.qty, item_ids: b.item_ids || '',
+               note: b.note || '',
                status: 'pending',
                zoho_doc_type: b.zoho_doc_type || 'invoice'
              });
 
+      // Customer marks "no order" for a delivery date (explicit skip)
+      case 'markNoOrder': {
+        var noShop = b.shop_id;
+        var noDate = b.delivery_date;
+        var noName = b.shop_name || '';
+        if (!noShop || !noDate) return Promise.resolve({ ok: false, error: 'shop_id and delivery_date required' });
+        // Prefer update existing row for that shop+date; else insert
+        var findUrl = BASE + '/customer_orders?shop_id=eq.' + encodeURIComponent(noShop) +
+          '&delivery_date=eq.' + encodeURIComponent(noDate) + '&select=id,status&order=created_at.desc&limit=1';
+        return fetch(findUrl, { headers: hdrs() })
+          .then(function(r){ return r.ok ? r.json() : []; })
+          .then(function(rows){
+            var existing = Array.isArray(rows) && rows[0] ? rows[0] : null;
+            // Do not overwrite an already-approved / in-pipeline order
+            if (existing && ['approved','kitchen','packaging','dispatched'].indexOf((existing.status||'').toLowerCase()) >= 0) {
+              return { ok: false, error: 'Order already approved — contact admin to cancel' };
+            }
+            if (existing) {
+              return sbPatch('customer_orders', { id: existing.id }, {
+                status: 'no_order', items: '', qty: '', note: b.note || 'No order for this day',
+                updated_at: new Date().toISOString()
+              });
+            }
+            return sbPost('customer_orders', {
+              shop_id: noShop, shop_name: noName,
+              delivery_date: noDate,
+              items: '', qty: '', note: b.note || 'No order for this day',
+              status: 'no_order',
+              zoho_doc_type: 'invoice'
+            });
+          });
+      }
+
+      // Customer cancels "no order" so they can place a real order again
+      case 'cancelNoOrder': {
+        if (!b.id) return Promise.resolve({ ok: false, error: 'id required' });
+        return sbPatch('customer_orders', { id: b.id }, {
+          status: 'pending', items: '', qty: '', note: ''
+        }).then(function(res){
+          // If it was only a no_order marker, delete is cleaner — but patch to pending with empty is fine;
+          // customer will replace via place/update. Prefer delete of empty no_order row:
+          return fetch(BASE + '/customer_orders?id=eq.' + encodeURIComponent(b.id), {
+            method: 'DELETE', headers: hdrs()
+          }).then(function(r){
+            if (r.ok) return { ok: true };
+            return res;
+          }).catch(function(){ return res; });
+        });
+      }
+
       // Customer editing their own pending order (or amending an approved one)
       case 'updateCustomerOrder': {
         var upd2 = { items: b.items, qty: b.qty, note: b.note || '' };
+        if (b.item_ids !== undefined) upd2.item_ids = b.item_ids || '';
         if (b.reset_to_pending) upd2.status = 'pending';
         return sbPatch('customer_orders', { id: b.id }, upd2);
       }
@@ -784,29 +931,67 @@
         if (b.admin_note !== undefined)      upd.admin_note        = b.admin_note;
         if (b.items !== undefined)           upd.items             = b.items;
         if (b.qty   !== undefined)           upd.qty               = b.qty;
+        if (b.item_ids !== undefined)        upd.item_ids          = b.item_ids;
         if (b.note  !== undefined)           upd.note              = b.note;
         if (b.zoho_invoice_id !== undefined) upd.zoho_invoice_id   = b.zoho_invoice_id;
         if (b.zoho_invoice_number !== undefined) upd.zoho_invoice_number = b.zoho_invoice_number;
         if (b.zoho_doc_type !== undefined)   upd.zoho_doc_type     = b.zoho_doc_type;
-        return sbPatch('customer_orders', { id: b.id }, upd);
+        return sbPatch('customer_orders', { id: b.id }, upd).then(function(res){
+          if (!res || !res.ok) return res;
+          // When approved (or items updated while approved), sync to driver `orders` table
+          // so driver can see next-day orders before packaging/dispatch.
+          if (b.status === 'approved' || (b.items !== undefined && b._sync_driver)) {
+            return syncCustomerOrderToDriverOrders(b).then(function(){ return res; }).catch(function(){ return res; });
+          }
+          // Rejected / no_order: remove any early driver row so it does not stay on route
+          if (b.status === 'rejected' || b.status === 'no_order') {
+            return removeDriverOrderForCustomer(b).then(function(){ return res; }).catch(function(){ return res; });
+          }
+          return res;
+        });
       }
 
-      // Packaging: mark dispatched + create the driver orders row in one step
+      // Packaging: mark dispatched + create/update the driver orders row in one step
       case 'dispatchCustomerOrder': {
         var now = new Date().toISOString();
         return sbPatch('customer_orders', { id: b.id }, { status: 'dispatched', packaged_at: now })
           .then(function(res) {
             if (!res.ok) return res;
-            return sbPost('orders', {
-              customer_id: b.shop_id, shop_id: b.shop_id,
-              shop_name:   b.shop_name,
-              driver:      b.driver || '',
-              items:       b.items,
-              qty:         b.qty,
-              note:        b.note || '',
-              date:        b.delivery_date,
-              dc_num:      'CO-' + b.id
-            });
+            // Upsert into orders: if CO-{id} already exists (from early approve sync), patch it
+            var dc = 'CO-' + b.id;
+            var findOrd = BASE + '/orders?dc_num=eq.' + encodeURIComponent(dc) + '&select=order_id&limit=1';
+            return fetch(findOrd, { headers: hdrs() })
+              .then(function(r){ return r.ok ? r.json() : []; })
+              .then(function(rows){
+                var payload = {
+                  customer_id: b.shop_id, shop_id: b.shop_id,
+                  shop_name:   b.shop_name,
+                  driver:      b.driver || '',
+                  items:       b.items,
+                  qty:         b.qty,
+                  item_ids:    b.item_ids || '',
+                  note:        b.note || '',
+                  date:        b.delivery_date,
+                  dc_num:      dc
+                };
+                if (Array.isArray(rows) && rows[0] && rows[0].order_id) {
+                  return sbPatch('orders', { order_id: rows[0].order_id }, payload);
+                }
+                // Also try match by shop_id + date (early sync may have different dc_num)
+                var find2 = BASE + '/orders?shop_id=eq.' + encodeURIComponent(b.shop_id) +
+                  '&date=eq.' + encodeURIComponent(b.delivery_date) + '&select=order_id&limit=5';
+                return fetch(find2, { headers: hdrs() })
+                  .then(function(r2){ return r2.ok ? r2.json() : []; })
+                  .then(function(rows2){
+                    var match = (Array.isArray(rows2) ? rows2 : []).find(function(o){
+                      return String(o.dc_num || '').indexOf('CO-') === 0 || !o.dc_num;
+                    }) || (rows2 && rows2[0]);
+                    if (match && match.order_id) {
+                      return sbPatch('orders', { order_id: match.order_id }, payload);
+                    }
+                    return sbPost('orders', payload);
+                  });
+              });
           });
       }
 
