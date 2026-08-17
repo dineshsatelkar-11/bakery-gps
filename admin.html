@@ -137,6 +137,7 @@
     <button class="tab"    id="mtb-manage"    onclick="showGroup('manage')">⚙️ Manage</button>
     <button class="tab"    id="mtb-notify"    onclick="showGroup('notify')">🔔 Notify</button>
     <button class="tab"    id="mtb-zoho"      onclick="showGroup('zoho')">🔗 Zoho</button>
+    <button class="tab"    id="mtb-payments"  onclick="showGroup('payments')">💰 Payments</button>
 </div>
 <div id="subTabs" style="display:flex"></div>
 
@@ -644,6 +645,16 @@
                 </button>
             </div>
         </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid #f0e8dc">
+            <div>
+                <div style="font-size:13px;font-weight:800;color:#4a2f14">💰 Customer Pay tab</div>
+                <div style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-top:2px">Show weekly Payments tab on customer order app</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+                <span id="custpay-status-lbl" style="font-size:11px;font-family:monospace;font-weight:700;color:#8a7a6a">…</span>
+                <button id="custpay-toggle-btn" onclick="toggleCustomerPayments()" style="padding:8px 16px;border-radius:20px;border:none;font-size:12px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;background:#e8dfd2;color:#8a7a6a">…</button>
+            </div>
+        </div>
     </div>
     <div class="stats-grid" id="staffStats"></div>
     <button class="btn btn-brown" onclick="openAddStaff()">➕ Add Staff User</button>
@@ -859,64 +870,137 @@
 
 
 <!-- ZOHO INTEGRATION -->
+
+<!-- PAYMENTS DESK (same admin app) -->
+<div class="page" id="pg-pay-challan">
+    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">📋 Daily Challans</div>
+    <div style="font-size:11px;color:#8a7a6a;margin-bottom:10px;line-height:1.45">
+        Daily flow: <b>Edit</b> (damage/missing) → <b>Send/Update Zoho</b> → <b>Mark delivered</b> → <b>Convert to Invoice</b>.
+        Only shops with doc type Challan (or existing challan id).
+    </div>
+    <div class="filter-row" style="margin-bottom:10px">
+        <input type="date" id="challan-desk-date" onchange="loadChallanDesk()" style="margin-bottom:0;flex:1">
+        <input type="search" id="challan-desk-q" placeholder="Search shop…" oninput="renderChallanDesk()" style="margin-bottom:0;flex:1.4;padding:8px 10px;border:1.5px solid #e8dfd2;border-radius:8px;font-size:13px">
+        <button class="btn-sm btn-grey" onclick="loadChallanDesk()">↻ Refresh</button>
+    </div>
+    <div id="challan-desk-stats" class="stats-grid" style="margin-bottom:10px;grid-template-columns:repeat(4,1fr)"></div>
+    <div id="challan-desk-msg" style="display:none;margin-bottom:8px;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:700"></div>
+    <div id="challan-desk-list"><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Loading…</div></div>
+</div>
+<div class="page" id="pg-pay-open">
+    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">💰 Payments — Unpaid</div>
+    <div style="font-size:11px;color:#8a7a6a;margin-bottom:10px;line-height:1.45">Weekly collections. Doc type (invoice / challan) follows each customer setting.</div>
+    <div id="pay-desk-stats" class="stats-grid" style="margin-bottom:10px"></div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+        <input type="search" id="pay-desk-q" placeholder="Search shop / inv #…" oninput="renderPaymentsDesk()" style="flex:1;min-width:140px;padding:8px 10px;border:1.5px solid #e8dfd2;border-radius:8px;font-size:13px">
+        <button class="btn-sm btn-grey" onclick="loadPaymentsDesk()">↻ Refresh</button>
+        <button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082" onclick="payDeskSyncFromZoho()">🔗 Sync from Zoho</button>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px">
+        <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSelect('visible')">Select visible</button>
+        <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSelect('none')">Clear</button>
+        <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSelect('unpaid')">Unpaid only</button>
+        <button type="button" class="btn-sm" style="background:#e3f2fd;color:#1565c0;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSendReminders()">📨 Send payment reminder</button>
+        <span id="pay-desk-selcount" style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-left:4px"></span>
+    </div>
+    <div id="pay-desk-msg" style="display:none;margin-bottom:8px;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:700"></div>
+    <div id="pay-desk-list"><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Loading…</div></div>
+</div>
+<div class="page" id="pg-pay-requests">
+    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">📨 Payment requests</div>
+    <div style="font-size:11px;color:#8a7a6a;margin-bottom:10px">Customers who sent a pay request from the Pay tab. Verify and mark paid.</div>
+    <div id="pay-desk-list-req"><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Open tab to load…</div></div>
+</div>
+<div class="page" id="pg-pay-paid">
+    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">✅ Paid</div>
+    <div style="font-size:11px;color:#8a7a6a;margin-bottom:10px">Recently marked paid invoices.</div>
+    <div id="pay-desk-list-paid"><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Open tab to load…</div></div>
+</div>
+
 <div class="page" id="pg-zoho">
-  <div class="card" style="margin-bottom:12px;border-color:#ffe082;background:#fffaf0">
-    <div style="font-size:15px;font-weight:900;color:#7a4800;margin-bottom:4px">🔗 Zoho Books Integration</div>
-    <div style="font-size:12px;color:#8a7a6a;font-family:monospace;line-height:1.6;margin-bottom:10px">
-      Pull customers &amp; products from Zoho → review changes → confirm to update this app.<br>
-      <span style="color:#c8864a">Nothing is written to the app until you confirm.</span>
+    <div class="card" style="margin-bottom:12px;border-color:#ffe082;background:#fffaf0">
+        <div style="font-size:15px;font-weight:900;color:#7a4800;margin-bottom:4px">🔗 Zoho Books Integration</div>
+        <div style="font-size:12px;color:#8a7a6a;font-family:monospace;line-height:1.6;margin-bottom:10px">
+            Pull customers &amp; products from Zoho → review changes → confirm to update this app.<br>
+            <span style="color:#c8864a">Nothing is written to the app until you confirm.</span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <span id="zoho-page-status" style="font-size:11px;font-family:monospace;font-weight:700;color:#8a7a6a">…</span>
+            <button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082;padding:8px 14px" onclick="openZohoSettingsModal()">⚙️ Configure</button>
+            <button class="btn-sm" style="background:#e8dfd2;color:#4a2f14;border:1.5px solid #d0c0aa;padding:8px 14px" onclick="toggleZohoIntegration()">Toggle ON/OFF</button>
+        </div>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      <span id="zoho-page-status" style="font-size:11px;font-family:monospace;font-weight:700;color:#8a7a6a">…</span>
-      <button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082;padding:8px 14px" onclick="openZohoSettingsModal()">⚙️ Configure</button>
-      <button class="btn-sm" style="background:#e8dfd2;color:#4a2f14;border:1.5px solid #d0c0aa;padding:8px 14px" onclick="toggleZohoIntegration()">Toggle ON/OFF</button>
-    </div>
-  </div>
 
-  <div class="card" style="margin-bottom:12px">
-    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">👥 Pull Customers / Shops from Zoho</div>
-    <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:10px;line-height:1.6">Fetches contacts from Zoho Books. Shows new vs changed vs already matched. Apply only after review.</div>
-    <button class="btn btn-brown" style="margin-bottom:8px" onclick="zohoPullCustomers()">⬇ Sync from Zoho (Customers)</button>
-    <div id="zoho-pull-cust-msg" style="display:none;margin-bottom:8px;font-size:11px;font-family:monospace;padding:8px 10px;border-radius:8px"></div>
-    <div id="zoho-pull-cust-summary" style="display:none;margin-bottom:8px"></div>
-    <div id="zoho-pull-cust-list" style="display:none;max-height:280px;overflow-y:auto;border:1.5px solid #e8dfd2;border-radius:10px;background:#f9f6f1;margin-bottom:8px"></div>
-    <button id="zoho-apply-cust-btn" class="btn" style="display:none;margin-bottom:0;background:#2d7a4f;color:#fff" onclick="zohoApplyCustomerPull()">✅ Confirm — Update App Customers</button>
-  </div>
-
-  <div class="card" style="margin-bottom:12px">
-    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">📦 Pull Products from Zoho</div>
-    <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:10px;line-height:1.6">Fetches items from Zoho Books. Review new / price changes, then confirm.</div>
-    <button class="btn btn-brown" style="margin-bottom:8px" onclick="zohoPullProducts()">⬇ Sync from Zoho (Products)</button>
-    <div id="zoho-pull-prod-msg" style="display:none;margin-bottom:8px;font-size:11px;font-family:monospace;padding:8px 10px;border-radius:8px"></div>
-    <div id="zoho-pull-prod-summary" style="display:none;margin-bottom:8px"></div>
-    <div id="zoho-pull-prod-list" style="display:none;max-height:280px;overflow-y:auto;border:1.5px solid #e8dfd2;border-radius:10px;background:#f9f6f1;margin-bottom:8px"></div>
-    <button id="zoho-apply-prod-btn" class="btn" style="display:none;margin-bottom:0;background:#2d7a4f;color:#fff" onclick="zohoApplyProductPull()">✅ Confirm — Update App Products</button>
-  </div>
-
-  <div class="card" style="margin-bottom:12px">
-    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">🚚 Default shipping (fallback only)</div>
-    <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:10px;line-height:1.6">
-      Used only when a customer has <b>no</b> shipping set.<br>
-      Set each shop’s charge under <b>Customers → Edit → Shipping charge</b> (different per customer).
+    <div class="card" style="margin-bottom:12px">
+        <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">👥 Pull Customers / Shops from Zoho</div>
+        <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:10px;line-height:1.6">Fetches contacts from Zoho Books. Search, pick only what you need, then confirm. Nothing is written until you apply.</div>
+        <button class="btn btn-brown" style="margin-bottom:8px" onclick="zohoPullCustomers()">⬇ Sync from Zoho (Customers)</button>
+        <div id="zoho-pull-cust-msg" style="display:none;margin-bottom:8px;font-size:11px;font-family:monospace;padding:8px 10px;border-radius:8px"></div>
+        <div id="zoho-pull-cust-summary" style="display:none;margin-bottom:8px"></div>
+        <div id="zoho-pull-cust-tools" style="display:none;margin-bottom:8px">
+            <input type="search" id="zoho-pull-cust-search" placeholder="Search name, mobile, ID…" oninput="renderZohoCustPullList()" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;margin-bottom:8px">
+            <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px">
+                <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullCustSelect('visible')">Select visible</button>
+                <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullCustSelect('none')">Clear all</button>
+                <button type="button" class="btn-sm" style="background:#e8f5e9;color:#2d7a4f;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullCustSelect('new')">New only</button>
+                <button type="button" class="btn-sm" style="background:#fff8e1;color:#7a4800;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullCustSelect('changed')">Changed only</button>
+                <span id="zoho-pull-cust-selcount" style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-left:4px"></span>
+            </div>
+            <label style="font-size:11px;color:#8a7a6a;font-family:monospace;display:flex;align-items:center;gap:6px">
+                <input type="checkbox" id="zoho-pull-cust-show-same" onchange="renderZohoCustPullList()" style="accent-color:#c8864a"> Show unchanged too
+            </label>
+        </div>
+        <div id="zoho-pull-cust-list" style="display:none;max-height:360px;overflow-y:auto;border:1.5px solid #e8dfd2;border-radius:10px;background:#f9f6f1;margin-bottom:8px"></div>
+        <button id="zoho-apply-cust-btn" class="btn" style="display:none;margin-bottom:0;background:#2d7a4f;color:#fff" onclick="zohoApplyCustomerPull()">✅ Confirm — Update selected customers</button>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <span style="font-size:13px;font-weight:700">₹</span>
-      <input type="number" id="zoho-shipping-input" min="0" step="1" value="20" style="width:100px;margin-bottom:0;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;font-weight:700">
-      <button class="btn-sm" style="background:#c8864a;color:#fff;border:none;padding:10px 16px" onclick="saveZohoShippingUI()">Save default</button>
-      <span id="zoho-shipping-msg" style="font-size:11px;font-family:monospace;color:#2d7a4f;display:none"></span>
-    </div>
-  </div>
 
-  <div class="card" style="margin-bottom:12px">
-    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">📄 Invoice / Challan data checklist</div>
-    <div style="font-size:11px;font-family:monospace;color:#4a2f14;line-height:1.7;background:#f9f6f1;border-radius:10px;padding:10px 12px">
-      <div><b>Sent now:</b> customer_id, date, reference, line <b>name + qty + rate</b>, item_id (if Zoho id), <b>shipping_charge</b>, notes, invoice vs delivery_challan</div>
-      <div style="margin-top:6px;color:#2d7a4f"><b>Tax:</b> set <b>Zoho Tax ID</b> on each product (Products → Edit). Blank = no tax on that line.</div>
-      <div style="margin-top:6px;color:#c8382a"><b>Still from Zoho templates:</b></div>
-      <div>• Place of supply / GSTIN / billing address block</div>
-      <div>• Bank details on tax invoice</div>
+    <div class="card" style="margin-bottom:12px">
+        <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">📦 Pull Products from Zoho</div>
+        <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:10px;line-height:1.6">Fetches items from Zoho Books. Search and select only the products you want to update.</div>
+        <button class="btn btn-brown" style="margin-bottom:8px" onclick="zohoPullProducts()">⬇ Sync from Zoho (Products)</button>
+        <div id="zoho-pull-prod-msg" style="display:none;margin-bottom:8px;font-size:11px;font-family:monospace;padding:8px 10px;border-radius:8px"></div>
+        <div id="zoho-pull-prod-summary" style="display:none;margin-bottom:8px"></div>
+        <div id="zoho-pull-prod-tools" style="display:none;margin-bottom:8px">
+            <input type="search" id="zoho-pull-prod-search" placeholder="Search name, SKU, ID…" oninput="renderZohoProdPullList()" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;margin-bottom:8px">
+            <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px">
+                <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullProdSelect('visible')">Select visible</button>
+                <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullProdSelect('none')">Clear all</button>
+                <button type="button" class="btn-sm" style="background:#e8f5e9;color:#2d7a4f;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullProdSelect('new')">New only</button>
+                <button type="button" class="btn-sm" style="background:#fff8e1;color:#7a4800;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullProdSelect('changed')">Changed only</button>
+                <span id="zoho-pull-prod-selcount" style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-left:4px"></span>
+            </div>
+            <label style="font-size:11px;color:#8a7a6a;font-family:monospace;display:flex;align-items:center;gap:6px">
+                <input type="checkbox" id="zoho-pull-prod-show-same" onchange="renderZohoProdPullList()" style="accent-color:#c8864a"> Show unchanged too
+            </label>
+        </div>
+        <div id="zoho-pull-prod-list" style="display:none;max-height:360px;overflow-y:auto;border:1.5px solid #e8dfd2;border-radius:10px;background:#f9f6f1;margin-bottom:8px"></div>
+        <button id="zoho-apply-prod-btn" class="btn" style="display:none;margin-bottom:0;background:#2d7a4f;color:#fff" onclick="zohoApplyProductPull()">✅ Confirm — Update selected products</button>
     </div>
-  </div>
+
+    <div class="card" style="margin-bottom:12px">
+        <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">🚚 Default shipping (fallback only)</div>
+        <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:10px;line-height:1.6">
+            Used only when a customer has <b>no</b> shipping set.<br>
+            Set each shop’s charge under <b>Customers → Edit → Shipping charge</b> (different per customer).
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <span style="font-size:13px;font-weight:700">₹</span>
+            <input type="number" id="zoho-shipping-input" min="0" step="1" value="20" style="width:100px;margin-bottom:0;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;font-weight:700">
+            <button class="btn-sm" style="background:#c8864a;color:#fff;border:none;padding:10px 16px" onclick="saveZohoShippingUI()">Save default</button>
+            <span id="zoho-shipping-msg" style="font-size:11px;font-family:monospace;color:#2d7a4f;display:none"></span>
+        </div>
+    </div>
+
+    <div class="card" style="margin-bottom:12px">
+        <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">📄 Invoice / Challan data checklist</div>
+        <div style="font-size:11px;font-family:monospace;color:#4a2f14;line-height:1.7;background:#f9f6f1;border-radius:10px;padding:10px 12px">
+            <div><b>Sent now:</b> customer_id, date, reference, line <b>name + qty + rate</b>, item_id (if Zoho id), <b>shipping_charge</b>, notes, invoice vs delivery_challan</div>
+            <div style="margin-top:6px;color:#2d7a4f"><b>Tax:</b> set <b>Zoho Tax ID</b> on each product (Products → Edit). Blank = no tax on that line.</div>
+            <div style="margin-top:6px;color:#c8382a"><b>Still from Zoho templates:</b></div>
+            <div>• Place of supply / GSTIN / billing address block</div>
+            <div>• Bank details on tax invoice</div>
+        </div>
+    </div>
 </div>
 
 <!-- CLEANUP (super_admin only) -->
@@ -1132,8 +1216,8 @@
         <div class="lbl">Mobile</div><input type="tel" id="apm-mobile" placeholder="Contact number">
         <div class="lbl">Zoho Document Type</div>
         <select id="apm-doc-type">
-            <option value="invoice">🧾 Invoice</option>
-            <option value="delivery_challan">📋 Delivery Challan</option>
+            <option value="delivery_challan">📋 Delivery Challan (recommended first)</option>
+            <option value="invoice">🧾 Invoice (after delivery)</option>
         </select>
         <div class="lbl">Shipping charge (₹)</div>
         <input type="number" id="apm-shipping" min="0" step="1" value="20" placeholder="e.g. 20">
@@ -1261,8 +1345,8 @@
         <div class="lbl">Email</div><input type="text" id="cm-email" placeholder="shop@example.com">
         <div class="lbl">Zoho Document Type</div>
         <select id="cm-doc-type" style="margin-bottom:8px">
-            <option value="invoice">🧾 Invoice</option>
-            <option value="delivery_challan">📋 Delivery Challan</option>
+            <option value="delivery_challan">📋 Delivery Challan (recommended first)</option>
+            <option value="invoice">🧾 Invoice (after delivery)</option>
         </select>
         <div class="lbl">Shipping charge (₹) — this customer</div>
         <input type="number" id="cm-shipping" min="0" step="1" placeholder="e.g. 20 (0 = no shipping)" style="margin-bottom:8px">
@@ -1340,18 +1424,18 @@
 
 <!-- ZOHO INVOICE PREVIEW (approve → confirm send) -->
 <div class="modal-bg" id="zohoInvPreviewModal" style="display:none;z-index:300" onclick="if(event.target===this)closeZohoInvPreview(false)">
-  <div class="modal" style="max-width:440px;max-height:92vh;overflow-y:auto;padding:0">
-    <div style="padding:14px 16px 10px;border-bottom:1.5px solid #e8dfd2;position:sticky;top:0;background:#fff;z-index:2">
-      <div style="font-size:14px;font-weight:900;color:#7a4800">📄 Zoho Document Preview</div>
-      <div id="zoho-inv-preview-sub" style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:4px;line-height:1.5"></div>
+    <div class="modal" style="max-width:440px;max-height:92vh;overflow-y:auto;padding:0">
+        <div style="padding:14px 16px 10px;border-bottom:1.5px solid #e8dfd2;position:sticky;top:0;background:#fff;z-index:2">
+            <div style="font-size:14px;font-weight:900;color:#7a4800">📄 Zoho Document Preview</div>
+            <div id="zoho-inv-preview-sub" style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:4px;line-height:1.5"></div>
+        </div>
+        <div id="zoho-inv-preview-body" style="padding:14px 16px;font-size:12px;color:#1e1611"></div>
+        <div style="padding:12px 16px 16px;border-top:1.5px solid #e8dfd2;position:sticky;bottom:0;background:#fff">
+            <div id="zoho-inv-preview-msg" style="display:none;margin-bottom:8px" class="msg ok"></div>
+            <button class="btn" style="background:#c8864a;color:#fff;margin-bottom:8px" id="zoho-inv-send-btn" onclick="confirmZohoInvPreviewSend()">✅ Send to Zoho</button>
+            <button class="btn btn-grey" style="margin-bottom:0" onclick="closeZohoInvPreview(false)">⏭ Keep in app only (no Zoho)</button>
+        </div>
     </div>
-    <div id="zoho-inv-preview-body" style="padding:14px 16px;font-size:12px;color:#1e1611"></div>
-    <div style="padding:12px 16px 16px;border-top:1.5px solid #e8dfd2;position:sticky;bottom:0;background:#fff">
-      <div id="zoho-inv-preview-msg" style="display:none;margin-bottom:8px" class="msg ok"></div>
-      <button class="btn" style="background:#c8864a;color:#fff;margin-bottom:8px" id="zoho-inv-send-btn" onclick="confirmZohoInvPreviewSend()">✅ Send to Zoho</button>
-      <button class="btn btn-grey" style="margin-bottom:0" onclick="closeZohoInvPreview(false)">⏭ Keep in app only (no Zoho)</button>
-    </div>
-  </div>
 </div>
 
 <!-- PRODUCT MODAL -->
@@ -1365,7 +1449,10 @@
         <div class="lbl">Unit Price (₹)</div><input type="text" id="pm-price" placeholder="18">
         <div class="lbl">Zoho Tax ID</div>
         <input type="text" id="pm-tax-id" placeholder="e.g. 32495440000000… (from Zoho Books tax)">
-        <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin:-4px 0 10px;line-height:1.5">Used on invoice/challan lines for CGST/SGST. Leave blank for 0% items (e.g. some breads).</div>
+        <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin:-4px 0 10px;line-height:1.5">Zoho Books tax id for invoice lines. Leave blank for 0% items.</div>
+        <div class="lbl">GST % (for app total)</div>
+        <input type="number" id="pm-tax-percent" min="0" max="100" step="0.01" placeholder="e.g. 5, 12, 18">
+        <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin:-4px 0 10px;line-height:1.5">Used to calculate CGST/SGST in preview &amp; customer due. Same-state: split half CGST + half SGST.</div>
         <div class="lbl">Unit</div><input type="text" id="pm-unit" placeholder="Pieces">
         <div class="lbl">Notes</div><textarea id="pm-desc" placeholder="Size, specs…"></textarea>
         <div class="lbl">Product Group</div>
@@ -1387,8 +1474,8 @@
         <div id="com-info" style="background:#f5ede0;border-radius:10px;padding:9px 12px;margin-bottom:12px;font-size:12px;font-family:monospace;line-height:1.8"></div>
         <div class="lbl">Zoho Document Type</div>
         <select id="com-doc-type" style="margin-bottom:12px">
-            <option value="invoice">🧾 Invoice</option>
-            <option value="delivery_challan">📋 Delivery Challan</option>
+            <option value="delivery_challan">📋 Delivery Challan (recommended first)</option>
+            <option value="invoice">🧾 Invoice (after delivery)</option>
         </select>
         <div class="lbl">Products & Quantities</div><div id="com-prod-list" style="border:1.5px solid #e8dfd2;border-radius:10px;overflow:hidden;margin-bottom:10px;background:#fff"></div>
         <div class="lbl">Customer Note</div>
@@ -1600,12 +1687,12 @@
     function initTabVisibility(){
       var allTabKeys = ['dashboard','orders','approve','queue','summary','delivery','routes','customers',
 'cust-orders','manual-order','products','groups','ingredients','recipes','production','drivers','gps',
-'users','notify','zoho','cleanup','audit','attendance','my-brand'];
+'users','notify','zoho','cleanup','audit','attendance','my-brand','pay-challan','pay-open','pay-requests','pay-paid'];
 allTabKeys.forEach(function(t){
         var show;
         if(t === 'users' || t === 'cleanup' || t === 'audit' || t === 'attendance') {
           show = (_staffRole === 'super_admin');
-        } else if(t === 'notify' || t === 'zoho' || t === 'manual-order') {
+        } else if(t === 'notify' || t === 'zoho' || t === 'manual-order' || t === 'pay-challan' || t === 'pay-open' || t === 'pay-requests' || t === 'pay-paid') {
           show = (_staffRole === 'super_admin' || _staffRole === 'admin');
         } else if(t === 'dashboard') {
           show = (_staffRole === 'super_admin' || _staffRole === 'admin' || _staffRole === 'assistant');
@@ -1661,7 +1748,7 @@ allTabKeys.forEach(function(t){
     }
     // Delivery date = challan date + 1 day
     function nextDay(dateStr){var d=new Date(dateStr);d.setDate(d.getDate()+1);return d.getFullYear()+'-'+zp(d.getMonth()+1)+'-'+zp(d.getDate());}
-    
+
 function fmtQtyPack(name, qty) {
   if (window.ProductsShared && typeof ProductsShared.formatQtyWithPackets === 'function') {
     return ProductsShared.formatQtyWithPackets(name, qty);
@@ -1765,7 +1852,11 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
                   {key:'users',       label:'👥 Users'},
                   {key:'cleanup',     label:'🗑 Cleanup'}],
       notify:    [{key:'notify',      label:'🔔 Notify'}],
-      zoho:      [{key:'zoho',        label:'🔗 Zoho'}]
+      zoho:      [{key:'zoho',        label:'🔗 Zoho'}],
+      payments:  [{key:'pay-challan',  label:'📋 Challans'},
+                  {key:'pay-open',     label:'💸 Unpaid'},
+                  {key:'pay-requests', label:'📨 Requests'},
+                  {key:'pay-paid',     label:'✅ Paid'}]
     };
     var TAB_TO_GROUP = {};
     Object.keys(GROUP_MAP).forEach(function(g){
@@ -1782,12 +1873,12 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
       // Attendance is owner-only (super_admin)
       if(t === 'attendance' && _staffRole !== 'super_admin') return;
       if(_visibleTabs[t] === false) return;
-      ['dashboard','orders','approve','queue','summary','delivery','routes','customers','cust-orders','manual-order','products','groups','ingredients','recipes','production','drivers','gps','users','notify','zoho','cleanup','audit', 'attendance', 'my-brand'].forEach(function(x){
+      ['dashboard','orders','approve','queue','summary','delivery','routes','customers','cust-orders','manual-order','products','groups','ingredients','recipes','production','drivers','gps','users','notify','zoho','cleanup','audit', 'attendance', 'my-brand','pay-challan','pay-open','pay-requests','pay-paid'].forEach(function(x){
         var pg=document.getElementById('pg-'+x); if(pg) pg.classList.toggle('on',x===t);
       });
       // Highlight active group tab
       var group = TAB_TO_GROUP[t] || 'home';
-      ['home','orders','delivery','customers','manage','notify','zoho'].forEach(function(g){
+      ['home','orders','delivery','customers','manage','notify','zoho','payments','myBrand'].forEach(function(g){
         var el=document.getElementById('mtb-'+g); if(el) el.classList.toggle('on',g===group);
       });
       // Build sub-tabs for this group
@@ -1829,6 +1920,8 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
       if(t==='audit')        initAuditTab();
       if(t==='attendance')   initAttendanceTab();
       if(t==='my-brand')   initMyBrandTab();
+      if(t==='pay-challan') loadChallanDesk();
+      if(t==='pay-open' || t==='pay-requests' || t==='pay-paid') loadPaymentsDesk(t);
     }
 
     /* ── DASHBOARD ── */
@@ -4941,7 +5034,7 @@ function shareAllCustLogins(){
     }
     function openAddProduct(){
       document.getElementById('productModalTitle').textContent='Add Product';
-      ['pm-id','pm-name','pm-pid','pm-cat','pm-price','pm-tax-id','pm-unit','pm-desc'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+      ['pm-id','pm-name','pm-pid','pm-cat','pm-price','pm-tax-id','pm-tax-percent','pm-unit','pm-desc'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
       document.getElementById('pm-group').value='';
       document.getElementById('pm-active').value='true';
       document.getElementById('pm-msg').style.display='none';
@@ -4957,6 +5050,8 @@ function shareAllCustLogins(){
       document.getElementById('pm-price').value=p.price||'';
       var taxEl=document.getElementById('pm-tax-id');
       if(taxEl) taxEl.value=p.tax_id||p.zoho_tax_id||'';
+      var tpEl=document.getElementById('pm-tax-percent');
+      if(tpEl) tpEl.value=(p.tax_percent!=null && p.tax_percent!=='')?p.tax_percent:'';
       document.getElementById('pm-unit').value=p.unit||'';
       document.getElementById('pm-desc').value=p.description||'';
       document.getElementById('pm-active').value=p.active===false?'false':'true';
@@ -4981,7 +5076,7 @@ function shareAllCustLogins(){
       var gid=document.getElementById('pm-group').value;
       var pid=String(document.getElementById('pm-pid').value.trim()||id);
       var actVal=document.getElementById('pm-active').value;
-      apiPost({action:id?'updateProduct':'addProduct',product_id:pid,name:name,category:document.getElementById('pm-cat').value.trim(),price:document.getElementById('pm-price').value.trim(),tax_id:(document.getElementById('pm-tax-id')||{}).value?document.getElementById('pm-tax-id').value.trim():'',unit:document.getElementById('pm-unit').value.trim(),description:document.getElementById('pm-desc').value.trim(),group_id:gid?parseInt(gid):null,active:actVal!=='false'})
+      apiPost({action:id?'updateProduct':'addProduct',product_id:pid,name:name,category:document.getElementById('pm-cat').value.trim(),price:document.getElementById('pm-price').value.trim(),tax_id:(document.getElementById('pm-tax-id')||{}).value?document.getElementById('pm-tax-id').value.trim():'',tax_percent:(document.getElementById('pm-tax-percent')||{}).value!==undefined&&document.getElementById('pm-tax-percent').value!==''?document.getElementById('pm-tax-percent').value:null,unit:document.getElementById('pm-unit').value.trim(),description:document.getElementById('pm-desc').value.trim(),group_id:gid?parseInt(gid):null,active:actVal!=='false'})
       .then(function(res){
         if(res&&res.ok){
           // Sync junction table: remove from old group, add to new group
@@ -6171,17 +6266,48 @@ apiPost({
     var _crateTrackingEnabled = false;
     var _zohoEnabled = false;
 
+    var _customerPayEnabled = true;
     function loadFeatureSettings(){
       Promise.all([
         api({action:'getSetting', key:'crate_tracking'}),
-        api({action:'getSetting', key:'zoho_integration'})
+        api({action:'getSetting', key:'zoho_integration'}),
+        api({action:'getSetting', key:'customer_payments_enabled'})
       ]).then(function(res){
         _crateTrackingEnabled = !!(res[0] && res[0].value === '1');
         _zohoEnabled = !!(res[1] && res[1].value === '1');
+        if (!res[2] || res[2].value == null || res[2].value === '') {
+          _customerPayEnabled = true;
+        } else {
+          var v = String(res[2].value).toLowerCase();
+          _customerPayEnabled = !(v === '0' || v === 'false' || v === 'off');
+        }
         _updateCrateToggleUI();
         _updateZohoToggleUI();
+        _updateCustPayToggleUI();
          if (_zohoEnabled) loadZohoCreds(); // ← ADD THIS LINE
       });
+    }
+    function _updateCustPayToggleUI(){
+      var lbl = document.getElementById('custpay-status-lbl');
+      var btn = document.getElementById('custpay-toggle-btn');
+      if(!lbl||!btn) return;
+      if(_customerPayEnabled){
+        lbl.textContent='ENABLED'; lbl.style.color='#2d7a4f';
+        btn.textContent='Disable'; btn.style.background='#fde8e8'; btn.style.color='#c8382a';
+      } else {
+        lbl.textContent='DISABLED'; lbl.style.color='#c8382a';
+        btn.textContent='Enable'; btn.style.background='#e8f5e9'; btn.style.color='#2d7a4f';
+      }
+    }
+    function toggleCustomerPayments(){
+      var btn = document.getElementById('custpay-toggle-btn');
+      if(btn){ btn.disabled=true; btn.textContent='…'; }
+      var newVal = _customerPayEnabled ? '0' : '1';
+      apiPost({action:'setSetting', key:'customer_payments_enabled', value:newVal}).then(function(){
+        _customerPayEnabled = (newVal==='1');
+        _updateCustPayToggleUI();
+        if(btn) btn.disabled=false;
+      }).catch(function(){ if(btn){ btn.disabled=false; _updateCustPayToggleUI(); } });
     }
 
     function _updateCrateToggleUI(){
@@ -6376,6 +6502,130 @@ apiPost({
       });
     }
 
+
+    // ── Zoho pull list: search + selective apply (default: nothing checked) ──
+    function _zohoPullSelCount(kind){
+      var cls = kind === 'cust' ? '.zoho-pull-cust-cb:checked' : '.zoho-pull-prod-cb:checked';
+      var n = document.querySelectorAll(cls).length;
+      var el = document.getElementById(kind === 'cust' ? 'zoho-pull-cust-selcount' : 'zoho-pull-prod-selcount');
+      if(el) el.textContent = n ? (n + ' selected') : 'None selected — tick rows to apply';
+      var btn = document.getElementById(kind === 'cust' ? 'zoho-apply-cust-btn' : 'zoho-apply-prod-btn');
+      if(btn) btn.style.display = n ? 'block' : 'none';
+    }
+    function renderZohoCustPullList(){
+      var list = document.getElementById('zoho-pull-cust-list');
+      var tools = document.getElementById('zoho-pull-cust-tools');
+      if(!list) return;
+      var q = ((document.getElementById('zoho-pull-cust-search')||{}).value || '').trim().toLowerCase();
+      var showSame = !!(document.getElementById('zoho-pull-cust-show-same')||{}).checked;
+      var rows = (_zohoPullCustomers||[]).map(function(r, idx){ return { r:r, idx:idx }; }).filter(function(o){
+        if(!showSame && o.r.kind === 'same') return false;
+        if(!q) return true;
+        var hay = ((o.r.zname||'')+' '+(o.r.zmobile||'')+' '+(o.r.zid||'')+' '+(o.r.changes||[]).join(' ')).toLowerCase();
+        return hay.indexOf(q) >= 0;
+      });
+      list.style.display = 'block';
+      if(tools) tools.style.display = 'block';
+      if(!(_zohoPullCustomers||[]).length){
+        list.innerHTML = '<div style="padding:12px;font-size:12px;color:#8a7a6a;font-family:monospace">No contacts pulled yet.</div>';
+        _zohoPullSelCount('cust');
+        return;
+      }
+      if(!rows.length){
+        list.innerHTML = '<div style="padding:12px;font-size:12px;color:#8a7a6a;font-family:monospace">No matches'+(q?' for “'+esc(q)+'”':'')+'. Try search or show unchanged.</div>';
+        _zohoPullSelCount('cust');
+        return;
+      }
+      list.innerHTML = rows.map(function(o){
+        var r = o.r, idx = o.idx;
+        var badge = r.kind==='new'
+          ? '<span style="background:#e8f5e9;color:#2d7a4f;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">NEW</span>'
+          : r.kind==='changed'
+          ? '<span style="background:#fff8e1;color:#7a4800;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">CHANGED</span>'
+          : '<span style="background:#eee;color:#666;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">SAME</span>';
+        return '<label style="display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border-bottom:1px solid #f0e8dc;cursor:pointer">'+
+          '<input type="checkbox" class="zoho-pull-cust-cb" data-idx="'+idx+'" data-kind="'+r.kind+'" onchange="_zohoPullSelCount(\'cust\')" style="margin-top:3px;accent-color:#2d7a4f">'+
+          '<div style="flex:1;min-width:0">'+
+            '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+badge+
+              '<span style="font-size:13px;font-weight:700">'+esc(r.zname||'—')+'</span></div>'+
+            '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px">ID '+esc(r.zid)+(r.zmobile?' · '+esc(r.zmobile):'')+'</div>'+
+            (r.changes&&r.changes.length?'<div style="font-size:11px;color:#4a2f14;margin-top:3px">'+esc(r.changes.join(' · '))+'</div>':'')+
+          '</div></label>';
+      }).join('');
+      _zohoPullSelCount('cust');
+    }
+    function zohoPullCustSelect(mode){
+      var q = ((document.getElementById('zoho-pull-cust-search')||{}).value || '').trim().toLowerCase();
+      var showSame = !!(document.getElementById('zoho-pull-cust-show-same')||{}).checked;
+      document.querySelectorAll('.zoho-pull-cust-cb').forEach(function(cb){
+        var idx = parseInt(cb.dataset.idx,10);
+        var r = _zohoPullCustomers[idx];
+        if(!r){ cb.checked = false; return; }
+        if(mode === 'none'){ cb.checked = false; return; }
+        if(mode === 'new'){ cb.checked = r.kind === 'new'; return; }
+        if(mode === 'changed'){ cb.checked = r.kind === 'changed'; return; }
+        // visible: already in DOM = matches current filter
+        if(mode === 'visible'){ cb.checked = true; return; }
+        cb.checked = false;
+      });
+      _zohoPullSelCount('cust');
+    }
+    function renderZohoProdPullList(){
+      var list = document.getElementById('zoho-pull-prod-list');
+      var tools = document.getElementById('zoho-pull-prod-tools');
+      if(!list) return;
+      var q = ((document.getElementById('zoho-pull-prod-search')||{}).value || '').trim().toLowerCase();
+      var showSame = !!(document.getElementById('zoho-pull-prod-show-same')||{}).checked;
+      var rows = (_zohoPullProducts||[]).map(function(r, idx){ return { r:r, idx:idx }; }).filter(function(o){
+        if(!showSame && o.r.kind === 'same') return false;
+        if(!q) return true;
+        var hay = ((o.r.zname||'')+' '+(o.r.zsku||'')+' '+(o.r.zid||'')+' '+(o.r.zrate||'')+' '+(o.r.ztax||'')+' '+(o.r.ztaxLabel||'')+' '+(o.r.changes||[]).join(' ')).toLowerCase();
+        return hay.indexOf(q) >= 0;
+      });
+      list.style.display = 'block';
+      if(tools) tools.style.display = 'block';
+      if(!(_zohoPullProducts||[]).length){
+        list.innerHTML = '<div style="padding:12px;font-size:12px;color:#8a7a6a;font-family:monospace">No items pulled yet.</div>';
+        _zohoPullSelCount('prod');
+        return;
+      }
+      if(!rows.length){
+        list.innerHTML = '<div style="padding:12px;font-size:12px;color:#8a7a6a;font-family:monospace">No matches'+(q?' for “'+esc(q)+'”':'')+'. Try search or show unchanged.</div>';
+        _zohoPullSelCount('prod');
+        return;
+      }
+      list.innerHTML = rows.map(function(o){
+        var r = o.r, idx = o.idx;
+        var badge = r.kind==='new'
+          ? '<span style="background:#e8f5e9;color:#2d7a4f;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">NEW</span>'
+          : r.kind==='changed'
+          ? '<span style="background:#fff8e1;color:#7a4800;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">CHANGED</span>'
+          : '<span style="background:#eee;color:#666;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">SAME</span>';
+        return '<label style="display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border-bottom:1px solid #f0e8dc;cursor:pointer">'+
+          '<input type="checkbox" class="zoho-pull-prod-cb" data-idx="'+idx+'" data-kind="'+r.kind+'" onchange="_zohoPullSelCount(\'prod\')" style="margin-top:3px;accent-color:#2d7a4f">'+
+          '<div style="flex:1;min-width:0">'+
+            '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+badge+
+              '<span style="font-size:13px;font-weight:700">'+esc(r.zname||'—')+'</span></div>'+
+            '<div style="font-size:10px;color:#8a7a6a;font-family:monospace">ID '+esc(r.zid)+(r.zrate?' · ₹'+esc(r.zrate):'')+(r.zsku?' · SKU '+esc(r.zsku):'')+(r.ztax?' · tax '+esc(r.ztax):'')+(r.ztaxLabel?' ('+esc(r.ztaxLabel)+')':'')+'</div>'+
+            (r.changes&&r.changes.length?'<div style="font-size:11px;margin-top:3px">'+esc(r.changes.join(' · '))+'</div>':'')+
+          '</div></label>';
+      }).join('');
+      _zohoPullSelCount('prod');
+    }
+    function zohoPullProdSelect(mode){
+      document.querySelectorAll('.zoho-pull-prod-cb').forEach(function(cb){
+        var idx = parseInt(cb.dataset.idx,10);
+        var r = _zohoPullProducts[idx];
+        if(!r){ cb.checked = false; return; }
+        if(mode === 'none'){ cb.checked = false; return; }
+        if(mode === 'new'){ cb.checked = r.kind === 'new'; return; }
+        if(mode === 'changed'){ cb.checked = r.kind === 'changed'; return; }
+        if(mode === 'visible'){ cb.checked = true; return; }
+        cb.checked = false;
+      });
+      _zohoPullSelCount('prod');
+    }
+
     function zohoPullCustomers(){
       if(!_zohoEnabled){
         _zohoPullMsg('zoho-pull-cust-msg', 'Turn on Zoho Integration first (Users settings or Toggle).', 'er');
@@ -6385,6 +6635,7 @@ apiPost({
       document.getElementById('zoho-apply-cust-btn').style.display = 'none';
       document.getElementById('zoho-pull-cust-list').style.display = 'none';
       document.getElementById('zoho-pull-cust-summary').style.display = 'none';
+      var _ct = document.getElementById('zoho-pull-cust-tools'); if(_ct) _ct.style.display = 'none';
       Promise.all([
         zohoEdge('list_contacts', { page: 1, per_page: 200 }),
         loadCustomerMaster(true)
@@ -6434,39 +6685,37 @@ apiPost({
           '<div class="stat" style="background:#fff8e1"><div class="stat-n" style="color:#7a4800">'+nChg+'</div><div class="stat-l">Changed</div></div>'+
           '<div class="stat"><div class="stat-n">'+nSame+'</div><div class="stat-l">Unchanged</div></div>'+
           '<div class="stat"><div class="stat-n">'+_zohoPullCustomers.length+'</div><div class="stat-l">From Zoho</div></div></div>';
-        var list = document.getElementById('zoho-pull-cust-list');
-        list.style.display = 'block';
-        var rows = _zohoPullCustomers.filter(function(r){ return r.kind!=='same'; });
-        if(!rows.length){
-          list.innerHTML = '<div style="padding:12px;font-size:12px;color:#8a7a6a;font-family:monospace">No new or changed customers.</div>';
-          document.getElementById('zoho-apply-cust-btn').style.display = 'none';
-        } else {
-          list.innerHTML = rows.map(function(r,i){
-            var badge = r.kind==='new'
-              ? '<span style="background:#e8f5e9;color:#2d7a4f;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">NEW</span>'
-              : '<span style="background:#fff8e1;color:#7a4800;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">CHANGED</span>';
-            return '<label style="display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border-bottom:1px solid #f0e8dc;cursor:pointer">'+
-              '<input type="checkbox" class="zoho-pull-cust-cb" data-idx="'+_zohoPullCustomers.indexOf(r)+'" checked style="margin-top:3px;accent-color:#2d7a4f">'+
-              '<div style="flex:1;min-width:0">'+
-                '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+badge+
-                  '<span style="font-size:13px;font-weight:700">'+esc(r.zname||'—')+'</span></div>'+
-                '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px">ID '+esc(r.zid)+(r.zmobile?' · '+esc(r.zmobile):'')+'</div>'+
-                (r.changes.length?'<div style="font-size:11px;color:#4a2f14;margin-top:3px">'+esc(r.changes.join(' · '))+'</div>':'')+
-              '</div></label>';
-          }).join('');
-          document.getElementById('zoho-apply-cust-btn').style.display = 'block';
-        }
-        _zohoPullMsg('zoho-pull-cust-msg', '✅ Pulled '+_zohoPullCustomers.length+' contacts. Review & confirm to apply.', 'ok');
+        var searchEl = document.getElementById('zoho-pull-cust-search');
+        if(searchEl) searchEl.value = '';
+        var showSameEl = document.getElementById('zoho-pull-cust-show-same');
+        if(showSameEl) showSameEl.checked = false;
+        renderZohoCustPullList();
+        _zohoPullMsg('zoho-pull-cust-msg', '✅ Pulled '+_zohoPullCustomers.length+' contacts. Search & select rows, then confirm.', 'ok');
       }).catch(function(err){
         _zohoPullMsg('zoho-pull-cust-msg', '❌ '+(err && err.message ? err.message : String(err)), 'er');
       });
     }
 
+    function _zohoUniqueLoginUser(baseName){
+      var base = (typeof genUsername === 'function' ? genUsername(baseName) : '') || '';
+      if(!base) base = 'shop';
+      var taken = function(u){
+        u = (u||'').toLowerCase().trim();
+        return (allCustomers||[]).some(function(c){
+          return (c.login_username||'').toLowerCase().trim() === u;
+        });
+      };
+      if(!taken(base)) return base;
+      var i = 2;
+      while(taken(base + '_' + i)) i++;
+      return base + '_' + i;
+    }
     function zohoApplyCustomerPull(){
       var cbs = Array.from(document.querySelectorAll('.zoho-pull-cust-cb:checked'));
       if(!cbs.length){ alert('Select at least one row.'); return; }
-      if(!confirm('Apply '+cbs.length+' customer change(s) to the app?')) return;
+      if(!confirm('Apply '+cbs.length+' customer change(s) to the app?\n\nNew shops get username from name + password 1234.')) return;
       _zohoPullMsg('zoho-pull-cust-msg', '⏳ Applying…', 'in');
+      var newLogins = [];
       var jobs = cbs.map(function(cb){
         var row = _zohoPullCustomers[parseInt(cb.dataset.idx,10)];
         if(!row) return Promise.resolve();
@@ -6475,10 +6724,16 @@ apiPost({
         var city = (z.billing_address && z.billing_address.city) || '';
         if(row.kind==='new'){
           var cid = row.zid || ('Z'+Date.now());
+          var shopName = row.zname || cid;
+          var loginUser = _zohoUniqueLoginUser(shopName);
+          // Reserve username in-memory so multiple new rows in same batch stay unique
+          allCustomers = allCustomers || [];
+          allCustomers.push({ shop_id: cid, customer_id: cid, login_username: loginUser, name: shopName });
+          newLogins.push({ name: shopName, username: loginUser, password: '1234' });
           return apiPost({
             action:'addShop',
             shop_id: cid, customer_id: cid,
-            name: row.zname || cid,
+            name: shopName,
             address: addr, area: city,
             mobile: row.zmobile || '',
             assigned_driver: '',
@@ -6486,6 +6741,14 @@ apiPost({
             zoho_doc_type: 'invoice',
             last_updated_by: 'Zoho Pull',
             last_updated_at: new Date().toLocaleString('en-IN')
+          }).then(function(){
+            return apiPost({
+              action: 'updateShopLogin',
+              shop_id: cid,
+              login_username: loginUser,
+              login_password: '1234',
+              product_group_ids: []
+            });
           });
         }
         var loc = row.local;
@@ -6507,12 +6770,107 @@ apiPost({
         });
       });
       Promise.all(jobs).then(function(){
-        _zohoPullMsg('zoho-pull-cust-msg', '✅ Applied '+cbs.length+' customer update(s).', 'ok');
+        var msg = '✅ Applied '+cbs.length+' customer update(s).';
+        if(newLogins.length){
+          msg += ' New logins: ' + newLogins.map(function(l){ return l.username+'/1234'; }).join(', ');
+        }
+        _zohoPullMsg('zoho-pull-cust-msg', msg, 'ok');
         document.getElementById('zoho-apply-cust-btn').style.display = 'none';
         loadCustomerMaster(true);
       }).catch(function(e){
         _zohoPullMsg('zoho-pull-cust-msg', '❌ Apply failed: '+(e && e.message ? e.message : e), 'er');
       });
+    }
+
+
+    /** Extract Zoho Books tax_id from item payload (GST). */
+    function _zohoItemTaxId(z){
+      if(!z || typeof z !== 'object') return '';
+      var t = z.tax_id || z.default_tax_id || z.taxid || '';
+      if(t) return String(t).trim();
+      var prefs = z.item_tax_preferences || z.tax_preferences || [];
+      if(Array.isArray(prefs) && prefs.length){
+        // Prefer intra (same state CGST/SGST) then any
+        var intra = prefs.find(function(p){ return String(p.tax_specification||'').toLowerCase()==='intra' && p.tax_id; });
+        if(intra && intra.tax_id) return String(intra.tax_id).trim();
+        for(var i=0;i<prefs.length;i++){
+          if(prefs[i] && prefs[i].tax_id) return String(prefs[i].tax_id).trim();
+        }
+      }
+      return '';
+    }
+    /** Parse GST rate from labels like "GST5 (5 %)", "GST 18%", "IGST5". */
+    function _zohoParseTaxPercentFromText(txt){
+      if(txt == null || txt === '') return null;
+      var s = String(txt);
+      var m = s.match(/(\d+(?:\.\d+)?)\s*%/);
+      if(m){ var a = parseFloat(m[1]); if(!isNaN(a) && a > 0 && a <= 100) return a; }
+      m = s.match(/(?:GST|IGST|CGST|SGST)\s*(\d+(?:\.\d+)?)/i);
+      if(m){ var b = parseFloat(m[1]); if(!isNaN(b) && b > 0 && b <= 100) return b; }
+      return null;
+    }
+    function _zohoItemTaxLabel(z){
+      if(!z) return '';
+      var name = z.tax_name || z.tax_name_formatted || '';
+      if(name) return String(name);
+      if(z.tax_percentage != null && z.tax_percentage !== '' && Number(z.tax_percentage) > 0)
+        return String(z.tax_percentage)+'%';
+      var prefs = z.item_tax_preferences || z.tax_preferences || [];
+      if(Array.isArray(prefs) && prefs[0]){
+        var p = prefs[0];
+        if(p.tax_name) return String(p.tax_name);
+        if(p.tax_percentage != null && Number(p.tax_percentage) > 0) return String(p.tax_percentage)+'%';
+      }
+      return '';
+    }
+    /** Rate from item payload only. Treats 0 as missing (Zoho list often sends 0). */
+    function _zohoItemTaxPercent(z, taxMap){
+      if(!z) return null;
+      function ok(n){ return !isNaN(n) && n > 0 && n <= 100 ? n : null; }
+      if(z.tax_percentage != null && z.tax_percentage !== '') {
+        var n = ok(parseFloat(z.tax_percentage));
+        if(n != null) return n;
+      }
+      var prefs = z.item_tax_preferences || z.tax_preferences || [];
+      if(Array.isArray(prefs)){
+        for(var i=0;i<prefs.length;i++){
+          if(prefs[i] && prefs[i].tax_percentage != null){
+            var p = ok(parseFloat(prefs[i].tax_percentage));
+            if(p != null) return p;
+          }
+          if(prefs[i] && prefs[i].tax_name){
+            var fromPref = _zohoParseTaxPercentFromText(prefs[i].tax_name);
+            if(fromPref != null) return fromPref;
+          }
+        }
+      }
+      var fromLabel = _zohoParseTaxPercentFromText(_zohoItemTaxLabel(z));
+      if(fromLabel != null) return fromLabel;
+      fromLabel = _zohoParseTaxPercentFromText(z.tax_name || z.tax_name_formatted || '');
+      if(fromLabel != null) return fromLabel;
+      // Resolve via tax master map (tax_id → %)
+      if(taxMap){
+        var tid = _zohoItemTaxId(z);
+        if(tid && taxMap[tid] != null) return taxMap[tid];
+      }
+      return null;
+    }
+    function _zohoBuildTaxMap(taxes){
+      var map = {};
+      if(!Array.isArray(taxes)) return map;
+      taxes.forEach(function(t){
+        if(!t) return;
+        var id = String(t.tax_id || t.taxid || '').trim();
+        if(!id) return;
+        var pct = null;
+        if(t.tax_percentage != null && t.tax_percentage !== ''){
+          var n = parseFloat(t.tax_percentage);
+          if(!isNaN(n) && n > 0) pct = n;
+        }
+        if(pct == null) pct = _zohoParseTaxPercentFromText(t.tax_name || t.tax_name_formatted || '');
+        if(pct != null) map[id] = pct;
+      });
+      return map;
     }
 
     function zohoPullProducts(){
@@ -6524,9 +6882,11 @@ apiPost({
       document.getElementById('zoho-apply-prod-btn').style.display = 'none';
       document.getElementById('zoho-pull-prod-list').style.display = 'none';
       document.getElementById('zoho-pull-prod-summary').style.display = 'none';
+      var _pt = document.getElementById('zoho-pull-prod-tools'); if(_pt) _pt.style.display = 'none';
       Promise.all([
         zohoEdge('list_items', { page: 1, per_page: 200 }),
-        loadProductMaster(true)
+        loadProductMaster(true),
+        zohoEdge('list_taxes', { page: 1, per_page: 200 }).catch(function(){ return {}; })
       ]).then(function(res){
         var data = res[0] || {};
         if(data.code !== 0 && data.code !== undefined){
@@ -6537,21 +6897,32 @@ apiPost({
         if(!items.length && data.message){
           throw data.message + ' — ensure zoho-token edge function supports action list_items';
         }
+        var taxData = res[2] || {};
+        var taxMap = _zohoBuildTaxMap(taxData.taxes || taxData.tax || []);
         _zohoPullProducts = items.map(function(z){
           var zid = String(z.item_id || '');
           var zname = (z.name || '').trim();
           var zrate = z.rate != null ? String(z.rate) : '';
           var zsku = (z.sku || '').trim();
+          var ztax = _zohoItemTaxId(z);
+          var ztaxLabel = _zohoItemTaxLabel(z);
+          var ztaxPct = _zohoItemTaxPercent(z, taxMap);
+          if(ztaxPct == null && ztax && taxMap[ztax] != null) ztaxPct = taxMap[ztax];
+          if(ztaxPct != null && !ztaxLabel) ztaxLabel = ztaxPct + '%';
           var local = (allProducts||[]).find(function(p){
             return String(p.product_id||'') === zid
               || (zsku && String(p.product_id||'') === zsku)
               || (zname && (p.name||'').trim().toLowerCase() === zname.toLowerCase());
           });
           var changes = [];
-          if(!local) return { kind:'new', zoho:z, zid:zid, zname:zname, zrate:zrate, zsku:zsku, local:null, changes:['New product'] };
+          if(!local) return { kind:'new', zoho:z, zid:zid, zname:zname, zrate:zrate, zsku:zsku, ztax:ztax, ztaxLabel:ztaxLabel, ztaxPct:ztaxPct, local:null, changes:['New product'].concat(ztax||ztaxPct!=null?['GST '+(ztaxPct!=null?ztaxPct+'% ':'')+(ztax?('id '+ztax):'')]:[]) };
           if(zname && zname !== (local.name||'')) changes.push('Name: '+(local.name||'')+' → '+zname);
           if(zrate && String(local.price||'') !== zrate) changes.push('Price: '+(local.price||'—')+' → '+zrate);
-          return { kind: changes.length?'changed':'same', zoho:z, zid:zid, zname:zname, zrate:zrate, zsku:zsku, local:local, changes:changes };
+          var localTax = String(local.tax_id || local.zoho_tax_id || '').trim();
+          if(ztax && ztax !== localTax) changes.push('GST id: '+(localTax||'—')+' → '+ztax+(ztaxLabel?' ('+ztaxLabel+')':''));
+          var localPct = local.tax_percent != null && local.tax_percent !== '' ? parseFloat(local.tax_percent) : null;
+          if(ztaxPct != null && (localPct == null || Number(localPct) !== Number(ztaxPct))) changes.push('GST %: '+(localPct!=null?localPct:'—')+' → '+ztaxPct);
+          return { kind: changes.length?'changed':'same', zoho:z, zid:zid, zname:zname, zrate:zrate, zsku:zsku, ztax:ztax, ztaxLabel:ztaxLabel, ztaxPct:ztaxPct, local:local, changes:changes };
         });
         var nNew = _zohoPullProducts.filter(function(r){ return r.kind==='new'; }).length;
         var nChg = _zohoPullProducts.filter(function(r){ return r.kind==='changed'; }).length;
@@ -6563,29 +6934,12 @@ apiPost({
           '<div class="stat" style="background:#fff8e1"><div class="stat-n" style="color:#7a4800">'+nChg+'</div><div class="stat-l">Changed</div></div>'+
           '<div class="stat"><div class="stat-n">'+nSame+'</div><div class="stat-l">Unchanged</div></div>'+
           '<div class="stat"><div class="stat-n">'+_zohoPullProducts.length+'</div><div class="stat-l">From Zoho</div></div></div>';
-        var list = document.getElementById('zoho-pull-prod-list');
-        list.style.display = 'block';
-        var rows = _zohoPullProducts.filter(function(r){ return r.kind!=='same'; });
-        if(!rows.length){
-          list.innerHTML = '<div style="padding:12px;font-size:12px;color:#8a7a6a;font-family:monospace">No new or changed products.</div>';
-          document.getElementById('zoho-apply-prod-btn').style.display = 'none';
-        } else {
-          list.innerHTML = rows.map(function(r){
-            var badge = r.kind==='new'
-              ? '<span style="background:#e8f5e9;color:#2d7a4f;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">NEW</span>'
-              : '<span style="background:#fff8e1;color:#7a4800;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">CHANGED</span>';
-            return '<label style="display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border-bottom:1px solid #f0e8dc;cursor:pointer">'+
-              '<input type="checkbox" class="zoho-pull-prod-cb" data-idx="'+_zohoPullProducts.indexOf(r)+'" checked style="margin-top:3px;accent-color:#2d7a4f">'+
-              '<div style="flex:1">'+
-                '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+badge+
-                  '<span style="font-size:13px;font-weight:700">'+esc(r.zname||'—')+'</span></div>'+
-                '<div style="font-size:10px;color:#8a7a6a;font-family:monospace">ID '+esc(r.zid)+(r.zrate?' · ₹'+esc(r.zrate):'')+(r.zsku?' · SKU '+esc(r.zsku):'')+'</div>'+
-                (r.changes.length?'<div style="font-size:11px;margin-top:3px">'+esc(r.changes.join(' · '))+'</div>':'')+
-              '</div></label>';
-          }).join('');
-          document.getElementById('zoho-apply-prod-btn').style.display = 'block';
-        }
-        _zohoPullMsg('zoho-pull-prod-msg', '✅ Pulled '+_zohoPullProducts.length+' items. Review & confirm to apply.', 'ok');
+        var searchEl = document.getElementById('zoho-pull-prod-search');
+        if(searchEl) searchEl.value = '';
+        var showSameEl = document.getElementById('zoho-pull-prod-show-same');
+        if(showSameEl) showSameEl.checked = false;
+        renderZohoProdPullList();
+        _zohoPullMsg('zoho-pull-prod-msg', '✅ Pulled '+_zohoPullProducts.length+' items. Search & select rows, then confirm.', 'ok');
       }).catch(function(err){
         _zohoPullMsg('zoho-pull-prod-msg', '❌ '+(err && err.message ? err.message : String(err)), 'er');
       });
@@ -6601,6 +6955,9 @@ apiPost({
         if(!row) return Promise.resolve();
         var z = row.zoho || {};
         var pid = row.zsku || row.zid || ('ZITEM'+Date.now());
+        var taxId = row.ztax || _zohoItemTaxId(z) || '';
+        var taxPct = row.ztaxPct != null ? row.ztaxPct : _zohoItemTaxPercent(z);
+        if(taxPct != null && !(Number(taxPct) > 0)) taxPct = null;
         if(row.kind==='new'){
           return apiPost({
             action:'addProduct',
@@ -6608,13 +6965,15 @@ apiPost({
             name: row.zname || pid,
             category: '',
             price: row.zrate || '',
+            tax_id: taxId || null,
+            tax_percent: taxPct != null ? taxPct : null,
             unit: z.unit || 'Pieces',
             description: z.description || '',
             active: true
           });
         }
         var loc = row.local;
-        return apiPost({
+        var patch = {
           action:'updateProduct',
           product_id: loc.product_id,
           name: row.zname || loc.name,
@@ -6623,7 +6982,10 @@ apiPost({
           unit: z.unit || loc.unit || 'Pieces',
           description: z.description || loc.description || '',
           active: loc.active !== false
-        });
+        };
+        if(taxId) patch.tax_id = taxId;
+        if(taxPct != null) patch.tax_percent = taxPct;
+        return apiPost(patch);
       });
       Promise.all(jobs).then(function(){
         _zohoPullMsg('zoho-pull-prod-msg', '✅ Applied '+cbs.length+' product update(s).', 'ok');
@@ -6631,6 +6993,634 @@ apiPost({
         loadProductMaster(true);
       }).catch(function(e){
         _zohoPullMsg('zoho-pull-prod-msg', '❌ Apply failed: '+(e && e.message ? e.message : e), 'er');
+      });
+    }
+
+
+    /* ── CHALLAN DESK (daily: edit → Zoho → deliver → invoice) ── */
+    var _challanDeskRows = [];
+
+    function _challanMsg(t, ok) {
+      var el = document.getElementById('challan-desk-msg');
+      if (!el) return;
+      el.style.display = 'block';
+      el.textContent = t;
+      el.style.background = ok === false ? '#fde8e8' : (ok ? '#e8f5e9' : '#e8f0ff');
+      el.style.color = ok === false ? '#c8382a' : (ok ? '#1a5a38' : '#1a3a8a');
+    }
+    function _challanIsChallanOrder(o, shopMap) {
+      var dt = String(o.zoho_doc_type || '').toLowerCase();
+      if (dt === 'delivery_challan') return true;
+      if (dt === 'invoice') return false;
+      var shop = shopMap[String(o.shop_id || '')];
+      if (shop && String(shop.zoho_doc_type || '').toLowerCase() === 'delivery_challan') return true;
+      // Has challan id style or explicit flag
+      if (o.zoho_challan_id) return true;
+      return false;
+    }
+    function loadChallanDesk() {
+      var dateEl = document.getElementById('challan-desk-date');
+      if (dateEl && !dateEl.value) dateEl.value = todayStr();
+      var date = (dateEl && dateEl.value) || todayStr();
+      _challanMsg('Loading…', null);
+      Promise.all([
+        api({ action: 'getCustomerOrders', limit: 500 }),
+        (typeof loadCustomerMaster === 'function' ? loadCustomerMaster() : Promise.resolve()),
+        api({ action: 'getDeliveries', date: date }).catch(function(){ return []; })
+      ]).then(function(res) {
+        var list = Array.isArray(res[0]) ? res[0] : [];
+        var shopMap = {};
+        (allCustomers || []).forEach(function(c) {
+          shopMap[String(c.customer_id || c.shop_id || '')] = c;
+        });
+        var delivs = Array.isArray(res[2]) ? res[2] : [];
+        var deliveredShop = {};
+        delivs.forEach(function(d) {
+          deliveredShop[String(d.shop_id || d.customer_id || '')] = d;
+        });
+        _challanDeskRows = list.filter(function(o) {
+          if (String(o.delivery_date || '') !== String(date)) return false;
+          if (String(o.status || '') === 'rejected' || String(o.status || '') === 'no_order') return false;
+          return _challanIsChallanOrder(o, shopMap);
+        }).map(function(o) {
+          o._delivered = !!deliveredShop[String(o.shop_id || '')];
+          o._deliv = deliveredShop[String(o.shop_id || '')] || null;
+          return o;
+        });
+        _challanMsg('Challans for ' + date + ': ' + _challanDeskRows.length, true);
+        renderChallanDesk();
+      }).catch(function(e) {
+        _challanDeskRows = [];
+        _challanMsg('Failed: ' + (e && e.message ? e.message : e), false);
+        renderChallanDesk();
+      });
+    }
+    function renderChallanDesk() {
+      var q = ((document.getElementById('challan-desk-q') || {}).value || '').toLowerCase().trim();
+      var rows = _challanDeskRows.filter(function(o) {
+        if (!q) return true;
+        var hay = [o.shop_name, o.shop_id, o.zoho_invoice_number, o.zoho_invoice_id].join(' ').toLowerCase();
+        return hay.indexOf(q) >= 0;
+      });
+      var nSent = rows.filter(function(o){ return !!o.zoho_invoice_id; }).length;
+      var nDel = rows.filter(function(o){ return o._delivered; }).length;
+      var nInv = rows.filter(function(o){ return String(o.zoho_doc_type||'').toLowerCase() === 'invoice'; }).length;
+      var st = document.getElementById('challan-desk-stats');
+      if (st) {
+        st.innerHTML =
+          '<div class="stat"><div class="stat-n">'+rows.length+'</div><div class="stat-l">Challans</div></div>'+
+          '<div class="stat" style="background:#fff8e1"><div class="stat-n" style="color:#7a4800">'+nSent+'</div><div class="stat-l">In Zoho</div></div>'+
+          '<div class="stat" style="background:#e8f5e9"><div class="stat-n" style="color:#1a5a38">'+nDel+'</div><div class="stat-l">Delivered</div></div>'+
+          '<div class="stat" style="background:#e3f2fd"><div class="stat-n" style="color:#1565c0">'+nInv+'</div><div class="stat-l">Invoiced</div></div>';
+      }
+      var el = document.getElementById('challan-desk-list');
+      if (!el) return;
+      if (!rows.length) {
+        el.innerHTML = '<div style="text-align:center;padding:20px;color:#8a7a6a;font-size:12px">No challan orders for this date</div>';
+        return;
+      }
+      el.innerHTML = rows.map(function(o) {
+        var st2 = String(o.status||'');
+        var badges = '';
+        if (o.zoho_invoice_id) badges += '<span style="background:#fff8e1;color:#7a4800;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">In Zoho</span>';
+        else badges += '<span style="background:#fde8e8;color:#c8382a;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">Not sent</span>';
+        if (o._delivered) badges += '<span style="background:#e8f5e9;color:#1a5a38;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">Delivered</span>';
+        else badges += '<span style="background:#fff3e0;color:#c8864a;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">Not delivered</span>';
+        if (String(o.zoho_doc_type||'').toLowerCase() === 'invoice')
+          badges += '<span style="background:#e3f2fd;color:#1565c0;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">Invoice</span>';
+        else
+          badges += '<span style="background:#f3e5f5;color:#6a1b9a;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">Challan</span>';
+
+        var actions = '';
+        // Edit quantities before send/deliver
+        actions += '<button class="btn-sm btn-edit" onclick="challanDeskEdit(\''+o.id+'\')">✏️ Edit qty</button> ';
+        // Send / update Zoho challan
+        actions += '<button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1px solid #ffe082" onclick="challanDeskSendZoho(\''+o.id+'\')">'+(o.zoho_invoice_id ? '✏️ Update Zoho' : '📤 Send Zoho')+'</button> ';
+        // Mark delivered (only if not yet)
+        if (!o._delivered) {
+          actions += '<button class="btn-sm" style="background:#e8f5e9;color:#1a5a38;border:1px solid #a5d6a7" onclick="challanDeskMarkDelivered(\''+o.id+'\')">✅ Mark delivered</button> ';
+        }
+        // Convert to invoice after delivered
+        if (o._delivered && String(o.zoho_doc_type||'').toLowerCase() !== 'invoice') {
+          actions += '<button class="btn-sm" style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9" onclick="challanDeskConvertInvoice(\''+o.id+'\')">🧾 Convert to Invoice</button>';
+        }
+        return '<div class="card" style="margin-bottom:8px;padding:12px">'+
+          '<div style="font-size:13px;font-weight:800;margin-bottom:4px">'+esc(o.shop_name||o.shop_id||'Shop')+'</div>'+
+          '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;line-height:1.5">'+badges+'<br>'+
+          'Status: '+esc(st2)+' · Doc: '+esc(o.zoho_invoice_number||o.zoho_invoice_id||'—')+
+          (o.invoice_total != null ? ' · ₹'+Number(o.invoice_total).toLocaleString('en-IN',{maximumFractionDigits:2}) : '')+
+          '<br>'+esc(String(o.items||'').slice(0,120))+
+          '</div><div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">'+actions+'</div></div>';
+      }).join('');
+    }
+    function challanDeskEdit(id) {
+      var o = _challanDeskRows.find(function(r){ return String(r.id) === String(id); });
+      if (!o) return;
+      // Open same Zoho preview/edit path used on cust-orders (edit qty via items string prompt for now)
+      var items = prompt('Edit items (name,name,…) — current:\\n' + (o.items || ''), o.items || '');
+      if (items == null) return;
+      var qtys = prompt('Edit qty (comma-separated) — current:\\n' + (o.qty || ''), o.qty || '');
+      if (qtys == null) return;
+      _challanMsg('Saving qty…', null);
+      apiPost({
+        action: 'updateCustomerOrder',
+        id: o.id,
+        items: items,
+        qty: qtys,
+        item_ids: o.item_ids || '',
+        note: o.note || ''
+      }).then(function(res) {
+        if (res && res.ok === false) throw new Error(res.error || 'Save failed');
+        o.items = items;
+        o.qty = qtys;
+        _challanMsg('Quantities updated. Next: Send/Update Zoho.', true);
+        renderChallanDesk();
+      }).catch(function(e) {
+        _challanMsg('Failed: ' + (e.message || e), false);
+      });
+    }
+    function challanDeskSendZoho(id) {
+      var o = _challanDeskRows.find(function(r){ return String(r.id) === String(id); });
+      if (!o) return;
+      if (!_zohoEnabled) { alert('Turn on Zoho Integration first'); return; }
+      // Force challan doc type for this flow
+      o.zoho_doc_type = 'delivery_challan';
+      if (typeof openZohoInvPreview === 'function') {
+        openZohoInvPreview(o);
+      } else {
+        alert('Zoho preview not available');
+      }
+    }
+    function challanDeskMarkDelivered(id) {
+      var o = _challanDeskRows.find(function(r){ return String(r.id) === String(id); });
+      if (!o) return;
+      if (!o.zoho_invoice_id) {
+        if (!confirm('Challan not sent to Zoho yet. Mark delivered in app anyway?')) return;
+      } else {
+        if (!confirm('Mark delivered for ' + (o.shop_name || '') + '?')) return;
+      }
+      var driver = o.driver || o.assigned_driver || '';
+      if (!driver) {
+        var shop = (allCustomers || []).find(function(c){
+          return String(c.customer_id || c.shop_id || '') === String(o.shop_id || '');
+        });
+        driver = (shop && (shop.assigned_driver || shop.driver)) || prompt('Driver name', '') || '';
+      }
+      var time = new Date().toTimeString().slice(0, 5);
+      _challanMsg('Marking delivered…', null);
+      apiPost({
+        action: 'markDelivered',
+        shop_id: o.shop_id,
+        shop_name: o.shop_name || '',
+        date: o.delivery_date,
+        time: time,
+        driver: driver
+      }).then(function(res) {
+        if (res && res.ok === false) throw new Error(res.error || 'Failed');
+        // also mark order dispatched if not already
+        return apiPost({
+          action: 'updateCustomerOrderStatus',
+          id: o.id,
+          status: 'dispatched'
+        });
+      }).then(function() {
+        _challanMsg('Marked delivered. Next: Convert to Invoice.', true);
+        loadChallanDesk();
+      }).catch(function(e) {
+        _challanMsg('Failed: ' + (e.message || e), false);
+      });
+    }
+    function challanDeskConvertInvoice(id) {
+      var o = _challanDeskRows.find(function(r){ return String(r.id) === String(id); });
+      if (!o) return;
+      if (!_zohoEnabled) { alert('Turn on Zoho Integration first'); return; }
+      if (!confirm('Convert this delivery challan to a Tax Invoice in Zoho for ' + (o.shop_name || '') + '?')) return;
+      _challanMsg('Converting to invoice…', null);
+      // Create invoice from same order lines; keep challan id reference in notes if present
+      var orderForInv = Object.assign({}, o, { zoho_doc_type: 'invoice', zoho_invoice_id: '' });
+      // Prefer create invoice path
+      if (typeof zohoCreateInvoiceReal !== 'function') {
+        _challanMsg('Invoice create function missing', false);
+        return;
+      }
+      zohoCreateInvoiceReal(orderForInv).then(function(inv) {
+        var body = {
+          action: 'updateCustomerOrderStatus',
+          id: o.id,
+          status: o.status || 'dispatched',
+          zoho_doc_type: 'invoice',
+          zoho_invoice_id: inv.invoice_id || '',
+          zoho_invoice_number: inv.invoice_number || '',
+          payment_status: o.payment_status || 'unpaid'
+        };
+        if (inv.total != null) {
+          body.invoice_total = inv.total;
+          body.balance_due = inv.total;
+        }
+        // preserve original challan id if column exists is optional; store in note reference
+        return apiPost(body).then(function(){ return inv; });
+      }).then(function(inv) {
+        _challanMsg('Converted to invoice: ' + (inv.invoice_number || inv.invoice_id || 'OK'), true);
+        loadChallanDesk();
+      }).catch(function(e) {
+        _challanMsg('Convert failed: ' + (e && e.message ? e.message : e), false);
+      });
+    }
+
+    /* ── PAYMENTS DESK (in-app, 3 tabs) ── */
+    var _payDeskRows = [];
+    var _payDeskTab = 'pay-open';
+
+    function _payDeskMsg(t, ok) {
+      var el = document.getElementById('pay-desk-msg');
+      if (!el) return;
+      el.style.display = 'block';
+      el.textContent = t;
+      el.style.background = ok === false ? '#fde8e8' : (ok ? '#e8f5e9' : '#e8f0ff');
+      el.style.color = ok === false ? '#c8382a' : (ok ? '#1a5a38' : '#1a3a8a');
+    }
+    function _payDue(o) {
+      if (o.balance_due != null && o.balance_due !== '') return parseFloat(o.balance_due) || 0;
+      if (o.invoice_total != null && o.invoice_total !== '') return parseFloat(o.invoice_total) || 0;
+      return 0;
+    }
+    function _payIsPaid(o) { return String(o.payment_status || '').toLowerCase() === 'paid'; }
+    function _payHasDoc(o) {
+      return !!(o.zoho_invoice_id || o.zoho_invoice_number || o.invoice_total != null || o.balance_due != null || o.payment_status);
+    }
+    function loadPaymentsDesk(tab) {
+      if (tab) _payDeskTab = tab;
+      _payDeskMsg('Loading…', null);
+      api({ action: 'getCustomerOrders', limit: 500 }).then(function(list) {
+        if (!Array.isArray(list)) list = [];
+        _payDeskRows = list.filter(_payHasDoc);
+        _payDeskMsg('Loaded ' + _payDeskRows.length + ' document(s).', true);
+        renderPaymentsDesk();
+      }).catch(function(e) {
+        _payDeskRows = [];
+        _payDeskMsg('Failed: ' + (e && e.message ? e.message : e), false);
+        renderPaymentsDesk();
+      });
+    }
+    /** Map Zoho invoice/challan status → local payment_status */
+    function _payMapZohoStatus(zStatus, balance) {
+      var s = String(zStatus || '').toLowerCase();
+      var bal = parseFloat(balance);
+      if (s === 'paid' || s === 'void') return 'paid';
+      if (s === 'partially_paid' || s.indexOf('partial') >= 0) return 'partial';
+      if (!isNaN(bal) && bal <= 0 && s) return 'paid';
+      if (!isNaN(bal) && bal > 0 && s === 'paid') return 'paid';
+      return 'unpaid';
+    }
+    /** Fetch one Zoho doc (invoice first, then delivery challan). */
+    function _payFetchZohoDoc(zohoId, docType) {
+      var isDc = String(docType || '').toLowerCase() === 'delivery_challan';
+      var first = isDc ? 'get_delivery_challan' : 'get_invoice';
+      var second = isDc ? 'get_invoice' : 'get_delivery_challan';
+      return zohoEdge(first, { invoice_id: String(zohoId) }).then(function(data) {
+        if (data && (data.code === 0 || data.invoice || data.deliverychallan)) return data;
+        return zohoEdge(second, { invoice_id: String(zohoId) });
+      });
+    }
+    function _payApplyZohoDocToOrder(o, data) {
+      var doc = (data && (data.invoice || data.deliverychallan || data.deliveryschedule)) || {};
+      if (!doc.invoice_id && !doc.deliverychallan_id && data && data.code && data.code !== 0) {
+        return Promise.reject(new Error(data.message || ('Zoho code ' + data.code)));
+      }
+      var total = parseFloat(doc.total);
+      var balance = doc.balance != null ? parseFloat(doc.balance) : total;
+      if (isNaN(total)) total = null;
+      if (isNaN(balance)) balance = total;
+      var zStatus = doc.status || doc.challan_status || '';
+      var paySt = _payMapZohoStatus(zStatus, balance);
+      if (paySt === 'paid') balance = 0;
+      var isDc = !!(data && data.deliverychallan) || String(o.zoho_doc_type || '').toLowerCase() === 'delivery_challan';
+      var body = {
+        action: 'updateCustomerOrderStatus',
+        id: o.id,
+        status: o.status || 'approved',
+        zoho_invoice_id: doc.invoice_id || doc.deliverychallan_id || o.zoho_invoice_id || '',
+        zoho_invoice_number: doc.invoice_number || doc.deliverychallan_number || o.zoho_invoice_number || '',
+        payment_status: paySt
+      };
+      if (total != null) body.invoice_total = total;
+      if (balance != null) body.balance_due = balance;
+      if (isDc) body.zoho_doc_type = 'delivery_challan';
+      else if (data && data.invoice) body.zoho_doc_type = 'invoice';
+      return apiPost(body).then(function(res) {
+        if (res && res.ok === false) throw new Error(res.error || 'DB update failed');
+        o.invoice_total = total != null ? total : o.invoice_total;
+        o.balance_due = balance != null ? balance : o.balance_due;
+        o.payment_status = paySt;
+        if (body.zoho_invoice_number) o.zoho_invoice_number = body.zoho_invoice_number;
+        return o;
+      });
+    }
+    /** Sync all rows that have zoho_invoice_id (throttled). */
+    function payDeskSyncFromZoho() {
+      if (!_zohoEnabled) {
+        _payDeskMsg('Turn on Zoho Integration first (Users / Zoho tab).', false);
+        return;
+      }
+      var targets = _payDeskRows.filter(function(o){ return o.zoho_invoice_id; });
+      if (!targets.length) {
+        _payDeskMsg('No rows with Zoho document id to sync.', false);
+        return;
+      }
+      if (!confirm('Sync ' + targets.length + ' document(s) from Zoho Books?\nUpdates total, balance and paid status from Zoho.')) return;
+      _payDeskMsg('Syncing 0/' + targets.length + ' from Zoho…', null);
+      var ok = 0, fail = 0, i = 0;
+      function next() {
+        if (i >= targets.length) {
+          _payDeskMsg('Zoho sync done: ' + ok + ' updated, ' + fail + ' failed.', fail && !ok ? false : true);
+          renderPaymentsDesk();
+          return;
+        }
+        var o = targets[i++];
+        _payDeskMsg('Syncing ' + i + '/' + targets.length + ' — ' + (o.shop_name || o.zoho_invoice_number || o.id), null);
+        _payFetchZohoDoc(o.zoho_invoice_id, o.zoho_doc_type)
+          .then(function(data){ return _payApplyZohoDocToOrder(o, data); })
+          .then(function(){ ok++; })
+          .catch(function(err){
+            fail++;
+            console.warn('[pay sync]', o.id, err);
+          })
+          .then(function(){
+            // small delay to respect Zoho rate limits
+            setTimeout(next, 350);
+          });
+      }
+      next();
+    }
+    function payDeskSyncOne(id) {
+      if (!_zohoEnabled) {
+        _payDeskMsg('Turn on Zoho Integration first.', false);
+        return;
+      }
+      var o = _payDeskRows.find(function(r){ return String(r.id) === String(id); });
+      if (!o || !o.zoho_invoice_id) {
+        _payDeskMsg('No Zoho document id on this row.', false);
+        return;
+      }
+      _payDeskMsg('Syncing from Zoho…', null);
+      _payFetchZohoDoc(o.zoho_invoice_id, o.zoho_doc_type)
+        .then(function(data){ return _payApplyZohoDocToOrder(o, data); })
+        .then(function(){
+          _payDeskMsg('Updated from Zoho: ' + (o.zoho_invoice_number || '') + ' · due ₹' + _payDue(o), true);
+          renderPaymentsDesk();
+        })
+        .catch(function(e){
+          _payDeskMsg('Zoho sync failed: ' + (e && e.message ? e.message : e) + ' — ensure edge supports get_invoice.', false);
+        });
+    }
+    function renderPaymentsDesk() {
+      var q = ((document.getElementById('pay-desk-q') || {}).value || '').toLowerCase().trim();
+      var unpaid = _payDeskRows.filter(function(o){ return !_payIsPaid(o); });
+      var claims = _payDeskRows.filter(function(o){ return o.customer_claimed_paid && !_payIsPaid(o); });
+      var paid = _payDeskRows.filter(function(o){ return _payIsPaid(o); });
+      var due = unpaid.reduce(function(s,o){ return s + _payDue(o); }, 0);
+      var st = document.getElementById('pay-desk-stats');
+      if (st) {
+        st.innerHTML =
+          '<div class="stat" style="background:#fde8e8"><div class="stat-n" style="color:#c8382a">'+unpaid.length+'</div><div class="stat-l">Unpaid</div></div>'+
+          '<div class="stat" style="background:#e3f2fd"><div class="stat-n" style="color:#1565c0">'+claims.length+'</div><div class="stat-l">Requests</div></div>'+
+          '<div class="stat" style="background:#fff8e1"><div class="stat-n" style="color:#7a4800">₹'+due.toLocaleString('en-IN',{maximumFractionDigits:0})+'</div><div class="stat-l">Total due</div></div>'+
+          '<div class="stat" style="background:#e8f5e9"><div class="stat-n" style="color:#1a5a38">'+paid.length+'</div><div class="stat-l">Paid</div></div>';
+      }
+      function matchQ(o) {
+        if (!q) return true;
+        var hay = [o.shop_name, o.shop_id, o.zoho_invoice_number, o.delivery_date, o.customer_claim_note].join(' ').toLowerCase();
+        return hay.indexOf(q) >= 0;
+      }
+      var listOpen = unpaid.filter(matchQ).sort(function(a,b){
+        var ca = a.customer_claimed_paid ? 0 : 1, cb = b.customer_claimed_paid ? 0 : 1;
+        if (ca !== cb) return ca - cb;
+        return String(b.delivery_date||'').localeCompare(String(a.delivery_date||''));
+      });
+      var listReq = claims.filter(matchQ);
+      var listPaid = paid.filter(matchQ).sort(function(a,b){
+        return String(b.paid_at||b.delivery_date||'').localeCompare(String(a.paid_at||a.delivery_date||''));
+      });
+
+      function card(o) {
+        var st2 = String(o.payment_status||'unpaid').toLowerCase();
+        var badges = '';
+        if (o.customer_claimed_paid && st2 !== 'paid') badges += '<span style="background:#e3f2fd;color:#1565c0;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">Request</span>';
+        if (st2 === 'paid') badges += '<span style="background:#e8f5e9;color:#1a5a38;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">Paid</span>';
+        else if (st2 === 'partial') badges += '<span style="background:#fff8e1;color:#7a4800;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">Partial</span>';
+        else badges += '<span style="background:#fde8e8;color:#c8382a;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">Unpaid</span>';
+        if (String(o.zoho_doc_type||'').toLowerCase()==='delivery_challan')
+          badges += '<span style="background:#f3e5f5;color:#6a1b9a;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">Challan</span>';
+        else if (o.zoho_invoice_number || o.zoho_invoice_id)
+          badges += '<span style="background:#eceff1;color:#37474f;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">Invoice</span>';
+        if (o.payment_reminder_sent_at)
+          badges += '<span style="background:#eceff1;color:#546e7a;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-left:4px">Reminded</span>';
+        var actions = '';
+        if (o.zoho_invoice_id) {
+          actions += '<button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1px solid #ffe082" onclick="payDeskSyncOne(\''+o.id+'\')">🔗 Zoho</button> ';
+        }
+        if (st2 !== 'paid') {
+          actions += '<button class="btn-sm" style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9" onclick="payDeskRemindOne(\''+o.id+'\')">📨 Remind</button> ';
+          actions += '<button class="btn-sm" style="background:#e8f5e9;color:#1a5a38;border:1px solid #a5d6a7" onclick="payDeskMarkPaid(\''+o.id+'\')">✓ Mark paid</button>';
+        } else {
+          actions += '<button class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0" onclick="payDeskUndoPaid(\''+o.id+'\')">↩ Undo paid</button>';
+        }
+        actions += ' <button class="btn-sm btn-grey" onclick="showTab(\'cust-orders\')">Cust orders</button>';
+        var canSelect = st2 !== 'paid';
+        return '<div class="card" style="margin-bottom:8px;padding:12px">'+
+          '<div style="display:flex;gap:10px;align-items:flex-start">'+
+          (canSelect ? '<input type="checkbox" class="pay-desk-cb" data-id="'+esc(String(o.id))+'" data-shop="'+esc(String(o.shop_id||''))+'" onchange="payDeskUpdateSelCount()" style="margin-top:4px;width:18px;height:18px;accent-color:#c8864a;flex-shrink:0">' : '<span style="width:18px;flex-shrink:0"></span>')+
+          '<div style="flex:1;min-width:0">'+
+          '<div style="font-size:13px;font-weight:800;margin-bottom:4px">'+esc(o.shop_name||o.shop_id||'Shop')+'</div>'+
+          '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;line-height:1.5">'+badges+'<br>'+
+          'Date: '+esc(o.delivery_date||'—')+' · Doc: '+esc(o.zoho_invoice_number||o.zoho_invoice_id||'—')+
+          ' · Due: <b>₹'+_payDue(o).toLocaleString('en-IN',{maximumFractionDigits:2})+'</b>'+
+          (o.invoice_total != null ? ' · Total: ₹'+Number(o.invoice_total).toLocaleString('en-IN',{maximumFractionDigits:2}) : '')+
+          (o.customer_claimed_paid && st2!=='paid' ? '<br>Note: '+esc(o.customer_claim_note||'—') : '')+
+          (o.payment_reminder_sent_at ? '<br>Last reminder: '+esc(String(o.payment_reminder_sent_at).slice(0,16).replace('T',' ')) : '')+
+          (st2==='paid' ? '<br>Paid: ₹'+(o.paid_amount!=null?o.paid_amount:_payDue(o))+' · '+esc(o.payment_mode||'') : '')+
+          '</div><div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">'+actions+'</div></div></div></div>';
+      }
+      var elOpen = document.getElementById('pay-desk-list');
+      var elReq = document.getElementById('pay-desk-list-req');
+      var elPaid = document.getElementById('pay-desk-list-paid');
+      if (elOpen) elOpen.innerHTML = listOpen.length ? listOpen.map(card).join('') : '<div style="text-align:center;padding:20px;color:#8a7a6a;font-size:12px">No unpaid documents</div>';
+      if (elReq) elReq.innerHTML = listReq.length ? listReq.map(card).join('') : '<div style="text-align:center;padding:20px;color:#8a7a6a;font-size:12px">No payment requests</div>';
+      if (elPaid) elPaid.innerHTML = listPaid.length ? listPaid.map(card).join('') : '<div style="text-align:center;padding:20px;color:#8a7a6a;font-size:12px">No paid rows yet</div>';
+    }
+    function payDeskUpdateSelCount() {
+      var n = document.querySelectorAll('.pay-desk-cb:checked').length;
+      var el = document.getElementById('pay-desk-selcount');
+      if (el) el.textContent = n ? (n + ' selected') : '';
+    }
+    function payDeskSelect(mode) {
+      var boxes = document.querySelectorAll('.pay-desk-cb');
+      boxes.forEach(function(cb) {
+        var id = cb.getAttribute('data-id');
+        var o = _payDeskRows.find(function(r){ return String(r.id) === String(id); });
+        if (!o) { cb.checked = false; return; }
+        if (mode === 'none') cb.checked = false;
+        else if (mode === 'unpaid') cb.checked = !_payIsPaid(o);
+        else if (mode === 'visible') cb.checked = true;
+      });
+      payDeskUpdateSelCount();
+    }
+    function _payReminderMessage(o) {
+      var due = _payDue(o);
+      var doc = o.zoho_invoice_number || o.zoho_invoice_id || 'your invoice';
+      var date = o.delivery_date || '';
+      return 'Payment reminder: ' + due.toLocaleString('en-IN', { maximumFractionDigits: 2 }) +
+        ' due for ' + doc + (date ? (' (' + date + ')') : '') +
+        '. Please pay and send request from the Pay tab. Thank you.';
+    }
+    function _paySendReminder(o) {
+      if (!o || !o.shop_id) return Promise.reject(new Error('No shop'));
+      var msg = _payReminderMessage(o);
+      return apiPost({
+        action: 'sendCustomerNotification',
+        shop_id: o.shop_id,
+        shop_name: o.shop_name || '',
+        message: msg
+      }).then(function(res) {
+        if (res && res.ok === false) throw new Error(res.error || 'Notify failed');
+        // stamp reminder time
+        return apiPost({
+          action: 'updateCustomerOrderStatus',
+          id: o.id,
+          status: o.status || 'approved',
+          payment_reminder_sent_at: new Date().toISOString()
+        }).then(function() {
+          o.payment_reminder_sent_at = new Date().toISOString();
+          return o;
+        });
+      });
+    }
+    function payDeskRemindOne(id) {
+      var o = _payDeskRows.find(function(r){ return String(r.id) === String(id); });
+      if (!o) return;
+      if (_payIsPaid(o)) { _payDeskMsg('Already paid.', false); return; }
+      if (!confirm('Send payment reminder to ' + (o.shop_name || o.shop_id) + '?')) return;
+      _payDeskMsg('Sending reminder…', null);
+      _paySendReminder(o).then(function() {
+        _payDeskMsg('Reminder sent to ' + (o.shop_name || ''), true);
+        renderPaymentsDesk();
+      }).catch(function(e) {
+        _payDeskMsg('Failed: ' + (e.message || e), false);
+      });
+    }
+    function payDeskSendReminders() {
+      var boxes = document.querySelectorAll('.pay-desk-cb:checked');
+      if (!boxes.length) {
+        _payDeskMsg('Select one or more unpaid invoices first.', false);
+        return;
+      }
+      var targets = [];
+      var seenShop = {};
+      boxes.forEach(function(cb) {
+        var id = cb.getAttribute('data-id');
+        var o = _payDeskRows.find(function(r){ return String(r.id) === String(id); });
+        if (!o || _payIsPaid(o) || !o.shop_id) return;
+        // One reminder per shop in this batch (combine? or per invoice)
+        targets.push(o);
+      });
+      if (!targets.length) {
+        _payDeskMsg('No valid unpaid rows selected.', false);
+        return;
+      }
+      if (!confirm('Send payment reminder for ' + targets.length + ' invoice(s)?')) return;
+      _payDeskMsg('Sending 0/' + targets.length + '…', null);
+      var ok = 0, fail = 0, i = 0;
+      function next() {
+        if (i >= targets.length) {
+          _payDeskMsg('Reminders: ' + ok + ' sent, ' + fail + ' failed.', fail && !ok ? false : true);
+          renderPaymentsDesk();
+          return;
+        }
+        var o = targets[i++];
+        _payDeskMsg('Sending ' + i + '/' + targets.length + ' — ' + (o.shop_name || ''), null);
+        _paySendReminder(o)
+          .then(function(){ ok++; })
+          .catch(function(e){ fail++; console.warn(e); })
+          .then(function(){ setTimeout(next, 200); });
+      }
+      next();
+    }
+
+    function payDeskMarkPaid(id) {
+      var o = _payDeskRows.find(function(r){ return String(r.id) === String(id); });
+      if (!o) return;
+      var amt = _payDue(o);
+      var mode = prompt('Payment mode (cash / upi / bank / other)', 'upi');
+      if (mode == null) return;
+      var ref = prompt('Reference / UTR (optional)', '') || '';
+      if (!confirm('Mark paid ₹'+amt+' for '+(o.shop_name||'')+'?')) return;
+      _payDeskMsg('Saving…', null);
+      apiPost({
+        action: 'markInvoicePayment',
+        id: o.id,
+        payment_status: 'paid',
+        balance_due: 0,
+        paid_amount: amt,
+        payment_mode: mode,
+        payment_ref: ref,
+        paid_by: (_staffName || 'admin'),
+        invoice_total: o.invoice_total != null ? o.invoice_total : amt
+      }).then(function(res) {
+        if (res && res.ok === false) throw new Error(res.error || 'Failed');
+        if (o.shop_id) {
+          apiPost({
+            action: 'sendCustomerNotification',
+            shop_id: o.shop_id,
+            shop_name: o.shop_name || '',
+            message: 'Payment received ₹'+amt+' for '+(o.zoho_invoice_number||'invoice')+'. Balance ₹0. Thank you.'
+          }).catch(function(){});
+        }
+        _payDeskMsg('Marked paid.', true);
+        loadPaymentsDesk(_payDeskTab);
+      }).catch(function(e) {
+        _payDeskMsg('Failed: '+(e.message||e), false);
+      });
+    }
+
+
+    function payDeskUndoPaid(id) {
+      var o = _payDeskRows.find(function(r){ return String(r.id) === String(id); });
+      if (!o) return;
+      if (String(o.payment_status || '').toLowerCase() !== 'paid') {
+        _payDeskMsg('Not marked paid.', false);
+        return;
+      }
+      if (!confirm('Undo paid for ' + (o.shop_name || '') + '?\nThis sets status back to unpaid.')) return;
+      var due = o.invoice_total != null && o.invoice_total !== ''
+        ? parseFloat(o.invoice_total)
+        : (o.paid_amount != null ? parseFloat(o.paid_amount) : _payDue(o));
+      if (isNaN(due)) due = 0;
+      _payDeskMsg('Undoing…', null);
+      apiPost({
+        action: 'markInvoicePayment',
+        id: o.id,
+        payment_status: 'unpaid',
+        balance_due: due,
+        paid_amount: null,
+        payment_mode: '',
+        payment_ref: '',
+        paid_at: null,
+        paid_by: '',
+        invoice_total: o.invoice_total != null ? o.invoice_total : due
+      }).then(function(res) {
+        if (res && res.ok === false) throw new Error(res.error || 'Failed');
+        if (o.shop_id) {
+          apiPost({
+            action: 'sendCustomerNotification',
+            shop_id: o.shop_id,
+            shop_name: o.shop_name || '',
+            message: 'Payment status updated: ' + (o.zoho_invoice_number || 'invoice') + ' is unpaid again. Please ignore previous paid confirmation if any.'
+          }).catch(function(){});
+        }
+        _payDeskMsg('Undone — now unpaid. Due ₹' + due, true);
+        loadPaymentsDesk(_payDeskTab);
+      }).catch(function(e) {
+        _payDeskMsg('Undo failed: ' + (e.message || e), false);
       });
     }
 
@@ -7462,8 +8452,7 @@ onStaffRoleChange();
           '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">'+
             (o.status==='pending'?'<button class="btn-sm" style="background:#e8f5e9;color:#2d7a4f" onclick="quickApprove('+o.id+')">✅ Approve</button>':'') +
             (o.status==='pending'?'<button class="btn-sm btn-del" onclick="quickReject('+o.id+')">❌ Reject</button>':'') +
-            ((o.zoho_invoice_id||o.zoho_invoice_number) && (o.payment_status||'')!=='paid' ? '<button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1px solid #ffe082" onclick="sendInvoicePaymentReminder('+o.id+')">🔔 Pay reminder</button>':'') +
-            ((o.zoho_invoice_id||o.zoho_invoice_number) && (o.payment_status||'')!=='paid' ? '<button class="btn-sm" style="background:#e8f5e9;color:#1a5a38;border:1px solid #a5d6a7" onclick="openMarkPaymentReceived('+o.id+')">💰 Mark received</button>':'') +
+            ((o.zoho_invoice_id||o.zoho_invoice_number||o.payment_status) ? '<a class="btn-sm" href="#" onclick="showGroup(\'payments\');return false" style="background:#f3e5f5;color:#6a1b9a;border:1px solid #ce93d8;text-decoration:none;display:inline-block">💰 Payments desk</a>':'') +
             ((o.zoho_invoice_id||o.zoho_invoice_number) && (o.payment_status||'')==='paid' ? '<span class="btn-sm" style="background:#e8f5e9;color:#2d7a4f;border:1px solid #a5d6a7;cursor:default">✅ Payment received</span>':'') +
             '<button class="btn-sm btn-edit" onclick=\'openCoModal('+esc(JSON.stringify(o))+')\'>✏️ Edit</button>'+
           '</div>'+
@@ -10429,14 +11418,43 @@ function buildZohoLineItems(order){
     } else if(ids[i] && String(ids[i]).length > 10){
       line.item_id = String(ids[i]);
     }
-    // GST tax from product master (Zoho Books tax_id)
+    // GST from product master
     var taxId = prod && (prod.tax_id || prod.zoho_tax_id);
     if(taxId && String(taxId).trim()){
       line.tax_id = String(taxId).trim();
     }
+    var pct = prod && prod.tax_percent != null && prod.tax_percent !== '' ? parseFloat(prod.tax_percent) : NaN;
+    line.tax_percent = !isNaN(pct) && pct > 0 ? pct : 0;
     lineItems.push(line);
   }
   return lineItems;
+}
+/** Local GST totals (same-state: CGST+SGST split). Rates are exclusive of tax. */
+function computeInvoiceGst(lines, shipping){
+  var subtotal = 0, tax = 0;
+  (lines||[]).forEach(function(l){
+    var lineAmt = (Number(l.rate)||0) * (Number(l.quantity)||0);
+    subtotal += lineAmt;
+    var pct = Number(l.tax_percent)||0;
+    if(pct > 0) tax += lineAmt * (pct / 100);
+  });
+  subtotal = Math.round(subtotal * 100) / 100;
+  tax = Math.round(tax * 100) / 100;
+  var cgst = Math.round((tax / 2) * 100) / 100;
+  var sgst = Math.round((tax - cgst) * 100) / 100;
+  var ship = Number(shipping)||0;
+  if(isNaN(ship) || ship < 0) ship = 0;
+  ship = Math.round(ship * 100) / 100;
+  var grand = Math.round((subtotal + tax + ship) * 100) / 100;
+  return {
+    subtotal: subtotal,
+    tax_amount: tax,
+    tax_cgst: cgst,
+    tax_sgst: sgst,
+    tax_igst: 0,
+    shipping: ship,
+    grand_total: grand
+  };
 }
 function applyZohoShipping(payload, shipping){
   var amt = shipping != null ? Number(shipping) : (_zohoShippingCharge != null ? _zohoShippingCharge : 20);
@@ -10488,10 +11506,10 @@ function renderZohoInvPreviewHtml(order, shop, isDC){
   else if(shop && shop.shipping_charge != null && shop.shipping_charge !== '') ship = Number(shop.shipping_charge);
   else ship = (_zohoShippingCharge != null ? _zohoShippingCharge : 20);
 
-  var sub = 0;
-  lines.forEach(function(l){ sub += (Number(l.rate)||0) * (Number(l.quantity)||0); });
   var shipAmt = (!isNaN(ship) && ship > 0) ? ship : 0;
-  var total = sub + shipAmt;
+  var gst = computeInvoiceGst(lines, shipAmt);
+  var sub = gst.subtotal;
+  var total = gst.grand_total;
 
   var addr = (shop && (shop.address||'')) || '';
   var area = (shop && (shop.area||'')) || '';
@@ -10499,11 +11517,17 @@ function renderZohoInvPreviewHtml(order, shop, isDC){
 
   var rows = lines.map(function(l, idx){
     var amt = (Number(l.rate)||0) * (Number(l.quantity)||0);
+    var pct = Number(l.tax_percent)||0;
+    var lineTax = pct > 0 ? Math.round(amt * pct) / 100 : 0;
+    var gstHint = pct > 0
+      ? '<div style="font-size:10px;color:#2d7a4f;font-weight:700;margin-top:2px">GST '+pct+'% · ₹'+lineTax.toFixed(2)+'</div>'
+      : (l.tax_id
+        ? '<div style="font-size:10px;color:#c8864a;margin-top:2px">Tax linked — set GST % on product</div>'
+        : '<div style="font-size:10px;color:#8a7a6a;margin-top:2px">0% GST</div>');
     return '<tr>'+
       '<td style="padding:6px 4px;border-bottom:1px solid #f0e8dc;color:#8a7a6a">'+(idx+1)+'</td>'+
-      '<td style="padding:6px 4px;border-bottom:1px solid #f0e8dc">'+esc(l.name)+
-        (l.tax_id?'<div style="font-size:9px;color:#8a7a6a;font-family:monospace">tax '+esc(l.tax_id)+'</div>':'')+
-        (l.item_id?'<div style="font-size:9px;color:#8a7a6a;font-family:monospace">item '+esc(String(l.item_id).slice(0,12))+'…</div>':'')+
+      '<td style="padding:6px 4px;border-bottom:1px solid #f0e8dc">'+
+        '<div style="font-weight:700">'+esc(l.name)+'</div>'+gstHint+
       '</td>'+
       '<td style="padding:6px 4px;border-bottom:1px solid #f0e8dc;text-align:right;font-family:monospace">'+l.quantity+'</td>'+
       '<td style="padding:6px 4px;border-bottom:1px solid #f0e8dc;text-align:right;font-family:monospace">'+Number(l.rate).toFixed(2)+'</td>'+
@@ -10527,11 +11551,16 @@ function renderZohoInvPreviewHtml(order, shop, isDC){
         '<th style="text-align:right;padding:6px 4px">Amt</th>'+
       '</tr></thead><tbody>'+rows+'</tbody></table>'+
     '<div style="font-family:monospace;font-size:12px;line-height:1.8">'+
-      '<div style="display:flex;justify-content:space-between"><span>Sub Total</span><b>₹'+sub.toFixed(2)+'</b></div>'+
+      '<div style="display:flex;justify-content:space-between"><span>Taxable value</span><b>₹'+gst.subtotal.toFixed(2)+'</b></div>'+
+      (gst.tax_cgst>0?'<div style="display:flex;justify-content:space-between"><span>CGST</span><b>₹'+gst.tax_cgst.toFixed(2)+'</b></div>':'')+
+      (gst.tax_sgst>0?'<div style="display:flex;justify-content:space-between"><span>SGST</span><b>₹'+gst.tax_sgst.toFixed(2)+'</b></div>':'')+
+      (gst.tax_amount>0 && !gst.tax_cgst?'<div style="display:flex;justify-content:space-between"><span>GST</span><b>₹'+gst.tax_amount.toFixed(2)+'</b></div>':'')+
       (shipAmt>0?'<div style="display:flex;justify-content:space-between"><span>Shipping</span><b>₹'+shipAmt.toFixed(2)+'</b></div>':'')+
-      '<div style="display:flex;justify-content:space-between;border-top:1.5px solid #e8dfd2;margin-top:6px;padding-top:6px;font-size:14px"><span>Total</span><b>₹'+total.toFixed(2)+'</b></div>'+
+      '<div style="display:flex;justify-content:space-between;border-top:1.5px solid #e8dfd2;margin-top:6px;padding-top:6px;font-size:14px"><span>Grand Total</span><b>₹'+gst.grand_total.toFixed(2)+'</b></div>'+
     '</div>'+
-    '<div style="margin-top:10px;font-size:10px;color:#8a7a6a;font-family:monospace;line-height:1.5">Tax % applied by Zoho from product tax_id. GST amounts appear on the Zoho PDF.</div>'+
+    '<div style="margin-top:10px;padding:8px 10px;background:#e8f5e9;border-radius:8px;font-size:11px;color:#2d7a4f;font-family:monospace;line-height:1.55">'+
+      'GST calculated in app from product <b>GST %</b> (CGST+SGST split). Saved for customer due. Zoho still applies tax via tax_id on the PDF.'+
+    '</div>'+
   '</div>';
 }
 
@@ -10557,22 +11586,36 @@ function confirmZohoInvPreviewSend(){
     : zohoCreateInvoiceReal(order);
 
   promise.then(function(inv){
-    var total = parseFloat(inv.total);
-    if (isNaN(total)) total = null;
+    var lines = buildZohoLineItems(order);
+    var shop = (allCustomers||[]).find(function(c){
+      return (c.customer_id||c.shop_id||'') === String(order.shop_id||'');
+    });
+    var ship = null;
+    if(order.shipping_charge != null && order.shipping_charge !== '') ship = Number(order.shipping_charge);
+    else if(shop && shop.shipping_charge != null && shop.shipping_charge !== '') ship = Number(shop.shipping_charge);
+    else ship = (_zohoShippingCharge != null ? _zohoShippingCharge : 20);
+    var gst = computeInvoiceGst(lines, ship);
+    var zohoTotal = parseFloat(inv && inv.total);
+    if (isNaN(zohoTotal)) zohoTotal = null;
+    // Prefer app GST total for customer due (consistent with preview); Zoho total as fallback
+    var total = gst.grand_total > 0 ? gst.grand_total : zohoTotal;
     var body = {
       action: 'updateCustomerOrderStatus',
       id: order.id,
       status: 'approved',
       zoho_invoice_id: inv.invoice_id || existingId || '',
-      zoho_invoice_number: inv.invoice_number || ''
+      zoho_invoice_number: inv.invoice_number || '',
+      invoice_subtotal: gst.subtotal,
+      tax_amount: gst.tax_amount,
+      tax_cgst: gst.tax_cgst,
+      tax_sgst: gst.tax_sgst,
+      tax_igst: gst.tax_igst,
+      shipping_amount: gst.shipping,
+      payment_status: 'unpaid'
     };
-    // Phase A: store amount due for customer app + admin payment tracking
     if (total != null) {
       body.invoice_total = total;
       body.balance_due = total;
-      body.payment_status = 'unpaid';
-    } else if (!existingId) {
-      body.payment_status = 'unpaid';
     }
     return apiPost(body).then(function(){ return inv; });
   }).then(function(inv){

@@ -89,7 +89,6 @@
                 🔔
                 <span id="custNotifBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:#e53935;color:#fff;border-radius:50%;width:17px;height:17px;font-size:10px;font-weight:900;display:none;align-items:center;justify-content:center;font-family:monospace">0</span>
             </button>
-            <button class="logout-btn" onclick="showTab('settings')" title="Settings">⚙️</button>
         </div>
     </div>
 
@@ -118,6 +117,7 @@
 
     <div class="tabs">
         <button class="tab on" id="tb-order" onclick="showTab('order')">🛒 Order</button>
+        <button class="tab" id="tb-payments" onclick="showTab('payments')">💰 Pay</button>
         <button class="tab" id="tb-history" onclick="showTab('history')">📋 History</button>
         <button class="tab" id="tb-track" onclick="showTab('track')">📍 Track</button>
         <button class="tab" id="tb-settings" onclick="showTab('settings')">⚙️</button>
@@ -180,6 +180,28 @@
     </div>
 
     <!-- HISTORY TAB -->
+
+    <!-- PAYMENTS (weekly) -->
+    <div class="page" id="pg-payments">
+        <div style="padding:12px 14px 8px">
+            <div style="font-size:13px;font-weight:800;color:#5c3d2e;margin-bottom:6px">Weekly payments</div>
+            <div style="font-size:11px;color:#8a7a6a;line-height:1.45;margin-bottom:10px">
+                Review unpaid invoices and send a payment request to admin. You do not pay at order time.
+            </div>
+            <div id="pay-total-card" style="background:#fff;border:1.5px solid #e8ddd0;border-radius:12px;padding:14px;margin-bottom:12px;text-align:center">
+                <div style="font-size:10px;font-weight:800;color:#8a7a6a;text-transform:uppercase">Total unpaid</div>
+                <div id="pay-total-amt" style="font-size:28px;font-weight:800;font-family:monospace;color:#c8382a;margin:4px 0">₹0</div>
+                <div id="pay-total-sub" style="font-size:11px;color:#8a7a6a">0 invoice(s)</div>
+            </div>
+            <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+                <button type="button" class="btn" style="flex:1;background:#5c3d2e;color:#fff;font-weight:800;padding:10px" onclick="paySelectAllUnpaid()">Select all unpaid</button>
+                <button type="button" class="btn" style="flex:1;background:#e8f5e9;color:#1a5a38;border:1px solid #a5d6a7;font-weight:800;padding:10px" onclick="paySubmitRequest()">Send pay request</button>
+            </div>
+            <div id="pay-msg" style="display:none;padding:10px;border-radius:8px;font-size:12px;font-weight:700;margin-bottom:10px"></div>
+            <div id="pay-list"><div style="text-align:center;color:#8a7a6a;padding:20px;font-size:12px">Open this tab to load invoices…</div></div>
+        </div>
+    </div>
+
     <div class="page" id="pg-history">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
             <div style="font-size:13px;font-weight:800;color:#4a2f14">Your Past Orders</div>
@@ -354,6 +376,7 @@
     var products = [];  // active products for this customer's group
     var qty = {};       // { product_id: qty }
     var existingOrder = null; // existing order for tomorrow (if any)
+    var _customerPayEnabled = true; // admin setting customer_payments_enabled
 
     // Restore session from localStorage — redirect to login if no session
     (function(){
@@ -370,9 +393,34 @@
     }
 
     // ── APP INIT ──
+    function applyCustPayTabVisibility(){
+      var tb = document.getElementById('tb-payments');
+      var pg = document.getElementById('pg-payments');
+      var on = !!_customerPayEnabled;
+      if (tb) tb.style.display = on ? '' : 'none';
+      if (!on && pg && pg.classList.contains('on')) {
+        showTab('order');
+      }
+    }
+    function loadCustomerPaySetting(){
+      return api({ action:'getSetting', key:'customer_payments_enabled' }).then(function(row){
+        // Default ON when setting missing; only hide when explicitly '0' / 'false'
+        if (!row || row.value == null || row.value === '') {
+          _customerPayEnabled = true;
+        } else {
+          var v = String(row.value).toLowerCase();
+          _customerPayEnabled = !(v === '0' || v === 'false' || v === 'off');
+        }
+        applyCustPayTabVisibility();
+      }).catch(function(){
+        _customerPayEnabled = true;
+        applyCustPayTabVisibility();
+      });
+    }
     function showApp(){
       // Reset all stale state from any previous session / user
       existingOrder = null; qty = {}; products = []; _editLocked = false; _orderClosed = false; _amendMode = false; _amendMinQty = {};
+      loadCustomerPaySetting();
       document.getElementById('orderMsg').style.display = 'none';
       document.getElementById('orderMsg').textContent = '';
       document.getElementById('existingOrderBanner').style.display = 'none';
@@ -732,10 +780,25 @@
       return api({ action:'getCustomerOrders', shop_id: session.shop_id, limit: 30 }).then(function(data){
         var list = Array.isArray(data) ? data : [];
         var tomorrow = tomorrowStr();
-        // Prefer exact delivery_date match; if multiple, take most recently updated
+        // Same delivery_date may have multiple rows (approve then reject after reorder).
+        // Prefer an ACTIVE order over rejected so customer cannot place again when one is already approved.
         var matches = list.filter(function(o){ return o.delivery_date === tomorrow; });
+        function statusRank(st){
+          st = String(st || '').toLowerCase();
+          // Higher = preferred as "current" order for tomorrow
+          if (st === 'pending') return 60;
+          if (st === 'approved') return 50;
+          if (st === 'kitchen') return 45;
+          if (st === 'packaging') return 40;
+          if (st === 'dispatched') return 35;
+          if (st === 'no_order') return 20;
+          if (st === 'rejected') return 10;
+          return 0;
+        }
         if (matches.length > 1) {
           matches.sort(function(a,b){
+            var ra = statusRank(a.status), rb = statusRank(b.status);
+            if (rb !== ra) return rb - ra;
             var ta = new Date(a.updated_at || a.created_at || 0).getTime();
             var tb = new Date(b.updated_at || b.created_at || 0).getTime();
             return tb - ta;
@@ -773,7 +836,8 @@
         });
         if (p) {
           qty[p.product_id] = q;
-          if (forceAll) _amendMinQty[p.product_id] = q;
+          // Baseline for "has order changed?" (amend + pending edit)
+          _amendMinQty[p.product_id] = q;
         }
       });
     }
@@ -916,12 +980,48 @@
       return Object.values(qty).reduce(function(s,v){ return s+v; }, 0);
     }
 
+    /** True if current qty differs from baseline (_amendMinQty / loaded order). */
+    function orderQtyChanged(){
+      var ids = {};
+      products.forEach(function(p){ ids[p.product_id] = true; });
+      Object.keys(_amendMinQty || {}).forEach(function(pid){ ids[pid] = true; });
+      Object.keys(qty || {}).forEach(function(pid){ ids[pid] = true; });
+      return Object.keys(ids).some(function(pid){
+        return (parseInt(qty[pid], 10) || 0) !== (parseInt(_amendMinQty[pid], 10) || 0);
+      });
+    }
     function updateBar(){
       var total = totalItemCount();
-      document.getElementById('totalItems').textContent = total;
+      var totalEl = document.getElementById('totalItems');
+      if (totalEl) totalEl.textContent = total;
       // Never show the bar when orders are closed or edit is locked
-      if(_orderClosed || (_editLocked && !_amendMode)){ document.getElementById('orderBar').style.display='none'; return; }
-      document.getElementById('orderBar').style.display = total > 0 ? 'block' : 'none';
+      if(_orderClosed || (_editLocked && !_amendMode)){
+        var ob = document.getElementById('orderBar');
+        if (ob) ob.style.display = 'none';
+        return;
+      }
+      var bar = document.getElementById('orderBar');
+      if (bar) bar.style.display = total > 0 ? 'block' : 'none';
+
+      // Disable Review/Update when editing existing order and nothing changed (2→3→2)
+      var submitBtn = document.getElementById('submitBtn');
+      if (!submitBtn) return;
+      var st = existingOrder ? String(existingOrder.status || '').toLowerCase() : '';
+      var editingExisting = _amendMode || (existingOrder && (st === 'pending' || st === 'rejected'));
+      if (editingExisting && Object.keys(_amendMinQty || {}).length) {
+        var changed = orderQtyChanged();
+        submitBtn.disabled = !changed;
+        submitBtn.style.opacity = changed ? '1' : '0.55';
+        if (!changed && total > 0) {
+          submitBtn.title = 'No change from your current order';
+        } else {
+          submitBtn.title = '';
+        }
+      } else if (!_editLocked) {
+        submitBtn.disabled = total <= 0;
+        submitBtn.style.opacity = total > 0 ? '1' : '0.55';
+        submitBtn.title = '';
+      }
     }
 
     // ── ORDER BANNER (existing order state) ──
@@ -930,40 +1030,18 @@
     var _amendMode     = false; // true when customer is adding more to an approved order
     var _amendMinQty   = {};    // product_id → minimum qty (from approved order, cannot go below)
     function renderInvoicePaymentCard(o){
-      if (!o || !(o.zoho_invoice_id || o.zoho_invoice_number || o.payment_status || o.invoice_total != null)) return '';
+      // Payments moved to weekly Pay tab — only a short unpaid hint on order screen
+      if (!o) return '';
       var paySt = String(o.payment_status || '').toLowerCase();
-      var tot = o.invoice_total != null ? parseFloat(o.invoice_total) : null;
-      var bal = o.balance_due != null ? parseFloat(o.balance_due) : tot;
-      var inv = o.zoho_invoice_number || o.zoho_invoice_id || '—';
-      var bg = '#fff8e1', bd = '#ffe082', fg = '#7a4800', title = '📄 Invoice ' + inv;
-      var body = '';
-      if (paySt === 'paid' || (bal != null && !isNaN(bal) && bal <= 0 && paySt !== 'stale')) {
-        bg = '#e8f5e9'; bd = '#a5d6a7'; fg = '#1a5a38';
-        body = '<div style="font-size:14px;font-weight:900;margin-top:4px">✅ Paid · Balance ₹0</div>';
-        if (o.paid_at) {
-          try { body += '<div style="font-size:10px;opacity:.85;margin-top:2px">Received ' + new Date(o.paid_at).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) + '</div>'; } catch(e){}
-        }
-      } else if (paySt === 'stale') {
-        bg = '#f5ede0'; bd = '#e0d0c0'; fg = '#4a2f14';
-        body = '<div style="font-size:12px;font-weight:700;margin-top:4px">Invoice on hold — order was updated. Waiting for re-approval.</div>';
-      } else if (paySt === 'partial') {
-        body = '<div style="font-size:13px;font-weight:800;margin-top:4px">Partial paid · Due <b>₹' + (isNaN(bal)?'—':bal) + '</b></div>';
-        if (tot != null && !isNaN(tot)) body += '<div style="font-size:10px;margin-top:2px">Invoice total ₹' + tot + '</div>';
-      } else {
-        // unpaid or has invoice
-        body = '<div style="font-size:13px;font-weight:800;margin-top:4px">Amount due <b>₹' + (isNaN(bal) ? (isNaN(tot)?'—':tot) : bal) + '</b></div>';
-        if (tot != null && !isNaN(tot) && bal != null && bal !== tot) body += '<div style="font-size:10px;margin-top:2px">Invoice total ₹' + tot + '</div>';
+      if (paySt === 'paid') {
+        return '<div style="margin-top:8px;padding:8px 10px;background:#e8f5e9;border-radius:8px;font-size:11px;font-weight:700;color:#1a5a38">Invoice paid · Balance ₹0 · See <b>Pay</b> tab</div>';
       }
-      var claimBtn = '';
-      if (paySt !== 'paid' && paySt !== 'stale' && (o.zoho_invoice_id || o.zoho_invoice_number)) {
-        if (o.customer_claimed_paid) {
-          claimBtn = '<div style="margin-top:8px;font-size:11px;font-weight:700;color:#1565c0">🙋 You marked as paid — waiting for admin confirmation</div>';
-        } else {
-          claimBtn = '<button type="button" onclick="customerClaimInvoicePaid('+o.id+')" style="width:100%;margin-top:10px;padding:10px;border:1.5px solid #c8864a;background:#fff;border-radius:10px;font-size:12px;font-weight:800;color:#7a4800;cursor:pointer;font-family:-apple-system,sans-serif">✅ I have paid this amount</button>';
-        }
+      if (o.zoho_invoice_id || o.zoho_invoice_number || o.invoice_total != null) {
+        var due = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
+        if (isNaN(due)) due = 0;
+        return '<div style="margin-top:8px;padding:8px 10px;background:#fff8e1;border-radius:8px;font-size:11px;font-weight:700;color:#7a4800;cursor:pointer" onclick="showTab(\'payments\')">Unpaid amount on invoices — open <b>Pay</b> tab'+(due?' (due ₹'+due.toLocaleString('en-IN',{maximumFractionDigits:2})+')':'')+'</div>';
       }
-      return '<div style="background:'+bg+';border:1.5px solid '+bd+';border-radius:12px;padding:11px 14px;margin-bottom:10px;color:'+fg+';font-family:monospace;line-height:1.5">'+
-        '<div style="font-size:11px;font-weight:800">'+esc(title)+'</div>'+body+claimBtn+'</div>';
+      return '';
     }
 
     function customerClaimInvoicePaid(id){
@@ -1040,14 +1118,27 @@
         if (label) label.textContent = 'Update Your Order';
         _editLocked = false;
         showNoOrderBtn(true); // can still switch to no-order while pending
+      } else if (s === 'rejected') {
+        // Rejected: allow placing a NEW order (e.g. after product group change)
+        var adminNote = (existingOrder.admin_note || '').trim();
+        banner.innerHTML = '<div style="background:#fde8e8;border:1.5px solid #f0b0b0;border-radius:12px;padding:11px 14px;margin-bottom:10px;font-size:12px;font-weight:700;color:#c8382a;font-family:monospace;line-height:1.6">❌ Your previous order was <b>rejected</b>.'+(adminNote?'<br>Note: '+esc(adminNote):'')+'<br><span style="color:#4a2f14">Select products below and place a new order.</span></div>';
+        banner.style.display = 'block';
+        summaryCard.style.display = 'none';
+        submitBtn.textContent = '👁 Review & Place New Order';
+        submitBtn.disabled = false;
+        lockNote.style.display = 'none';
+        if (label) label.textContent = 'Select Products';
+        _editLocked = false;
+        document.getElementById('productsCard').style.display = '';
+        document.getElementById('orderNoteCard').style.display = '';
+        document.querySelectorAll('.qty-btn, .qty-val').forEach(function(el){ el.disabled = false; });
+        showNoOrderBtn(true);
       } else {
         // Locked — show status banner + read-only order summary card
-        var statusColor = s === 'rejected' ? '#c8382a' : '#2d7a4f';
-        var statusBg    = s === 'rejected' ? '#fde8e8' : '#e8f5e9';
-        var statusBorder= s === 'rejected' ? '#f0b0b0' : '#a5d6a7';
-        var statusMsg   = s === 'rejected'
-          ? '❌ Your order was rejected. Please contact admin.'
-          : '✅ Order ' + (statusLabel[s]||s) + ' — your order for tomorrow is confirmed!';
+        var statusColor = '#2d7a4f';
+        var statusBg    = '#e8f5e9';
+        var statusBorder= '#a5d6a7';
+        var statusMsg   = '✅ Order ' + (statusLabel[s]||s) + ' — your order for tomorrow is confirmed!';
         banner.innerHTML = '<div style="background:'+statusBg+';border:1.5px solid '+statusBorder+';border-radius:12px;padding:11px 14px;margin-bottom:10px;font-size:12px;font-weight:700;color:'+statusColor+';font-family:monospace;line-height:1.6">'+esc(statusMsg)+'</div>' + renderInvoicePaymentCard(existingOrder);
         banner.style.display = 'block';
 
@@ -1193,14 +1284,12 @@
     function showPreview(){
       var selected = products.filter(function(p){ return (qty[p.product_id]||0) > 0; });
       if (!selected.length){ alert('Select at least one product.'); return; }
-      // In amend mode — block if nothing actually changed vs the approved order
-      if(_amendMode){
-        var changed = products.some(function(p){
-          return (qty[p.product_id]||0) !== (_amendMinQty[p.product_id]||0);
-        });
-        if(!changed){
+      // Block if nothing actually changed vs loaded order (amend or pending edit)
+      var stPrev0 = existingOrder ? String(existingOrder.status||'').toLowerCase() : '';
+      if((_amendMode || stPrev0 === 'pending') && Object.keys(_amendMinQty||{}).length){
+        if(!orderQtyChanged()){
           var msgEl = document.getElementById('orderMsg');
-          msgEl.textContent = 'ℹ️ No changes made — quantities are the same as your approved order.';
+          msgEl.textContent = 'ℹ️ No changes made — quantities are the same as your current order.';
           msgEl.className = 'msg in'; msgEl.style.display = 'block';
           window.scrollTo({ top: 0, behavior: 'smooth' });
           return;
@@ -1216,8 +1305,9 @@
       else { pvNote.style.display='none'; }
       document.getElementById('pvMsg').style.display='none';
       document.getElementById('confirmBtn').disabled=false;
-      var isEdit = existingOrder && (existingOrder.status === 'pending' || _amendMode);
-      document.getElementById('confirmBtn').textContent = _amendMode ? '✅ Add to Order' : isEdit ? '✅ Update Order' : '✅ Place Order';
+      var stPrev = existingOrder ? String(existingOrder.status||'').toLowerCase() : '';
+      var isEdit = existingOrder && (stPrev === 'pending' || stPrev === 'rejected' || _amendMode);
+      document.getElementById('confirmBtn').textContent = _amendMode ? '✅ Add to Order' : (stPrev === 'rejected' ? '✅ Place New Order' : isEdit ? '✅ Update Order' : '✅ Place Order');
       document.getElementById('previewSheet').style.display='flex';
     }
     function closePreview(){
@@ -1249,7 +1339,9 @@
       var date   = tomorrowStr();
       var btn    = document.getElementById('confirmBtn');
       var pvMsg  = document.getElementById('pvMsg');
-      var isEdit = existingOrder && (existingOrder.status === 'pending' || _amendMode);
+      var st0 = existingOrder ? String(existingOrder.status||'').toLowerCase() : '';
+      var isRejectedReorder = !!(existingOrder && st0 === 'rejected');
+      var isEdit = existingOrder && (st0 === 'pending' || isRejectedReorder || _amendMode);
 
       btn.disabled = true; btn.textContent = '⏳ Checking…';
       pvMsg.style.display = 'none';
@@ -1277,8 +1369,9 @@
         // Orders still open — proceed
         btn.textContent = isEdit ? '⏳ Updating…' : '⏳ Placing…';
 
+        // Rejected row for tomorrow: reuse same row → pending (avoids duplicate + unlocks after group change)
         var apiCall = isEdit
-          ? apiPost({ action:'updateCustomerOrder', id: existingOrder.id, items: items, qty: qtys, item_ids: ids, note: note, reset_to_pending: _amendMode })
+          ? apiPost({ action:'updateCustomerOrder', id: existingOrder.id, items: items, qty: qtys, item_ids: ids, note: note, reset_to_pending: (_amendMode || isRejectedReorder) })
           : apiPost({ action:'placeCustomerOrder', shop_id: session.shop_id, shop_name: session.shop_name, delivery_date: date, items: items, qty: qtys, item_ids: ids, note: note });
 
         apiCall.then(function(res){
@@ -1360,25 +1453,82 @@
           return;
         }
 
+        // Dates the driver already marked delivered (deliveries table)
+        var deliveredDates = {};
+        deliveries.forEach(function(d){
+          if (d && d.date) deliveredDates[String(d.date)] = d;
+        });
+
+        function effectiveOrderStatus(o){
+          var st = String(o.status || '');
+          var dd = String(o.delivery_date || '');
+          // If driver completed delivery that day, portal status may still be "dispatched"
+          if (dd && deliveredDates[dd] && st !== 'rejected' && st !== 'no_order' && st !== 'pending') {
+            return 'delivered';
+          }
+          return st;
+        }
+
+        // One card per delivery date: keep latest non-rejected; if only rejected, keep latest rejected
+        function histStatusRank(st){
+          st = String(st || '').toLowerCase();
+          if (st === 'pending') return 60;
+          if (st === 'approved') return 50;
+          if (st === 'kitchen') return 45;
+          if (st === 'packaging') return 40;
+          if (st === 'dispatched') return 35;
+          if (st === 'no_order') return 20;
+          if (st === 'rejected') return 10;
+          return 0;
+        }
+        function dedupeCustOrders(list){
+          var byDate = {};
+          (list||[]).forEach(function(o){
+            var dd = String(o.delivery_date || '') || ('_'+o.id);
+            var prev = byDate[dd];
+            if (!prev) { byDate[dd] = o; return; }
+            var ra = histStatusRank(o.status), rb = histStatusRank(prev.status);
+            if (ra > rb) { byDate[dd] = o; return; }
+            if (ra < rb) return;
+            var ot = o.updated_at || o.created_at || '';
+            var pt = prev.updated_at || prev.created_at || '';
+            if (ot > pt) byDate[dd] = o;
+            else if (ot === pt && String(o.id||'') > String(prev.id||'')) byDate[dd] = o;
+          });
+          return Object.keys(byDate).map(function(k){ return byDate[k]; })
+            .sort(function(a,b){ return String(b.delivery_date||'').localeCompare(String(a.delivery_date||'')); });
+        }
+        var custOrdersView = dedupeCustOrders(custOrders);
+
         var counts = {};
-        custOrders.forEach(function(o){ counts[o.status] = (counts[o.status]||0) + 1; });
-        if (deliveries.length) counts['delivered'] = deliveries.length;
+        custOrdersView.forEach(function(o){
+          var st = effectiveOrderStatus(o);
+          counts[st] = (counts[st]||0) + 1;
+        });
+        // Delivered days from driver app (unique dates) — single chip only
+        var deliveredDayCount = Object.keys(deliveredDates).length;
+        if (deliveredDayCount > (counts['delivered'] || 0)) {
+          counts['delivered'] = deliveredDayCount;
+        }
 
         var chips = [];
         var countDefs = [
           { key:'rejected',   label:'❌ Rejected',   bg:'#fde8e8', color:'#c8382a', border:'#f0b0b0' },
           { key:'pending',    label:'⏳ Pending',     bg:'#fff8e1', color:'#7a4800', border:'#ffe082' },
           { key:'approved',   label:'✅ Approved',    bg:'#e3f2fd', color:'#1565c0', border:'#90caf9' },
+          { key:'delivered',  label:'✅ Delivered',   bg:'#e8f5e9', color:'#1a5a38', border:'#a5d6a7' },
           { key:'dispatched', label:'🚚 Dispatched',  bg:'#e8f5e9', color:'#2d7a4f', border:'#a5d6a7' },
           { key:'kitchen',    label:'👨‍🍳 Kitchen',    bg:'#fff3e0', color:'#c8864a', border:'#ffe0b2' },
-          { key:'packaging',  label:'📦 Packaging',   bg:'#f3e8ff', color:'#6e3da8', border:'#ce93d8' },
-          { key:'delivered',  label:'✅ Delivered',   bg:'#e8f5e9', color:'#2d7a4f', border:'#a5d6a7' }
+          { key:'packaging',  label:'📦 Packaging',   bg:'#f3e8ff', color:'#6e3da8', border:'#ce93d8' }
         ];
+        var seenChip = {};
         countDefs.forEach(function(d){
-          if (!counts[d.key]) return;
+          if (!counts[d.key] || seenChip[d.key]) return;
+          seenChip[d.key] = true;
           chips.push('<span style="display:inline-flex;align-items:center;gap:5px;background:'+d.bg+';border:1px solid '+d.border+';border-radius:20px;padding:5px 11px;font-size:11px;font-weight:800;color:'+d.color+';font-family:monospace">'+d.label+' <span style="background:'+d.border+';border-radius:10px;padding:1px 7px;font-size:11px">'+counts[d.key]+'</span></span>');
         });
         if (sb && chips.length){ sb.innerHTML = chips.join(''); sb.style.display = 'flex'; }
+        else if (sb) { sb.innerHTML = ''; sb.style.display = 'none'; }
 
         function itemsHtml(items, qty){
           var iArr = String(items||'').split(',');
@@ -1394,22 +1544,31 @@
         }
 
         var html = '';
-        var statusLabel = {pending:'⏳ Pending Approval',approved:'✅ Approved',rejected:'❌ Rejected',kitchen:'👨‍🍳 In Kitchen',packaging:'📦 Packaging',dispatched:'🚚 Out for Delivery',no_order:'🚫 No Order'};
-        var statusClass = {pending:'s-pending',approved:'s-approved',rejected:'s-rejected',kitchen:'s-kitchen',packaging:'s-packaging',dispatched:'s-dispatched',no_order:'s-rejected'};
+        var statusLabel = {pending:'⏳ Pending Approval',approved:'✅ Approved',rejected:'❌ Rejected',kitchen:'👨‍🍳 In Kitchen',packaging:'📦 Packaging',dispatched:'🚚 Out for Delivery',delivered:'✅ Delivered',no_order:'🚫 No Order'};
+        var statusClass = {pending:'s-pending',approved:'s-approved',rejected:'s-rejected',kitchen:'s-kitchen',packaging:'s-packaging',dispatched:'s-dispatched',delivered:'s-dispatched',no_order:'s-rejected'};
 
         // ── App-placed orders ──
-        if (custOrders.length) {
+        if (custOrdersView.length) {
           html += '<div style="font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;text-transform:uppercase;margin:4px 0 8px">📋 Orders placed by you</div>';
-          custOrders.forEach(function(o){
+          custOrdersView.forEach(function(o){
             var orderedAt = '—';
             try { if (o.created_at) orderedAt = new Date(o.created_at).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}); } catch(e){}
+            var showSt = effectiveOrderStatus(o);
+            var delInfo = deliveredDates[String(o.delivery_date||'')];
+            var timeExtra = (showSt === 'delivered' && delInfo && delInfo.time) ? (' · '+delInfo.time) : '';
+            // Driver: from delivery row when delivered; else assigned driver on order if any
+            var driverName = '';
+            if (delInfo && delInfo.driver) driverName = delInfo.driver;
+            else if (o.driver) driverName = o.driver;
+            else if (o.assigned_driver) driverName = o.assigned_driver;
             html += '<div class="hist-card">'+
               '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">'+
                 '<div>'+
                   '<div class="hist-date">Delivery: '+esc(fmtDate(o.delivery_date||''))+'</div>'+
                   '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px">Ordered: '+esc(orderedAt)+'</div>'+
+                  (driverName ? '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:2px">Driver: '+esc(driverName)+'</div>' : '')+
                 '</div>'+
-                '<span class="hist-status '+(statusClass[o.status]||'s-pending')+'">'+(statusLabel[o.status]||esc(o.status||'Order'))+'</span>'+
+                '<span class="hist-status '+(statusClass[showSt]||'s-pending')+'">'+(statusLabel[showSt]||esc(showSt||'Order'))+esc(timeExtra)+'</span>'+
               '</div>'+
               itemsHtml(o.items, o.qty)+
               (o.note?'<div style="font-size:11px;color:#8a7a6a;margin-top:6px;font-family:monospace">📝 '+esc(o.note)+'</div>':'')+
@@ -1737,9 +1896,11 @@
     }
 
     function showTab(t){
-      ['order','history','track','settings'].forEach(function(x){
-        document.getElementById('pg-'+x).classList.toggle('on', x===t);
-        document.getElementById('tb-'+x).classList.toggle('on', x===t);
+      ['order','payments','history','track','settings'].forEach(function(x){
+        var pg = document.getElementById('pg-'+x);
+        var tb = document.getElementById('tb-'+x);
+        if (pg) pg.classList.toggle('on', x===t);
+        if (tb) tb.classList.toggle('on', x===t);
       });
       document.getElementById('orderBar').style.display = (t==='order' && totalItemCount()>0 && !_orderClosed && (!_editLocked || _amendMode)) ? 'block' : 'none';
       if(t==='order'){
@@ -1755,9 +1916,105 @@
           updateBar();
         });
       }
+      if(t==='payments'){
+        if(!_customerPayEnabled){ showTab('order'); return; }
+        loadPaymentsTab();
+      }
       if(t==='track') loadTrack();
       if(t==='history') loadHistory();
       if(t==='settings'){ renderSettingsProfile(); renderNotifSettings(); }
+    }
+
+    var _payInvoices = [];
+    function _payMsg(t, ok){
+      var el = document.getElementById('pay-msg');
+      if(!el) return;
+      el.style.display = 'block';
+      el.textContent = t;
+      el.style.background = ok === false ? '#fde8e8' : (ok ? '#e8f5e9' : '#e8f0ff');
+      el.style.color = ok === false ? '#c8382a' : (ok ? '#1a5a38' : '#1a3a8a');
+    }
+    function loadPaymentsTab(){
+      if(!session || !session.shop_id){
+        document.getElementById('pay-list').innerHTML = '<div style="text-align:center;color:#8a7a6a;padding:16px">Login required</div>';
+        return;
+      }
+      document.getElementById('pay-list').innerHTML = '<div style="text-align:center;color:#8a7a6a;padding:16px">Loading…</div>';
+      apiPost({ action:'getCustomerOrders', shop_id: session.shop_id, limit: 100 }).then(function(list){
+        if(!Array.isArray(list)) list = [];
+        _payInvoices = list.filter(function(o){
+          var st = String(o.payment_status||'').toLowerCase();
+          if(st === 'paid') return true; // show recent paid too
+          return o.zoho_invoice_id || o.zoho_invoice_number || o.invoice_total != null || o.balance_due != null;
+        });
+        renderPaymentsTab();
+      }).catch(function(e){
+        document.getElementById('pay-list').innerHTML = '<div style="color:#c8382a;padding:12px;font-size:12px">Failed to load</div>';
+      });
+    }
+    function renderPaymentsTab(){
+      var unpaid = _payInvoices.filter(function(o){ return String(o.payment_status||'').toLowerCase() !== 'paid'; });
+      var total = unpaid.reduce(function(s,o){
+        var d = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
+        return s + (isNaN(d)?0:d);
+      }, 0);
+      document.getElementById('pay-total-amt').textContent = '₹' + total.toLocaleString('en-IN', {maximumFractionDigits:2});
+      document.getElementById('pay-total-sub').textContent = unpaid.length + ' unpaid · ' + _payInvoices.length + ' total shown';
+      document.getElementById('pay-total-amt').style.color = total > 0 ? '#c8382a' : '#1a5a38';
+
+      if(!_payInvoices.length){
+        document.getElementById('pay-list').innerHTML = '<div style="text-align:center;color:#8a7a6a;padding:20px;font-size:12px">No invoices yet. Amounts appear after delivery challan is converted to invoice.</div>';
+        return;
+      }
+      document.getElementById('pay-list').innerHTML = _payInvoices.map(function(o){
+        var st = String(o.payment_status||'unpaid').toLowerCase();
+        var paid = st === 'paid';
+        var due = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
+        if(isNaN(due)) due = 0;
+        var claim = !!o.customer_claimed_paid && !paid;
+        var badge = paid ? '<span style="background:#e8f5e9;color:#1a5a38;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">Paid · ₹0</span>'
+          : (claim ? '<span style="background:#e3f2fd;color:#1565c0;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">Request sent</span>'
+          : '<span style="background:#fde8e8;color:#c8382a;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">Unpaid</span>');
+        var cb = paid ? '' : '<input type="checkbox" class="pay-inv-cb" data-id="'+o.id+'" '+(claim?'':'checked')+' style="width:18px;height:18px;margin-right:10px" />';
+        var taxLine = '';
+        if(o.tax_cgst != null || o.tax_sgst != null){
+          taxLine = '<div style="font-size:10px;color:#8a7a6a">CGST ₹'+(o.tax_cgst||0)+' · SGST ₹'+(o.tax_sgst||0)+(o.shipping_amount!=null?' · Ship ₹'+o.shipping_amount:'')+'</div>';
+        }
+        return '<label style="display:flex;align-items:flex-start;background:#fff;border:1.5px solid #e8ddd0;border-radius:12px;padding:12px;margin-bottom:8px">'+
+          cb+
+          '<div style="flex:1">'+
+            '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center">'+
+              '<div style="font-size:13px;font-weight:800">'+(o.zoho_invoice_number||('Order #'+o.id))+'</div>'+badge+
+            '</div>'+
+            '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:4px">'+esc(o.delivery_date||'')+' · Due <b style="color:'+(paid?'#1a5a38':'#c8382a')+'">₹'+due.toLocaleString('en-IN',{maximumFractionDigits:2})+'</b></div>'+
+            taxLine+
+            (claim && o.customer_claim_note ? '<div style="font-size:10px;color:#1565c0;margin-top:4px">Note: '+esc(o.customer_claim_note)+'</div>' : '')+
+          '</div></label>';
+      }).join('');
+    }
+    function paySelectAllUnpaid(){
+      document.querySelectorAll('.pay-inv-cb').forEach(function(cb){ cb.checked = true; });
+    }
+    function paySubmitRequest(){
+      var ids = Array.from(document.querySelectorAll('.pay-inv-cb:checked')).map(function(cb){ return cb.dataset.id; });
+      if(!ids.length){ _payMsg('Select at least one unpaid invoice.', false); return; }
+      var note = prompt('Optional note for admin (UTR / cash / date)', '') || '';
+      _payMsg('Sending payment request…', null);
+      apiPost({ action:'customerRequestPayment', ids: ids, shop_id: session.shop_id, note: note }).then(function(res){
+        if(res && res.ok === false) throw new Error(res.error||'Failed');
+        _payMsg('Request sent for '+ids.length+' invoice(s). Admin will verify and mark paid.', true);
+        loadPaymentsTab();
+      }).catch(function(e){
+        // fallback one-by-one
+        return Promise.all(ids.map(function(id){
+          return apiPost({ action:'customerClaimPaid', id: id, note: note });
+        })).then(function(){
+          _payMsg('Request sent for '+ids.length+' invoice(s). Admin will verify.', true);
+          loadPaymentsTab();
+        });
+      }).catch(function(e2){
+        _payMsg('Failed: '+(e2.message||e2), false);
+      });
     }
 
     // ── CHANGE PASSWORD ──
