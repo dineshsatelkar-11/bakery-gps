@@ -2,24 +2,26 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
     <title id="pageTitle">Brand Dashboard — IBCAB</title>
     <script src="config.js"></script>
     <script src="api.js"></script>
     <style>
         *{box-sizing:border-box;margin:0;padding:0}
-        body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f0f4ff;color:#1e1611;max-width:520px;margin:0 auto;min-height:100vh}
+        body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f0f4ff;color:#1e1611;max-width:520px;margin:0 auto;min-height:100vh;min-height:100dvh;overflow-x:hidden;-webkit-text-size-adjust:100%}
+        html{overflow-x:hidden}
         /* ── Top bar ── */
-        .topbar{background:linear-gradient(135deg,#1b5e20,#2e7d32);padding:13px 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:99}
-        .topbar-title{color:#fff;font-size:15px;font-weight:800;line-height:1.2}
+        .topbar{background:linear-gradient(135deg,#1b5e20,#2e7d32);padding:13px 14px;padding-top:max(13px,env(safe-area-inset-top));display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:0;z-index:99}
+        .topbar-title{color:#fff;font-size:15px;font-weight:800;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70vw}
         .topbar-sub{color:#a5d6a7;font-size:11px;font-family:monospace;margin-top:1px}
         .logout-btn{background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 11px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif;flex-shrink:0}
         /* ── Tabs ── */
-        .tabs{display:flex;background:#fff;border-bottom:2px solid #e8f5e9;position:sticky;top:53px;z-index:98}
-        .tab{flex:1;padding:12px 4px;border:none;background:none;font-size:11px;font-weight:700;cursor:pointer;color:#9fa8da;font-family:-apple-system,sans-serif;border-bottom:3px solid transparent;margin-bottom:-2px}
+        .tabs{display:flex;background:#fff;border-bottom:2px solid #e8f5e9;position:sticky;top:53px;z-index:98;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+        .tabs::-webkit-scrollbar{display:none}
+        .tab{flex:1;min-width:0;padding:12px 4px;border:none;background:none;font-size:11px;font-weight:700;cursor:pointer;color:#9fa8da;font-family:-apple-system,sans-serif;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;touch-action:manipulation}
         .tab.on{color:#2e7d32;border-bottom-color:#2e7d32}
         /* ── Pages ── */
-        .page{display:none;padding:14px 14px 100px}.page.on{display:block}
+        .page{display:none;padding:14px 14px calc(100px + env(safe-area-inset-bottom))}.page.on{display:block}
         /* ── Cards ── */
         .card{background:#fff;border:1.5px solid #e8eaf6;border-radius:16px;padding:14px;margin-bottom:10px}
         .card-title{font-size:11px;letter-spacing:2px;color:#9fa8da;font-family:monospace;font-weight:700;text-transform:uppercase;margin-bottom:10px}
@@ -57,12 +59,12 @@
         .driver-name{font-size:15px;font-weight:900;color:#1b5e20}
         /* ── Date bar ── */
         .date-bar{display:flex;align-items:center;gap:8px;margin-bottom:12px}
-        .date-bar input{flex:1;padding:8px 10px;border:1.5px solid #c8e6c9;border-radius:10px;font-size:13px;font-family:monospace;color:#1e1611;background:#fff;outline:none}
+        .date-bar input,.date-bar input[type=date]{flex:1;min-width:0;padding:10px 12px;border:1.5px solid #c8e6c9;border-radius:10px;font-size:16px;font-family:inherit;color:#1e1611;background:#fff;outline:none}
         /* ── Item row ── */
-        .item-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0f4ff;font-size:12px}
+        .item-row{display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid #f0f4ff;font-size:12px}
         .item-row:last-child{border-bottom:none}
         /* ── Refresh btn ── */
-        .refresh-btn{background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:10px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;color:#2e7d32;font-family:-apple-system,sans-serif;flex-shrink:0}
+        .refresh-btn{background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:10px;padding:10px 14px;min-width:44px;min-height:44px;font-size:14px;font-weight:700;cursor:pointer;color:#2e7d32;font-family:-apple-system,sans-serif;flex-shrink:0;touch-action:manipulation}
         /* ── Empty ── */
         .empty-msg{text-align:center;padding:24px;font-size:12px;color:#9fa8da;font-family:monospace}
         /* ── Label ── */
@@ -101,6 +103,47 @@
         .history-items{font-size:11px;color:#37474f;margin-top:5px;line-height:1.5}
         .timeline{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
         .timeline-chip{background:#f0f4ff;border-radius:8px;padding:3px 6px;font-size:9px;color:#546e7a;font-family:monospace}
+
+        /* ── Touch / overflow helpers ── */
+        input,button,textarea,select{max-width:100%}
+        button{touch-action:manipulation}
+        img,svg{max-width:100%;height:auto}
+        .shop-modal{padding-bottom:max(14px,env(safe-area-inset-bottom));-webkit-overflow-scrolling:touch}
+
+        /* ── Narrow phones ── */
+        @media (max-width:380px){
+          .topbar{padding:10px 12px;padding-top:max(10px,env(safe-area-inset-top))}
+          .topbar-title{font-size:13px}
+          .topbar-sub{font-size:10px}
+          .tab{font-size:10px;padding:10px 2px}
+          .page{padding:10px 10px calc(90px + env(safe-area-inset-bottom))}
+          .stat-grid{grid-template-columns:repeat(2,1fr);gap:6px}
+          .stat-num{font-size:18px}
+          .stat-lbl{font-size:8px;letter-spacing:0.5px}
+          .card{padding:12px;border-radius:14px}
+          .shop-actions{flex-wrap:wrap}
+          .shop-action{min-width:calc(50% - 3px)}
+        }
+
+        /* ── Small phones ── */
+        @media (max-width:320px){
+          .tabs{top:48px}
+          .tab{font-size:9px;padding:9px 1px}
+          .stat-num{font-size:16px}
+        }
+
+        /* ── Landscape / short height ── */
+        @media (max-height:480px) and (orientation:landscape){
+          .topbar{position:relative}
+          .tabs{position:relative;top:0}
+          .page{padding-bottom:24px}
+        }
+
+        /* ── Wider tablets: keep phone column, soft shadow ── */
+        @media (min-width:521px){
+          body{box-shadow:0 0 0 1px #e8eaf6, 0 8px 32px rgba(27,94,32,.08)}
+        }
+
     </style>
 </head>
 <body>
@@ -254,6 +297,7 @@
     var staffName  = '';
     var myBrand    = '';       // brand assigned to this logged-in admin
     var brandShopIds = new Set(); // set of shop_id/customer_id strings belonging to myBrand
+    var _brandShopList = [];   // full shop objects for this brand
     var shopsReady = null;     // promise that resolves once brandShopIds is populated
 
     // ── Session guard ──
@@ -341,12 +385,11 @@
       if(shopsReady) return shopsReady;
       shopsReady = api({action:'getShops'}).then(function(d){
         var shops = Array.isArray(d) ? d : [];
-        brandShopIds = new Set(
-          shops.filter(function(c){ return normBrand(c.brand) === normBrand(myBrand); })
-               .map(function(c){ return sid(c); })
-        );
+        _brandShopList = shops.filter(function(c){ return normBrand(c.brand) === normBrand(myBrand); });
+        brandShopIds = new Set(_brandShopList.map(function(c){ return sid(c); }));
         return brandShopIds;
       }).catch(function(){
+        _brandShopList = [];
         brandShopIds = new Set();
         return brandShopIds;
       });
@@ -613,17 +656,23 @@
       el.innerHTML = '<div class="card"><div class="empty-msg">Loading…</div></div>';
       var dateEl = document.getElementById('today-date');
       var date = dateEl ? dateEl.value : todayStr();
+      var tomorrow = tomorrowStr();
 
       Promise.all([
         loadBrandShops(),
         api({action:'getOrders', date:date}),
         api({action:'getDeliveries', date:date}),
-        api({action:'getDrivers'})
+        api({action:'getDrivers'}),
+        // Order-collection status for tomorrow (same logic as admin notify)
+        api({action:'getCustomerOrders', delivery_date: tomorrow, limit: 500}),
+        api({action:'getOrders', date: tomorrow})
       ]).then(function(res){
         var raw        = Array.isArray(res[1]) ? res[1] : [];
         var orders     = raw.filter(inMyBrand);
         var allDel     = Array.isArray(res[2]) ? res[2] : [];
         var drivers    = Array.isArray(res[3]) ? res[3] : [];
+        var portalTmr  = Array.isArray(res[4]) ? res[4] : [];
+        var dispatchTmr = Array.isArray(res[5]) ? res[5] : [];
 
         // Build delivery map by shop_id
         var delMap = {};
@@ -633,12 +682,49 @@
         var driverMap = {};
         drivers.forEach(function(d){ driverMap[d.name] = d; });
 
-        if(!orders.length){
-          el.innerHTML = '<div class="card">'+todayEmptyDiagnostic(raw, date)+'</div>';
-          return;
+        // Tomorrow order-collection stats for this brand
+        var orderedIds = {};
+        var noOrderIds = {};
+        function markOrdered(o){
+          if(!o || o.status === 'rejected') return;
+          if(!inMyBrand(o)) return;
+          [o.shop_id, o.customer_id].forEach(function(id){
+            id = String(id || '').trim();
+            if(!id) return;
+            orderedIds[id] = true;
+            if(o.status === 'no_order') noOrderIds[id] = true;
+          });
         }
+        portalTmr.forEach(markOrdered);
+        dispatchTmr.forEach(markOrdered);
 
-        _todayCache  = { orders:orders, delMap:delMap, driverMap:driverMap, date:date };
+        var totalShops = _brandShopList.length;
+        var orderedN = 0, noOrderN = 0, pendingN = 0;
+        var pendingShops = [];
+        _brandShopList.forEach(function(c){
+          var a = String(c.shop_id || '').trim();
+          var b = String(c.customer_id || '').trim();
+          var isNo = !!( (a && noOrderIds[a]) || (b && noOrderIds[b]) );
+          var isOrd = !!( (a && orderedIds[a]) || (b && orderedIds[b]) );
+          if(isNo) noOrderN++;
+          else if(isOrd) orderedN++;
+          else {
+            pendingN++;
+            pendingShops.push(c);
+          }
+        });
+
+        _todayCache  = {
+          orders:orders, delMap:delMap, driverMap:driverMap, date:date,
+          orderCollect: {
+            tomorrow: tomorrow,
+            totalShops: totalShops,
+            orderedN: orderedN,
+            noOrderN: noOrderN,
+            pendingN: pendingN,
+            pendingShops: pendingShops
+          }
+        };
         _todayFilter = 'all';
         renderToday();
       }).catch(function(){
@@ -661,14 +747,51 @@
       renderToday();
     }
 
+    function renderOrderCollectSummary(oc){
+      if(!oc) return '';
+      var html = '';
+      html += '<div class="card" style="border-color:#c8e6c9;margin-bottom:12px">';
+      html += '<div class="card-title">🛒 Tomorrow orders — '+esc(fmtDate(oc.tomorrow))+'</div>';
+      html += '<div class="stat-grid" style="margin-bottom:0">';
+      html += '<div class="stat-box"><div class="stat-num" style="color:#2e7d32">'+oc.totalShops+'</div><div class="stat-lbl">Shops</div></div>';
+      html += '<div class="stat-box"><div class="stat-num" style="color:#2d7a4f">'+oc.orderedN+'</div><div class="stat-lbl">Ordered</div></div>';
+      html += '<div class="stat-box"><div class="stat-num" style="color:#8a7a6a">'+oc.noOrderN+'</div><div class="stat-lbl">No Order</div></div>';
+      html += '<div class="stat-box"><div class="stat-num" style="color:#c8382a">'+oc.pendingN+'</div><div class="stat-lbl">Pending</div></div>';
+      html += '</div>';
+      if(oc.pendingN > 0 && oc.pendingShops && oc.pendingShops.length){
+        html += '<div style="margin-top:12px;padding-top:10px;border-top:1px solid #e8f5e9">';
+        html += '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-bottom:6px;font-weight:700">Still pending ('+oc.pendingN+')</div>';
+        oc.pendingShops.slice(0, 40).forEach(function(s){
+          html += '<div style="font-size:12px;padding:5px 0;border-bottom:1px solid #f0f4ff;display:flex;justify-content:space-between;gap:8px">';
+          html += '<span style="font-weight:700;color:#1e1611">'+esc(s.name||'Unnamed')+'</span>';
+          html += '<span style="font-size:10px;color:#78909c;font-family:monospace;flex-shrink:0">'+esc(s.mobile||sid(s)||'')+'</span>';
+          html += '</div>';
+        });
+        if(oc.pendingShops.length > 40){
+          html += '<div style="font-size:10px;color:#9fa8da;font-family:monospace;margin-top:6px">+ '+(oc.pendingShops.length-40)+' more</div>';
+        }
+        html += '</div>';
+      } else if(oc.totalShops === 0){
+        html += '<div class="empty-msg" style="padding:8px 0 0">No shops tagged to this brand yet.</div>';
+      } else if(oc.pendingN === 0){
+        html += '<div style="margin-top:10px;font-size:11px;color:#2d7a4f;font-weight:700;font-family:monospace">✅ All shops ordered or marked no-order</div>';
+      }
+      html += '</div>';
+      return html;
+    }
+
     function renderToday(){
       var el = document.getElementById('today-content');
       if(!_todayCache) return;
       var orders    = _todayCache.orders, delMap = _todayCache.delMap,
           driverMap = _todayCache.driverMap, date = _todayCache.date;
+      var oc = _todayCache.orderCollect || null;
+
+      var html = renderOrderCollectSummary(oc);
 
       if(!orders.length){
-        el.innerHTML = '<div class="card"><div class="empty-msg">No '+esc(myBrand)+' orders found for '+esc(fmtDate(date))+'</div></div>';
+        html += '<div class="card"><div class="empty-msg">No '+esc(myBrand)+' delivery orders found for '+esc(fmtDate(date))+'</div></div>';
+        el.innerHTML = html;
         return;
       }
 
@@ -683,7 +806,8 @@
 
       var FILTER_LABEL = {all:'All', delivered:'Delivered', pending:'Pending'};
 
-      var html = '';
+      // ── Delivery-day stats (tap to filter the list below) ──
+      html += '<div style="font-size:11px;font-weight:800;color:#546e7a;font-family:monospace;margin:4px 2px 8px">📦 Delivery status — '+esc(fmtDate(date))+'</div>';
 
       // ── Summary stats (tap to filter the list below) ──
       html += '<div class="stat-grid">';

@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>IBCAB — Payments</title>
+    <link rel="stylesheet" href="styles.css" />
+    <style>
+        :root { --brown:#5c3d2e; --cream:#faf6f1; --ok:#1a5a38; --warn:#7a4800; --er:#c8382a; }
+        * { box-sizing: border-box; }
+        body { margin:0; font-family: system-ui, sans-serif; background:#f0ebe4; color:#2a1f18; }
+        .top { background: var(--brown); color:#fff; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+        .top h1 { margin:0; font-size:16px; font-weight:800; }
+        .top a { color:#ffe8c8; font-size:12px; font-weight:700; text-decoration:none; }
+        .wrap { max-width:960px; margin:0 auto; padding:14px 12px 40px; }
+        .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:14px; }
+        @media(max-width:640px){ .stats { grid-template-columns:repeat(2,1fr); } }
+        .stat { background:#fff; border-radius:12px; padding:12px; border:1px solid #e8ddd0; text-align:center; }
+        .stat-n { font-size:22px; font-weight:800; font-family:monospace; }
+        .stat-l { font-size:10px; color:#8a7a6a; font-weight:700; text-transform:uppercase; margin-top:2px; }
+        .toolbar { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; align-items:center; }
+        .toolbar input, .toolbar select { padding:8px 10px; border:1.5px solid #ddd0c0; border-radius:8px; font-size:13px; }
+        .toolbar input { flex:1; min-width:140px; }
+        .btn { border:none; border-radius:8px; padding:8px 14px; font-weight:800; font-size:12px; cursor:pointer; }
+        .btn-brown { background:var(--brown); color:#fff; }
+        .btn-ok { background:#e8f5e9; color:var(--ok); border:1px solid #a5d6a7; }
+        .btn-warn { background:#fff8e1; color:var(--warn); border:1px solid #ffe082; }
+        .btn-ghost { background:#fff; color:#5c3d2e; border:1.5px solid #ddd0c0; }
+        .card { background:#fff; border:1px solid #e8ddd0; border-radius:12px; padding:12px 14px; margin-bottom:10px; }
+        .card h3 { margin:0 0 6px; font-size:14px; }
+        .meta { font-size:11px; color:#8a7a6a; font-family:monospace; line-height:1.5; }
+        .badge { display:inline-block; border-radius:6px; padding:2px 8px; font-size:10px; font-weight:800; margin-right:4px; }
+        .b-unpaid { background:#fde8e8; color:#c8382a; }
+        .b-partial { background:#fff8e1; color:#7a4800; }
+        .b-claim { background:#e3f2fd; color:#1565c0; }
+        .b-paid { background:#e8f5e9; color:#1a5a38; }
+        .b-challan { background:#f3e5f5; color:#6a1b9a; }
+        .row-actions { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+        .msg { padding:10px 12px; border-radius:8px; font-size:12px; font-weight:700; margin-bottom:10px; display:none; }
+        .msg.ok { display:block; background:#e8f5e9; color:#1a5a38; }
+        .msg.er { display:block; background:#fde8e8; color:#c8382a; }
+        .msg.in { display:block; background:#e8f0ff; color:#1a3a8a; }
+        .hint { font-size:11px; color:#8a7a6a; margin-bottom:12px; line-height:1.45; }
+        .empty { text-align:center; padding:28px; color:#8a7a6a; font-size:13px; }
+    </style>
+</head>
+<body>
+<div class="top">
+    <h1>💰 Payments</h1>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+        <a href="admin.html">← Admin</a>
+        <span id="who" style="font-size:11px;opacity:.85"></span>
+    </div>
+</div>
+<div class="wrap">
+    <p class="hint">
+        Weekly collections — not tied to placing an order.<br>
+        Flow: <b>Delivery challan</b> on approve → after delivery convert to <b>invoice</b> → customer requests payment here → you mark paid.<br>
+        Order screen no longer has pay-reminder / mark-received.
+    </p>
+    <div id="msg" class="msg"></div>
+    <div class="stats">
+        <div class="stat"><div class="stat-n" id="st-unpaid">0</div><div class="stat-l">Unpaid inv</div></div>
+        <div class="stat"><div class="stat-n" id="st-claim">0</div><div class="stat-l">Pay requests</div></div>
+        <div class="stat"><div class="stat-n" id="st-due">₹0</div><div class="stat-l">Total due</div></div>
+        <div class="stat"><div class="stat-n" id="st-challan">0</div><div class="stat-l">Challan only</div></div>
+    </div>
+    <div class="toolbar">
+        <input id="q" type="search" placeholder="Search shop / inv #…" oninput="render()" />
+        <select id="filter" onchange="render()">
+            <option value="open">Unpaid + requests</option>
+            <option value="claim">Pay requests only</option>
+            <option value="unpaid">Unpaid (no request)</option>
+            <option value="challan">Challan not invoiced</option>
+            <option value="paid">Recently paid</option>
+            <option value="all">All with Zoho doc</option>
+        </select>
+        <button class="btn btn-brown" onclick="load()">↻ Refresh</button>
+    </div>
+    <div id="list"><div class="empty">Loading…</div></div>
+</div>
+
+<script src="config.js"></script>
+<script src="api.js"></script>
+<script>
+    var session = null;
+    try { session = JSON.parse(localStorage.getItem('bakerySession') || localStorage.getItem('adminSession') || 'null'); } catch(e) {}
+    if (!session || !session.name) {
+      // allow open if admin cookie-style session used elsewhere
+      try { session = JSON.parse(localStorage.getItem('session') || 'null'); } catch(e2) {}
+    }
+    document.getElementById('who').textContent = session && session.name ? ('Logged: ' + session.name) : 'Open from Admin after login';
+
+    var rows = [];
+
+    function showMsg(t, cls) {
+      var el = document.getElementById('msg');
+      el.textContent = t;
+      el.className = 'msg ' + (cls || 'in');
+    }
+    function money(n) {
+      n = parseFloat(n);
+      if (isNaN(n)) return '—';
+      return '₹' + n.toLocaleString('en-IN', { maximumFractionDigits: 2 });
+    }
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+    function dueOf(o) {
+      if (o.balance_due != null && o.balance_due !== '') return parseFloat(o.balance_due) || 0;
+      if (o.invoice_total != null && o.invoice_total !== '') return parseFloat(o.invoice_total) || 0;
+      return 0;
+    }
+    function isPaid(o) { return String(o.payment_status || '').toLowerCase() === 'paid'; }
+    function isChallan(o) { return String(o.zoho_doc_type || '').toLowerCase() === 'delivery_challan'; }
+    function hasDoc(o) { return !!(o.zoho_invoice_id || o.zoho_invoice_number || o.invoice_total != null); }
+
+    function load() {
+      showMsg('Loading invoices…', 'in');
+      // Load recent customer_orders that have Zoho doc or payment fields
+      apiPost({ action: 'getCustomerOrders', limit: 500 }).then(function(res) {
+        var list = (res && res.data) ? res.data : (Array.isArray(res) ? res : []);
+        if (!Array.isArray(list) && res && res.orders) list = res.orders;
+        if (!Array.isArray(list)) list = [];
+        rows = list.filter(hasDoc);
+        showMsg('Loaded ' + rows.length + ' document(s).', 'ok');
+        render();
+      }).catch(function(e) {
+        // fallback: empty
+        rows = [];
+        showMsg('Load failed: ' + (e && e.message ? e.message : e), 'er');
+        render();
+      });
+    }
+
+    function filtered() {
+      var q = (document.getElementById('q').value || '').toLowerCase().trim();
+      var f = document.getElementById('filter').value;
+      return rows.filter(function(o) {
+        var st = String(o.payment_status || '').toLowerCase();
+        var claim = !!o.customer_claimed_paid;
+        if (f === 'open') {
+          if (isPaid(o)) return false;
+        } else if (f === 'claim') {
+          if (!claim || isPaid(o)) return false;
+        } else if (f === 'unpaid') {
+          if (isPaid(o) || claim) return false;
+        } else if (f === 'challan') {
+          if (!isChallan(o) || isPaid(o)) return false;
+        } else if (f === 'paid') {
+          if (!isPaid(o)) return false;
+        }
+        if (!q) return true;
+        var hay = [o.shop_name, o.shop_id, o.zoho_invoice_number, o.delivery_date, o.customer_claim_note].join(' ').toLowerCase();
+        return hay.indexOf(q) >= 0;
+      }).sort(function(a, b) {
+        // claims first, then newest date
+        var ca = a.customer_claimed_paid ? 0 : 1;
+        var cb = b.customer_claimed_paid ? 0 : 1;
+        if (ca !== cb) return ca - cb;
+        return String(b.delivery_date || '').localeCompare(String(a.delivery_date || ''));
+      });
+    }
+
+    function render() {
+      var list = filtered();
+      var unpaid = rows.filter(function(o){ return !isPaid(o); });
+      var claims = rows.filter(function(o){ return o.customer_claimed_paid && !isPaid(o); });
+      var due = unpaid.reduce(function(s, o){ return s + dueOf(o); }, 0);
+      var challan = rows.filter(function(o){ return isChallan(o) && !isPaid(o); });
+      document.getElementById('st-unpaid').textContent = unpaid.length;
+      document.getElementById('st-claim').textContent = claims.length;
+      document.getElementById('st-due').textContent = money(due);
+      document.getElementById('st-challan').textContent = challan.length;
+
+      var el = document.getElementById('list');
+      if (!list.length) {
+        el.innerHTML = '<div class="empty">No rows for this filter.</div>';
+        return;
+      }
+      el.innerHTML = list.map(function(o) {
+        var st = String(o.payment_status || 'unpaid').toLowerCase();
+        var badges = '';
+        if (o.customer_claimed_paid && st !== 'paid') badges += '<span class="badge b-claim">Pay request</span>';
+        if (st === 'paid') badges += '<span class="badge b-paid">Paid</span>';
+        else if (st === 'partial') badges += '<span class="badge b-partial">Partial</span>';
+        else badges += '<span class="badge b-unpaid">Unpaid</span>';
+        if (isChallan(o)) badges += '<span class="badge b-challan">Challan</span>';
+        else if (o.zoho_invoice_number || o.zoho_invoice_id) badges += '<span class="badge" style="background:#eceff1;color:#37474f">Invoice</span>';
+
+        var actions = '';
+        if (st !== 'paid') {
+          actions += '<button class="btn btn-ok" onclick="markPaid(\'' + o.id + '\')">✓ Mark paid</button>';
+          if (isChallan(o)) {
+            actions += '<button class="btn btn-warn" onclick="convertNote(\'' + o.id + '\')">📋→🧾 Convert to invoice</button>';
+          }
+        }
+        actions += '<button class="btn btn-ghost" onclick="openAdminOrder(\'' + o.id + '\')">Open in Admin</button>';
+
+        return '<div class="card">' +
+          '<h3>' + esc(o.shop_name || o.shop_id || 'Shop') + '</h3>' +
+          '<div class="meta">' +
+            badges + '<br>' +
+            'Date: ' + esc(o.delivery_date || '—') +
+            ' · Doc: ' + esc(o.zoho_invoice_number || o.zoho_invoice_id || '—') +
+            ' · Due: <b>' + money(dueOf(o)) + '</b>' +
+            (o.invoice_total != null ? ' · Total: ' + money(o.invoice_total) : '') +
+            (o.customer_claimed_paid ? '<br>Request note: ' + esc(o.customer_claim_note || '—') + ' · ' + esc(o.customer_claimed_at || '') : '') +
+            (st === 'paid' ? '<br>Paid: ' + money(o.paid_amount) + ' · ' + esc(o.payment_mode || '') + ' · ' + esc(o.paid_at || '') : '') +
+          '</div>' +
+          '<div class="row-actions">' + actions + '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function markPaid(id) {
+      var o = rows.find(function(r){ return String(r.id) === String(id); });
+      if (!o) return;
+      var amt = dueOf(o);
+      var mode = prompt('Payment mode (cash / upi / bank / other)', 'upi');
+      if (mode == null) return;
+      var ref = prompt('Reference / UTR (optional)', '') || '';
+      if (!confirm('Mark paid ' + money(amt) + ' for ' + (o.shop_name || '') + '?')) return;
+      showMsg('Saving…', 'in');
+      apiPost({
+        action: 'markInvoicePayment',
+        id: o.id,
+        payment_status: 'paid',
+        balance_due: 0,
+        paid_amount: amt,
+        payment_mode: mode,
+        payment_ref: ref,
+        paid_by: (session && session.name) || 'admin',
+        invoice_total: o.invoice_total != null ? o.invoice_total : amt
+      }).then(function(res) {
+        if (res && res.ok === false) throw new Error(res.error || 'Failed');
+        // notify shop
+        if (o.shop_id) {
+          apiPost({
+            action: 'sendCustomerNotification',
+            shop_id: o.shop_id,
+            shop_name: o.shop_name || '',
+            message: 'Payment received ₹' + amt + ' for ' + (o.zoho_invoice_number || 'invoice') + '. Balance ₹0. Thank you.'
+          }).catch(function(){});
+        }
+        showMsg('Marked paid.', 'ok');
+        load();
+      }).catch(function(e) {
+        showMsg('Failed: ' + (e.message || e), 'er');
+      });
+    }
+
+    function convertNote(id) {
+      alert(
+        'Challan → Invoice:\n\n' +
+        '1. Open this order in Admin → Cust Orders\n' +
+        '2. Set document type to Invoice\n' +
+        '3. Send / update in Zoho (creates invoice from delivered challan)\n\n' +
+        'After delivery is done, convert challan to invoice so the shop sees amount due on the Payments tab.\n\n' +
+        'Order id: ' + id
+      );
+      openAdminOrder(id);
+    }
+
+    function openAdminOrder(id) {
+      window.location.href = 'admin.html#co-' + id;
+    }
+
+    // Prefer getCustomerOrders with broad fetch
+    function apiPostSafe(body) {
+      return apiPost(body);
+    }
+
+    // Override load if getCustomerOrders needs different shape
+    var _origLoad = load;
+    load = function() {
+      showMsg('Loading invoices…', 'in');
+      Promise.resolve(apiPost({ action: 'getCustomerOrders' })).then(function(res) {
+        var list = [];
+        if (Array.isArray(res)) list = res;
+        else if (res && Array.isArray(res.data)) list = res.data;
+        else if (res && Array.isArray(res.orders)) list = res.orders;
+        else if (res && res.ok && Array.isArray(res.rows)) list = res.rows;
+        rows = (list || []).filter(hasDoc);
+        showMsg('Loaded ' + rows.length + ' document(s).', 'ok');
+        render();
+      }).catch(function(e) {
+        rows = [];
+        showMsg('Load failed: ' + (e && e.message ? e.message : e) + ' — ensure getCustomerOrders returns orders with zoho/payment fields.', 'er');
+        render();
+      });
+    };
+
+    load();
+</script>
+</body>
+</html>
