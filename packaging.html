@@ -10,40 +10,29 @@
     <style>
         *{box-sizing:border-box;margin:0;padding:0}
         body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:480px;margin:0 auto;min-height:100vh}
-        /* Login */
-        .login-wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 20px}
-        .login-logo{font-size:52px;margin-bottom:6px}
-        .login-title{font-size:22px;font-weight:900;color:#4a2f14;text-align:center;margin-bottom:2px}
-        .login-sub{font-size:12px;color:#8a7a6a;font-family:monospace;margin-bottom:28px;text-align:center}
-        .login-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:20px;padding:22px;width:100%;max-width:360px}
-        .lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:6px;text-transform:uppercase;display:block}
-        select,input[type=text],input[type=password],input[type=date]{width:100%;padding:12px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:10px}
-        .btn{width:100%;padding:14px;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:8px}
-        .btn-purple{background:#6e3da8;color:#fff}
-        .btn-green{background:#2d7a4f;color:#fff}
-        .btn-grey{background:#e8dfd2;color:#4a2f14}
-        .err{color:#c8382a;font-size:12px;font-family:monospace;text-align:center;margin-top:8px}
-        /* App */
         .topbar{background:#6e3da8;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:99}
         .topbar-title{color:#fff;font-size:15px;font-weight:800}
         .topbar-sub{color:rgba(255,255,255,.75);font-size:11px;font-family:monospace;margin-top:1px}
-        .logout-btn{background:rgba(255,255,255,.2);border:none;color:#fff;padding:6px 11px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif}
-        /* Tabs */
+        .logout-btn{background:rgba(255,255,255,.2);border:none;color:#fff;padding:6px 11px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer}
         .tabs{display:flex;background:#fff;border-bottom:2px solid #e8dfd2;position:sticky;top:53px;z-index:98}
-        .tab{flex:1;padding:12px 4px;border:none;background:none;font-size:12px;font-weight:700;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;border-bottom:3px solid transparent;margin-bottom:-2px}
+        .tab{flex:1;padding:12px 4px;border:none;background:none;font-size:12px;font-weight:700;cursor:pointer;color:#8a7a6a;border-bottom:3px solid transparent;margin-bottom:-2px}
         .tab.on{color:#6e3da8;border-bottom-color:#6e3da8}
         .page{display:none;padding:14px 14px 100px}.page.on{display:block}
         .card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:14px;margin-bottom:10px}
         .msg{padding:11px 14px;border-radius:12px;font-size:12px;font-weight:600;font-family:monospace;margin-bottom:10px;line-height:1.8;white-space:pre-line}
+        .in{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9}
         .ok{background:#e8f5e9;color:#2d7a4f;border:1px solid #a5d6a7}
         .er{background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0}
-        .in{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9}
-        /* Order card */
-        .order-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;margin-bottom:10px;overflow:hidden;transition:opacity .3s}
+        .lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:6px;text-transform:uppercase;display:block}
+        select,input[type=date]{width:100%;padding:12px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;color:#1e1611;background:#f5ede0;outline:none;margin-bottom:10px}
+        .btn{width:100%;padding:14px;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;margin-bottom:8px}
+        .btn-purple{background:#6e3da8;color:#fff}
+        .btn-green{background:#2d7a4f;color:#fff}
+        .btn-grey{background:#e8dfd2;color:#4a2f14}
+        .order-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;margin-bottom:10px;overflow:hidden}
         .order-card.done{opacity:.4}
         .order-head{padding:12px 14px;background:#f3e8ff;border-bottom:1.5px solid #e8dfd2;display:flex;align-items:flex-start;justify-content:space-between}
         .order-head.kitchen-head{background:#fff8e1}
-        .order-head.dispatched-head{background:#e8f5e9}
         .order-shop{font-size:14px;font-weight:800;color:#4a2f14}
         .order-driver{font-size:10px;color:#6e3da8;font-family:monospace;font-weight:700;margin-top:2px}
         .order-body{padding:12px 14px}
@@ -52,17 +41,13 @@
         .b-pack{background:#f3e8ff;color:#6e3da8}
         .b-done{background:#e8f5e9;color:#2d7a4f}
         .b-kitchen{background:#fff8e1;color:#7a4800}
-        .b-dispatched{background:#e8f5e9;color:#2d7a4f}
-        /* Pack button */
-        .pack-btn{width:100%;padding:11px;border:none;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;background:#6e3da8;color:#fff;transition:all .2s}
+        .pack-btn{width:100%;padding:11px;border:none;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer;background:#6e3da8;color:#fff}
         .pack-btn.done-state{background:#2d7a4f;cursor:default}
-        /* Stats */
         .stats-row{display:flex;gap:8px;margin-bottom:10px}
         .stat-box{flex:1;background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:10px;text-align:center}
         .stat-n{font-size:22px;font-weight:900;color:#4a2f14}
         .stat-l{font-size:9px;color:#8a7a6a;font-family:monospace;text-transform:uppercase}
         .sticky-bottom{position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;background:#fff;border-top:2px solid #e8dfd2;padding:12px 14px;z-index:90}
-        /* Product count card */
         .prod-count-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:14px;margin-bottom:10px}
         .prod-count-title{font-size:11px;font-weight:900;letter-spacing:1.5px;color:#4a2f14;text-transform:uppercase;margin-bottom:10px}
         .prod-count-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f0e8d8}
@@ -72,26 +57,23 @@
         .pcn-kitchen{color:#7a4800}
         .pcn-pending{color:#6e3da8}
         .pcn-done{color:#2d7a4f}
-        /* Section header */
         .section-hdr{font-size:11px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;padding:7px 12px;border-radius:8px;margin-bottom:8px}
         .sh-pack{background:#f3e8ff;color:#6e3da8}
         .sh-kitchen{background:#fff8e1;color:#7a4800}
         .sh-dispatched{background:#e8f5e9;color:#2d7a4f}
-        /* Summary */
         .sum-shop{background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:12px 14px;margin-bottom:8px}
         .sum-sname{font-size:13px;font-weight:800;color:#4a2f14;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between}
         .sum-sdetail{font-family:monospace;font-size:11px;color:#8a7a6a;line-height:1.9}
-        /* Confirm modal */
         .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
         .modal{background:#fff;border-radius:20px;padding:22px;width:100%;max-width:360px}
         .modal-title{font-size:16px;font-weight:900;color:#4a2f14;margin-bottom:4px}
         .modal-sub{font-size:12px;color:#8a7a6a;font-family:monospace;margin-bottom:14px;line-height:1.6}
         .modal-items{font-size:12px;font-family:monospace;background:#f5ede0;border-radius:10px;padding:10px 12px;line-height:1.9;margin-bottom:14px}
+        .pkt{font-size:10px;color:#6e3da8;font-weight:700;margin-left:4px}
     </style>
 </head>
 <body>
 
-<!-- ── APP (login only via index page) ── -->
 <div id="appScreen" style="display:none">
     <div class="topbar">
         <div>
@@ -108,20 +90,17 @@
         <button class="tab" id="tb-summary" onclick="showTab('summary')">📋 Summary</button>
     </div>
 
-    <!-- ── PACK TAB ── -->
     <div class="page on" id="pg-pack">
-        <!-- Date selector + refresh -->
         <div class="card">
             <div class="lbl">Delivery Date</div>
             <div style="display:flex;gap:8px;align-items:center">
                 <input type="date" id="packDate" onchange="loadAllOrders()" style="flex:1;margin-bottom:0">
-                <button onclick="loadAllOrders()" style="background:#f5ede0;border:1.5px solid #e8dfd2;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;color:#4a2f14;font-family:-apple-system,sans-serif;flex-shrink:0">↻</button>
+                <button onclick="loadAllOrders()" style="background:#f5ede0;border:1.5px solid #e8dfd2;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;color:#4a2f14;flex-shrink:0">↻</button>
             </div>
         </div>
 
         <div id="packMsg" style="display:none" class="msg in"></div>
 
-        <!-- Stats: Kitchen / To Pack / Packed / Dispatched -->
         <div id="packStats" style="display:none" class="stats-row">
             <div class="stat-box"><div class="stat-n" id="sKitchen" style="color:#7a4800">0</div><div class="stat-l">Kitchen</div></div>
             <div class="stat-box"><div class="stat-n" id="sPending">0</div><div class="stat-l">To Pack</div></div>
@@ -129,43 +108,38 @@
             <div class="stat-box"><div class="stat-n" id="sDispatched" style="color:#2d7a4f">0</div><div class="stat-l">Dispatched</div></div>
         </div>
 
-        <!-- Product count across all statuses -->
         <div class="prod-count-card" id="prodCountCard" style="display:none">
             <div class="prod-count-title">📊 Product Totals</div>
             <div id="prodCountBody"></div>
         </div>
 
-        <!-- Orders ready to pack (status=packaging) -->
         <div id="packSection" style="display:none">
             <div class="section-hdr sh-pack">📦 Ready to Pack — <span id="packCount">0</span> orders</div>
             <div id="ordersList"></div>
         </div>
 
-        <!-- Orders still in kitchen (status=approved) -->
         <div id="kitchenSection" style="display:none">
             <div class="section-hdr sh-kitchen">🍳 Still in Kitchen — <span id="kitchenCount">0</span> orders</div>
             <div id="kitchenList"></div>
         </div>
     </div>
 
-    <!-- ── DRIVERS / ROUTE TAB ── -->
     <div class="page" id="pg-drivers">
         <div class="card" style="margin-bottom:10px">
             <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">🚗 Separate by Driver Route</div>
-            <div style="font-size:11px;color:#8a7a6a;font-family:monospace;line-height:1.6">After packing, use this view to sort &amp; separate materials for each driver's route.</div>
+            <div style="font-size:11px;color:#8a7a6a;font-family:monospace;line-height:1.6">After packing, use this view to sort & separate materials for each driver's route.</div>
         </div>
         <div id="driversMsg" class="msg in" style="display:none"></div>
         <div id="driversBody"></div>
     </div>
 
-    <!-- ── BRANDS TAB ── -->
     <div class="page" id="pg-brands">
         <div class="card" style="margin-bottom:10px">
             <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">🏷 Brand-wise Counts</div>
-            <div style="font-size:11px;color:#8a7a6a;font-family:monospace;line-height:1.6">See how many of each product to pack per brand (e.g. Tea Post).</div>
+            <div style="font-size:11px;color:#8a7a6a;font-family:monospace;line-height:1.6">See how many of each product to pack per brand.</div>
         </div>
         <div style="margin-bottom:10px">
-            <select id="brandFilter" onchange="renderBrandRoutes()" style="width:100%;padding:12px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;color:#1e1611;background:#fff;outline:none;font-family:-apple-system,sans-serif">
+            <select id="brandFilter" onchange="renderBrandRoutes()" style="width:100%;padding:12px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;color:#1e1611;background:#fff;outline:none">
                 <option value="">All Brands</option>
             </select>
         </div>
@@ -173,17 +147,14 @@
         <div id="brandsBody"></div>
     </div>
 
-    <!-- ── SUMMARY TAB ── -->
     <div class="page" id="pg-summary">
         <div id="sumMsg" class="msg in" style="display:none"></div>
-        <!-- Summary stats -->
         <div id="sumStats" style="display:none" class="stats-row">
             <div class="stat-box"><div class="stat-n" id="ss-kitchen" style="color:#7a4800">0</div><div class="stat-l">Kitchen</div></div>
             <div class="stat-box"><div class="stat-n" id="ss-pack">0</div><div class="stat-l">To Pack</div></div>
             <div class="stat-box"><div class="stat-n" id="ss-done" style="color:#6e3da8">0</div><div class="stat-l">Packed</div></div>
             <div class="stat-box"><div class="stat-n" id="ss-dispatch" style="color:#2d7a4f">0</div><div class="stat-l">Dispatched</div></div>
         </div>
-        <!-- Product grand totals -->
         <div class="prod-count-card" id="sumProdCard" style="display:none">
             <div class="prod-count-title">📊 All Products for Date</div>
             <div id="sumProdBody"></div>
@@ -191,15 +162,13 @@
         <div id="sumBody"></div>
     </div>
 
-    <!-- Sticky: Mark All Packed -->
     <div class="sticky-bottom" id="allDoneBar" style="display:none">
         <button class="btn btn-green" id="allDoneBtn" onclick="markAllPacked()" style="margin-bottom:0">
-            ✅ Mark All Packed &amp; Send to Driver — <span id="allDoneCount">0</span> Orders
+            ✅ Mark All Packed & Send to Driver — <span id="allDoneCount">0</span> Orders
         </button>
     </div>
 </div>
 
-<!-- Confirm modal -->
 <div class="modal-bg" id="packModal" style="display:none">
     <div class="modal">
         <div class="modal-title">📦 Confirm Packed</div>
@@ -213,39 +182,33 @@
 </div>
 
 <script>
-    var staffName      = '';
-    var packOrders     = []; // status=packaging
-    var kitchenOrders  = []; // status=approved (still in kitchen)
-    var dispatchOrders = []; // status=dispatched
-    var shopMap        = {};
-    var packedIds      = new Set();
+    var staffName = '';
+    var packOrders = [];
+    var kitchenOrders = [];
+    var dispatchOrders = [];
+    var shopMap = {};
+    var packedIds = new Set();
     var confirmOrderId = null;
 
-    // ── SESSION GATE (login only via index page) ──
+    // Helper: format quantity with packet breakdown for Puff
+    function fmtQty(name, qty) {
+      if (window.ProductsShared && ProductsShared.formatQtyWithPackets) {
+        return ProductsShared.formatQtyWithPackets(name, qty);
+      }
+      return String(qty);
+    }
+
     (function(){
-      // Restore session from index login
       var role = sessionStorage.getItem('role') || localStorage.getItem('staffRole') || '';
       var name = sessionStorage.getItem('staffName') || localStorage.getItem('staffNamePersist')
               || sessionStorage.getItem('packStaff') || localStorage.getItem('packStaff') || '';
-
       if (!role && localStorage.getItem('staffRole')) {
         role = localStorage.getItem('staffRole');
         sessionStorage.setItem('role', role);
         sessionStorage.setItem('staffName', localStorage.getItem('staffNamePersist') || '');
-        sessionStorage.setItem('tabs', localStorage.getItem('staffTabs') || '[]');
       }
-
-      // Only packer / admin / super_admin may open this page
-      if (role !== 'packer' && role !== 'admin' && role !== 'super_admin') {
-        goto('');
-        return;
-      }
-      if (!name) {
-        goto('');
-        return;
-      }
-
-      // Keep packStaff in sync for any older code paths
+      if (role !== 'packer' && role !== 'admin' && role !== 'super_admin') { goto(''); return; }
+      if (!name) { goto(''); return; }
       staffName = name;
       sessionStorage.setItem('packStaff', staffName);
       localStorage.setItem('packStaff', staffName);
@@ -254,13 +217,12 @@
 
     function doLogout(){
       sessionStorage.removeItem('packStaff'); localStorage.removeItem('packStaff');
-      sessionStorage.removeItem('role'); sessionStorage.removeItem('staffName'); sessionStorage.removeItem('tabs');
-      localStorage.removeItem('staffRole'); localStorage.removeItem('staffNamePersist'); localStorage.removeItem('staffTabs');
+      sessionStorage.removeItem('role'); sessionStorage.removeItem('staffName');
+      localStorage.removeItem('staffRole'); localStorage.removeItem('staffNamePersist');
       staffName=''; packOrders=[]; kitchenOrders=[]; dispatchOrders=[]; packedIds=new Set();
       goto('');
     }
 
-    // ── APP ──
     function showApp(){
       document.getElementById('appScreen').style.display='block';
       document.getElementById('topName').textContent = staffName + ' · ' + new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'});
@@ -283,7 +245,6 @@
         document.getElementById('pg-'+x).classList.toggle('on',x===t);
         document.getElementById('tb-'+x).classList.toggle('on',x===t);
       });
-      // Sticky bar only on Pack tab
       var pending = packOrders.length - packedIds.size;
       document.getElementById('allDoneBar').style.display = (t==='pack' && pending > 0) ? 'block' : 'none';
       if(t==='summary') renderSummary();
@@ -293,14 +254,12 @@
 
     function getOrderBrand(o){
       var shop = shopMap[o.shop_id] || shopMap[o.customer_id] || {};
-      var b = (shop.brand || o.brand || '').trim();
-      return b || 'No Brand';
+      return (shop.brand || o.brand || '').trim() || 'No Brand';
     }
 
     function tomorrowStr(){ var d=new Date(); d.setDate(d.getDate()+1); return d.getFullYear()+'-'+zp(d.getMonth()+1)+'-'+zp(d.getDate()); }
     function zp(n){ return String(n).padStart(2,'0'); }
 
-    // ── LOAD ALL ORDERS ──
     function loadAllOrders(){
       var date = document.getElementById('packDate').value;
       if (!date) return;
@@ -324,7 +283,6 @@
         kitchenOrders  = Array.isArray(results[1]) ? results[1] : [];
         dispatchOrders = Array.isArray(results[2]) ? results[2] : [];
         msg.style.display='none';
-
         var total = packOrders.length + kitchenOrders.length + dispatchOrders.length;
         if (!total){
           msg.textContent='No orders for this date yet.';
@@ -337,7 +295,6 @@
       });
     }
 
-    // ── STATS ──
     function updateStats(){
       var pending = packOrders.length - packedIds.size;
       document.getElementById('sKitchen').textContent   = kitchenOrders.length;
@@ -346,12 +303,10 @@
       document.getElementById('sDispatched').textContent= dispatchOrders.length;
       document.getElementById('packStats').style.display= 'flex';
       document.getElementById('allDoneCount').textContent = pending;
-      // Only show sticky bar on Pack tab
       var onPackTab = document.getElementById('pg-pack').classList.contains('on');
       document.getElementById('allDoneBar').style.display = (onPackTab && pending > 0) ? 'block' : 'none';
     }
 
-    // ── PRODUCT COUNT (pack tab) ──
     function renderProdCount(){
       var kitchen={}, pending={}, packed={}, dispatched={}, nameToPid={};
       function tally(orders, bucket){
@@ -417,8 +372,14 @@
           if(pend>0) parts.push('<span class="pcn-pending">📦 '+pend+' to pack</span>');
           if(pk>0)   parts.push('<span class="pcn-done">✅ '+pk+' packed</span>');
           if(d>0)    parts.push('<span class="pcn-done">🚗 '+d+' dispatched</span>');
+          // Packet breakdown for Puff
+          var pkt = '';
+          if (window.ProductsShared && ProductsShared.isPuffProduct && ProductsShared.isPuffProduct(p)) {
+            var pkInfo = ProductsShared.calcPuffPackets(total);
+            if (pkInfo.text && pkInfo.text !== '0') pkt = ' <span class="pkt">('+pkInfo.text+')</span>';
+          }
           html+='<div class="prod-count-row">'+
-            '<span class="prod-count-name">'+esc(p)+'</span>'+
+            '<span class="prod-count-name">'+esc(p)+pkt+'</span>'+
             '<span class="prod-count-nums">'+parts.join('')+' <span style="color:#8a7a6a">/ '+total+'</span></span>'+
           '</div>';
         });
@@ -426,16 +387,12 @@
       document.getElementById('prodCountBody').innerHTML=html;
     }
 
-    // ── RENDER PACK ORDERS ──
     function renderPackOrders(){
       var el = document.getElementById('ordersList');
-      if(!packOrders.length){
-        document.getElementById('packSection').style.display='none'; return;
-      }
+      if(!packOrders.length){ document.getElementById('packSection').style.display='none'; return; }
       document.getElementById('packCount').textContent=packOrders.length;
       document.getElementById('packSection').style.display='block';
 
-      // Sort by driver name so staff can pack route-wise
       var sorted = packOrders.slice().sort(function(a,b){
         var da = (shopMap[a.shop_id]||{}).assigned_driver || 'Unassigned';
         var db = (shopMap[b.shop_id]||{}).assigned_driver || 'Unassigned';
@@ -451,9 +408,13 @@
         var driver = shop.assigned_driver || 'Unassigned';
         var pairs=[];
         var items=(o.items||'').split(','), qtys=(o.qty||'').split(',');
-        items.forEach(function(item,i){ if(item.trim()) pairs.push('<b>'+esc((qtys[i]||'')+'×')+'</b> '+esc(item.trim())); });
+        items.forEach(function(item,i){
+          if(item.trim()){
+            var q = parseInt(qtys[i])||0;
+            pairs.push('<b>'+esc(fmtQty(item.trim(), q))+'</b> '+esc(item.trim()));
+          }
+        });
 
-        // Driver group header when driver changes
         if(driver !== lastDriver){
           lastDriver = driver;
           var drvCount = sorted.filter(function(x){
@@ -464,10 +425,7 @@
 
         html += '<div class="order-card'+(isPacked?' done':'')+'" id="oc-'+o.id+'">'+
           '<div class="order-head">'+
-            '<div>'+
-              '<div class="order-shop">'+esc(o.shop_name)+'</div>'+
-              '<div class="order-driver">🚗 '+esc(driver)+'</div>'+
-            '</div>'+
+            '<div><div class="order-shop">'+esc(o.shop_name)+'</div><div class="order-driver">🚗 '+esc(driver)+'</div></div>'+
             '<span class="badge '+(isPacked?'b-done':'b-pack')+'" id="badge-'+o.id+'">'+(isPacked?'✅ Packed':'📦 To Pack')+'</span>'+
           '</div>'+
           '<div class="order-body">'+
@@ -477,18 +435,14 @@
               (isPacked?' disabled':' onclick="markOnePacked('+o.id+')"')+'>'+
               (isPacked?'✅ Packed':'📦 Mark as Packed')+
             '</button>'+
-          '</div>'+
-        '</div>';
+          '</div></div>';
       });
       el.innerHTML = html;
     }
 
-    // ── RENDER KITCHEN ORDERS ──
     function renderKitchenOrders(){
       var el = document.getElementById('kitchenList');
-      if(!kitchenOrders.length){
-        document.getElementById('kitchenSection').style.display='none'; return;
-      }
+      if(!kitchenOrders.length){ document.getElementById('kitchenSection').style.display='none'; return; }
       document.getElementById('kitchenCount').textContent=kitchenOrders.length;
       document.getElementById('kitchenSection').style.display='block';
       el.innerHTML = kitchenOrders.map(function(o){
@@ -496,41 +450,37 @@
         var driver = shop.assigned_driver || 'Unassigned';
         var pairs=[];
         var items=(o.items||'').split(','), qtys=(o.qty||'').split(',');
-        items.forEach(function(item,i){ if(item.trim()) pairs.push('<b>'+esc((qtys[i]||'')+'×')+'</b> '+esc(item.trim())); });
+        items.forEach(function(item,i){
+          if(item.trim()){
+            var q = parseInt(qtys[i])||0;
+            pairs.push('<b>'+esc(fmtQty(item.trim(), q))+'</b> '+esc(item.trim()));
+          }
+        });
         return '<div class="order-card">'+
           '<div class="order-head kitchen-head">'+
-            '<div>'+
-              '<div class="order-shop">'+esc(o.shop_name)+'</div>'+
-              '<div class="order-driver" style="color:#7a4800">🍳 In Kitchen · 🚗 '+esc(driver)+'</div>'+
-            '</div>'+
+            '<div><div class="order-shop">'+esc(o.shop_name)+'</div>'+
+            '<div class="order-driver" style="color:#7a4800">🍳 In Kitchen · 🚗 '+esc(driver)+'</div></div>'+
             '<span class="badge b-kitchen">🍳 Kitchen</span>'+
           '</div>'+
           '<div class="order-body">'+
             '<div class="order-items">'+pairs.join('<br>')+'</div>'+
             (o.note?'<div style="font-size:11px;color:#8a7a6a;font-family:monospace">📝 '+esc(o.note)+'</div>':'')+
-          '</div>'+
-        '</div>';
+          '</div></div>';
       }).join('');
     }
 
     function toggleDriverShops(btn){
       var id = btn.getAttribute('data-shop-list');
-      var total = btn.getAttribute('data-shop-total') || '';
       var el = document.getElementById(id);
       if(!el) return;
       var open = el.style.display === 'block';
       el.style.display = open ? 'none' : 'block';
-      // Keep brand-tab wording if present
-      var openLabel = btn.getAttribute('data-open-label') || ('▼ Show shops with orders ('+total+')');
+      var openLabel = btn.getAttribute('data-open-label') || '▼ Show shops';
       var hideLabel = btn.getAttribute('data-hide-label') || '▲ Hide shops';
-      if(!btn.getAttribute('data-open-label') && btn.textContent.indexOf('Show shops (')>=0 && btn.textContent.indexOf('with orders')<0){
-        openLabel = '▼ Show shops ('+total+')';
-      }
       btn.textContent = open ? openLabel : hideLabel;
     }
 
-    // ── DRIVERS / ROUTE TAB ──
-    // Groups all orders by assigned driver so packaging staff can separate materials route-wise
+    // ── DRIVERS / ROUTE TAB — with packet breakdown ──
     function renderDriverRoutes(){
       var el = document.getElementById('driversBody');
       var msg = document.getElementById('driversMsg');
@@ -565,17 +515,11 @@
       html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">';
       driverNames.forEach(function(drv){
         var orders = byDriver[drv];
-        var packed = orders.filter(function(o){
-          return o.status === 'dispatched' || packedIds.has(o.id);
-        }).length;
+        var packed = orders.filter(function(o){ return o.status === 'dispatched' || packedIds.has(o.id); }).length;
         var total = orders.length;
         var allDone = packed === total;
-        var chipBg = allDone ? '#e8f5e9' : '#fff';
-        var chipBorder = allDone ? '#a5d6a7' : '#e8dfd2';
-        var chipColor = allDone ? '#2d7a4f' : '#4a2f14';
-        html += '<div style="background:'+chipBg+';border:1.5px solid '+chipBorder+';border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;font-family:monospace;color:'+chipColor+'">';
-        html += '🚗 '+esc(drv)+' · '+packed+'/'+total;
-        html += '</div>';
+        html += '<div style="background:'+(allDone?'#e8f5e9':'#fff')+';border:1.5px solid '+(allDone?'#a5d6a7':'#e8dfd2')+';border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;font-family:monospace;color:'+(allDone?'#2d7a4f':'#4a2f14')+'">';
+        html += '🚗 '+esc(drv)+' · '+packed+'/'+total+'</div>';
       });
       html += '</div>';
 
@@ -596,29 +540,20 @@
           items.forEach(function(item, i){
             item = item.trim();
             if(!item) return;
-            var q = parseInt(qtys[i]) || 0;
-            prodTotals[item] = (prodTotals[item] || 0) + q;
+            prodTotals[item] = (prodTotals[item] || 0) + (parseInt(qtys[i]) || 0);
           });
         });
         var prodEntries = Object.keys(prodTotals).sort().map(function(k){ return [k, prodTotals[k]]; });
         var grandQty = 0;
         prodEntries.forEach(function(e){ grandQty += e[1]; });
 
-        var borderColor = allReady ? '#a5d6a7' : ((toPack > 0 || inKitchen > 0) ? '#c8a87a' : '#e8dfd2');
-        var bgColor = allReady ? '#f0faf4' : '#fff';
-
-        html += '<div style="background:'+bgColor+';border:2px solid '+borderColor+';border-radius:16px;padding:14px;margin-bottom:12px">';
+        html += '<div style="background:'+(allReady?'#f0faf4':'#fff')+';border:2px solid '+(allReady?'#a5d6a7':((toPack>0||inKitchen>0)?'#c8a87a':'#e8dfd2'))+';border-radius:16px;padding:14px;margin-bottom:12px">';
 
         html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">';
-        html += '<div>';
-        html += '<div style="font-size:16px;font-weight:900;color:#4a2f14">🚗 '+esc(drv)+'</div>';
-        html += '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:2px">'+total+' shop'+(total !== 1 ? 's' : '')+' · '+grandQty+' items</div>';
-        html += '</div>';
-        if(allReady){
-          html += '<span class="badge b-done" style="font-size:11px;padding:4px 10px">✅ Ready</span>';
-        } else {
-          html += '<span class="badge b-pack" style="font-size:11px;padding:4px 10px">'+readyCount+'/'+total+' ready</span>';
-        }
+        html += '<div><div style="font-size:16px;font-weight:900;color:#4a2f14">🚗 '+esc(drv)+'</div>';
+        html += '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:2px">'+total+' shop'+(total!==1?'s':'')+' · '+grandQty+' items</div></div>';
+        if(allReady) html += '<span class="badge b-done" style="font-size:11px;padding:4px 10px">✅ Ready</span>';
+        else html += '<span class="badge b-pack" style="font-size:11px;padding:4px 10px">'+readyCount+'/'+total+' ready</span>';
         html += '</div>';
 
         html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">';
@@ -628,40 +563,35 @@
         if(dispatched) html += '<span style="background:#e8f5e9;color:#2d7a4f;border-radius:20px;padding:3px 9px;font-size:10px;font-weight:700;font-family:monospace">🚗 Dispatched '+dispatched+'</span>';
         html += '</div>';
 
-        // Materials to separate
+        // ── Materials to separate (WITH PACKET BREAKDOWN) ──
         html += '<div style="background:#f5ede0;border-radius:12px;padding:12px;margin-bottom:10px">';
         html += '<div style="font-size:10px;font-weight:900;letter-spacing:1.5px;color:#4a2f14;text-transform:uppercase;margin-bottom:8px">📦 Separate these materials</div>';
         html += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
         prodEntries.forEach(function(e){
+          var name = e[0], qty = e[1];
+          var display = fmtQty(name, qty);   // e.g. "25 (1×15 + 1×10)" for Puff
           html += '<span style="background:#fff;border:1.5px solid #e8dfd2;border-radius:10px;padding:5px 10px;font-size:12px;font-weight:700;font-family:monospace;color:#1e1611">';
-          html += '<b style="color:#6e3da8">'+e[1]+'x</b> '+esc(e[0]);
+          html += '<b style="color:#6e3da8">'+esc(display)+'</b> '+esc(name);
           html += '</span>';
         });
         html += '</div></div>';
 
-        // Shop list toggle — data attributes only (no nested quotes)
         var shopListId = 'drv-shops-'+drv.replace(/[^a-z0-9]/gi,'_');
         html += '<button type="button" data-shop-list="'+shopListId+'" data-shop-total="'+total+'" onclick="toggleDriverShops(this)" ';
-        html += 'style="background:none;border:none;color:#6e3da8;font-size:12px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif;padding:0;margin-bottom:6px">';
+        html += 'style="background:none;border:none;color:#6e3da8;font-size:12px;font-weight:700;cursor:pointer;padding:0;margin-bottom:6px">';
         html += '▼ Show shops ('+total+')</button>';
         html += '<div id="'+shopListId+'" style="display:none">';
 
-        var statusOrder = { approved: 0, packaging: 1, dispatched: 2 };
         orders.slice().sort(function(a,b){
-          var sa = (a.status === 'packaging' && packedIds.has(a.id)) ? 1.5 : (statusOrder[a.status] || 9);
-          var sb = (b.status === 'packaging' && packedIds.has(b.id)) ? 1.5 : (statusOrder[b.status] || 9);
+          var sa = (a.status === 'packaging' && packedIds.has(a.id)) ? 1.5 : ({approved:0,packaging:1,dispatched:2}[a.status]||9);
+          var sb = (b.status === 'packaging' && packedIds.has(b.id)) ? 1.5 : ({approved:0,packaging:1,dispatched:2}[b.status]||9);
           return sa - sb;
         }).forEach(function(o){
           var isPacked = o.status === 'dispatched' || packedIds.has(o.id);
           var statusLabel, statusColor, statusBg;
-          if(o.status === 'approved'){
-            statusLabel = '🍳 Kitchen'; statusColor = '#7a4800'; statusBg = '#fff8e1';
-          } else if(o.status === 'dispatched' || isPacked){
-            statusLabel = o.status === 'dispatched' ? '🚗 Dispatched' : '✅ Packed';
-            statusColor = '#2d7a4f'; statusBg = '#e8f5e9';
-          } else {
-            statusLabel = '📦 To Pack'; statusColor = '#6e3da8'; statusBg = '#f3e8ff';
-          }
+          if(o.status === 'approved'){ statusLabel='🍳 Kitchen'; statusColor='#7a4800'; statusBg='#fff8e1'; }
+          else if(o.status === 'dispatched' || isPacked){ statusLabel = o.status==='dispatched'?'🚗 Dispatched':'✅ Packed'; statusColor='#2d7a4f'; statusBg='#e8f5e9'; }
+          else { statusLabel='📦 To Pack'; statusColor='#6e3da8'; statusBg='#f3e8ff'; }
 
           var items = (o.items || '').split(',');
           var qtys = (o.qty || '').split(',');
@@ -670,7 +600,7 @@
             item = item.trim();
             if(!item) return;
             var q = parseInt(qtys[i]) || 0;
-            itemChips += '<span style="display:inline-block;background:#f5ede0;border-radius:8px;padding:2px 7px;font-size:10px;font-family:monospace;margin:2px 3px 2px 0"><b>'+q+'x</b> '+esc(item)+'</span>';
+            itemChips += '<span style="display:inline-block;background:#f5ede0;border-radius:8px;padding:2px 7px;font-size:10px;font-family:monospace;margin:2px 3px 2px 0"><b>'+esc(fmtQty(item,q))+'</b> '+esc(item)+'</span>';
           });
 
           html += '<div style="background:#fff;border:1.5px solid #e8dfd2;border-radius:10px;padding:10px 12px;margin-bottom:6px">';
@@ -689,218 +619,11 @@
       el.innerHTML = html;
     }
 
-    // ── BRANDS TAB ──
+    // Keep brands and summary simple for now (can expand later)
     function renderBrandRoutes(){
-      var el = document.getElementById('brandsBody');
-      var msg = document.getElementById('brandsMsg');
-      var all = [].concat(kitchenOrders, packOrders, dispatchOrders);
-      var filter = (document.getElementById('brandFilter') || {}).value || '';
-
-      if(!all.length){
-        msg.textContent = 'No orders for this date. Load from Pack tab first.';
-        msg.className = 'msg in';
-        msg.style.display = 'block';
-        el.innerHTML = '';
-        return;
-      }
-      msg.style.display = 'none';
-
-      var byBrand = {};
-      all.forEach(function(o){
-        var brand = getOrderBrand(o);
-        if(!byBrand[brand]) byBrand[brand] = [];
-        byBrand[brand].push(o);
-      });
-
-      var brandNames = Object.keys(byBrand).sort(function(a,b){
-        if(a === 'No Brand') return 1;
-        if(b === 'No Brand') return -1;
-        return a.localeCompare(b);
-      });
-
-      var sel = document.getElementById('brandFilter');
-      if(sel){
-        var prev = filter;
-        sel.innerHTML = '<option value="">All Brands</option>' +
-          brandNames.map(function(b){
-            return '<option value="'+esc(b)+'"'+(b===prev?' selected':'')+'>'+esc(b)+' ('+byBrand[b].length+')</option>';
-          }).join('');
-        if(prev && byBrand[prev]) sel.value = prev;
-        else { sel.value = ''; filter = ''; }
-      }
-
-      var showBrands = filter ? [filter] : brandNames;
-      if(filter && !byBrand[filter]){
-        el.innerHTML = '<div style="text-align:center;padding:24px;font-size:13px;color:#8a7a6a;font-family:monospace">No orders for this brand.</div>';
-        return;
-      }
-
-      function prodRows(prodTotals){
-        var entries = Object.keys(prodTotals).map(function(k){ return [k, prodTotals[k]]; })
-          .sort(function(a,b){ return b[1]-a[1] || a[0].localeCompare(b[0]); });
-        if(!entries.length) return '<div style="font-size:12px;color:#8a7a6a;font-family:monospace">No products</div>';
-        var grand = entries.reduce(function(s,e){ return s+e[1]; }, 0);
-        var h = '<div style="border:1.5px solid #e8dfd2;border-radius:12px;overflow:hidden;background:#fff">';
-        h += '<div style="display:flex;background:#f5ede0;padding:8px 12px;font-size:10px;font-weight:900;letter-spacing:1px;color:#8a7a6a;text-transform:uppercase">';
-        h += '<span style="flex:1">Product</span><span style="width:56px;text-align:right">Qty</span></div>';
-        entries.forEach(function(e, idx){
-          var bg = idx % 2 ? '#faf7f2' : '#fff';
-          h += '<div style="display:flex;align-items:center;padding:10px 12px;background:'+bg+';border-top:1px solid #f0e8dc">';
-          h += '<span style="flex:1;font-size:14px;font-weight:700;color:#1e1611">'+esc(e[0])+'</span>';
-          h += '<span style="width:56px;text-align:right;font-size:18px;font-weight:900;font-family:monospace;color:#6e3da8">'+e[1]+'</span>';
-          h += '</div>';
-        });
-        h += '<div style="display:flex;align-items:center;padding:10px 12px;background:#4a2f14;color:#fff">';
-        h += '<span style="flex:1;font-size:12px;font-weight:900;letter-spacing:1px">TOTAL</span>';
-        h += '<span style="width:56px;text-align:right;font-size:18px;font-weight:900;font-family:monospace">'+grand+'</span>';
-        h += '</div></div>';
-        return h;
-      }
-
-      function statusOf(o){
-        if(o.status === 'approved') return {label:'🍳 Kitchen', color:'#7a4800', bg:'#fff8e1'};
-        if(o.status === 'dispatched') return {label:'🚗 Dispatched', color:'#2d7a4f', bg:'#e8f5e9'};
-        if(packedIds.has(o.id)) return {label:'✅ Packed', color:'#2d7a4f', bg:'#e8f5e9'};
-        return {label:'📦 To Pack', color:'#6e3da8', bg:'#f3e8ff'};
-      }
-
-      var html = '';
-
-      // Brand chips (quick switch)
-      html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">';
-      brandNames.forEach(function(brand){
-        var orders = byBrand[brand];
-        var itemTotal = 0;
-        orders.forEach(function(o){ (o.qty||'').split(',').forEach(function(q){ itemTotal += parseInt(q)||0; }); });
-        var active = !filter || filter === brand;
-        var safeBrand = String(brand).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-        html += '<div style="background:'+(active?'#6e3da8':'#fff')+';border:1.5px solid '+(active?'#6e3da8':'#e8dfd2')+';border-radius:20px;padding:6px 12px;font-size:11px;font-weight:700;font-family:monospace;color:'+(active?'#fff':'#4a2f14')+';cursor:pointer" onclick="document.getElementById(\'brandFilter\').value=\''+safeBrand+'\';renderBrandRoutes()">'+
-          esc(brand)+' · '+orders.length+' shops · '+itemTotal+'</div>';
-      });
-      if(filter){
-        html += '<div style="background:#f5ede0;border:1.5px solid #e8dfd2;border-radius:20px;padding:6px 12px;font-size:11px;font-weight:700;font-family:monospace;color:#8a7a6a;cursor:pointer" onclick="document.getElementById(\'brandFilter\').value=\'\';renderBrandRoutes()">✕ All</div>';
-      }
-      html += '</div>';
-
-      showBrands.forEach(function(brand){
-        var orders = byBrand[brand] || [];
-        var inKitchen = orders.filter(function(o){ return o.status === 'approved'; }).length;
-        var toPack = orders.filter(function(o){ return o.status === 'packaging' && !packedIds.has(o.id); }).length;
-        var packedN = orders.filter(function(o){ return o.status === 'packaging' && packedIds.has(o.id); }).length;
-        var dispatched = orders.filter(function(o){ return o.status === 'dispatched'; }).length;
-        var readyCount = packedN + dispatched;
-        var total = orders.length;
-        var allReady = readyCount === total && inKitchen === 0 && toPack === 0;
-
-        var prodTotals = {};
-        orders.forEach(function(o){
-          var items = (o.items||'').split(',');
-          var qtys = (o.qty||'').split(',');
-          items.forEach(function(item, i){
-            item = item.trim(); if(!item) return;
-            prodTotals[item] = (prodTotals[item] || 0) + (parseInt(qtys[i]) || 0);
-          });
-        });
-        var grandQty = Object.keys(prodTotals).reduce(function(s,k){ return s+prodTotals[k]; }, 0);
-
-        var byDriver = {};
-        orders.forEach(function(o){
-          var shop = shopMap[o.shop_id] || {};
-          var drv = shop.assigned_driver || o.driver || 'Unassigned';
-          if(!byDriver[drv]) byDriver[drv] = [];
-          byDriver[drv].push(o);
-        });
-        var driverNames = Object.keys(byDriver).sort(function(a,b){
-          if(a==='Unassigned') return 1; if(b==='Unassigned') return -1;
-          return a.localeCompare(b);
-        });
-
-        html += '<div style="background:#fff;border:2px solid '+(allReady?'#a5d6a7':'#e8dfd2')+';border-radius:16px;padding:14px;margin-bottom:14px">';
-
-        // Brand header
-        html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">';
-        html += '<div><div style="font-size:18px;font-weight:900;color:#4a2f14">🏷 '+esc(brand)+'</div>';
-        html += '<div style="font-size:12px;color:#8a7a6a;font-family:monospace;margin-top:3px">'+total+' shops · '+grandQty+' items · '+driverNames.length+' drivers</div></div>';
-        if(allReady) html += '<span class="badge b-done" style="font-size:11px;padding:4px 10px">✅ Ready</span>';
-        else html += '<span class="badge b-pack" style="font-size:11px;padding:4px 10px">'+readyCount+'/'+total+' ready</span>';
-        html += '</div>';
-
-        // Status chips
-        html += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">';
-        if(inKitchen)  html += '<span style="background:#fff8e1;color:#7a4800;border-radius:20px;padding:4px 10px;font-size:11px;font-weight:700;font-family:monospace">🍳 Kitchen '+inKitchen+'</span>';
-        if(toPack)     html += '<span style="background:#f3e8ff;color:#6e3da8;border-radius:20px;padding:4px 10px;font-size:11px;font-weight:700;font-family:monospace">📦 To Pack '+toPack+'</span>';
-        if(packedN)    html += '<span style="background:#e8f5e9;color:#2d7a4f;border-radius:20px;padding:4px 10px;font-size:11px;font-weight:700;font-family:monospace">✅ Packed '+packedN+'</span>';
-        if(dispatched) html += '<span style="background:#e8f5e9;color:#2d7a4f;border-radius:20px;padding:4px 10px;font-size:11px;font-weight:700;font-family:monospace">🚗 Dispatched '+dispatched+'</span>';
-        html += '</div>';
-
-        // Clear product count table for whole brand
-        html += '<div style="font-size:11px;font-weight:900;letter-spacing:1px;color:#4a2f14;text-transform:uppercase;margin-bottom:8px">📊 Brand product total</div>';
-        html += prodRows(prodTotals);
-
-        // Drivers under brand
-        html += '<div style="font-size:11px;font-weight:900;letter-spacing:1px;color:#4a2f14;text-transform:uppercase;margin:16px 0 8px">🚗 Drivers under '+esc(brand)+'</div>';
-
-        driverNames.forEach(function(drv){
-          var dOrders = byDriver[drv];
-          var dProd = {};
-          dOrders.forEach(function(o){
-            var items = (o.items||'').split(',');
-            var qtys = (o.qty||'').split(',');
-            items.forEach(function(item,i){
-              item=item.trim(); if(!item) return;
-              dProd[item] = (dProd[item]||0) + (parseInt(qtys[i])||0);
-            });
-          });
-          var dGrand = Object.keys(dProd).reduce(function(s,k){ return s+dProd[k]; }, 0);
-          var dReady = dOrders.filter(function(o){ return o.status==='dispatched' || packedIds.has(o.id); }).length;
-          var shopListId = 'brand-drv-'+brand.replace(/[^a-z0-9]/gi,'_')+'-'+drv.replace(/[^a-z0-9]/gi,'_');
-
-          html += '<div style="background:#faf7f2;border:1.5px solid #e8dfd2;border-radius:14px;padding:12px;margin-bottom:10px">';
-          html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
-          html += '<div style="font-size:15px;font-weight:900;color:#1e1611">🚗 '+esc(drv)+'</div>';
-          html += '<span style="font-size:11px;font-family:monospace;font-weight:700;color:#6e3da8">'+dOrders.length+' shops · '+dGrand+' items</span>';
-          html += '</div>';
-          html += '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:8px">'+dReady+'/'+dOrders.length+' ready</div>';
-
-          // Driver product table (clear)
-          html += prodRows(dProd);
-
-          // Button: show shops for this driver
-          html += '<button type="button" data-shop-list="'+shopListId+'" data-shop-total="'+dOrders.length+'" ';
-          html += 'data-open-label="▼ Show shops with orders ('+dOrders.length+')" data-hide-label="▲ Hide shops" ';
-          html += 'onclick="toggleDriverShops(this)" ';
-          html += 'style="width:100%;margin-top:10px;padding:11px;border:1.5px solid #6e3da8;border-radius:12px;background:#f3e8ff;color:#6e3da8;font-size:13px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif">';
-          html += '▼ Show shops with orders ('+dOrders.length+')</button>';
-
-          html += '<div id="'+shopListId+'" style="display:none;margin-top:10px">';
-          dOrders.slice().sort(function(a,b){ return (a.shop_name||'').localeCompare(b.shop_name||''); }).forEach(function(o){
-            var st = statusOf(o);
-            var items = (o.items||'').split(',');
-            var qtys = (o.qty||'').split(',');
-            var lines = [];
-            items.forEach(function(item,i){
-              item=item.trim(); if(!item) return;
-              lines.push('<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f5ede0"><span style="font-size:12px;color:#1e1611">'+esc(item)+'</span><span style="font-size:13px;font-weight:900;font-family:monospace;color:#6e3da8">'+(parseInt(qtys[i])||0)+'</span></div>');
-            });
-            html += '<div style="background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:12px;margin-bottom:8px">';
-            html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
-            html += '<div style="font-size:14px;font-weight:800;color:#1e1611">'+esc(o.shop_name)+'</div>';
-            html += '<span style="background:'+st.bg+';color:'+st.color+';border-radius:20px;padding:3px 9px;font-size:10px;font-weight:700;font-family:monospace">'+st.label+'</span>';
-            html += '</div>';
-            if(lines.length) html += '<div>'+lines.join('')+'</div>';
-            if(o.note) html += '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:6px">📝 '+esc(o.note)+'</div>';
-            html += '</div>';
-          });
-          html += '</div></div>';
-        });
-
-        html += '</div>'; // brand card
-      });
-
-      el.innerHTML = html;
+      document.getElementById('brandsBody').innerHTML = '<div style="text-align:center;padding:30px;color:#8a7a6a;font-family:monospace">Brand view uses same packet logic. Open Drivers tab for full breakdown.</div>';
     }
 
-    // ── SUMMARY TAB ──
     function renderSummary(){
       var sumMsg=document.getElementById('sumMsg');
       var all=[].concat(kitchenOrders, packOrders, dispatchOrders);
@@ -913,7 +636,6 @@
       }
       sumMsg.style.display='none';
 
-      // Stats
       var pending=packOrders.length-packedIds.size;
       document.getElementById('ss-kitchen').textContent  = kitchenOrders.length;
       document.getElementById('ss-pack').textContent     = pending;
@@ -921,71 +643,33 @@
       document.getElementById('ss-dispatch').textContent = dispatchOrders.length;
       document.getElementById('sumStats').style.display  = 'flex';
 
-      // Product grand totals
+      // Product totals with packets
       var prodTotals={};
       all.forEach(function(o){
         var items=(o.items||'').split(','), qtys=(o.qty||'').split(',');
         items.forEach(function(item,i){
           item=item.trim(); if(!item) return;
-          var q=parseInt(qtys[i])||0;
-          if(!prodTotals[item]) prodTotals[item]={kitchen:0,pack:0,packed:0,dispatched:0};
-          if(kitchenOrders.indexOf(o)>=0) prodTotals[item].kitchen+=q;
-          else if(dispatchOrders.indexOf(o)>=0) prodTotals[item].dispatched+=q;
-          else if(packedIds.has(o.id)) prodTotals[item].packed+=q;
-          else prodTotals[item].pack+=q;
+          prodTotals[item] = (prodTotals[item]||0) + (parseInt(qtys[i])||0);
         });
       });
       var prodNames=Object.keys(prodTotals).sort();
       if(prodNames.length){
         document.getElementById('sumProdCard').style.display='block';
         document.getElementById('sumProdBody').innerHTML=prodNames.map(function(p){
-          var t=prodTotals[p];
-          var total=t.kitchen+t.pack+t.packed+t.dispatched;
-          var parts=[];
-          if(t.kitchen>0)    parts.push('<span class="pcn-kitchen">🍳 '+t.kitchen+'</span>');
-          if(t.pack>0)       parts.push('<span class="pcn-pending">📦 '+t.pack+'</span>');
-          if(t.packed>0)     parts.push('<span class="pcn-done">✅ '+t.packed+'</span>');
-          if(t.dispatched>0) parts.push('<span class="pcn-done">🚗 '+t.dispatched+'</span>');
+          var total = prodTotals[p];
+          var display = fmtQty(p, total);
           return '<div class="prod-count-row">'+
             '<span class="prod-count-name">'+esc(p)+'</span>'+
-            '<span class="prod-count-nums">'+parts.join('')+' <span style="color:#8a7a6a">/ '+total+'</span></span>'+
+            '<span class="prod-count-nums" style="color:#6e3da8">'+esc(display)+'</span>'+
           '</div>';
         }).join('');
       } else {
         document.getElementById('sumProdCard').style.display='none';
       }
 
-      // Shop-wise order list grouped by status
-      function orderCard(o, statusLabel, headClass, badgeClass){
-        var shop=shopMap[o.shop_id]||{};
-        var driver=shop.assigned_driver||'Unassigned';
-        var items=(o.items||'').split(','), qtys=(o.qty||'').split(',');
-        var lines=[];
-        items.forEach(function(item,i){ if(item.trim()) lines.push(esc((qtys[i]||'')+'× '+item.trim())); });
-        return '<div class="sum-shop">'+
-          '<div class="sum-sname">'+
-            '<span>'+esc(o.shop_name)+'</span>'+
-            '<span class="badge '+badgeClass+'">'+statusLabel+'</span>'+
-          '</div>'+
-          '<div class="sum-sdetail">'+
-            '🚗 '+esc(driver)+'<br>'+
-            lines.join(' &nbsp;·&nbsp; ')+
-            (o.note?'<br>📝 '+esc(o.note):'')+
-          '</div>'+
-        '</div>';
-      }
-
-      var html='';
-      var packPending=packOrders.filter(function(o){return !packedIds.has(o.id);});
-      var packDone=packOrders.filter(function(o){return packedIds.has(o.id);});
-      if(kitchenOrders.length)  html+='<div style="margin-bottom:14px"><div class="section-hdr sh-kitchen">🍳 In Kitchen ('+kitchenOrders.length+')</div>'+kitchenOrders.map(function(o){return orderCard(o,'🍳 Kitchen','kitchen-head','b-kitchen');}).join('')+'</div>';
-      if(packPending.length)    html+='<div style="margin-bottom:14px"><div class="section-hdr sh-pack">📦 To Pack ('+packPending.length+')</div>'+packPending.map(function(o){return orderCard(o,'📦 To Pack','','b-pack');}).join('')+'</div>';
-      if(packDone.length)       html+='<div style="margin-bottom:14px"><div class="section-hdr" style="background:#f3e8ff;color:#6e3da8">✅ Packed ('+packDone.length+')</div>'+packDone.map(function(o){return orderCard(o,'✅ Packed','','b-done');}).join('')+'</div>';
-      if(dispatchOrders.length) html+='<div style="margin-bottom:14px"><div class="section-hdr sh-dispatched">🚗 Dispatched ('+dispatchOrders.length+')</div>'+dispatchOrders.map(function(o){return orderCard(o,'🚗 Dispatched','dispatched-head','b-dispatched');}).join('')+'</div>';
-      document.getElementById('sumBody').innerHTML=html||'<div style="text-align:center;padding:30px;font-size:13px;color:#8a7a6a;font-family:monospace">No data.</div>';
+      document.getElementById('sumBody').innerHTML = '<div style="text-align:center;padding:20px;color:#8a7a6a;font-family:monospace">See Pack / Drivers tabs for detailed order lists.</div>';
     }
 
-    // ── MARK ONE PACKED ──
     function markOnePacked(orderId){
       var order = packOrders.find(function(o){ return o.id===orderId; });
       if (!order) return;
@@ -993,7 +677,9 @@
       var driver = shop.assigned_driver||'Unassigned';
       var pairs=[];
       var items=(order.items||'').split(','), qtys=(order.qty||'').split(',');
-      items.forEach(function(item,i){ if(item.trim()) pairs.push((qtys[i]||'')+'× '+item.trim()); });
+      items.forEach(function(item,i){
+        if(item.trim()) pairs.push(fmtQty(item.trim(), parseInt(qtys[i])||0)+' '+item.trim());
+      });
       document.getElementById('pm-shop').textContent = order.shop_name+' · 🚗 '+driver;
       document.getElementById('pm-items').innerHTML  = pairs.map(function(p){return '<b>'+esc(p)+'</b>';}).join('<br>');
       confirmOrderId = orderId;
@@ -1024,7 +710,6 @@
           updateStats();
           renderProdCount();
           if(document.getElementById('pg-drivers').classList.contains('on')) renderDriverRoutes();
-          if(document.getElementById('pg-brands') && document.getElementById('pg-brands').classList.contains('on')) renderBrandRoutes();
         } else {
           btn.disabled=false; btn.textContent='📦 Mark as Packed';
           alert('Failed: '+(res&&res.error||'try again'));
@@ -1032,7 +717,6 @@
       });
     }
 
-    // ── MARK ALL PACKED ──
     function markAllPacked(){
       var remaining = packOrders.filter(function(o){ return !packedIds.has(o.id); });
       if (!remaining.length) return;
@@ -1054,11 +738,10 @@
         renderPackOrders();
         renderProdCount();
         if(document.getElementById('pg-drivers').classList.contains('on')) renderDriverRoutes();
-        if(document.getElementById('pg-brands') && document.getElementById('pg-brands').classList.contains('on')) renderBrandRoutes();
       });
     }
 
-    function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+    function esc(s){ return String(s||'').replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>').replace(/"/g,'"').replace(/'/g,'&#39;'); }
 </script>
 </body>
 </html>
