@@ -6626,27 +6626,81 @@ apiPost({
       _zohoPullSelCount('prod');
     }
 
+
+    /** Fetch all pages from Zoho list_* actions (max ~10 pages / 2000 rows). */
+    function _zohoListAllPages(action, extra) {
+      extra = extra || {};
+      var all = [];
+      var page = 1;
+      var maxPages = 10;
+      function next() {
+        var body = Object.assign({ page: page, per_page: 200 }, extra);
+        return zohoEdge(action, body).then(function(data) {
+          if (data && data.code !== 0 && data.code !== undefined) {
+            throw new Error(data.message || ('Zoho error ' + data.code));
+          }
+          var key = action === 'list_contacts' ? 'contacts' : (action === 'list_items' ? 'items' : (action === 'list_taxes' ? 'taxes' : 'items'));
+          var rows = (data && (data[key] || data[key.replace(/s$/, '')])) || [];
+          if (!Array.isArray(rows)) rows = [];
+          all = all.concat(rows);
+          var ctx = (data && data.page_context) || {};
+          var hasMore = !!(ctx.has_more_page || ctx.has_more_pages);
+          if (hasMore && page < maxPages && rows.length) {
+            page += 1;
+            return next();
+          }
+          return { data: data, rows: all };
+        });
+      }
+      return next();
+    }
+    function _zohoIsActiveStatus(s) {
+      var v = String(s || '').toLowerCase();
+      if (!v) return true; // unknown → keep
+      return v === 'active' || v === 'active_for_customers' || v === 'active_for_vendors';
+    }
+    function _zohoIsCustomerContact(z) {
+      var t = String(z.contact_type || z.customer_sub_type || '').toLowerCase();
+      // exclude pure vendors
+      if (t === 'vendor') return false;
+      if (t === 'customer' || t === 'business' || t === 'individual') return true;
+      // some APIs use customer_name filled for customers
+      if (z.customer_name && !z.vendor_name) return true;
+      if (z.vendor_name && !z.customer_name && t !== 'customer') return false;
+      // default: include if not clearly vendor
+      return t !== 'vendor';
+    }
+
     function zohoPullCustomers(){
       if(!_zohoEnabled){
         _zohoPullMsg('zoho-pull-cust-msg', 'Turn on Zoho Integration first (Users settings or Toggle).', 'er');
         return;
       }
-      _zohoPullMsg('zoho-pull-cust-msg', '⏳ Pulling contacts from Zoho…', 'in');
+      _zohoPullMsg('zoho-pull-cust-msg', '⏳ Pulling active customers from Zoho (not vendors)…', 'in');
       document.getElementById('zoho-apply-cust-btn').style.display = 'none';
       document.getElementById('zoho-pull-cust-list').style.display = 'none';
       document.getElementById('zoho-pull-cust-summary').style.display = 'none';
       var _ct = document.getElementById('zoho-pull-cust-tools'); if(_ct) _ct.style.display = 'none';
       Promise.all([
-        zohoEdge('list_contacts', { page: 1, per_page: 200 }),
+        _zohoListAllPages('list_contacts', {
+          contact_type: 'customer',
+          filter_by: 'Status.Active',
+          status: 'active'
+        }),
         loadCustomerMaster(true)
       ]).then(function(res){
-        var data = res[0] || {};
-        if(data.code !== 0 && data.code !== undefined){
-          throw data.message || ('Zoho error ' + data.code);
-        }
-        var contacts = data.contacts || data.contact || [];
+        var pack = res[0] || {};
+        var data = pack.data || {};
+        var contacts = pack.rows || data.contacts || data.contact || [];
         if(!Array.isArray(contacts)) contacts = [];
-        if(!contacts.length && data.message){
+        // Keep only active SALES customers (exclude vendors + inactive)
+        var before = contacts.length;
+        contacts = contacts.filter(function(z){
+          if (!_zohoIsCustomerContact(z)) return false;
+          if (z.status != null && !_zohoIsActiveStatus(z.status)) return false;
+          return true;
+        });
+        if(!contacts.length && data.message && before === 0){
           throw data.message + ' — ensure zoho-token edge function supports action list_contacts';
         }
         _zohoPullCustomers = contacts.map(function(z){
@@ -6878,23 +6932,32 @@ apiPost({
         _zohoPullMsg('zoho-pull-prod-msg', 'Turn on Zoho Integration first.', 'er');
         return;
       }
-      _zohoPullMsg('zoho-pull-prod-msg', '⏳ Pulling items from Zoho…', 'in');
+      _zohoPullMsg('zoho-pull-prod-msg', '⏳ Pulling active products from Zoho…', 'in');
       document.getElementById('zoho-apply-prod-btn').style.display = 'none';
       document.getElementById('zoho-pull-prod-list').style.display = 'none';
       document.getElementById('zoho-pull-prod-summary').style.display = 'none';
       var _pt = document.getElementById('zoho-pull-prod-tools'); if(_pt) _pt.style.display = 'none';
       Promise.all([
-        zohoEdge('list_items', { page: 1, per_page: 200 }),
+        _zohoListAllPages('list_items', { filter_by: 'Status.Active' }),
         loadProductMaster(true),
         zohoEdge('list_taxes', { page: 1, per_page: 200 }).catch(function(){ return {}; })
       ]).then(function(res){
-        var data = res[0] || {};
+        var pack = res[0] || {};
+        var data = pack.data || {};
         if(data.code !== 0 && data.code !== undefined){
           throw data.message || ('Zoho error ' + data.code);
         }
-        var items = data.items || data.item || [];
+        var items = pack.rows || data.items || data.item || [];
         if(!Array.isArray(items)) items = [];
-        if(!items.length && data.message){
+        // Exclude inactive items (backup if API ignored filter)
+        var before = items.length;
+        items = items.filter(function(it){
+          var st = String(it.status || it.item_status || '').toLowerCase();
+          if (st === 'inactive' || st === 'disabled') return false;
+          if (it.is_active === false || it.active === false) return false;
+          return true;
+        });
+        if(!items.length && data.message && before === 0){
           throw data.message + ' — ensure zoho-token edge function supports action list_items';
         }
         var taxData = res[2] || {};
@@ -7245,6 +7308,7 @@ apiPost({
       return 0;
     }
     function _payIsPaid(o) { return String(o.payment_status || '').toLowerCase() === 'paid'; }
+    function _payIsVoid(o) { return String(o.payment_status || '').toLowerCase() === 'void' || String(o.zoho_invoice_status || '').toLowerCase() === 'void'; }
     function _payHasDoc(o) {
       return !!(o.zoho_invoice_id || o.zoho_invoice_number || o.invoice_total != null || o.balance_due != null || o.payment_status);
     }
@@ -7262,14 +7326,62 @@ apiPost({
         renderPaymentsDesk();
       });
     }
-    /** Map Zoho invoice/challan status → local payment_status */
+    /** Zoho Books invoice statuses: draft, pending_approval, approved, sent, viewed,
+     *  partially_paid, paid, overdue, void, unpaid, … */
+    function _payNormalizeZohoStatus(zStatus) {
+      var s = String(zStatus || '').toLowerCase().replace(/\s+/g, '_');
+      if (s === 'partiallypaid') s = 'partially_paid';
+      if (s === 'pendingapproval') s = 'pending_approval';
+      return s;
+    }
+    function _payZohoStatusLabel(zStatus) {
+      var s = _payNormalizeZohoStatus(zStatus);
+      var map = {
+        draft: 'Draft',
+        pending_approval: 'Pending approval',
+        approved: 'Approved',
+        rejected: 'Rejected',
+        sent: 'Sent',
+        viewed: 'Viewed',
+        unpaid: 'Unpaid',
+        partially_paid: 'Partially paid',
+        paid: 'Paid',
+        overdue: 'Overdue',
+        void: 'Void',
+        open: 'Open',
+        closed: 'Closed',
+        delivered: 'Delivered'
+      };
+      if (map[s]) return map[s];
+      if (!s) return '';
+      return s.replace(/_/g, ' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
+    }
+    function _payZohoStatusBadge(zStatus) {
+      var s = _payNormalizeZohoStatus(zStatus);
+      if (!s) return '';
+      var bg = '#eceff1', fg = '#37474f';
+      if (s === 'draft' || s === 'pending_approval') { bg = '#f5f5f5'; fg = '#616161'; }
+      else if (s === 'sent' || s === 'viewed' || s === 'approved') { bg = '#e3f2fd'; fg = '#1565c0'; }
+      else if (s === 'overdue' || s === 'unpaid') { bg = '#fde8e8'; fg = '#c8382a'; }
+      else if (s === 'partially_paid') { bg = '#fff8e1'; fg = '#7a4800'; }
+      else if (s === 'paid' || s === 'closed') { bg = '#e8f5e9'; fg = '#1a5a38'; }
+      else if (s === 'void' || s === 'rejected') { bg = '#efebe9'; fg = '#5d4037'; }
+      return '<span style="background:'+bg+';color:'+fg+';border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px" title="Zoho status">Zoho: '+esc(_payZohoStatusLabel(s))+'</span>';
+    }
+    /** Map Zoho invoice/challan status → local payment_status for Pay desk */
     function _payMapZohoStatus(zStatus, balance) {
-      var s = String(zStatus || '').toLowerCase();
+      var s = _payNormalizeZohoStatus(zStatus);
       var bal = parseFloat(balance);
-      if (s === 'paid' || s === 'void') return 'paid';
+      if (s === 'void') return 'void';
+      if (s === 'paid') return 'paid';
       if (s === 'partially_paid' || s.indexOf('partial') >= 0) return 'partial';
+      if (s === 'overdue') return 'unpaid';
+      if (s === 'draft' || s === 'pending_approval' || s === 'approved' || s === 'sent' || s === 'viewed' || s === 'unpaid') {
+        if (!isNaN(bal) && bal <= 0 && (s === 'sent' || s === 'viewed' || s === 'approved')) return 'paid';
+        return 'unpaid';
+      }
       if (!isNaN(bal) && bal <= 0 && s) return 'paid';
-      if (!isNaN(bal) && bal > 0 && s === 'paid') return 'paid';
+      if (!isNaN(bal) && bal > 0) return 'unpaid';
       return 'unpaid';
     }
     /** Fetch one Zoho doc (invoice first, then delivery challan). */
@@ -7291,7 +7403,7 @@ apiPost({
       var balance = doc.balance != null ? parseFloat(doc.balance) : total;
       if (isNaN(total)) total = null;
       if (isNaN(balance)) balance = total;
-      var zStatus = doc.status || doc.challan_status || '';
+      var zStatus = _payNormalizeZohoStatus(doc.status || doc.challan_status || doc.current_sub_status || '');
       var paySt = _payMapZohoStatus(zStatus, balance);
       if (paySt === 'paid') balance = 0;
       var isDc = !!(data && data.deliverychallan) || String(o.zoho_doc_type || '').toLowerCase() === 'delivery_challan';
@@ -7301,7 +7413,8 @@ apiPost({
         status: o.status || 'approved',
         zoho_invoice_id: doc.invoice_id || doc.deliverychallan_id || o.zoho_invoice_id || '',
         zoho_invoice_number: doc.invoice_number || doc.deliverychallan_number || o.zoho_invoice_number || '',
-        payment_status: paySt
+        payment_status: paySt === 'void' ? 'void' : paySt,
+        zoho_invoice_status: zStatus || ''
       };
       if (total != null) body.invoice_total = total;
       if (balance != null) body.balance_due = balance;
@@ -7311,7 +7424,8 @@ apiPost({
         if (res && res.ok === false) throw new Error(res.error || 'DB update failed');
         o.invoice_total = total != null ? total : o.invoice_total;
         o.balance_due = balance != null ? balance : o.balance_due;
-        o.payment_status = paySt;
+        o.payment_status = body.payment_status;
+        o.zoho_invoice_status = zStatus || o.zoho_invoice_status;
         if (body.zoho_invoice_number) o.zoho_invoice_number = body.zoho_invoice_number;
         return o;
       });
@@ -7327,7 +7441,7 @@ apiPost({
         _payDeskMsg('No rows with Zoho document id to sync.', false);
         return;
       }
-      if (!confirm('Sync ' + targets.length + ' document(s) from Zoho Books?\nUpdates total, balance and paid status from Zoho.')) return;
+      if (!confirm('Sync ' + targets.length + ' document(s) from Zoho Books?\nUpdates total, balance and Zoho status (draft/sent/paid/overdue…) from Zoho.')) return;
       _payDeskMsg('Syncing 0/' + targets.length + ' from Zoho…', null);
       var ok = 0, fail = 0, i = 0;
       function next() {
@@ -7375,8 +7489,8 @@ apiPost({
     }
     function renderPaymentsDesk() {
       var q = ((document.getElementById('pay-desk-q') || {}).value || '').toLowerCase().trim();
-      var unpaid = _payDeskRows.filter(function(o){ return !_payIsPaid(o); });
-      var claims = _payDeskRows.filter(function(o){ return o.customer_claimed_paid && !_payIsPaid(o); });
+      var unpaid = _payDeskRows.filter(function(o){ return !_payIsPaid(o) && !_payIsVoid(o); });
+      var claims = _payDeskRows.filter(function(o){ return o.customer_claimed_paid && !_payIsPaid(o) && !_payIsVoid(o); });
       var paid = _payDeskRows.filter(function(o){ return _payIsPaid(o); });
       var due = unpaid.reduce(function(s,o){ return s + _payDue(o); }, 0);
       var st = document.getElementById('pay-desk-stats');
@@ -7408,7 +7522,9 @@ apiPost({
         if (o.customer_claimed_paid && st2 !== 'paid') badges += '<span style="background:#e3f2fd;color:#1565c0;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">Request</span>';
         if (st2 === 'paid') badges += '<span style="background:#e8f5e9;color:#1a5a38;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">Paid</span>';
         else if (st2 === 'partial') badges += '<span style="background:#fff8e1;color:#7a4800;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">Partial</span>';
+        else if (st2 === 'void') badges += '<span style="background:#efebe9;color:#5d4037;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">Void</span>';
         else badges += '<span style="background:#fde8e8;color:#c8382a;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">Unpaid</span>';
+        badges += _payZohoStatusBadge(o.zoho_invoice_status);
         if (String(o.zoho_doc_type||'').toLowerCase()==='delivery_challan')
           badges += '<span style="background:#f3e5f5;color:#6a1b9a;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">Challan</span>';
         else if (o.zoho_invoice_number || o.zoho_invoice_id)
