@@ -929,6 +929,58 @@
     var _orderClosed   = false; // true when admin has closed the order window
     var _amendMode     = false; // true when customer is adding more to an approved order
     var _amendMinQty   = {};    // product_id → minimum qty (from approved order, cannot go below)
+    function renderInvoicePaymentCard(o){
+      if (!o || !(o.zoho_invoice_id || o.zoho_invoice_number || o.payment_status || o.invoice_total != null)) return '';
+      var paySt = String(o.payment_status || '').toLowerCase();
+      var tot = o.invoice_total != null ? parseFloat(o.invoice_total) : null;
+      var bal = o.balance_due != null ? parseFloat(o.balance_due) : tot;
+      var inv = o.zoho_invoice_number || o.zoho_invoice_id || '—';
+      var bg = '#fff8e1', bd = '#ffe082', fg = '#7a4800', title = '📄 Invoice ' + inv;
+      var body = '';
+      if (paySt === 'paid' || (bal != null && !isNaN(bal) && bal <= 0 && paySt !== 'stale')) {
+        bg = '#e8f5e9'; bd = '#a5d6a7'; fg = '#1a5a38';
+        body = '<div style="font-size:14px;font-weight:900;margin-top:4px">✅ Paid · Balance ₹0</div>';
+        if (o.paid_at) {
+          try { body += '<div style="font-size:10px;opacity:.85;margin-top:2px">Received ' + new Date(o.paid_at).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) + '</div>'; } catch(e){}
+        }
+      } else if (paySt === 'stale') {
+        bg = '#f5ede0'; bd = '#e0d0c0'; fg = '#4a2f14';
+        body = '<div style="font-size:12px;font-weight:700;margin-top:4px">Invoice on hold — order was updated. Waiting for re-approval.</div>';
+      } else if (paySt === 'partial') {
+        body = '<div style="font-size:13px;font-weight:800;margin-top:4px">Partial paid · Due <b>₹' + (isNaN(bal)?'—':bal) + '</b></div>';
+        if (tot != null && !isNaN(tot)) body += '<div style="font-size:10px;margin-top:2px">Invoice total ₹' + tot + '</div>';
+      } else {
+        // unpaid or has invoice
+        body = '<div style="font-size:13px;font-weight:800;margin-top:4px">Amount due <b>₹' + (isNaN(bal) ? (isNaN(tot)?'—':tot) : bal) + '</b></div>';
+        if (tot != null && !isNaN(tot) && bal != null && bal !== tot) body += '<div style="font-size:10px;margin-top:2px">Invoice total ₹' + tot + '</div>';
+      }
+      var claimBtn = '';
+      if (paySt !== 'paid' && paySt !== 'stale' && (o.zoho_invoice_id || o.zoho_invoice_number)) {
+        if (o.customer_claimed_paid) {
+          claimBtn = '<div style="margin-top:8px;font-size:11px;font-weight:700;color:#1565c0">🙋 You marked as paid — waiting for admin confirmation</div>';
+        } else {
+          claimBtn = '<button type="button" onclick="customerClaimInvoicePaid('+o.id+')" style="width:100%;margin-top:10px;padding:10px;border:1.5px solid #c8864a;background:#fff;border-radius:10px;font-size:12px;font-weight:800;color:#7a4800;cursor:pointer;font-family:-apple-system,sans-serif">✅ I have paid this amount</button>';
+        }
+      }
+      return '<div style="background:'+bg+';border:1.5px solid '+bd+';border-radius:12px;padding:11px 14px;margin-bottom:10px;color:'+fg+';font-family:monospace;line-height:1.5">'+
+        '<div style="font-size:11px;font-weight:800">'+esc(title)+'</div>'+body+claimBtn+'</div>';
+    }
+
+    function customerClaimInvoicePaid(id){
+      var note = prompt('Optional: UPI/UTR reference or note','') || '';
+      apiPost({ action:'customerClaimPaid', id: id, note: note }).then(function(res){
+        if (res && res.ok) {
+          if (existingOrder && String(existingOrder.id) === String(id)) {
+            existingOrder.customer_claimed_paid = true;
+            existingOrder.customer_claim_note = note;
+          }
+          renderOrderBanner();
+          loadHistory();
+          alert('✅ Noted. Admin will verify your payment.');
+        } else alert('Could not save. Try again.');
+      }).catch(function(){ alert('Network error'); });
+    }
+
     function renderOrderBanner(){
       var banner    = document.getElementById('existingOrderBanner');
       var submitBtn = document.getElementById('submitBtn');
@@ -996,7 +1048,7 @@
         var statusMsg   = s === 'rejected'
           ? '❌ Your order was rejected. Please contact admin.'
           : '✅ Order ' + (statusLabel[s]||s) + ' — your order for tomorrow is confirmed!';
-        banner.innerHTML = '<div style="background:'+statusBg+';border:1.5px solid '+statusBorder+';border-radius:12px;padding:11px 14px;margin-bottom:10px;font-size:12px;font-weight:700;color:'+statusColor+';font-family:monospace;line-height:1.6">'+esc(statusMsg)+'</div>';
+        banner.innerHTML = '<div style="background:'+statusBg+';border:1.5px solid '+statusBorder+';border-radius:12px;padding:11px 14px;margin-bottom:10px;font-size:12px;font-weight:700;color:'+statusColor+';font-family:monospace;line-height:1.6">'+esc(statusMsg)+'</div>' + renderInvoicePaymentCard(existingOrder);
         banner.style.display = 'block';
 
         // Build read-only order summary
@@ -1016,9 +1068,11 @@
           (existingOrder.note ? '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:8px;padding-top:8px;border-top:1px solid #f5ede0">📝 '+esc(existingOrder.note)+'</div>' : '') +
           '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:8px;text-align:right">Total: <b>'+totalItems+'</b> items</div>' +
           // Show "Add to Order" only when approved + window still open
-          (s === 'approved' && !_orderClosed
+          (s === 'approved' && !_orderClosed && String(existingOrder.payment_status||'').toLowerCase() !== 'paid'
             ? '<button onclick="amendOrder()" style="width:100%;margin-top:12px;padding:11px;border:1.5px dashed #2d7a4f;background:#e8f5e9;border-radius:12px;font-size:13px;font-weight:800;color:#2d7a4f;cursor:pointer;font-family:-apple-system,sans-serif">➕ Add More Items to This Order</button>'
-            : '');
+            : (s === 'approved' && String(existingOrder.payment_status||'').toLowerCase() === 'paid'
+              ? '<div style="margin-top:10px;font-size:11px;color:#2d7a4f;font-weight:700;font-family:monospace;text-align:center">✅ Invoice paid — contact admin to change order</div>'
+              : ''));
         if(summaryLabel) summaryLabel.textContent = 'Your Order for Tomorrow ('+(statusLabel[s]||s)+')';
         summaryCard.style.display = 'block';
 
@@ -1100,6 +1154,10 @@
     }
 
     function amendOrder(){
+      if (existingOrder && String(existingOrder.payment_status||'').toLowerCase() === 'paid') {
+        alert('This order invoice is already paid. Contact admin to change it.');
+        return;
+      }
       _amendMode   = true;
       _editLocked  = false;
       _amendMinQty = {};
@@ -1356,6 +1414,7 @@
               itemsHtml(o.items, o.qty)+
               (o.note?'<div style="font-size:11px;color:#8a7a6a;margin-top:6px;font-family:monospace">📝 '+esc(o.note)+'</div>':'')+
               (o.admin_note?'<div style="font-size:11px;color:#1565c0;margin-top:4px;font-family:monospace">💬 Admin: '+esc(o.admin_note)+'</div>':'')+
+              ((o.zoho_invoice_number||o.payment_status||o.invoice_total!=null)?('<div style="margin-top:8px">'+renderInvoicePaymentCard(o)+'</div>'):'')+
             '</div>';
           });
         }

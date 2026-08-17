@@ -928,7 +928,11 @@ function normalizeProducts(list) {
       case 'updateCustomerOrder': {
         var upd2 = { items: b.items, qty: b.qty, note: b.note || '' };
         if (b.item_ids !== undefined) upd2.item_ids = b.item_ids || '';
-        if (b.reset_to_pending) upd2.status = 'pending';
+        if (b.reset_to_pending) {
+          upd2.status = 'pending';
+          // Order changed after approve — hold invoice until re-approve
+          upd2.payment_status = 'stale';
+        }
         return sbPatch('customer_orders', { id: b.id }, upd2);
       }
 
@@ -946,6 +950,20 @@ function normalizeProducts(list) {
         if (b.zoho_invoice_id !== undefined) upd.zoho_invoice_id   = b.zoho_invoice_id;
         if (b.zoho_invoice_number !== undefined) upd.zoho_invoice_number = b.zoho_invoice_number;
         if (b.zoho_doc_type !== undefined)   upd.zoho_doc_type     = b.zoho_doc_type;
+        // Invoice / payment fields (Phase A)
+        if (b.invoice_total !== undefined)   upd.invoice_total    = b.invoice_total;
+        if (b.balance_due !== undefined)     upd.balance_due      = b.balance_due;
+        if (b.payment_status !== undefined)  upd.payment_status   = b.payment_status;
+        if (b.paid_amount !== undefined)     upd.paid_amount      = b.paid_amount;
+        if (b.payment_mode !== undefined)    upd.payment_mode     = b.payment_mode;
+        if (b.payment_ref !== undefined)     upd.payment_ref      = b.payment_ref;
+        if (b.paid_at !== undefined)         upd.paid_at          = b.paid_at;
+        if (b.paid_by !== undefined)         upd.paid_by          = b.paid_by;
+        if (b.zoho_payment_id !== undefined) upd.zoho_payment_id  = b.zoho_payment_id;
+        if (b.customer_claimed_paid !== undefined) upd.customer_claimed_paid = b.customer_claimed_paid;
+        if (b.customer_claimed_at !== undefined)   upd.customer_claimed_at   = b.customer_claimed_at;
+        if (b.customer_claim_note !== undefined)   upd.customer_claim_note   = b.customer_claim_note;
+        if (b.payment_reminder_sent_at !== undefined) upd.payment_reminder_sent_at = b.payment_reminder_sent_at;
         return sbPatch('customer_orders', { id: b.id }, upd).then(function(res){
           if (!res || !res.ok) return res;
           // When approved (or items updated while approved), sync to driver `orders` table
@@ -1232,6 +1250,33 @@ function normalizeProducts(list) {
           return sbPost('product_recipes', rows);
         })
         .catch(function(){ return { ok: false, error: 'Network error' }; });
+      }
+
+
+      // ── Invoice payment (Phase A) ─────────────────────────────────────────────
+      case 'markInvoicePayment': {
+        // Admin verifies payment received
+        var payUpd = {
+          payment_status: b.payment_status || 'paid',
+          balance_due: b.balance_due != null ? b.balance_due : 0,
+          paid_amount: b.paid_amount != null ? b.paid_amount : null,
+          payment_mode: b.payment_mode || '',
+          payment_ref: b.payment_ref || '',
+          paid_at: b.paid_at || new Date().toISOString(),
+          paid_by: b.paid_by || '',
+          customer_claimed_paid: false
+        };
+        if (b.invoice_total !== undefined) payUpd.invoice_total = b.invoice_total;
+        if (b.zoho_payment_id !== undefined) payUpd.zoho_payment_id = b.zoho_payment_id;
+        return sbPatch('customer_orders', { id: b.id }, payUpd);
+      }
+
+      case 'customerClaimPaid': {
+        return sbPatch('customer_orders', { id: b.id }, {
+          customer_claimed_paid: true,
+          customer_claimed_at: new Date().toISOString(),
+          customer_claim_note: b.note || b.customer_claim_note || ''
+        });
       }
 
       // ── ZOHO BOOKS (TESTING MODE) ─────────────────────────────────────────────
