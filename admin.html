@@ -7286,16 +7286,28 @@ apiPost({
       var o = _challanDeskRows.find(function(r){ return String(r.id) === String(id); });
       if (!o) return;
       if (!_zohoEnabled) { alert('Turn on Zoho Integration first'); return; }
-      if (!confirm('Convert this delivery challan to a Tax Invoice in Zoho for ' + (o.shop_name || '') + '?')) return;
-      _challanMsg('Converting to invoice…', null);
-      // Create invoice from same order lines; keep challan id reference in notes if present
-      var orderForInv = Object.assign({}, o, { zoho_doc_type: 'invoice', zoho_invoice_id: '' });
-      // Prefer create invoice path
+      if (!confirm('Create Tax Invoice in Zoho from this order for ' + (o.shop_name || '') + '?\n\n(Note: Zoho API has no direct "convert challan→invoice". We create a new Invoice with same lines + shipping.)')) return;
+      _challanMsg('Creating invoice…', null);
+      var challanRef = o.zoho_invoice_number || o.zoho_invoice_id || '';
+      // MUST force invoice — shop policy is often delivery_challan
+      var orderForInv = Object.assign({}, o, {
+        zoho_doc_type: 'invoice',
+        _forceDocType: 'invoice',
+        zoho_invoice_id: '',
+        notes: (challanRef ? ('From DC ' + challanRef + '. ') : '') + 'Converted by IBCAB'
+      });
       if (typeof zohoCreateInvoiceReal !== 'function') {
         _challanMsg('Invoice create function missing', false);
         return;
       }
       zohoCreateInvoiceReal(orderForInv).then(function(inv) {
+        if (!inv || !(inv.invoice_id || inv.invoice_number)) {
+          throw new Error('Zoho did not return invoice id (maybe still created as challan?)');
+        }
+        // Guard: if edge returned a challan id by mistake, flag it
+        if (inv.doc_type === 'delivery_challan') {
+          throw new Error('Zoho created delivery challan instead of invoice. Check shop force flag.');
+        }
         var body = {
           action: 'updateCustomerOrderStatus',
           id: o.id,
@@ -7309,10 +7321,9 @@ apiPost({
           body.invoice_total = inv.total;
           body.balance_due = inv.total;
         }
-        // preserve original challan id if column exists is optional; store in note reference
         return apiPost(body).then(function(){ return inv; });
       }).then(function(inv) {
-        _challanMsg('Converted to invoice: ' + (inv.invoice_number || inv.invoice_id || 'OK'), true);
+        _challanMsg('Invoice created: ' + (inv.invoice_number || inv.invoice_id || 'OK'), true);
         loadChallanDesk();
       }).catch(function(e) {
         _challanMsg('Convert failed: ' + (e && e.message ? e.message : e), false);
@@ -11706,8 +11717,13 @@ function findShopForZoho(order) {
       || String(c.zoho_contact_id || '').trim() === sid;
   }) || null;
 }
-/** Resolve doc type: prefer customer (shop) master, then order, default invoice */
+/** Resolve doc type: shop master for normal flow; order._forceDocType wins (e.g. Convert to Invoice). */
 function resolveZohoDocType(order, shop) {
+  // Explicit force (Convert to Invoice must not follow shop challan policy)
+  if (order && order._forceDocType) {
+    var forced = normalizeZohoDocType(order._forceDocType);
+    if (forced === 'delivery_challan' || forced === 'invoice') return forced;
+  }
   if (!shop && order) shop = findShopForZoho(order);
   var fromShop = shop ? normalizeZohoDocType(shop.zoho_doc_type) : '';
   var fromOrder = order ? normalizeZohoDocType(order.zoho_doc_type) : '';
