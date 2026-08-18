@@ -7234,6 +7234,9 @@ apiPost({
       if (!_zohoEnabled) { alert('Turn on Zoho Integration first'); return; }
       // Force challan doc type for this flow
       o.zoho_doc_type = 'delivery_challan';
+      // Refresh shipping from customer master (e.g. user just set ₹50)
+      var shop = findShopForZoho(o);
+      o.shipping_charge = resolveShippingAmt(o, shop);
       if (typeof openZohoInvPreview === 'function') {
         openZohoInvPreview(o);
       } else {
@@ -8622,7 +8625,8 @@ onStaffRoleChange();
         item_ids: order.item_ids || '',
         zoho_doc_type: resolveZohoDocType(order, shop),
         zoho_invoice_id: order.zoho_invoice_id || '',
-        zoho_invoice_number: order.zoho_invoice_number || ''
+        zoho_invoice_number: order.zoho_invoice_number || '',
+        shipping_charge: resolveShippingAmt(order, shop)
       });
     }
   });
@@ -8867,7 +8871,8 @@ onStaffRoleChange();
         item_ids:      idsArr.join(','),
         zoho_doc_type: (document.getElementById('com-doc-type') || {}).value || orderObj.zoho_doc_type || 'invoice',
         zoho_invoice_id: orderObj.zoho_invoice_id || '',
-        zoho_invoice_number: orderObj.zoho_invoice_number || ''
+        zoho_invoice_number: orderObj.zoho_invoice_number || '',
+        shipping_charge: resolveShippingAmt(orderObj, findShopForZoho(orderObj))
       });
       loadCustOrders();
     } else {
@@ -11596,10 +11601,35 @@ function computeInvoiceGst(lines, shipping){
     grand_total: grand
   };
 }
-function applyZohoShipping(payload, shipping){
-  // Same as invoice: document-level shipping_charge ONLY.
-  // Never add "Shipping Charges" as a line item (that creates a new Zoho product).
-  // Empty string must NOT become 0 (that was skipping default shipping).
+function findZohoShippingItemId(){
+  // Prefer explicit setting, else match existing Zoho "Shipping Charges" product
+  // (avoids creating a NEW product every time on delivery challan)
+  var fromSetting = null;
+  try {
+    // optional: set via settings key zoho_shipping_item_id
+    if (typeof _zohoShippingItemId !== 'undefined' && _zohoShippingItemId)
+      fromSetting = String(_zohoShippingItemId);
+  } catch(e){}
+  if (fromSetting && fromSetting.length > 8) return fromSetting;
+  var list = allProducts || [];
+  var hit = list.find(function(p){
+    var n = String(p.name || '').toLowerCase();
+    var id = String(p.product_id || '');
+    return id.length > 10 && /shipping/.test(n);
+  });
+  return hit ? String(hit.product_id) : '';
+}
+
+/**
+ * Apply shipping to Zoho payload.
+ * - Invoice: document field shipping_charge (shows separately in Zoho)
+ * - Delivery challan: Zoho IGNORES shipping_charge → must be a line item.
+ *   Prefer existing Zoho item_id for "Shipping Charges" so no new product is created.
+ * @param {object} payload
+ * @param {number|string} shipping
+ * @param {boolean} isDeliveryChallan
+ */
+function applyZohoShipping(payload, shipping, isDeliveryChallan){
   var amt;
   if (shipping != null && shipping !== '') {
     amt = Number(shipping);
@@ -11608,7 +11638,7 @@ function applyZohoShipping(payload, shipping){
   }
   if (isNaN(amt) || amt < 0) amt = 0;
 
-  // Remove any accidental shipping product lines from payload
+  // Strip any previous shipping lines (we'll re-add cleanly for DC)
   if (Array.isArray(payload.line_items)) {
     payload.line_items = payload.line_items.filter(function(l){
       var n = String(l.name || l.description || '').toLowerCase();
@@ -11616,12 +11646,48 @@ function applyZohoShipping(payload, shipping){
     });
   }
 
-  if (amt > 0) {
-    payload.shipping_charge = amt;
-  } else {
+  if (amt <= 0) {
     delete payload.shipping_charge;
+    return payload;
+  }
+
+  if (isDeliveryChallan) {
+    // Delivery challan API does NOT apply shipping_charge (returns product total only).
+    // Add as line item. Use existing Zoho item_id when available.
+    delete payload.shipping_charge;
+    if (!Array.isArray(payload.line_items)) payload.line_items = [];
+    var shipLine = {
+      name: 'Shipping Charges',
+      description: 'Shipping Charges',
+      quantity: 1,
+      rate: amt
+    };
+    var sid = findZohoShippingItemId();
+    if (sid) shipLine.item_id = sid;
+    payload.line_items.push(shipLine);
+    console.log('[zoho] DC shipping as line item ₹' + amt + (sid ? (' item_id=' + sid) : ' (no item_id — may create/reuse name in Zoho)'));
+  } else {
+    // Invoice: proper document-level shipping field
+    payload.shipping_charge = amt;
+    console.log('[zoho] Invoice shipping_charge=₹' + amt);
   }
   return payload;
+}
+
+/** Resolve shipping ₹: order → shop master → global default (never blank→0). */
+function resolveShippingAmt(order, shop) {
+  if (!shop && order) shop = findShopForZoho(order);
+  var shipAmt = order && order.shipping_charge;
+  if (shipAmt == null || shipAmt === '') {
+    if (shop && shop.shipping_charge != null && shop.shipping_charge !== '')
+      shipAmt = shop.shipping_charge;
+  }
+  if (shipAmt == null || shipAmt === '') {
+    shipAmt = (_zohoShippingCharge != null ? _zohoShippingCharge : 20);
+  }
+  var n = Number(shipAmt);
+  if (isNaN(n) || n < 0) n = 0;
+  return n;
 }
 
 var _zohoPreviewOrder = null;
@@ -11663,6 +11729,10 @@ function openZohoInvPreview(order){
   _zohoPreviewOrder = order || null;
   if(!_zohoPreviewOrder) return;
   var shop = findShopForZoho(order);
+  // Always attach latest shop shipping so Update/Create both send correct ₹
+  if (typeof resolveShippingAmt === 'function') {
+    _zohoPreviewOrder.shipping_charge = resolveShippingAmt(_zohoPreviewOrder, shop);
+  }
   var docType = resolveZohoDocType(order, shop);
   var isDC = docType === 'delivery_challan';
   var existing = order.zoho_invoice_id || '';
@@ -11860,15 +11930,11 @@ async function zohoCreateInvoiceReal(order) {
         line_items:       lineItems,
         notes:            'Auto-generated by IBCAB'
       };
-      // Per-customer shipping: order override → shop.shipping_charge → global default
-      var shipAmt = order.shipping_charge;
-      if(shipAmt == null || shipAmt === ''){
-        if(shop && shop.shipping_charge != null && shop.shipping_charge !== '')
-          shipAmt = shop.shipping_charge;
-      }
-      // Document-level shipping only (same as invoice — never a product line)
-      applyZohoShipping(payload, shipAmt);
-      console.log('[zoho] shipping resolved=', shipAmt, 'payload.shipping_charge=', payload.shipping_charge, 'isDC=', isDeliveryChallan);
+      // Per-customer shipping: order → shop → default (always resolve)
+      var shipAmt = resolveShippingAmt(order, shop);
+      order.shipping_charge = shipAmt; // keep on order for local save
+      applyZohoShipping(payload, shipAmt, isDeliveryChallan);
+      console.log('[zoho] create shipping=', shipAmt, 'isDC=', isDeliveryChallan, 'payload.shipping_charge=', payload.shipping_charge);
 
       // invoice has due_date, delivery challan does not
       if (!isDeliveryChallan) {
@@ -11941,18 +12007,20 @@ async function zohoUpdateInvoiceReal(invoiceId, order) {
 
       var lineItems = buildZohoLineItems(order);
 
+      // Full payload so Zoho actually applies changes (shipping + lines)
+      var zohoCustomerId = (shop && (shop.zoho_contact_id || shop.customer_id || shop.shop_id))
+        || order.shop_id || '';
       var payload = {
+        customer_id:      String(zohoCustomerId),
+        date:             order.delivery_date || todayStr(),
         line_items:       lineItems,
         reference_number: 'IBCAB-' + (order.id || ''),
         notes:            'Updated by IBCAB admin'
       };
-      var shipAmt = order.shipping_charge;
-      if(shipAmt == null || shipAmt === ''){
-        if(shop && shop.shipping_charge != null && shop.shipping_charge !== '')
-          shipAmt = shop.shipping_charge;
-      }
-      applyZohoShipping(payload, shipAmt);
-      console.log('[zoho] update shipping=', shipAmt, 'payload.shipping_charge=', payload.shipping_charge, 'isDC=', isDeliveryChallan);
+      var shipAmt = resolveShippingAmt(order, shop);
+      order.shipping_charge = shipAmt;
+      applyZohoShipping(payload, shipAmt, isDeliveryChallan);
+      console.log('[zoho] UPDATE shipping=', shipAmt, 'isDC=', isDeliveryChallan, 'payload=', JSON.stringify(payload));
 
       var action = isDeliveryChallan ? 'update_delivery_challan' : 'update_invoice';
 
