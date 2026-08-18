@@ -11638,7 +11638,7 @@ function applyZohoShipping(payload, shipping, isDeliveryChallan){
   }
   if (isNaN(amt) || amt < 0) amt = 0;
 
-  // Strip any previous shipping lines (we'll re-add cleanly for DC)
+  // Never send shipping as a product line (that creates Items in Zoho)
   if (Array.isArray(payload.line_items)) {
     payload.line_items = payload.line_items.filter(function(l){
       var n = String(l.name || l.description || '').toLowerCase();
@@ -11646,29 +11646,21 @@ function applyZohoShipping(payload, shipping, isDeliveryChallan){
     });
   }
 
-  if (amt <= 0) {
-    delete payload.shipping_charge;
-    return payload;
-  }
+  delete payload.shipping_charge;
+  delete payload.adjustment;
+  delete payload.adjustment_description;
 
+  if (amt <= 0) return payload;
+
+  // Same as manual Zoho UI: shipping_charge → PDF shows "SHIPPING" (not a product line).
+  // Official DC API docs omit this field, but India UI supports it when Shipping Charges is enabled.
+  // Also send adjustment as fallback if org ignores shipping_charge on DC.
+  payload.shipping_charge = amt;
   if (isDeliveryChallan) {
-    // Delivery challan API does NOT apply shipping_charge (returns product total only).
-    // Add as line item. Use existing Zoho item_id when available.
-    delete payload.shipping_charge;
-    if (!Array.isArray(payload.line_items)) payload.line_items = [];
-    var shipLine = {
-      name: 'Shipping Charges',
-      description: 'Shipping Charges',
-      quantity: 1,
-      rate: amt
-    };
-    var sid = findZohoShippingItemId();
-    if (sid) shipLine.item_id = sid;
-    payload.line_items.push(shipLine);
-    console.log('[zoho] DC shipping as line item ₹' + amt + (sid ? (' item_id=' + sid) : ' (no item_id — may create/reuse name in Zoho)'));
+    payload.adjustment = amt;
+    payload.adjustment_description = 'Shipping';
+    console.log('[zoho] DC shipping_charge=₹' + amt + ' (+ adjustment fallback)');
   } else {
-    // Invoice: proper document-level shipping field
-    payload.shipping_charge = amt;
     console.log('[zoho] Invoice shipping_charge=₹' + amt);
   }
   return payload;
