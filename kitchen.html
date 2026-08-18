@@ -1,670 +1,674 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>Kitchen — IBCAB</title>
-<script src="config.js"></script>
-<script src="api.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+    <title>Kitchen — IBCAB</title>
+    <script src="config.js"></script>
+    <script src="api.js"></script>
     <script src="products-shared.js"></script>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:480px;margin:0 auto;min-height:100vh}
-.login-wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 20px}
-.login-logo{font-size:52px;margin-bottom:6px}
-.login-title{font-size:22px;font-weight:900;color:#4a2f14;text-align:center;margin-bottom:2px}
-.login-sub{font-size:12px;color:#8a7a6a;font-family:monospace;margin-bottom:28px;text-align:center}
-.login-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:20px;padding:22px;width:100%;max-width:360px}
-.lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:6px;text-transform:uppercase;display:block}
-select,input[type=text],input[type=password],input[type=date]{width:100%;padding:12px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:10px}
-.btn{width:100%;padding:14px;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:8px}
-.btn-orange{background:#e67e22;color:#fff}
-.btn-green{background:#2d7a4f;color:#fff}
-.btn-grey{background:#e8dfd2;color:#4a2f14}
-.err{color:#c8382a;font-size:12px;font-family:monospace;text-align:center;margin-top:8px}
-.topbar{background:#e67e22;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:99}
-.topbar-title{color:#fff;font-size:15px;font-weight:800}
-.topbar-sub{color:rgba(255,255,255,.8);font-size:11px;font-family:monospace;margin-top:1px}
-.logout-btn{background:rgba(255,255,255,.2);border:none;color:#fff;padding:6px 11px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif}
-.tabs{display:flex;background:#fff;border-bottom:2px solid #e8dfd2;position:sticky;top:53px;z-index:98}
-.tab{flex:1;padding:12px 4px;border:none;background:none;font-size:12px;font-weight:700;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;border-bottom:3px solid transparent;margin-bottom:-2px}
-.tab.on{color:#e67e22;border-bottom-color:#e67e22}
-.page{display:none;padding:14px 14px 80px}.page.on{display:block}
-.card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:14px;margin-bottom:10px}
-.msg{padding:11px 14px;border-radius:12px;font-size:12px;font-weight:600;font-family:monospace;margin-bottom:10px;line-height:1.8}
-.ok{background:#e8f5e9;color:#2d7a4f;border:1px solid #a5d6a7}
-.er{background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0}
-.in{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9}
-/* Product rows */
-.prod-row{background:#fffaf4;border:1.5px solid #e8dfd2;border-radius:12px;padding:12px;margin-bottom:8px;transition:.2s}
-.prod-row.fully-done{background:#f0faf4;border-color:#a5d6a7}
-.prod-row.partial{background:#fff8e1;border-color:#ffe082}
-.prod-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-.prod-name{font-size:14px;font-weight:800;color:#1e1611}
-.prod-badge{font-size:10px;font-weight:700;font-family:monospace;padding:3px 10px;border-radius:20px}
-.pb-pending{background:#fff3e0;color:#e67e22}
-.pb-partial{background:#fff8e1;color:#7a4800}
-.pb-done{background:#e8f5e9;color:#2d7a4f}
-.prod-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.prod-bar{flex:1;height:7px;background:#e8dfd2;border-radius:4px;overflow:hidden}
-.prod-bar-fill{height:100%;background:#2d7a4f;border-radius:4px;transition:.3s}
-.prod-nums{font-size:11px;font-weight:700;color:#4a2f14;font-family:monospace;white-space:nowrap}
-.prod-bot{display:flex;align-items:center;gap:8px}
-.prod-inp{width:72px;padding:7px 4px;border:1.5px solid #e8dfd2;border-radius:8px;font-size:16px;font-weight:900;text-align:center;color:#4a2f14;background:#fff;outline:none;font-family:monospace;-webkit-appearance:none;-moz-appearance:textfield}
-.prod-inp:focus{border-color:#e67e22}
-.mark-btn{flex:1;padding:9px;border:none;border-radius:9px;font-size:12px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;background:#e67e22;color:#fff}
-/* Pre-production */
-.preprod-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.preprod-sel{flex:1;padding:9px 10px;border:1.5px solid #e8dfd2;border-radius:9px;font-size:13px;font-weight:700;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:0}
-.preprod-inp{width:72px;padding:9px 4px;border:1.5px solid #e8dfd2;border-radius:9px;font-size:15px;font-weight:900;text-align:center;color:#4a2f14;background:#fff;outline:none;font-family:monospace;-webkit-appearance:none;-moz-appearance:textfield;flex-shrink:0}
-.preprod-btn{flex-shrink:0;padding:9px 14px;border:none;border-radius:9px;font-size:12px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;background:#e67e22;color:#fff}
-.preprod-list{margin-top:6px;display:flex;flex-wrap:wrap;gap:6px}
-.preprod-tag{background:#fff8e1;border:1px solid #ffe082;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;font-family:monospace;color:#7a4800}
-/* Summary */
-.sum-hdr{font-size:11px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;padding:7px 12px;border-radius:8px;margin-bottom:8px}
-.sh-done{background:#e8f5e9;color:#2d7a4f}
-.sh-partial{background:#fff8e1;color:#7a4800}
-.sh-remain{background:#fde8e8;color:#c8382a}
-.sum-shop{padding:9px 12px;background:#fff;border:1.5px solid #e8dfd2;border-radius:10px;margin-bottom:6px}
-.sum-sname{font-weight:800;color:#4a2f14;font-size:13px;margin-bottom:3px}
-.sum-sdetail{font-family:monospace;font-size:11px;color:#8a7a6a;line-height:1.8}
-/* Confirm modal */
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
-.modal{background:#fff;border-radius:20px;padding:22px;width:100%;max-width:360px}
-.modal-title{font-size:16px;font-weight:900;color:#4a2f14;margin-bottom:4px}
-.modal-sub{font-size:12px;color:#8a7a6a;font-family:monospace;margin-bottom:14px;line-height:1.6}
-.modal-warn{font-size:12px;font-family:monospace;padding:10px 12px;background:#fff8e1;border:1px solid #ffe082;border-radius:10px;color:#7a4800;margin-bottom:14px;line-height:1.7;white-space:pre-line}
-</style>
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:480px;margin:0 auto;min-height:100vh}
+        .login-wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 20px}
+        .login-logo{font-size:52px;margin-bottom:6px}
+        .login-title{font-size:22px;font-weight:900;color:#4a2f14;text-align:center;margin-bottom:2px}
+        .login-sub{font-size:12px;color:#8a7a6a;font-family:monospace;margin-bottom:28px;text-align:center}
+        .login-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:20px;padding:22px;width:100%;max-width:360px}
+        .lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:6px;text-transform:uppercase;display:block}
+        select,input[type=text],input[type=password],input[type=date]{width:100%;padding:12px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:10px}
+        .btn{width:100%;padding:14px;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;margin-bottom:8px}
+        .btn-orange{background:#e67e22;color:#fff}
+        .btn-green{background:#2d7a4f;color:#fff}
+        .btn-grey{background:#e8dfd2;color:#4a2f14}
+        .err{color:#c8382a;font-size:12px;font-family:monospace;text-align:center;margin-top:8px}
+        .topbar{background:#e67e22;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:99}
+        .topbar-title{color:#fff;font-size:15px;font-weight:800}
+        .topbar-sub{color:rgba(255,255,255,.8);font-size:11px;font-family:monospace;margin-top:1px}
+        .logout-btn{background:rgba(255,255,255,.2);border:none;color:#fff;padding:6px 11px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif}
+        .tabs{display:flex;background:#fff;border-bottom:2px solid #e8dfd2;position:sticky;top:53px;z-index:98}
+        .tab{flex:1;padding:12px 4px;border:none;background:none;font-size:12px;font-weight:700;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;border-bottom:3px solid transparent;margin-bottom:-2px}
+        .tab.on{color:#e67e22;border-bottom-color:#e67e22}
+        .page{display:none;padding:14px 14px 80px}.page.on{display:block}
+        .card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:14px;margin-bottom:10px}
+        .msg{padding:11px 14px;border-radius:12px;font-size:12px;font-weight:600;font-family:monospace;margin-bottom:10px;line-height:1.8}
+        .ok{background:#e8f5e9;color:#2d7a4f;border:1px solid #a5d6a7}
+        .er{background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0}
+        .in{background:#e3f2fd;color:#1565c0;border:1px solid #90caf9}
+        /* Product rows */
+        .prod-row{background:#fffaf4;border:1.5px solid #e8dfd2;border-radius:12px;padding:12px;margin-bottom:8px;transition:.2s}
+        .prod-row.fully-done{background:#f0faf4;border-color:#a5d6a7}
+        .prod-row.partial{background:#fff8e1;border-color:#ffe082}
+        .prod-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+        .prod-name{font-size:14px;font-weight:800;color:#1e1611}
+        .prod-badge{font-size:10px;font-weight:700;font-family:monospace;padding:3px 10px;border-radius:20px}
+        .pb-pending{background:#fff3e0;color:#e67e22}
+        .pb-partial{background:#fff8e1;color:#7a4800}
+        .pb-done{background:#e8f5e9;color:#2d7a4f}
+        .prod-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+        .prod-bar{flex:1;height:7px;background:#e8dfd2;border-radius:4px;overflow:hidden}
+        .prod-bar-fill{height:100%;background:#2d7a4f;border-radius:4px;transition:.3s}
+        .prod-nums{font-size:11px;font-weight:700;color:#4a2f14;font-family:monospace;white-space:nowrap}
+        .prod-bot{display:flex;align-items:center;gap:8px}
+        .prod-inp{width:72px;padding:7px 4px;border:1.5px solid #e8dfd2;border-radius:8px;font-size:16px;font-weight:900;text-align:center;color:#4a2f14;background:#fff;outline:none;font-family:monospace;-webkit-appearance:none;-moz-appearance:textfield}
+        .prod-inp:focus{border-color:#e67e22}
+        .mark-btn{flex:1;padding:9px;border:none;border-radius:9px;font-size:12px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;background:#e67e22;color:#fff}
+        /* Pre-production */
+        .preprod-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+        .preprod-sel{flex:1;padding:9px 10px;border:1.5px solid #e8dfd2;border-radius:9px;font-size:13px;font-weight:700;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:0}
+        .preprod-inp{width:72px;padding:9px 4px;border:1.5px solid #e8dfd2;border-radius:9px;font-size:15px;font-weight:900;text-align:center;color:#4a2f14;background:#fff;outline:none;font-family:monospace;-webkit-appearance:none;-moz-appearance:textfield;flex-shrink:0}
+        .preprod-btn{flex-shrink:0;padding:9px 14px;border:none;border-radius:9px;font-size:12px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;background:#e67e22;color:#fff}
+        .preprod-list{margin-top:6px;display:flex;flex-wrap:wrap;gap:6px}
+        .preprod-tag{background:#fff8e1;border:1px solid #ffe082;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;font-family:monospace;color:#7a4800}
+        /* Summary */
+        .sum-hdr{font-size:11px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;padding:7px 12px;border-radius:8px;margin-bottom:8px}
+        .sh-done{background:#e8f5e9;color:#2d7a4f}
+        .sh-partial{background:#fff8e1;color:#7a4800}
+        .sh-remain{background:#fde8e8;color:#c8382a}
+        .sum-shop{padding:9px 12px;background:#fff;border:1.5px solid #e8dfd2;border-radius:10px;margin-bottom:6px}
+        .sum-sname{font-weight:800;color:#4a2f14;font-size:13px;margin-bottom:3px}
+        .sum-sdetail{font-family:monospace;font-size:11px;color:#8a7a6a;line-height:1.8}
+        /* Confirm modal */
+        .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
+        .modal{background:#fff;border-radius:20px;padding:22px;width:100%;max-width:360px}
+        .modal-title{font-size:16px;font-weight:900;color:#4a2f14;margin-bottom:4px}
+        .modal-sub{font-size:12px;color:#8a7a6a;font-family:monospace;margin-bottom:14px;line-height:1.6}
+        .modal-warn{font-size:12px;font-family:monospace;padding:10px 12px;background:#fff8e1;border:1px solid #ffe082;border-radius:10px;color:#7a4800;margin-bottom:14px;line-height:1.7;white-space:pre-line}
+    </style>
 </head>
 <body>
 
 <!-- LOGIN -->
 <div id="loginScreen" class="login-wrap">
-  <div class="login-logo">👨‍🍳</div>
-  <div class="login-title">Kitchen</div>
-  <div class="login-sub">IBCAB · Kitchen Portal</div>
-  <div class="login-card">
-    <label class="lbl">Staff Name</label>
-    <select id="loginName"><option value="">Select name…</option></select>
-    <label class="lbl">Password</label>
-    <input type="password" id="loginPass" placeholder="Password">
-    <button class="btn btn-orange" id="loginBtn" onclick="doLogin()">👨‍🍳 Kitchen Login</button>
-    <div id="loginErr" class="err" style="display:none">Wrong name or password.</div>
-  </div>
+    <div class="login-logo">👨‍🍳</div>
+    <div class="login-title">Kitchen</div>
+    <div class="login-sub">IBCAB · Kitchen Portal</div>
+    <div class="login-card">
+        <label class="lbl">Staff Name</label>
+        <select id="loginName"><option value="">Select name…</option></select>
+        <label class="lbl">Password</label>
+        <input type="password" id="loginPass" placeholder="Password">
+        <button class="btn btn-orange" id="loginBtn" onclick="doLogin()">👨‍🍳 Kitchen Login</button>
+        <div id="loginErr" class="err" style="display:none">Wrong name or password.</div>
+    </div>
 </div>
 
 <!-- APP -->
 <div id="appScreen" style="display:none">
-  <div class="topbar">
-    <div>
-      <div class="topbar-title">👨‍🍳 Kitchen</div>
-      <div class="topbar-sub" id="topName"></div>
-    </div>
-    <button class="logout-btn" onclick="doLogout()">Logout</button>
-  </div>
-
-  <div class="tabs">
-    <button class="tab on" id="tb-make" onclick="showTab('make')">📊 Make This</button>
-    <button class="tab" id="tb-summary" onclick="showTab('summary')">📋 Summary</button>
-  </div>
-
-  <!-- MAKE THIS TAB -->
-  <div class="page on" id="pg-make">
-
-    <!-- Date -->
-    <div class="card">
-      <div class="lbl">Delivery Date</div>
-      <div style="display:flex;gap:8px;align-items:center">
-        <input type="date" id="kitchenDate" onchange="loadKitchenOrders()" style="flex:1;margin-bottom:0">
-        <button onclick="loadKitchenOrders()" style="background:#f5ede0;border:1.5px solid #e8dfd2;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;color:#4a2f14;font-family:-apple-system,sans-serif;flex-shrink:0">↻</button>
-      </div>
+    <div class="topbar">
+        <div>
+            <div class="topbar-title">👨‍🍳 Kitchen</div>
+            <div class="topbar-sub" id="topName"></div>
+        </div>
+        <button class="logout-btn" onclick="doLogout()">Logout</button>
     </div>
 
-    <!-- Pre-production log — always visible -->
-    <div class="card" id="preprodCard">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-        <div style="font-size:12px;font-weight:900;color:#4a2f14;letter-spacing:.3px">🌅 Pre-production Log</div>
-        <div style="font-size:10px;color:#8a7a6a;font-family:monospace">Log items made before orders arrive</div>
-      </div>
-      <div class="preprod-row">
-        <select id="pp-prod" class="preprod-sel">
-          <option value="">Select product…</option>
-        </select>
-        <input type="number" id="pp-qty" class="preprod-inp" placeholder="Qty" min="1" inputmode="numeric">
-        <button class="preprod-btn" onclick="addPreProd()">+ Add</button>
-      </div>
-      <div id="pp-list" class="preprod-list"></div>
-      <div id="pp-msg" style="display:none;font-size:11px;font-family:monospace;color:#2d7a4f;margin-top:6px"></div>
+    <div class="tabs">
+        <button class="tab on" id="tb-make" onclick="showTab('make')">📊 Make This</button>
+        <button class="tab" id="tb-summary" onclick="showTab('summary')">📋 Summary</button>
     </div>
 
-    <div id="kitchenMsg" class="msg in" style="display:none"></div>
+    <!-- MAKE THIS TAB -->
+    <div class="page on" id="pg-make">
 
-    <!-- Stats -->
-    <div id="statBar" style="display:none" class="card">
-      <div style="display:flex;gap:8px">
-        <div style="flex:1;text-align:center;background:#fff8f0;border:1.5px solid #f5c87a;border-radius:12px;padding:10px">
-          <div style="font-size:22px;font-weight:900;color:#e67e22" id="statOrders">0</div>
-          <div style="font-size:9px;color:#8a7a6a;font-family:monospace;text-transform:uppercase">Orders</div>
+        <!-- Date -->
+        <div class="card">
+            <div class="lbl">Delivery Date</div>
+            <div style="display:flex;gap:8px;align-items:center">
+                <input type="date" id="kitchenDate" onchange="loadKitchenOrders()" style="flex:1;margin-bottom:0">
+                <button onclick="loadKitchenOrders()" style="background:#f5ede0;border:1.5px solid #e8dfd2;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:700;cursor:pointer;color:#4a2f14;font-family:-apple-system,sans-serif;flex-shrink:0">↻</button>
+            </div>
         </div>
-        <div style="flex:1;text-align:center;background:#f0faf4;border:1.5px solid #a5d6a7;border-radius:12px;padding:10px">
-          <div style="font-size:22px;font-weight:900;color:#2d7a4f" id="statItems">0</div>
-          <div style="font-size:9px;color:#8a7a6a;font-family:monospace;text-transform:uppercase">Total Qty</div>
+
+        <!-- Pre-production log — always visible -->
+        <div class="card" id="preprodCard">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+                <div style="font-size:12px;font-weight:900;color:#4a2f14;letter-spacing:.3px">🌅 Pre-production Log</div>
+                <div style="font-size:10px;color:#8a7a6a;font-family:monospace">Log items made before orders arrive</div>
+            </div>
+            <div class="preprod-row">
+                <select id="pp-prod" class="preprod-sel">
+                    <option value="">Select product…</option>
+                </select>
+                <input type="number" id="pp-qty" class="preprod-inp" placeholder="Qty" min="1" inputmode="numeric">
+                <button class="preprod-btn" onclick="addPreProd()">+ Add</button>
+            </div>
+            <div id="pp-list" class="preprod-list"></div>
+            <div id="pp-msg" style="display:none;font-size:11px;font-family:monospace;color:#2d7a4f;margin-top:6px"></div>
         </div>
-        <div style="flex:1;text-align:center;background:#fff8e1;border:1.5px solid #ffe082;border-radius:12px;padding:10px">
-          <div style="font-size:22px;font-weight:900;color:#7a4800" id="statProds">0</div>
-          <div style="font-size:9px;color:#8a7a6a;font-family:monospace;text-transform:uppercase">Products</div>
+
+        <div id="kitchenMsg" class="msg in" style="display:none"></div>
+
+        <!-- Stats -->
+        <div id="statBar" style="display:none" class="card">
+            <div style="display:flex;gap:8px">
+                <div style="flex:1;text-align:center;background:#fff8f0;border:1.5px solid #f5c87a;border-radius:12px;padding:10px">
+                    <div style="font-size:22px;font-weight:900;color:#e67e22" id="statOrders">0</div>
+                    <div style="font-size:9px;color:#8a7a6a;font-family:monospace;text-transform:uppercase">Orders</div>
+                </div>
+                <div style="flex:1;text-align:center;background:#f0faf4;border:1.5px solid #a5d6a7;border-radius:12px;padding:10px">
+                    <div style="font-size:22px;font-weight:900;color:#2d7a4f" id="statItems">0</div>
+                    <div style="font-size:9px;color:#8a7a6a;font-family:monospace;text-transform:uppercase">Total Qty</div>
+                </div>
+                <div style="flex:1;text-align:center;background:#fff8e1;border:1.5px solid #ffe082;border-radius:12px;padding:10px">
+                    <div style="font-size:22px;font-weight:900;color:#7a4800" id="statProds">0</div>
+                    <div style="font-size:9px;color:#8a7a6a;font-family:monospace;text-transform:uppercase">Products</div>
+                </div>
+            </div>
         </div>
-      </div>
+
+        <!-- Product count rows -->
+        <div id="countSection" style="display:none">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                <div style="font-size:13px;font-weight:900;color:#4a2f14;letter-spacing:.5px">📊 MAKE THIS MUCH</div>
+                <div id="prodProgress" style="font-size:11px;font-family:monospace;color:#8a7a6a"></div>
+            </div>
+            <div id="countGrid"></div>
+        </div>
+
+        <div id="kitchenDoneMsg" class="msg ok" style="display:none;margin-top:8px"></div>
     </div>
 
-    <!-- Product count rows -->
-    <div id="countSection" style="display:none">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <div style="font-size:13px;font-weight:900;color:#4a2f14;letter-spacing:.5px">📊 MAKE THIS MUCH</div>
-        <div id="prodProgress" style="font-size:11px;font-family:monospace;color:#8a7a6a"></div>
-      </div>
-      <div id="countGrid"></div>
+    <!-- SUMMARY TAB -->
+    <div class="page" id="pg-summary">
+        <div id="sumMsg" class="msg in" style="display:none"></div>
+        <div id="sumStats" style="display:none" class="card">
+            <div style="display:flex;gap:8px;text-align:center">
+                <div style="flex:1;background:#e8f5e9;border-radius:12px;padding:10px;border:1.5px solid #a5d6a7">
+                    <div style="font-size:22px;font-weight:900;color:#2d7a4f" id="sumComplete">0</div>
+                    <div style="font-size:9px;color:#2d7a4f;font-family:monospace;text-transform:uppercase">Complete</div>
+                </div>
+                <div style="flex:1;background:#fff8e1;border-radius:12px;padding:10px;border:1.5px solid #ffe082">
+                    <div style="font-size:22px;font-weight:900;color:#7a4800" id="sumPartial">0</div>
+                    <div style="font-size:9px;color:#7a4800;font-family:monospace;text-transform:uppercase">Partial</div>
+                </div>
+                <div style="flex:1;background:#fde8e8;border-radius:12px;padding:10px;border:1.5px solid #f0b0b0">
+                    <div style="font-size:22px;font-weight:900;color:#c8382a" id="sumRemain">0</div>
+                    <div style="font-size:9px;color:#c8382a;font-family:monospace;text-transform:uppercase">Remaining</div>
+                </div>
+            </div>
+        </div>
+        <div id="sumBody"></div>
     </div>
-
-    <div id="kitchenDoneMsg" class="msg ok" style="display:none;margin-top:8px"></div>
-  </div>
-
-  <!-- SUMMARY TAB -->
-  <div class="page" id="pg-summary">
-    <div id="sumMsg" class="msg in" style="display:none"></div>
-    <div id="sumStats" style="display:none" class="card">
-      <div style="display:flex;gap:8px;text-align:center">
-        <div style="flex:1;background:#e8f5e9;border-radius:12px;padding:10px;border:1.5px solid #a5d6a7">
-          <div style="font-size:22px;font-weight:900;color:#2d7a4f" id="sumComplete">0</div>
-          <div style="font-size:9px;color:#2d7a4f;font-family:monospace;text-transform:uppercase">Complete</div>
-        </div>
-        <div style="flex:1;background:#fff8e1;border-radius:12px;padding:10px;border:1.5px solid #ffe082">
-          <div style="font-size:22px;font-weight:900;color:#7a4800" id="sumPartial">0</div>
-          <div style="font-size:9px;color:#7a4800;font-family:monospace;text-transform:uppercase">Partial</div>
-        </div>
-        <div style="flex:1;background:#fde8e8;border-radius:12px;padding:10px;border:1.5px solid #f0b0b0">
-          <div style="font-size:22px;font-weight:900;color:#c8382a" id="sumRemain">0</div>
-          <div style="font-size:9px;color:#c8382a;font-family:monospace;text-transform:uppercase">Remaining</div>
-        </div>
-      </div>
-    </div>
-    <div id="sumBody"></div>
-  </div>
 </div>
 
 <!-- CONFIRM MODAL -->
 <div class="modal-bg" id="confirmModal" style="display:none">
-  <div class="modal">
-    <div class="modal-title" id="cm-title"></div>
-    <div class="modal-sub" id="cm-sub"></div>
-    <div style="margin-bottom:12px">
-      <label class="lbl">How many did you make?</label>
-      <div style="display:flex;align-items:center;gap:10px">
-        <input type="number" id="cm-qty" min="1" inputmode="numeric"
-          style="width:100px;padding:10px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:20px;font-weight:900;text-align:center;background:#f5ede0;outline:none;-webkit-appearance:none;-moz-appearance:textfield;color:#4a2f14;font-family:monospace"
-          oninput="updateConfirmWarn()">
-        <div style="font-size:13px;color:#8a7a6a;font-family:monospace">
-          of <span id="cm-target-lbl" style="font-weight:900;color:#4a2f14"></span> remaining
+    <div class="modal">
+        <div class="modal-title" id="cm-title"></div>
+        <div class="modal-sub" id="cm-sub"></div>
+        <div style="margin-bottom:12px">
+            <label class="lbl">How many did you make?</label>
+            <div style="display:flex;align-items:center;gap:10px">
+                <input type="number" id="cm-qty" min="1" inputmode="numeric"
+                       style="width:100px;padding:10px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:20px;font-weight:900;text-align:center;background:#f5ede0;outline:none;-webkit-appearance:none;-moz-appearance:textfield;color:#4a2f14;font-family:monospace"
+                       oninput="updateConfirmWarn()">
+                <div style="font-size:13px;color:#8a7a6a;font-family:monospace">
+                    of <span id="cm-target-lbl" style="font-weight:900;color:#4a2f14"></span> remaining
+                </div>
+            </div>
         </div>
-      </div>
+        <div id="cm-warn" class="modal-warn" style="display:none"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <button class="btn btn-grey" style="margin-bottom:0" onclick="closeConfirm()">Cancel</button>
+            <button class="btn btn-orange" style="margin-bottom:0" onclick="confirmMarkDone()">✅ Confirm</button>
+        </div>
     </div>
-    <div id="cm-warn" class="modal-warn" style="display:none"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-      <button class="btn btn-grey" style="margin-bottom:0" onclick="closeConfirm()">Cancel</button>
-      <button class="btn btn-orange" style="margin-bottom:0" onclick="confirmMarkDone()">✅ Confirm</button>
-    </div>
-  </div>
 </div>
 
 <script>
-var staffName       = '';
-var kitchenOrders   = []; // sorted ASC by created_at — FIFO oldest first
-var productCounts   = {}; // pname → total needed from orders
-var madeSoFar       = {}; // pname → cumulative qty chef has made (persisted)
-var sentToPackaging = {}; // orderId → true (persisted)
-var allProducts     = []; // for pre-production dropdown
-var productIdByName = {}; // order line name → product_id
-var confirmProd     = null;
-var kitchenDate     = '';
+    var staffName       = '';
+    var kitchenOrders   = []; // sorted ASC by created_at — FIFO oldest first
+    var productCounts   = {}; // pname → total needed from orders
+    var madeSoFar       = {}; // pname → cumulative qty chef has made (persisted)
+    var sentToPackaging = {}; // orderId → true (persisted)
+    var allProducts     = []; // for pre-production dropdown
+    var productIdByName = {}; // order line name → product_id
+    var confirmProd     = null;
+    var kitchenDate     = '';
 
-// ── LOGIN ──
-(function(){
-  api({action:'getStaff'}).then(function(data){
-    var list=(Array.isArray(data)?data:[]).filter(function(s){
-      return s.active&&(s.role==='chef'||s.role==='admin'||s.role==='super_admin');
-    });
-    document.getElementById('loginName').innerHTML='<option value="">Select name…</option>'+
-      list.map(function(s){return '<option value="'+esc(s.name)+'">👨‍🍳 '+esc(s.name)+'</option>';}).join('');
-  });
-  // Load products for pre-production dropdown
-  (window.ProductsShared ? ProductsShared.loadProductMaster() : api({action:'getProducts'}).then(function(d){ return Array.isArray(d)?d:[]; })).then(function(data){
-    allProducts = (Array.isArray(data)?data:[]).filter(function(p){ return p.active!==false; });
-    if (window.ProductsShared) ProductsShared.setProductMaster(allProducts);
-    populatePpDropdown();
-  });
-  var sn=sessionStorage.getItem('kitchenStaff')||localStorage.getItem('kitchenStaff');
-  if(sn){staffName=sn;showApp();} else {goto('');}
-})();
-
-function populatePpDropdown(){
-  var cats={};
-  allProducts.forEach(function(p){
-    var c=p.category||'Other';
-    if(!cats[c])cats[c]=[];
-    cats[c].push(p);
-  });
-  var html='<option value="">Select product…</option>';
-  Object.keys(cats).sort().forEach(function(cat){
-    html+='<optgroup label="'+esc(cat)+'">';
-    cats[cat].forEach(function(p){ html+='<option value="'+esc(p.name)+'">'+esc(p.name)+'</option>'; });
-    html+='</optgroup>';
-  });
-  document.getElementById('pp-prod').innerHTML=html;
-}
-
-function doLogin(){
-  var name=document.getElementById('loginName').value;
-  var pass=document.getElementById('loginPass').value;
-  var btn=document.getElementById('loginBtn');
-  var err=document.getElementById('loginErr');
-  err.style.display='none';
-  if(!name){alert('Select your name');return;}
-  if(!pass){err.style.display='block';return;}
-  btn.disabled=true;btn.textContent='⏳ Checking…';
-  api({action:'staffLogin',name:name,password:pass}).then(function(data){
-    btn.disabled=false;btn.textContent='👨‍🍳 Kitchen Login';
-    var s=Array.isArray(data)&&data.length?data[0]:null;
-    if(!s||(s.role!=='chef'&&s.role!=='admin'&&s.role!=='super_admin')){
-      err.style.display='block';err.textContent=s?'Access denied.':'Wrong password.';return;
-    }
-    staffName=s.name;
-    sessionStorage.setItem('kitchenStaff',staffName);
-    localStorage.setItem('kitchenStaff',staffName);
-    showApp();
-  });
-}
-
-function doLogout(){
-  sessionStorage.removeItem('kitchenStaff');localStorage.removeItem('kitchenStaff');
-  sessionStorage.removeItem('role');sessionStorage.removeItem('staffName');
-  localStorage.removeItem('staffRole');localStorage.removeItem('staffNamePersist');localStorage.removeItem('staffTabs');
-  staffName='';kitchenOrders=[];madeSoFar={};sentToPackaging={};
-  goto('');
-}
-
-function showApp(){
-  document.getElementById('loginScreen').style.display='none';
-  document.getElementById('appScreen').style.display='block';
-  document.getElementById('topName').textContent=staffName+' · '+
-    new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'});
-  kitchenDate=tomorrowStr();
-  document.getElementById('kitchenDate').value=kitchenDate;
-  restoreState(kitchenDate);
-  renderPpList();
-  loadKitchenOrders();
-}
-
-function showTab(t){
-  ['make','summary'].forEach(function(x){
-    document.getElementById('pg-'+x).classList.toggle('on',x===t);
-    document.getElementById('tb-'+x).classList.toggle('on',x===t);
-  });
-  if(t==='summary') renderSummary();
-}
-
-function tomorrowStr(){
-  var d=new Date();d.setDate(d.getDate()+1);
-  return d.getFullYear()+'-'+zp(d.getMonth()+1)+'-'+zp(d.getDate());
-}
-function zp(n){return String(n).padStart(2,'0');}
-
-// ── PERSIST STATE ──
-function saveState(){
-  if(!kitchenDate) return;
-  localStorage.setItem('kstate_'+kitchenDate,JSON.stringify({
-    madeSoFar:madeSoFar, sentToPackaging:sentToPackaging
-  }));
-}
-function restoreState(date){
-  var s=localStorage.getItem('kstate_'+date);
-  if(!s){madeSoFar={};sentToPackaging={};return;}
-  try{var p=JSON.parse(s);madeSoFar=p.madeSoFar||{};sentToPackaging=p.sentToPackaging||{};}
-  catch(e){madeSoFar={};sentToPackaging={};}
-}
-
-// ── PRE-PRODUCTION ──
-function addPreProd(){
-  var pname=document.getElementById('pp-prod').value;
-  var qty=parseInt(document.getElementById('pp-qty').value)||0;
-  if(!pname){alert('Select a product');return;}
-  if(qty<1){alert('Enter quantity');return;}
-  madeSoFar[pname]=(madeSoFar[pname]||0)+qty;
-  saveState();
-  document.getElementById('pp-qty').value='';
-  renderPpList();
-  // If orders already loaded, re-evaluate and re-render
-  if(kitchenOrders.length){
-    reEvaluateAndSend(true);
-    renderCountGrid();
-    updateProgress();
-    renderSummary();
-  }
-  var msg=document.getElementById('pp-msg');
-  msg.textContent='✅ Logged: '+pname+' ×'+qty+(madeSoFar[pname]>qty?' (total: '+madeSoFar[pname]+')':'');
-  msg.style.display='block';
-  setTimeout(function(){msg.style.display='none';},3000);
-}
-
-function renderPpList(){
-  var entries=Object.entries(madeSoFar).filter(function(e){return e[1]>0;});
-  var el=document.getElementById('pp-list');
-  if(!entries.length){el.innerHTML='';return;}
-  el.innerHTML=entries.map(function(e){
-    var pname=e[0],qty=e[1];
-    var needed=productCounts[pname]||0;
-    var label=pname+' ×'+qty+(needed?' / '+needed+' needed':'');
-    return '<span class="preprod-tag">'+esc(label)+'</span>';
-  }).join('');
-}
-
-// ── LOAD ORDERS ──
-function loadKitchenOrders(){
-  kitchenDate=document.getElementById('kitchenDate').value;
-  if(!kitchenDate) return;
-  restoreState(kitchenDate);
-  renderPpList();
-
-  var msg=document.getElementById('kitchenMsg');
-  msg.textContent='⏳ Loading…';msg.className='msg in';msg.style.display='block';
-  document.getElementById('statBar').style.display='none';
-  document.getElementById('countSection').style.display='none';
-  document.getElementById('kitchenDoneMsg').style.display='none';
-
-  api({action:'getCustomerOrders',delivery_date:kitchenDate,status:'approved'}).then(function(data){
-    // Sort ASCENDING by created_at — oldest order first = FIFO priority
-    kitchenOrders=(Array.isArray(data)?data:[]).sort(function(a,b){
-      return new Date(a.created_at)-new Date(b.created_at);
-    });
-    msg.style.display='none';
-
-    if(!kitchenOrders.length){
-      msg.textContent='No approved orders for this date. You can still log pre-production above.';
-      msg.className='msg in';msg.style.display='block';
-      renderPpList();
-      return;
-    }
-
-    // Build product totals from orders (+ product_id for category)
-    productCounts={};
-    productIdByName={}; // name → product_id (from item_ids)
-    kitchenOrders.forEach(function(o){
-      var items=(o.items||'').split(',');
-      var qtys=(o.qty||'').split(',');
-      var ids=(o.item_ids||'').split(',');
-      items.forEach(function(item,i){
-        item=item.trim();if(!item)return;
-        productCounts[item]=(productCounts[item]||0)+(parseInt(qtys[i])||0);
-        var pid=String(ids[i]||'').trim();
-        if(pid && !productIdByName[item]) productIdByName[item]=pid;
+    // ── LOGIN ──
+    (function(){
+      api({action:'getStaff'}).then(function(data){
+        var list=(Array.isArray(data)?data:[]).filter(function(s){
+          return s.active&&(s.role==='chef'||s.role==='admin'||s.role==='super_admin');
+        });
+        document.getElementById('loginName').innerHTML='<option value="">Select name…</option>'+
+          list.map(function(s){return '<option value="'+esc(s.name)+'">👨‍🍳 '+esc(s.name)+'</option>';}).join('');
       });
-    });
+      // Load products for pre-production dropdown
+      (window.ProductsShared ? ProductsShared.loadProductMaster() : api({action:'getProducts'}).then(function(d){ return Array.isArray(d)?d:[]; })).then(function(data){
+        allProducts = (Array.isArray(data)?data:[]).filter(function(p){ return p.active!==false; });
+        if (window.ProductsShared) ProductsShared.setProductMaster(allProducts);
+        populatePpDropdown();
+      });
+      var sn=sessionStorage.getItem('kitchenStaff')||localStorage.getItem('kitchenStaff');
+      if(sn){staffName=sn;showApp();} else {goto('');}
+    })();
 
-    // Auto-check if any pre-production already covers full products
-    reEvaluateAndSend(true);
+    function populatePpDropdown(){
+      var cats={};
+      allProducts.forEach(function(p){
+        var c=p.category||'Other';
+        if(!cats[c])cats[c]=[];
+        cats[c].push(p);
+      });
+      var html='<option value="">Select product…</option>';
+      Object.keys(cats).sort().forEach(function(cat){
+        html+='<optgroup label="'+esc(cat)+'">';
+        cats[cat].forEach(function(p){ html+='<option value="'+esc(p.name)+'">'+esc(p.name)+'</option>'; });
+        html+='</optgroup>';
+      });
+      document.getElementById('pp-prod').innerHTML=html;
+    }
 
-    var totalQty=Object.values(productCounts).reduce(function(s,v){return s+v;},0);
-    document.getElementById('statOrders').textContent=kitchenOrders.length;
-    document.getElementById('statItems').textContent=totalQty;
-    document.getElementById('statProds').textContent=Object.keys(productCounts).length;
-    document.getElementById('statBar').style.display='block';
+    function doLogin(){
+      var name=document.getElementById('loginName').value;
+      var pass=document.getElementById('loginPass').value;
+      var btn=document.getElementById('loginBtn');
+      var err=document.getElementById('loginErr');
+      err.style.display='none';
+      if(!name){alert('Select your name');return;}
+      if(!pass){err.style.display='block';return;}
+      btn.disabled=true;btn.textContent='⏳ Checking…';
+      api({action:'staffLogin',name:name,password:pass}).then(function(data){
+        btn.disabled=false;btn.textContent='👨‍🍳 Kitchen Login';
+        var s=Array.isArray(data)&&data.length?data[0]:null;
+        if(!s||(s.role!=='chef'&&s.role!=='admin'&&s.role!=='super_admin')){
+          err.style.display='block';err.textContent=s?'Access denied.':'Wrong password.';return;
+        }
+        staffName=s.name;
+        sessionStorage.setItem('kitchenStaff',staffName);
+        localStorage.setItem('kitchenStaff',staffName);
+        showApp();
+      });
+    }
 
-    renderCountGrid();
-    renderPpList(); // update tags with "needed" context
-    document.getElementById('countSection').style.display='block';
-    updateProgress();
-  });
-}
+    function doLogout(){
+      sessionStorage.removeItem('kitchenStaff');localStorage.removeItem('kitchenStaff');
+      sessionStorage.removeItem('role');sessionStorage.removeItem('staffName');
+      localStorage.removeItem('staffRole');localStorage.removeItem('staffNamePersist');localStorage.removeItem('staffTabs');
+      staffName='';kitchenOrders=[];madeSoFar={};sentToPackaging={};
+      goto('');
+    }
 
-// ── PRODUCT GRID ──
-function renderCountGrid(){
-  // Group products by master category via product_id (no name fuzzy)
-  function catForName(pname){
-    if (window.ProductsShared) return ProductsShared.catForName(pname, productIdByName);
-    return 'Other';
-  }
-  var byCat={};
-  Object.keys(productCounts).forEach(function(pname){
-    var c=catForName(pname);
-    if(!byCat[c]) byCat[c]=[];
-    byCat[c].push(pname);
-  });
-  var catNames=Object.keys(byCat).sort(function(a,b){
-    if(a==='Other') return 1;
-    if(b==='Other') return -1;
-    return a.localeCompare(b);
-  });
-  var html='';
-  catNames.forEach(function(cat){
-    var names=byCat[cat].sort(function(a,b){ return a.localeCompare(b); });
-    var catTotal=names.reduce(function(s,n){ return s+(productCounts[n]||0); },0);
-    html+='<div style="font-size:11px;font-weight:900;color:#4a2f14;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 6px;display:flex;justify-content:space-between;align-items:center">'+
-      '<span>'+esc(cat)+'</span><span style="background:#c8a87a;color:#fff;border-radius:20px;padding:2px 10px;font-family:monospace">'+catTotal+'</span></div>';
-    names.forEach(function(pname){
-      var total=productCounts[pname];
-      var made=madeSoFar[pname]||0;
-      var remaining=Math.max(0, total-made);
-      var fullyDone=made>=total;
-      var partialDone=made>0&&made<total;
-      var pct=Math.min(100,Math.round(made/total*100));
-      var badgeClass=fullyDone?'pb-done':partialDone?'pb-partial':'pb-pending';
-      var badgeText=fullyDone?'✅ All done':partialDone?'⚡ '+made+'/'+total:' ⏳ Need ×'+total;
-      var rowClass='prod-row'+(fullyDone?' fully-done':partialDone?' partial':'');
-      html+='<div class="'+rowClass+'" id="cr-'+sid(pname)+'">'+
-        '<div class="prod-top">'+
-          '<span class="prod-name">'+esc(pname)+'</span>'+
-          '<span class="prod-badge '+badgeClass+'">'+badgeText+'</span>'+
-        '</div>'+
-        '<div class="prod-bar-row">'+
-          '<div class="prod-bar"><div class="prod-bar-fill" style="width:'+pct+'%"></div></div>'+
-          '<span class="prod-nums">'+(fullyDone?'✓ '+made:remaining+' left to make')+'</span>'+
-        '</div>'+
-        (fullyDone?'':
-          '<div class="prod-bot">'+
-            '<span style="font-size:11px;color:#8a7a6a;font-family:monospace;flex-shrink:0">Made:</span>'+
-            '<input type="number" class="prod-inp" id="inp-'+sid(pname)+'" value="'+remaining+'" min="1" max="'+remaining+'" inputmode="numeric">'+
-            '<span style="font-size:11px;color:#8a7a6a;font-family:monospace;flex-shrink:0">/ '+remaining+' needed</span>'+
-            '<button class="mark-btn" onclick="openConfirm(\''+esc(pname)+'\')">✅ Mark Done</button>'+
-          '</div>'
-        )+
-      '</div>';
-    });
-  });
-  document.getElementById('countGrid').innerHTML=html;
-}
+    function showApp(){
+      document.getElementById('loginScreen').style.display='none';
+      document.getElementById('appScreen').style.display='block';
+      document.getElementById('topName').textContent=staffName+' · '+
+        new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'});
+      kitchenDate=tomorrowStr();
+      document.getElementById('kitchenDate').value=kitchenDate;
+      restoreState(kitchenDate);
+      renderPpList();
+      loadKitchenOrders();
+    }
 
-function sid(s){return s.replace(/[^a-z0-9]/gi,'_');}
+    function showTab(t){
+      ['make','summary'].forEach(function(x){
+        document.getElementById('pg-'+x).classList.toggle('on',x===t);
+        document.getElementById('tb-'+x).classList.toggle('on',x===t);
+      });
+      if(t==='summary') renderSummary();
+    }
 
-// ── CONFIRM MODAL ──
-function openConfirm(pname){
-  confirmProd=pname;
-  var total=productCounts[pname]||0;
-  var made=madeSoFar[pname]||0;
-  var remaining=Math.max(1,total-made);
+    function tomorrowStr(){
+      var d=new Date();d.setDate(d.getDate()+1);
+      return d.getFullYear()+'-'+zp(d.getMonth()+1)+'-'+zp(d.getDate());
+    }
+    function zp(n){return String(n).padStart(2,'0');}
 
-  var inpEl=document.getElementById('inp-'+sid(pname));
-  var inpVal=inpEl?Math.min(remaining,Math.max(1,parseInt(inpEl.value)||remaining)):remaining;
+    // ── PERSIST STATE ──
+    function saveState(){
+      if(!kitchenDate) return;
+      localStorage.setItem('kstate_'+kitchenDate,JSON.stringify({
+        madeSoFar:madeSoFar, sentToPackaging:sentToPackaging
+      }));
+    }
+    function restoreState(date){
+      var s=localStorage.getItem('kstate_'+date);
+      if(!s){madeSoFar={};sentToPackaging={};return;}
+      try{var p=JSON.parse(s);madeSoFar=p.madeSoFar||{};sentToPackaging=p.sentToPackaging||{};}
+      catch(e){madeSoFar={};sentToPackaging={};}
+    }
 
-  document.getElementById('cm-title').textContent='✅ Mark Done: '+pname;
-  document.getElementById('cm-sub').textContent=
-    (made>0?'Already made: '+made+' units. ':'')+
-    'Still needed: ×'+remaining;
-  document.getElementById('cm-target-lbl').textContent=remaining;
-  document.getElementById('cm-qty').value=inpVal;
-  document.getElementById('cm-qty').max=remaining;
-  document.getElementById('cm-warn').style.display='none';
-  updateConfirmWarn();
-  document.getElementById('confirmModal').style.display='flex';
-  setTimeout(function(){
-    document.getElementById('cm-qty').focus();
-    document.getElementById('cm-qty').select();
-  },80);
-}
-
-function updateConfirmWarn(){
-  if(!confirmProd) return;
-  var pname=confirmProd;
-  var total=productCounts[pname]||0;
-  var alreadyMade=madeSoFar[pname]||0;
-  var remaining=Math.max(0,total-alreadyMade);
-  var nowMaking=Math.max(0,Math.min(parseInt(document.getElementById('cm-qty').value)||0,remaining));
-  var warn=document.getElementById('cm-warn');
-  if(nowMaking>=remaining){warn.style.display='none';return;}
-
-  // Simulate FIFO (kitchenOrders already sorted ASC = oldest first)
-  var shortageList=[];
-  var rem=nowMaking;
-  kitchenOrders.forEach(function(o){
-    if(sentToPackaging[o.id]) return;
-    var items=(o.items||'').split(',').map(function(s){return s.trim();});
-    var qtys=(o.qty||'').split(',');
-    var idx=items.indexOf(pname);
-    if(idx<0) return;
-    var need=parseInt(qtys[idx])||0;
-    if(rem>=need){ rem-=need; }
-    else{ shortageList.push(o.shop_name+' (needs '+need+', can get '+(rem>0?rem:0)+')'); rem=0; }
-  });
-
-  if(shortageList.length){
-    warn.textContent='⚠️ Short by '+(remaining-nowMaking)+'.\nThese shops will be partial:\n'+shortageList.join('\n');
-    warn.style.display='block';
-  } else {
-    warn.style.display='none';
-  }
-}
-
-function closeConfirm(){ document.getElementById('confirmModal').style.display='none'; confirmProd=null; }
-
-function confirmMarkDone(){
-  if(!confirmProd) return;
-  var pname=confirmProd;
-  var total=productCounts[pname]||0;
-  var alreadyMade=madeSoFar[pname]||0;
-  var remaining=Math.max(0,total-alreadyMade);
-  var nowMaking=Math.max(0,Math.min(parseInt(document.getElementById('cm-qty').value)||0,remaining));
-  closeConfirm();
-
-  madeSoFar[pname]=(alreadyMade+nowMaking);
-  reEvaluateAndSend(true);
-  saveState();
-  renderCountGrid();
-  renderPpList();
-  updateProgress();
-  renderSummary();
-}
-
-// ── FIFO COVERAGE CHECK ──
-// kitchenOrders is sorted ASC (oldest first = FIFO priority)
-function getFIFOCoverage(targetOrder, pname){
-  var made=madeSoFar[pname]||0;
-  if(made<=0) return false;
-  var rem=made;
-  for(var i=0;i<kitchenOrders.length;i++){
-    var o=kitchenOrders[i];
-    var items=(o.items||'').split(',').map(function(s){return s.trim();});
-    var qtys=(o.qty||'').split(',');
-    var idx=items.indexOf(pname);
-    if(idx<0) continue;
-    var need=parseInt(qtys[idx])||0;
-    if(o.id===targetOrder.id) return rem>=need; // ← check BEFORE subtracting
-    rem-=need;
-    if(rem<=0) return false; // nothing left for any subsequent order
-  }
-  return false;
-}
-
-function isOrderComplete(order){
-  var items=(order.items||'').split(',').map(function(s){return s.trim();}).filter(Boolean);
-  return items.every(function(pname){ return getFIFOCoverage(order,pname); });
-}
-
-function reEvaluateAndSend(sendApi){
-  var toSend=[];
-  kitchenOrders.forEach(function(o){
-    if(sentToPackaging[o.id]) return;
-    if(isOrderComplete(o)){ sentToPackaging[o.id]=true; toSend.push(o); }
-  });
-  if(sendApi&&toSend.length){
-    toSend.forEach(function(o){
-      apiPost({action:'updateCustomerOrderStatus',id:o.id,status:'packaging'});
-    });
-    saveState();
-  }
-}
-
-function updateProgress(){
-  var total=Object.keys(productCounts).length;
-  var done=Object.keys(productCounts).filter(function(p){return (madeSoFar[p]||0)>=(productCounts[p]||1);}).length;
-  document.getElementById('prodProgress').textContent=done+' / '+total+' products done';
-  var allSent=kitchenOrders.length>0&&kitchenOrders.every(function(o){return sentToPackaging[o.id];});
-  var dm=document.getElementById('kitchenDoneMsg');
-  if(allSent){dm.textContent='🎉 All orders sent to Packaging!';dm.style.display='block';}
-  else dm.style.display='none';
-}
-
-// ── SUMMARY ──
-function renderSummary(){
-  var sumMsg=document.getElementById('sumMsg');
-  var sumBody=document.getElementById('sumBody');
-  if(!kitchenOrders.length){
-    sumMsg.textContent='Load orders on the "Make This" tab first.';
-    sumMsg.className='msg in';sumMsg.style.display='block';
-    document.getElementById('sumStats').style.display='none';
-    sumBody.innerHTML='';return;
-  }
-  sumMsg.style.display='none';
-
-  var complete=[],partial=[],remaining=[];
-  kitchenOrders.forEach(function(o){
-    var items=(o.items||'').split(',').map(function(s){return s.trim();}).filter(Boolean);
-    var qtys=(o.qty||'').split(',');
-    var doneParts=[],partialParts=[],remainParts=[];
-    items.forEach(function(pname,i){
-      var need=parseInt(qtys[i])||0;
-      if(!(pname in madeSoFar)||madeSoFar[pname]<=0){
-        remainParts.push(pname+' ×'+need);
-      } else if(getFIFOCoverage(o,pname)){
-        doneParts.push(pname+' ×'+need);
-      } else {
-        partialParts.push(pname+' ×'+need);
+    // ── PRE-PRODUCTION ──
+    function addPreProd(){
+      var pname=document.getElementById('pp-prod').value;
+      var qty=parseInt(document.getElementById('pp-qty').value)||0;
+      if(!pname){alert('Select a product');return;}
+      if(qty<1){alert('Enter quantity');return;}
+      madeSoFar[pname]=(madeSoFar[pname]||0)+qty;
+      saveState();
+      document.getElementById('pp-qty').value='';
+      renderPpList();
+      // If orders already loaded, re-evaluate and re-render
+      if(kitchenOrders.length){
+        reEvaluateAndSend(true);
+        renderCountGrid();
+        updateProgress();
+        renderSummary();
       }
-    });
-    var lines=[];
-    if(doneParts.length)    lines.push('<span style="color:#2d7a4f">✅ '+doneParts.join(', ')+'</span>');
-    if(partialParts.length) lines.push('<span style="color:#e67e22">⚡ '+partialParts.join(', ')+' (partial)</span>');
-    if(remainParts.length)  lines.push('<span style="color:#c8382a">⏳ '+remainParts.join(', ')+'</span>');
-    if(o.note) lines.push('<span style="color:#8a7a6a">📝 '+esc(o.note)+'</span>');
-    var card='<div class="sum-shop"><div class="sum-sname">'+esc(o.shop_name)+'</div>'+
-      '<div class="sum-sdetail">'+lines.join('<br>')+'</div></div>';
+      var msg=document.getElementById('pp-msg');
+      msg.textContent='✅ Logged: '+pname+' ×'+qty+(madeSoFar[pname]>qty?' (total: '+madeSoFar[pname]+')':'');
+      msg.style.display='block';
+      setTimeout(function(){msg.style.display='none';},3000);
+    }
 
-    if(sentToPackaging[o.id])                  complete.push(card);
-    else if(remainParts.length===items.length) remaining.push(card);
-    else                                        partial.push(card);
-  });
+    function renderPpList(){
+      var entries=Object.entries(madeSoFar).filter(function(e){return e[1]>0;});
+      var el=document.getElementById('pp-list');
+      if(!entries.length){el.innerHTML='';return;}
+      el.innerHTML=entries.map(function(e){
+        var pname=e[0],qty=e[1];
+        var needed=productCounts[pname]||0;
+        var label=pname+' ×'+qty+(needed?' / '+needed+' needed':'');
+        return '<span class="preprod-tag">'+esc(label)+'</span>';
+      }).join('');
+    }
 
-  document.getElementById('sumComplete').textContent=complete.length;
-  document.getElementById('sumPartial').textContent=partial.length;
-  document.getElementById('sumRemain').textContent=remaining.length;
-  document.getElementById('sumStats').style.display='block';
+    // ── LOAD ORDERS ──
+    function loadKitchenOrders(){
+      kitchenDate=document.getElementById('kitchenDate').value;
+      if(!kitchenDate) return;
+      restoreState(kitchenDate);
+      renderPpList();
 
-  var html='';
-  if(complete.length) html+='<div style="margin-bottom:14px"><div class="sum-hdr sh-done">✅ Complete — '+complete.length+' shop'+(complete.length!==1?'s':'')+' → Packaging</div>'+complete.join('')+'</div>';
-  if(partial.length)  html+='<div style="margin-bottom:14px"><div class="sum-hdr sh-partial">⚡ Partial — '+partial.length+' shop'+(partial.length!==1?'s':'')+' (some products done)</div>'+partial.join('')+'</div>';
-  if(remaining.length)html+='<div style="margin-bottom:14px"><div class="sum-hdr sh-remain">⏳ Remaining — '+remaining.length+' shop'+(remaining.length!==1?'s':'')+' (not started)</div>'+remaining.join('')+'</div>';
-  if(!html) html='<div style="text-align:center;padding:30px;font-size:13px;color:#8a7a6a;font-family:monospace">No data yet.</div>';
-  sumBody.innerHTML=html;
-}
+      var msg=document.getElementById('kitchenMsg');
+      msg.textContent='⏳ Loading…';msg.className='msg in';msg.style.display='block';
+      document.getElementById('statBar').style.display='none';
+      document.getElementById('countSection').style.display='none';
+      document.getElementById('kitchenDoneMsg').style.display='none';
 
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+      api({action:'getCustomerOrders',delivery_date:kitchenDate,status:'approved'}).then(function(data){
+        // Sort ASCENDING by created_at — oldest order first = FIFO priority
+        kitchenOrders=(Array.isArray(data)?data:[]).sort(function(a,b){
+          return new Date(a.created_at)-new Date(b.created_at);
+        });
+        msg.style.display='none';
+
+        if(!kitchenOrders.length){
+          msg.textContent='No approved orders for this date. You can still log pre-production above.';
+          msg.className='msg in';msg.style.display='block';
+          renderPpList();
+          return;
+        }
+
+        // Build product totals from orders (+ product_id for category)
+        productCounts={};
+        productIdByName={}; // name → product_id (from item_ids)
+        kitchenOrders.forEach(function(o){
+          var items=(o.items||'').split(',');
+          var qtys=(o.qty||'').split(',');
+          var ids=(o.item_ids||'').split(',');
+          items.forEach(function(item,i){
+            item=item.trim();if(!item)return;
+            productCounts[item]=(productCounts[item]||0)+(parseInt(qtys[i])||0);
+            var pid=String(ids[i]||'').trim();
+            if(pid && !productIdByName[item]) productIdByName[item]=pid;
+          });
+        });
+
+        // Auto-check if any pre-production already covers full products
+        reEvaluateAndSend(true);
+
+        var totalQty=Object.values(productCounts).reduce(function(s,v){return s+v;},0);
+        document.getElementById('statOrders').textContent=kitchenOrders.length;
+        document.getElementById('statItems').textContent=totalQty;
+        document.getElementById('statProds').textContent=Object.keys(productCounts).length;
+        document.getElementById('statBar').style.display='block';
+
+        renderCountGrid();
+        renderPpList(); // update tags with "needed" context
+        document.getElementById('countSection').style.display='block';
+        updateProgress();
+      });
+    }
+
+    // ── PRODUCT GRID ──
+    function renderCountGrid(){
+      // Group products by master category via product_id (no name fuzzy)
+      function catForName(pname){
+        if (window.ProductsShared) return ProductsShared.catForName(pname, productIdByName);
+        return 'Other';
+      }
+      var byCat={};
+      Object.keys(productCounts).forEach(function(pname){
+        var c=catForName(pname);
+        if(!byCat[c]) byCat[c]=[];
+        byCat[c].push(pname);
+      });
+      var catNames=Object.keys(byCat).sort(function(a,b){
+        if(a==='Other') return 1;
+        if(b==='Other') return -1;
+        return a.localeCompare(b);
+      });
+      var html='';
+      // Packet totals (×15 / ×10) — pack each shop order, then sum packets
+      if (window.ProductsShared && ProductsShared.packPacketsHtml) {
+        html += ProductsShared.packPacketsHtml(kitchenOrders || []);
+      }
+      catNames.forEach(function(cat){
+        var names=byCat[cat].sort(function(a,b){ return a.localeCompare(b); });
+        var catTotal=names.reduce(function(s,n){ return s+(productCounts[n]||0); },0);
+        html+='<div style="font-size:11px;font-weight:900;color:#4a2f14;text-transform:uppercase;letter-spacing:.5px;margin:12px 0 6px;display:flex;justify-content:space-between;align-items:center">'+
+          '<span>'+esc(cat)+'</span><span style="background:#c8a87a;color:#fff;border-radius:20px;padding:2px 10px;font-family:monospace">'+catTotal+'</span></div>';
+        names.forEach(function(pname){
+          var total=productCounts[pname];
+          var made=madeSoFar[pname]||0;
+          var remaining=Math.max(0, total-made);
+          var fullyDone=made>=total;
+          var partialDone=made>0&&made<total;
+          var pct=Math.min(100,Math.round(made/total*100));
+          var badgeClass=fullyDone?'pb-done':partialDone?'pb-partial':'pb-pending';
+          var badgeText=fullyDone?'✅ All done':partialDone?'⚡ '+made+'/'+total:' ⏳ Need ×'+total;
+          var rowClass='prod-row'+(fullyDone?' fully-done':partialDone?' partial':'');
+          html+='<div class="'+rowClass+'" id="cr-'+sid(pname)+'">'+
+            '<div class="prod-top">'+
+              '<span class="prod-name">'+esc(pname)+'</span>'+
+              '<span class="prod-badge '+badgeClass+'">'+badgeText+'</span>'+
+            '</div>'+
+            '<div class="prod-bar-row">'+
+              '<div class="prod-bar"><div class="prod-bar-fill" style="width:'+pct+'%"></div></div>'+
+              '<span class="prod-nums">'+(fullyDone?'✓ '+made:remaining+' left to make')+'</span>'+
+            '</div>'+
+            (fullyDone?'':
+              '<div class="prod-bot">'+
+                '<span style="font-size:11px;color:#8a7a6a;font-family:monospace;flex-shrink:0">Made:</span>'+
+                '<input type="number" class="prod-inp" id="inp-'+sid(pname)+'" value="'+remaining+'" min="1" max="'+remaining+'" inputmode="numeric">'+
+                '<span style="font-size:11px;color:#8a7a6a;font-family:monospace;flex-shrink:0">/ '+remaining+' needed</span>'+
+                '<button class="mark-btn" onclick="openConfirm(\''+esc(pname)+'\')">✅ Mark Done</button>'+
+              '</div>'
+            )+
+          '</div>';
+        });
+      });
+      document.getElementById('countGrid').innerHTML=html;
+    }
+
+    function sid(s){return s.replace(/[^a-z0-9]/gi,'_');}
+
+    // ── CONFIRM MODAL ──
+    function openConfirm(pname){
+      confirmProd=pname;
+      var total=productCounts[pname]||0;
+      var made=madeSoFar[pname]||0;
+      var remaining=Math.max(1,total-made);
+
+      var inpEl=document.getElementById('inp-'+sid(pname));
+      var inpVal=inpEl?Math.min(remaining,Math.max(1,parseInt(inpEl.value)||remaining)):remaining;
+
+      document.getElementById('cm-title').textContent='✅ Mark Done: '+pname;
+      document.getElementById('cm-sub').textContent=
+        (made>0?'Already made: '+made+' units. ':'')+
+        'Still needed: ×'+remaining;
+      document.getElementById('cm-target-lbl').textContent=remaining;
+      document.getElementById('cm-qty').value=inpVal;
+      document.getElementById('cm-qty').max=remaining;
+      document.getElementById('cm-warn').style.display='none';
+      updateConfirmWarn();
+      document.getElementById('confirmModal').style.display='flex';
+      setTimeout(function(){
+        document.getElementById('cm-qty').focus();
+        document.getElementById('cm-qty').select();
+      },80);
+    }
+
+    function updateConfirmWarn(){
+      if(!confirmProd) return;
+      var pname=confirmProd;
+      var total=productCounts[pname]||0;
+      var alreadyMade=madeSoFar[pname]||0;
+      var remaining=Math.max(0,total-alreadyMade);
+      var nowMaking=Math.max(0,Math.min(parseInt(document.getElementById('cm-qty').value)||0,remaining));
+      var warn=document.getElementById('cm-warn');
+      if(nowMaking>=remaining){warn.style.display='none';return;}
+
+      // Simulate FIFO (kitchenOrders already sorted ASC = oldest first)
+      var shortageList=[];
+      var rem=nowMaking;
+      kitchenOrders.forEach(function(o){
+        if(sentToPackaging[o.id]) return;
+        var items=(o.items||'').split(',').map(function(s){return s.trim();});
+        var qtys=(o.qty||'').split(',');
+        var idx=items.indexOf(pname);
+        if(idx<0) return;
+        var need=parseInt(qtys[idx])||0;
+        if(rem>=need){ rem-=need; }
+        else{ shortageList.push(o.shop_name+' (needs '+need+', can get '+(rem>0?rem:0)+')'); rem=0; }
+      });
+
+      if(shortageList.length){
+        warn.textContent='⚠️ Short by '+(remaining-nowMaking)+'.\nThese shops will be partial:\n'+shortageList.join('\n');
+        warn.style.display='block';
+      } else {
+        warn.style.display='none';
+      }
+    }
+
+    function closeConfirm(){ document.getElementById('confirmModal').style.display='none'; confirmProd=null; }
+
+    function confirmMarkDone(){
+      if(!confirmProd) return;
+      var pname=confirmProd;
+      var total=productCounts[pname]||0;
+      var alreadyMade=madeSoFar[pname]||0;
+      var remaining=Math.max(0,total-alreadyMade);
+      var nowMaking=Math.max(0,Math.min(parseInt(document.getElementById('cm-qty').value)||0,remaining));
+      closeConfirm();
+
+      madeSoFar[pname]=(alreadyMade+nowMaking);
+      reEvaluateAndSend(true);
+      saveState();
+      renderCountGrid();
+      renderPpList();
+      updateProgress();
+      renderSummary();
+    }
+
+    // ── FIFO COVERAGE CHECK ──
+    // kitchenOrders is sorted ASC (oldest first = FIFO priority)
+    function getFIFOCoverage(targetOrder, pname){
+      var made=madeSoFar[pname]||0;
+      if(made<=0) return false;
+      var rem=made;
+      for(var i=0;i<kitchenOrders.length;i++){
+        var o=kitchenOrders[i];
+        var items=(o.items||'').split(',').map(function(s){return s.trim();});
+        var qtys=(o.qty||'').split(',');
+        var idx=items.indexOf(pname);
+        if(idx<0) continue;
+        var need=parseInt(qtys[idx])||0;
+        if(o.id===targetOrder.id) return rem>=need; // ← check BEFORE subtracting
+        rem-=need;
+        if(rem<=0) return false; // nothing left for any subsequent order
+      }
+      return false;
+    }
+
+    function isOrderComplete(order){
+      var items=(order.items||'').split(',').map(function(s){return s.trim();}).filter(Boolean);
+      return items.every(function(pname){ return getFIFOCoverage(order,pname); });
+    }
+
+    function reEvaluateAndSend(sendApi){
+      var toSend=[];
+      kitchenOrders.forEach(function(o){
+        if(sentToPackaging[o.id]) return;
+        if(isOrderComplete(o)){ sentToPackaging[o.id]=true; toSend.push(o); }
+      });
+      if(sendApi&&toSend.length){
+        toSend.forEach(function(o){
+          apiPost({action:'updateCustomerOrderStatus',id:o.id,status:'packaging'});
+        });
+        saveState();
+      }
+    }
+
+    function updateProgress(){
+      var total=Object.keys(productCounts).length;
+      var done=Object.keys(productCounts).filter(function(p){return (madeSoFar[p]||0)>=(productCounts[p]||1);}).length;
+      document.getElementById('prodProgress').textContent=done+' / '+total+' products done';
+      var allSent=kitchenOrders.length>0&&kitchenOrders.every(function(o){return sentToPackaging[o.id];});
+      var dm=document.getElementById('kitchenDoneMsg');
+      if(allSent){dm.textContent='🎉 All orders sent to Packaging!';dm.style.display='block';}
+      else dm.style.display='none';
+    }
+
+    // ── SUMMARY ──
+    function renderSummary(){
+      var sumMsg=document.getElementById('sumMsg');
+      var sumBody=document.getElementById('sumBody');
+      if(!kitchenOrders.length){
+        sumMsg.textContent='Load orders on the "Make This" tab first.';
+        sumMsg.className='msg in';sumMsg.style.display='block';
+        document.getElementById('sumStats').style.display='none';
+        sumBody.innerHTML='';return;
+      }
+      sumMsg.style.display='none';
+
+      var complete=[],partial=[],remaining=[];
+      kitchenOrders.forEach(function(o){
+        var items=(o.items||'').split(',').map(function(s){return s.trim();}).filter(Boolean);
+        var qtys=(o.qty||'').split(',');
+        var doneParts=[],partialParts=[],remainParts=[];
+        items.forEach(function(pname,i){
+          var need=parseInt(qtys[i])||0;
+          if(!(pname in madeSoFar)||madeSoFar[pname]<=0){
+            remainParts.push(pname+' ×'+need);
+          } else if(getFIFOCoverage(o,pname)){
+            doneParts.push(pname+' ×'+need);
+          } else {
+            partialParts.push(pname+' ×'+need);
+          }
+        });
+        var lines=[];
+        if(doneParts.length)    lines.push('<span style="color:#2d7a4f">✅ '+doneParts.join(', ')+'</span>');
+        if(partialParts.length) lines.push('<span style="color:#e67e22">⚡ '+partialParts.join(', ')+' (partial)</span>');
+        if(remainParts.length)  lines.push('<span style="color:#c8382a">⏳ '+remainParts.join(', ')+'</span>');
+        if(o.note) lines.push('<span style="color:#8a7a6a">📝 '+esc(o.note)+'</span>');
+        var card='<div class="sum-shop"><div class="sum-sname">'+esc(o.shop_name)+'</div>'+
+          '<div class="sum-sdetail">'+lines.join('<br>')+'</div></div>';
+
+        if(sentToPackaging[o.id])                  complete.push(card);
+        else if(remainParts.length===items.length) remaining.push(card);
+        else                                        partial.push(card);
+      });
+
+      document.getElementById('sumComplete').textContent=complete.length;
+      document.getElementById('sumPartial').textContent=partial.length;
+      document.getElementById('sumRemain').textContent=remaining.length;
+      document.getElementById('sumStats').style.display='block';
+
+      var html='';
+      if(complete.length) html+='<div style="margin-bottom:14px"><div class="sum-hdr sh-done">✅ Complete — '+complete.length+' shop'+(complete.length!==1?'s':'')+' → Packaging</div>'+complete.join('')+'</div>';
+      if(partial.length)  html+='<div style="margin-bottom:14px"><div class="sum-hdr sh-partial">⚡ Partial — '+partial.length+' shop'+(partial.length!==1?'s':'')+' (some products done)</div>'+partial.join('')+'</div>';
+      if(remaining.length)html+='<div style="margin-bottom:14px"><div class="sum-hdr sh-remain">⏳ Remaining — '+remaining.length+' shop'+(remaining.length!==1?'s':'')+' (not started)</div>'+remaining.join('')+'</div>';
+      if(!html) html='<div style="text-align:center;padding:30px;font-size:13px;color:#8a7a6a;font-family:monospace">No data yet.</div>';
+      sumBody.innerHTML=html;
+    }
+
+    function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 </script>
 </body>
 </html>

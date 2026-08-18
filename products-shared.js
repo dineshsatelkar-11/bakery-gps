@@ -198,9 +198,17 @@
     return catFromLine({ name: name, product_id: '' });
   }
 
-  function calcPuffPackets(qty) {
+  /**
+   * Pack pieces into ×15 and ×10 packets (prefer as many ×15 as possible, then ×10).
+   * Example: 25 → 1×15 + 1×10 ; 35 → 1×15 + 2×10 ; 15 → 1×15
+   *
+   * IMPORTANT: Always call this per shop/order line, then SUM the packet counts.
+   * Do NOT pack the grand-total qty (shop 25 + shop 35 ≠ pack(60)).
+   */
+  function calcPackPackets(qty) {
     qty = parseInt(qty, 10) || 0;
-    if (qty <= 0) return { fifteen: 0, ten: 0, text: '0' };
+    if (qty <= 0) return { fifteen: 0, ten: 0, loose: 0, twentyFive: 0, text: '0' };
+    // Exact pack: maximize 15s with remainder divisible by 10
     for (var a = Math.floor(qty / 15); a >= 0; a--) {
       var rem = qty - 15 * a;
       if (rem % 10 === 0) {
@@ -208,21 +216,139 @@
         var parts = [];
         if (a > 0) parts.push(a + '×15');
         if (b > 0) parts.push(b + '×10');
-        return { fifteen: a, ten: b, text: parts.join(' + ') || '0' };
+        return { fifteen: a, ten: b, loose: 0, twentyFive: 0, text: parts.join(' + ') || '0' };
       }
     }
-    return { fifteen: 0, ten: 0, text: qty + ' (manual)' };
+    // Not evenly packable — max 15s + max 10s + loose pieces
+    var a2 = Math.floor(qty / 15);
+    var rem2 = qty - 15 * a2;
+    var b2 = Math.floor(rem2 / 10);
+    var loose = rem2 - 10 * b2;
+    var parts2 = [];
+    if (a2 > 0) parts2.push(a2 + '×15');
+    if (b2 > 0) parts2.push(b2 + '×10');
+    if (loose > 0) parts2.push(loose + ' loose');
+    return { fifteen: a2, ten: b2, loose: loose, twentyFive: 0, text: parts2.join(' + ') || '0' };
   }
 
+  // Back-compat alias
+  function calcPuffPackets(qty) {
+    return calcPackPackets(qty);
+  }
+
+  /**
+   * Any product with "puff" in the name: veg / chicken / paneer / egg / etc.
+   */
   function isPuffProduct(name) {
     return /puff/i.test(String(name || ''));
   }
 
+  function usesPacketPacking(name) {
+    return isPuffProduct(name);
+  }
+
+  /** Veg / chicken / paneer (or other) label for grouping. */
+  function puffKind(name) {
+    var n = String(name || '').toLowerCase();
+    if (/paneer/.test(n)) return 'Paneer';
+    if (/chicken|chk|non.?veg/.test(n)) return 'Chicken';
+    if (/veg|vegetable/.test(n)) return 'Veg';
+    return 'Other puff';
+  }
+
+  /** Plain qty — packets shown only in the end summary block. */
   function formatQtyWithPackets(name, qty) {
     qty = parseInt(qty, 10) || 0;
-    if (!isPuffProduct(name)) return String(qty);
-    var p = calcPuffPackets(qty);
-    return qty + (p.text && p.text !== '0' ? ' (' + p.text + ')' : '');
+    return String(qty);
+  }
+
+  /**
+   * Sum packet counts across shops/orders.
+   * Packs each shop line separately, then adds packet counts.
+   * Includes all puff types: veg, chicken, paneer, …
+   * Example: shop A 25 + shop B 35 → 2×15 + 3×10 (not pack(60)=4×15).
+   */
+  function sumPackPackets(itemsOrOrders) {
+    var lines = [];
+    if (!itemsOrOrders) {
+      /* empty */
+    } else if (Array.isArray(itemsOrOrders) && itemsOrOrders.length &&
+        (itemsOrOrders[0].items !== undefined || itemsOrOrders[0].shop_name !== undefined)) {
+      itemsOrOrders.forEach(function (o) {
+        parseOrderLines(o).forEach(function (line) { lines.push(line); });
+      });
+    } else if (Array.isArray(itemsOrOrders)) {
+      lines = itemsOrOrders;
+    }
+    var t15 = 0, t10 = 0, tLoose = 0, pieces = 0;
+    var byKind = {}; // Veg / Chicken / Paneer / Other → { pieces, fifteen, ten, loose }
+    lines.forEach(function (line) {
+      if (!usesPacketPacking(line.name)) return;
+      var q = parseInt(line.qty, 10) || 0;
+      if (q <= 0) return;
+      pieces += q;
+      var p = calcPackPackets(q);
+      t15 += p.fifteen || 0;
+      t10 += p.ten || 0;
+      tLoose += p.loose || 0;
+      var kind = puffKind(line.name);
+      if (!byKind[kind]) byKind[kind] = { pieces: 0, fifteen: 0, ten: 0, loose: 0 };
+      byKind[kind].pieces += q;
+      byKind[kind].fifteen += p.fifteen || 0;
+      byKind[kind].ten += p.ten || 0;
+      byKind[kind].loose += p.loose || 0;
+    });
+    var parts = [];
+    if (t15 > 0) parts.push(t15 + '×15');
+    if (t10 > 0) parts.push(t10 + '×10');
+    if (tLoose > 0) parts.push(tLoose + ' loose');
+    var packPcs = t15 * 15 + t10 * 10 + tLoose;
+    return {
+      fifteen: t15,
+      ten: t10,
+      loose: tLoose,
+      twentyFive: 0,
+      pieces: pieces,
+      packPieces: packPcs,
+      byKind: byKind,
+      text: parts.join(' + ') || '0',
+      label: (t15 || t10 || tLoose) ? ('📦 Packets: ' + (parts.join(' · ') || '0')) : ''
+    };
+  }
+
+  /** Packet totals at the end — all puff types (veg + chicken + paneer). */
+  function packPacketsHtml(itemsOrOrders, opts) {
+    opts = opts || {};
+    var s = sumPackPackets(itemsOrOrders);
+    if (!s.fifteen && !s.ten && !s.loose && !s.pieces) return '';
+    var bg = opts.bg || '#e8f5e9';
+    var fg = opts.fg || '#1a5a38';
+    var border = opts.border || '#a5d6a7';
+    var kindOrder = ['Veg', 'Chicken', 'Paneer', 'Other puff'];
+    var kindHtml = '';
+    kindOrder.forEach(function (k) {
+      var g = s.byKind && s.byKind[k];
+      if (!g || !g.pieces) return;
+      var kp = [];
+      if (g.fifteen) kp.push(g.fifteen + '×15');
+      if (g.ten) kp.push(g.ten + '×10');
+      if (g.loose) kp.push(g.loose + ' loose');
+      kindHtml +=
+        '<div style="font-size:11px;font-family:monospace;color:#5a4a3a;margin-top:3px">' +
+        '<b style="color:#4a2f14">' + k + '</b> ' + g.pieces + ' pcs' +
+        (kp.length ? ' → ' + kp.join(' + ') : '') +
+        '</div>';
+    });
+    return '<div style="margin-top:10px;padding-top:8px;border-top:2px dashed #e8dfd2">' +
+      '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">' +
+      '<span style="font-size:10px;font-weight:800;color:#8a7a6a;font-family:monospace;text-transform:uppercase">Puff packets (all types · per shop)</span>' +
+      (s.fifteen ? '<span style="background:' + bg + ';color:' + fg + ';border:1px solid ' + border + ';border-radius:20px;padding:4px 12px;font-size:13px;font-weight:900;font-family:monospace">' + s.fifteen + ' ×15</span>' : '') +
+      (s.ten ? '<span style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;border-radius:20px;padding:4px 12px;font-size:13px;font-weight:900;font-family:monospace">' + s.ten + ' ×10</span>' : '') +
+      (s.loose ? '<span style="background:#fff8e1;color:#7a4800;border:1px solid #ffe082;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:800;font-family:monospace">' + s.loose + ' loose</span>' : '') +
+      '<span style="font-size:11px;font-weight:700;color:#6a5040;font-family:monospace">= ' + s.pieces + ' pcs</span>' +
+      '</div>' +
+      kindHtml +
+      '</div>';
   }
 
   global.ProductsShared = {
@@ -236,9 +362,13 @@
     groupByCat: groupByCat,
     groupByCatEntries: groupByCatEntries,
     catForName: catForName,
+    calcPackPackets: calcPackPackets,
     calcPuffPackets: calcPuffPackets,
     isPuffProduct: isPuffProduct,
+    usesPacketPacking: usesPacketPacking,
     formatQtyWithPackets: formatQtyWithPackets,
+    sumPackPackets: sumPackPackets,
+    packPacketsHtml: packPacketsHtml,
     getAll: function () { return _products; },
     getByIdMap: function () { return _byId; }
   };

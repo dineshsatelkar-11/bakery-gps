@@ -1756,8 +1756,14 @@ function fmtQtyPack(name, qty) {
   return String(qty == null ? 0 : qty);
 }
 function fmtCatTotal(cat, total) {
-  if (/puff/i.test(String(cat || ''))) return fmtQtyPack('PUFF', total);
+  // Plain total — packet chips shown separately at end (per-shop sum)
   return String(total == null ? 0 : total);
+}
+function packBarForItems(items) {
+  if (window.ProductsShared && typeof ProductsShared.packPacketsHtml === 'function') {
+    return ProductsShared.packPacketsHtml(items || []);
+  }
+  return '';
 }
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
@@ -3362,6 +3368,7 @@ if(tbQueue) tbQueue.textContent = '⚠️ Queue ('+data.length+')';
                 '<span style="background:#4a2f14;color:#fff;border-radius:20px;padding:2px 12px;font-size:13px;font-weight:900;font-family:monospace;white-space:nowrap;margin-left:8px">'+info.total+'</span>'+
               '</div>';
             }).join('')+
+            (window.ProductsShared && ProductsShared.packPacketsHtml ? ProductsShared.packPacketsHtml(orders) : '')+
           '</div>';
 
           // Per-driver cards
@@ -3405,6 +3412,7 @@ if(tbQueue) tbQueue.textContent = '⚠️ Queue ('+data.length+')';
                   }).join('')+
                 '</div>';
               }).join('')+
+              packBarForItems(ords)+
               // Per-shop list with category chips
               '<div style="border-top:2px solid #f0e8dc;padding-top:8px;margin-top:2px">'+
                 '<div style="font-size:10px;font-weight:700;color:#8a7a6a;font-family:monospace;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px">Per Shop</div>'+
@@ -3504,7 +3512,9 @@ if(tbQueue) tbQueue.textContent = '⚠️ Queue ('+data.length+')';
         '</style></head><body>');
 
       win.document.write('<h1>🍞 Kitchen Production Sheet</h1>');
-      win.document.write('<div class="meta">'+fmtDate+(shopFilter?' · Filter: "'+shopFilter+'"':'')+' · '+data.length+' shops · '+grandTotal+' total items</div>');
+      var _packS = (window.ProductsShared && ProductsShared.sumPackPackets) ? ProductsShared.sumPackPackets(data) : null;
+      var _packMeta = (_packS && (_packS.twentyFive || _packS.ten)) ? (' · Packets: ' + _packS.text) : '';
+      win.document.write('<div class="meta">'+fmtDate+(shopFilter?' · Filter: "'+shopFilter+'"':'')+' · '+data.length+' shops · '+grandTotal+' total items'+_packMeta+'</div>');
       win.document.write('<table>'+
         '<tr><th>Product</th><th></th><th class="qty-th">Qty</th></tr>'+
         rows+
@@ -6655,20 +6665,30 @@ apiPost({
       return next();
     }
     function _zohoIsActiveStatus(s) {
-      var v = String(s || '').toLowerCase();
-      if (!v) return true; // unknown → keep
-      return v === 'active' || v === 'active_for_customers' || v === 'active_for_vendors';
+      var v = String(s || '').toLowerCase().trim();
+      if (!v) return true; // unknown → keep (list API often omits status when already filtered Active)
+      if (v === 'inactive' || v === 'disabled' || v === 'deleted' || v === 'false' || v === '0') return false;
+      return v === 'active' || v === 'active_for_customers' || v === 'true' || v === '1';
     }
     function _zohoIsCustomerContact(z) {
-      var t = String(z.contact_type || z.customer_sub_type || '').toLowerCase();
-      // exclude pure vendors
+      if (!z) return false;
+      var t = String(z.contact_type || '').toLowerCase().trim();
+      var sub = String(z.customer_sub_type || z.contact_sub_type || '').toLowerCase().trim();
+      // Pure vendors / purchase contacts — never pull into bakery customers
       if (t === 'vendor') return false;
-      if (t === 'customer' || t === 'business' || t === 'individual') return true;
-      // some APIs use customer_name filled for customers
+      if (t === 'vendor' || sub === 'vendor') return false;
+      if (z.is_vendor === true && z.is_customer === false) return false;
+      if (z.is_customer === false) return false;
+      // Prefer sales customers
+      if (t === 'customer') return true;
+      if (t === 'business' || t === 'individual') return true;
+      if (z.is_customer === true) return true;
+      // Legacy fields
       if (z.customer_name && !z.vendor_name) return true;
-      if (z.vendor_name && !z.customer_name && t !== 'customer') return false;
-      // default: include if not clearly vendor
-      return t !== 'vendor';
+      if (z.vendor_name && !z.customer_name) return false;
+      // If type empty but contact_name exists and not marked vendor — keep
+      if (!t && (z.contact_name || z.company_name)) return true;
+      return false;
     }
 
     function zohoPullCustomers(){
@@ -6697,9 +6717,12 @@ apiPost({
         var before = contacts.length;
         contacts = contacts.filter(function(z){
           if (!_zohoIsCustomerContact(z)) return false;
-          if (z.status != null && !_zohoIsActiveStatus(z.status)) return false;
+          var st = z.status != null ? z.status : (z.contact_status != null ? z.contact_status : z.status_formatted);
+          if (st != null && st !== '' && !_zohoIsActiveStatus(st)) return false;
+          if (z.is_active === false || z.active === false) return false;
           return true;
         });
+        console.log('[zoho] contacts pulled:', before, '→ customers kept:', contacts.length);
         if(!contacts.length && data.message && before === 0){
           throw data.message + ' — ensure zoho-token edge function supports action list_contacts';
         }
@@ -6952,11 +6975,14 @@ apiPost({
         // Exclude inactive items (backup if API ignored filter)
         var before = items.length;
         items = items.filter(function(it){
-          var st = String(it.status || it.item_status || '').toLowerCase();
-          if (st === 'inactive' || st === 'disabled') return false;
-          if (it.is_active === false || it.active === false) return false;
+          if (!it) return false;
+          if (it.is_active === false || it.active === false || it.is_inactive === true) return false;
+          var st = String(it.status || it.item_status || it.status_formatted || '').toLowerCase().trim();
+          if (st === 'inactive' || st === 'disabled' || st === 'deleted' || st === 'false' || st === '0') return false;
+          // Zoho sometimes uses status: 'active' only when filtered — empty is OK
           return true;
         });
+        console.log('[zoho] products pulled:', before, '→ active kept:', items.length);
         if(!items.length && data.message && before === 0){
           throw data.message + ' — ensure zoho-token edge function supports action list_items';
         }
@@ -8585,9 +8611,7 @@ onStaffRoleChange();
     if(!res || !res.ok){ alert('Failed to approve.'); return; }
     loadCustOrders();
     if(_zohoEnabled){
-      var shop = allCustomers.find(function(c){
-        return (c.customer_id || c.shop_id || '') === String(order.shop_id || '');
-      });
+      var shop = findShopForZoho(order);
       openZohoInvPreview({
         id: order.id,
         shop_id: order.shop_id,
@@ -8596,7 +8620,7 @@ onStaffRoleChange();
         items: order.items,
         qty: order.qty,
         item_ids: order.item_ids || '',
-        zoho_doc_type: order.zoho_doc_type || (shop && shop.zoho_doc_type) || 'invoice',
+        zoho_doc_type: resolveZohoDocType(order, shop),
         zoho_invoice_id: order.zoho_invoice_id || '',
         zoho_invoice_number: order.zoho_invoice_number || ''
       });
@@ -11583,13 +11607,44 @@ function applyZohoShipping(payload, shipping){
 
 var _zohoPreviewOrder = null;
 
+
+/** Normalize customer/order Zoho document type. Shop setting is source of truth. */
+function normalizeZohoDocType(v) {
+  var s = String(v || '').toLowerCase().trim().replace(/\s+/g, '_');
+  if (!s) return '';
+  if (s === 'delivery_challan' || s === 'deliverychallan' || s === 'challan' || s === 'dc' || s === 'delivery_challans')
+    return 'delivery_challan';
+  if (s === 'invoice' || s === 'tax_invoice' || s === 'inv') return 'invoice';
+  return s;
+}
+/** Find shop row for an order — match shop_id OR customer_id OR zoho_contact_id */
+function findShopForZoho(order) {
+  if (!order) return null;
+  var sid = String(order.shop_id || '').trim();
+  if (!sid) return null;
+  var list = allCustomers || [];
+  return list.find(function(c){
+    return String(c.shop_id || '').trim() === sid
+      || String(c.customer_id || '').trim() === sid
+      || String(c.zoho_contact_id || '').trim() === sid;
+  }) || null;
+}
+/** Resolve doc type: prefer customer (shop) master, then order, default invoice */
+function resolveZohoDocType(order, shop) {
+  if (!shop && order) shop = findShopForZoho(order);
+  var fromShop = shop ? normalizeZohoDocType(shop.zoho_doc_type) : '';
+  var fromOrder = order ? normalizeZohoDocType(order.zoho_doc_type) : '';
+  // Customer master wins when set (challan vs invoice is a shop policy)
+  if (fromShop === 'delivery_challan' || fromShop === 'invoice') return fromShop;
+  if (fromOrder === 'delivery_challan' || fromOrder === 'invoice') return fromOrder;
+  return 'invoice';
+}
+
 function openZohoInvPreview(order){
   _zohoPreviewOrder = order || null;
   if(!_zohoPreviewOrder) return;
-  var shop = (allCustomers||[]).find(function(c){
-    return (c.customer_id||c.shop_id||'') === String(order.shop_id||'');
-  });
-  var docType = order.zoho_doc_type || (shop && shop.zoho_doc_type) || 'invoice';
+  var shop = findShopForZoho(order);
+  var docType = resolveZohoDocType(order, shop);
   var isDC = docType === 'delivery_challan';
   var existing = order.zoho_invoice_id || '';
 
@@ -11703,9 +11758,7 @@ function confirmZohoInvPreviewSend(){
 
   promise.then(function(inv){
     var lines = buildZohoLineItems(order);
-    var shop = (allCustomers||[]).find(function(c){
-      return (c.customer_id||c.shop_id||'') === String(order.shop_id||'');
-    });
+    var shop = findShopForZoho(order);
     var ship = null;
     if(order.shipping_charge != null && order.shipping_charge !== '') ship = Number(order.shipping_charge);
     else if(shop && shop.shipping_charge != null && shop.shipping_charge !== '') ship = Number(shop.shipping_charge);
@@ -11727,7 +11780,8 @@ function confirmZohoInvPreviewSend(){
       tax_sgst: gst.tax_sgst,
       tax_igst: gst.tax_igst,
       shipping_amount: gst.shipping,
-      payment_status: 'unpaid'
+      payment_status: 'unpaid',
+      zoho_doc_type: (inv && inv.doc_type) || resolveZohoDocType(order, shop)
     };
     if (total != null) {
       body.invoice_total = total;
@@ -11766,23 +11820,21 @@ async function zohoCreateInvoiceReal(order) {
     })
     .then(function(token) {
 
-      // ── find the customer to check doc type ──
-      var shop = allCustomers.find(function(c){
-        return (c.customer_id || c.shop_id || '') === (order.shop_id || '');
-      });
-        var shop = allCustomers.find(function(c){
-        return (c.customer_id || c.shop_id || '') === String(order.shop_id || '');
-      });
-      var docType = order.zoho_doc_type
-        || (shop && shop.zoho_doc_type)
-        || 'invoice';
+      // ── find the customer to check doc type (shop master wins) ──
+      var shop = findShopForZoho(order);
+      var docType = resolveZohoDocType(order, shop);
       var isDeliveryChallan = docType === 'delivery_challan';
+      console.log('[zoho] docType=', docType, 'shop=', shop && (shop.name||shop.shop_id), 'zoho_doc_type=', shop && shop.zoho_doc_type);
 
       var lineItems = buildZohoLineItems(order);
 
+      // Zoho contact id (not internal shop_id when they differ)
+      var zohoCustomerId = (shop && (shop.zoho_contact_id || shop.customer_id || shop.shop_id))
+        || order.shop_id || '';
+
       // ── build payload — rate on lines + shipping (default ₹20) ──
       var payload = {
-        customer_id:      String(order.shop_id || ''),
+        customer_id:      String(zohoCustomerId),
         customer_name:    order.shop_name,
         date:             order.delivery_date || todayStr(),
         reference_number: 'IBCAB-' + (order.id || ''),
@@ -11837,13 +11889,18 @@ console.log('🔍 ZOHO DEBUG:', JSON.stringify({
   if (data.code !== 0) {
     throw data.message || ('Zoho error code ' + data.code);
   }
-  var doc = data.invoice || data.deliverychallan || {};
+  var doc = data.invoice || data.deliverychallan || data.deliverychallans
+    || data.delivery_challan || data.deliveryschedule || {};
+  var isChallanResp = !!(data.deliverychallan || data.deliverychallans || data.delivery_challan
+    || doc.deliverychallan_id || doc.deliverychallans_id || doc.challan_status);
 return {
-  invoice_id:     doc.invoice_id     || doc.deliverychallan_id     || doc.deliveryschedule_id     || '',
-  invoice_number: doc.invoice_number || doc.deliverychallan_number || doc.deliveryschedule_number || '',
+  invoice_id:     doc.invoice_id || doc.deliverychallan_id || doc.deliverychallans_id
+                    || doc.deliveryschedule_id || '',
+  invoice_number: doc.invoice_number || doc.deliverychallan_number || doc.deliverychallans_number
+                    || doc.deliveryschedule_number || '',
   status:         doc.challan_status || doc.status || '',
   total:          doc.total  || 0,
-  doc_type:       data.deliverychallan ? 'delivery_challan' : 'invoice'
+  doc_type:       isChallanResp ? 'delivery_challan' : 'invoice'
 };
     });
 }
@@ -11857,12 +11914,8 @@ async function zohoUpdateInvoiceReal(invoiceId, order) {
       return zohoGetAccessToken();
     })
     .then(function(token) {
-      var shop = allCustomers.find(function(c){
-        return (c.customer_id || c.shop_id || '') === String(order.shop_id || '');
-      });
-      var docType = order.zoho_doc_type
-        || (shop && shop.zoho_doc_type)
-        || 'invoice';
+      var shop = findShopForZoho(order);
+      var docType = resolveZohoDocType(order, shop);
       var isDeliveryChallan = docType === 'delivery_challan';
 
       var lineItems = buildZohoLineItems(order);

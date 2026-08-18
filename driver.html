@@ -548,7 +548,6 @@ function fmtQtyPack(name, qty) {
   return String(qty == null ? 0 : qty);
 }
 function fmtCatTotal(cat, total) {
-  if (/puff/i.test(String(cat || ''))) return fmtQtyPack('PUFF', total);
   return String(total == null ? 0 : total);
 }
 
@@ -756,6 +755,7 @@ function showTab(tab) {
             `</div>
           </div>`
         ).join('')+
+        (window.ProductsShared && ProductsShared.packPacketsHtml ? ProductsShared.packPacketsHtml(orders) : '')+
         // ── Tea Post summary ──
         (()=>{
           const tpOrders=orders.filter(o=>(o.shop_name||'').toLowerCase().includes('tea post'));
