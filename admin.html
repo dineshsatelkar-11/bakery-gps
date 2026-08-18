@@ -11596,11 +11596,34 @@ function computeInvoiceGst(lines, shipping){
     grand_total: grand
   };
 }
-function applyZohoShipping(payload, shipping){
-  var amt = shipping != null ? Number(shipping) : (_zohoShippingCharge != null ? _zohoShippingCharge : 20);
-  if(isNaN(amt) || amt < 0) amt = 0;
-  if(amt > 0){
+function applyZohoShipping(payload, shipping, asLineItem){
+  // Resolve amount: explicit value → global default (₹20) → 0
+  // Empty string must NOT become 0 (that was skipping default shipping on challan)
+  var amt;
+  if (shipping != null && shipping !== '') {
+    amt = Number(shipping);
+  } else {
+    amt = (_zohoShippingCharge != null ? _zohoShippingCharge : 20);
+  }
+  if (isNaN(amt) || amt < 0) amt = 0;
+  if (amt > 0) {
+    // Always set root field (invoices use this; some orgs also accept on DC)
     payload.shipping_charge = amt;
+    // Delivery challan API often ignores shipping_charge — add as line item too
+    if (asLineItem) {
+      if (!Array.isArray(payload.line_items)) payload.line_items = [];
+      var already = payload.line_items.some(function(l){
+        return /shipping/i.test(String(l.name || l.description || ''));
+      });
+      if (!already) {
+        payload.line_items.push({
+          name: 'Shipping Charges',
+          description: 'Shipping Charges',
+          quantity: 1,
+          rate: amt
+        });
+      }
+    }
   }
   return payload;
 }
@@ -11847,7 +11870,9 @@ async function zohoCreateInvoiceReal(order) {
         if(shop && shop.shipping_charge != null && shop.shipping_charge !== '')
           shipAmt = shop.shipping_charge;
       }
-      applyZohoShipping(payload, shipAmt);
+      // Delivery challan: also add shipping as line item (Zoho DC often ignores shipping_charge field)
+      applyZohoShipping(payload, shipAmt, isDeliveryChallan);
+      console.log('[zoho] shipping resolved=', shipAmt, 'payload.shipping_charge=', payload.shipping_charge, 'isDC=', isDeliveryChallan);
 
       // invoice has due_date, delivery challan does not
       if (!isDeliveryChallan) {
@@ -11930,7 +11955,8 @@ async function zohoUpdateInvoiceReal(invoiceId, order) {
         if(shop && shop.shipping_charge != null && shop.shipping_charge !== '')
           shipAmt = shop.shipping_charge;
       }
-      applyZohoShipping(payload, shipAmt);
+      applyZohoShipping(payload, shipAmt, isDeliveryChallan);
+      console.log('[zoho] update shipping=', shipAmt, 'payload.shipping_charge=', payload.shipping_charge, 'isDC=', isDeliveryChallan);
 
       var action = isDeliveryChallan ? 'update_delivery_challan' : 'update_invoice';
 
