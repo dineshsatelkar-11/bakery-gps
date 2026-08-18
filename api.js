@@ -870,13 +870,34 @@ function normalizeProducts(list) {
            // Customer places order
            case 'placeCustomerOrder':
          if (!b.item_ids) console.warn('[api] placeCustomerOrder: item_ids missing');
-             return sbPost('customer_orders', {
-               shop_id: b.shop_id, shop_name: b.shop_name,
-               delivery_date: b.delivery_date,
-               items: b.items, qty: b.qty, item_ids: b.item_ids || '',
-               note: b.note || '',
-               status: 'pending',
-               zoho_doc_type: b.zoho_doc_type || 'invoice'
+             // Resolve doc type: explicit body → shop master → invoice
+             // NOTE: sbGet/filters already adds eq. — pass raw ids, never 'eq.'+id
+             var placeDocType = function() {
+               if (b.zoho_doc_type) return Promise.resolve(b.zoho_doc_type);
+               var sid = b.shop_id;
+               return sbGet('shops', { shop_id: sid }).then(function(rows) {
+                 var s = Array.isArray(rows) && rows[0] ? rows[0] : null;
+                 if (s && s.zoho_doc_type) return s.zoho_doc_type;
+                 return sbGet('shops', { customer_id: sid }).then(function(r2) {
+                   var s2 = Array.isArray(r2) && r2[0] ? r2[0] : null;
+                   return (s2 && s2.zoho_doc_type) || 'invoice';
+                 });
+               }).catch(function(){ return 'invoice'; });
+             };
+             return placeDocType().then(function(docType) {
+               // Normalize challan aliases so Zoho path never mis-reads
+               var dt = String(docType || 'invoice').toLowerCase().trim();
+               if (dt === 'deliverychallan' || dt === 'challan' || dt === 'dc' || dt === 'delivery_challans')
+                 dt = 'delivery_challan';
+               if (dt !== 'delivery_challan' && dt !== 'invoice') dt = 'invoice';
+               return sbPost('customer_orders', {
+                 shop_id: b.shop_id, shop_name: b.shop_name,
+                 delivery_date: b.delivery_date,
+                 items: b.items, qty: b.qty, item_ids: b.item_ids || '',
+                 note: b.note || '',
+                 status: 'pending',
+                 zoho_doc_type: dt
+               });
              });
 
       // Customer marks "no order" for a delivery date (explicit skip)
@@ -965,6 +986,7 @@ function normalizeProducts(list) {
         if (b.shipping_amount !== undefined) upd.shipping_amount  = b.shipping_amount;
         if (b.balance_due !== undefined)     upd.balance_due      = b.balance_due;
         if (b.payment_status !== undefined)  upd.payment_status   = b.payment_status;
+        if (b.zoho_invoice_status !== undefined) upd.zoho_invoice_status = b.zoho_invoice_status;
         if (b.paid_amount !== undefined)     upd.paid_amount      = b.paid_amount;
         if (b.payment_mode !== undefined)    upd.payment_mode     = b.payment_mode;
         if (b.payment_ref !== undefined)     upd.payment_ref      = b.payment_ref;
