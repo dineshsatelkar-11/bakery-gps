@@ -24,13 +24,13 @@
           --sar:env(safe-area-inset-right,0px);
         }
         html{height:100%;background:#4a2f14}
-        body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:520px;margin:0 auto;min-height:100vh;min-height:100dvh;padding-left:var(--sal);padding-right:var(--sar);overflow-x:hidden}
-        .topbar{background:#4a2f14;padding:13px 14px;padding-top:max(13px,var(--sat));display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:99}
+        body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:520px;margin:0 auto;min-height:100vh;min-height:100dvh;padding-left:var(--sal);padding-right:var(--sar);overflow-x:hidden;padding-top:calc(53px + var(--sat));overscroll-behavior-y:none}
+        .topbar{background:#4a2f14;padding:13px 14px;padding-top:max(13px,var(--sat));display:flex;align-items:center;justify-content:space-between;position:fixed;top:0;left:0;right:0;max-width:520px;margin:0 auto;z-index:300;-webkit-transform:translateZ(0);transform:translateZ(0);backface-visibility:hidden}
         .topbar-title{color:#fff;font-size:15px;font-weight:800}
         .topbar-sub{color:#c8a87a;font-size:11px;font-family:monospace}
         .topbar-right{display:flex;gap:8px}
         .tbtn{background:rgba(255,255,255,.2);border:none;color:#fff;padding:6px 11px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif;text-decoration:none;display:inline-block}
-        .tabs{display:flex;background:#fff;border-bottom:2px solid #e8dfd2;position:sticky;top:calc(53px + var(--sat));z-index:98;overflow-x:auto;scrollbar-width:none}
+        .tabs{display:flex;background:#fff;border-bottom:2px solid #e8dfd2;position:fixed;top:calc(53px + var(--sat));left:0;right:0;max-width:520px;margin:0 auto;z-index:299;overflow-x:auto;scrollbar-width:none;-webkit-transform:translateZ(0);transform:translateZ(0)}
         /* Mobile bottom navigation */
         .bottom-nav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:200;background:#fff;border-top:1.5px solid #e8dfd2;padding:8px 4px max(10px,var(--sab));max-width:520px;margin:0 auto;box-shadow:0 -6px 24px rgba(74,47,20,.12);min-height:calc(64px + var(--sab))}
         .bottom-nav-inner{display:flex;align-items:stretch;justify-content:space-around;max-width:520px;margin:0 auto;min-height:56px}
@@ -51,18 +51,21 @@
         @media (max-width:700px){
           .tabs{display:none !important}
           .bottom-nav{display:block}
-          body{padding-bottom:calc(76px + var(--sab))}
-          #subTabs{top:calc(53px + var(--sat)) !important}
+          body{padding-top:calc(53px + var(--sat));padding-bottom:calc(76px + var(--sab))}
+          #subTabs{position:sticky;top:calc(53px + var(--sat)) !important;z-index:298}
         }
         @media (min-width:701px){
           .bottom-nav{display:none !important}
           .more-sheet{display:none !important}
+          body{padding-top:calc(96px + var(--sat))}
+          .topbar,.tabs{max-width:520px}
+          #subTabs{position:sticky;top:calc(96px + var(--sat)) !important;z-index:298}
         }
 
         .tabs::-webkit-scrollbar{display:none}
         .tab{flex:1;padding:11px 6px;border:none;background:none;font-size:10px;font-weight:700;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;text-align:center}
         .tab.on{color:#4a2f14;border-bottom-color:#4a2f14}
-        #subTabs{display:none;background:#f5ede0;border-bottom:1.5px solid #e8dfd2;position:sticky;top:calc(96px + var(--sat));z-index:97;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+        #subTabs{display:none;background:#f5ede0;border-bottom:1.5px solid #e8dfd2;position:sticky;top:calc(53px + var(--sat));z-index:298;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;-webkit-transform:translateZ(0);transform:translateZ(0)}
         #subTabs::-webkit-scrollbar{display:none}
         .sub-tab{flex:none;padding:7px 14px;border:none;background:none;font-size:11px;font-weight:700;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;border-bottom:2.5px solid transparent;margin-bottom:-1.5px;white-space:nowrap}
         .sub-tab.on{color:#4a2f14;border-bottom-color:#4a2f14;background:rgba(74,47,20,.06)}
@@ -128,7 +131,7 @@
         .progress-fill{height:6px;border-radius:6px;background:#2d7a4f;transition:width .3s}
         /* ── Laptop / Desktop Layout ── */
         @media(min-width:768px){
-          body{max-width:960px}
+          body{max-width:960px}.topbar,.tabs{max-width:960px}
           .stats-grid{grid-template-columns:repeat(6,1fr)}
           .modal-bg{align-items:center}
           .modal{border-radius:20px;margin:20px auto;align-self:center;max-height:85vh}
@@ -140,7 +143,7 @@
           .topbar{padding:13px 24px;padding-top:max(13px,var(--sat))}
         }
         @media(min-width:1024px){
-          body{max-width:1200px}
+          body{max-width:1200px}.topbar,.tabs{max-width:1200px}
           .stats-grid{grid-template-columns:repeat(6,1fr)}
         }
     </style>
