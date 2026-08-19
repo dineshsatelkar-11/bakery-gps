@@ -43,6 +43,14 @@
         body.cust-app .tabs.cust-top-tabs{display:none !important}
         body.cust-app .cust-bottom-nav{display:block !important}
 
+        /* Cart sits above bottom nav on phone */
+        body.cust-app .order-total-bar{
+          bottom: calc(58px + var(--sab));
+          z-index: 210;
+        }
+        body.cust-app .order-total-bar .btn{min-height:44px}
+
+
         @media (min-width:768px){
           body{
             max-width:none;
@@ -127,6 +135,8 @@
             transform:translateX(-50%);
             border-radius:14px 14px 0 0;
             box-shadow:0 -6px 24px rgba(74,47,20,.12);
+            bottom: 0 !important;
+            z-index: 210;
           }
           /* Sheets centered modal on desktop */
           body.cust-app #invPreviewSheet,
@@ -161,7 +171,7 @@
         }
         .tab{flex:1;padding:12px 4px;border:none;background:none;font-size:11px;font-weight:700;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;border-bottom:3px solid transparent;margin-bottom:-2px}
         .tab.on{color:#4a2f14;border-bottom-color:#4a2f14}
-        .page{display:none;padding:14px 14px calc(80px + var(--sab))}.page.on{display:block}
+        .page{display:none;padding:14px 14px calc(140px + var(--sab))}.page.on{display:block}
         .card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:14px;margin-bottom:10px}
         .msg{padding:11px 14px;border-radius:12px;font-size:12px;font-weight:600;font-family:monospace;margin-bottom:10px;line-height:1.8;white-space:pre-line}
         .ok{background:#e8f5e9;color:#2d7a4f;border:1px solid #a5d6a7}
@@ -187,7 +197,7 @@
         .preview-row:last-child{border-bottom:none}
         .preview-row .pn{font-weight:700;color:#1e1611;flex:1}
         .preview-row .pq{font-weight:800;color:#2d7a4f;font-family:monospace;flex-shrink:0}
-        .order-total-bar{position:fixed;bottom:0;left:0;right:0;max-width:440px;margin:0 auto;background:#fff;border-top:2px solid #e8dfd2;padding:12px 14px;z-index:90}
+        .order-total-bar{position:fixed;bottom:0;left:0;right:0;max-width:440px;margin:0 auto;background:#fff;border-top:2px solid #e8dfd2;padding:12px 14px;z-index:210;box-shadow:0 -6px 20px rgba(74,47,20,.12)}
         .hist-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;padding:12px 14px;margin-bottom:8px}
         .hist-date{font-size:12px;font-weight:800;color:#4a2f14}
         .hist-status{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;font-family:monospace}

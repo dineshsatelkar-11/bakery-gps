@@ -1028,6 +1028,21 @@
       renderToday();
     }
 
+
+    function brandItemLines(items, qty){
+      var iArr = String(items||'').split(',');
+      var qArr = String(qty||'').split(',');
+      var rows = [];
+      for (var i = 0; i < iArr.length; i++) {
+        var name = String(iArr[i]||'').trim();
+        var q = parseInt(qArr[i], 10) || 0;
+        if (!name || !q) continue;
+        rows.push('<div class="item-row"><span style="font-weight:600;color:#1e1611;flex:1;min-width:0">'+esc(name)+'</span><span style="font-weight:800;color:#2e7d32;font-family:monospace;flex-shrink:0">× '+q+'</span></div>');
+      }
+      if (!rows.length) return '';
+      return '<div style="margin-top:6px">'+rows.join('')+'</div>';
+    }
+
     function renderOrderCollectSummary(oc){
       if(!oc) return '';
       var html = '';
@@ -1036,16 +1051,16 @@
       html += '<div class="stat-grid" style="margin-bottom:0">';
       html += '<div class="stat-box"><div class="stat-num" style="color:#2e7d32">'+oc.totalShops+'</div><div class="stat-lbl">Shops</div></div>';
       html += '<div class="stat-box"><div class="stat-num" style="color:#2d7a4f">'+oc.orderedN+'</div><div class="stat-lbl">Ordered</div></div>';
-      html += '<div class="stat-box"><div class="stat-num" style="color:#8a7a6a">'+oc.noOrderN+'</div><div class="stat-lbl">No Order</div></div>';
-      html += '<div class="stat-box"><div class="stat-num" style="color:#c8382a">'+oc.pendingN+'</div><div class="stat-lbl">Pending</div></div>';
+      html += '<div class="stat-box"><div class="stat-num" style="color:#8a7a6a">'+oc.noOrderN+'</div><div class="stat-lbl">No order</div></div>';
+      html += '<div class="stat-box"><div class="stat-num" style="color:#c8382a">'+oc.pendingN+'</div><div class="stat-lbl">Not ordered</div></div>';
       html += '</div>';
       if(oc.pendingN > 0 && oc.pendingShops && oc.pendingShops.length){
         html += '<div style="margin-top:12px;padding-top:10px;border-top:1px solid #e8f5e9">';
-        html += '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-bottom:6px;font-weight:700">Still pending ('+oc.pendingN+')</div>';
+        html += '<div style="font-size:11px;color:#c8382a;margin-bottom:8px;font-weight:800;line-height:1.4">'+oc.pendingN+' still not ordered for tomorrow</div>';
+        html += '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-bottom:6px">These shops have not placed an order and have not marked “no order”.</div>';
         oc.pendingShops.slice(0, 40).forEach(function(s){
-          html += '<div style="font-size:12px;padding:5px 0;border-bottom:1px solid #f0f4ff;display:flex;justify-content:space-between;gap:8px">';
+          html += '<div style="font-size:12px;padding:6px 0;border-bottom:1px solid #f0f4ff">';
           html += '<span style="font-weight:700;color:#1e1611">'+esc(s.name||'Unnamed')+'</span>';
-          html += '<span style="font-size:10px;color:#78909c;font-family:monospace;flex-shrink:0">'+esc(s.mobile||sid(s)||'')+'</span>';
           html += '</div>';
         });
         if(oc.pendingShops.length > 40){
@@ -1137,16 +1152,9 @@
           html += '</div>';
 
           shopList.forEach(function(o, idx){
-            var iArr=(o.items||'').split(','), qArr=(o.qty||'').split(',');
-            var itemsSummary=iArr.map(function(it,i){
-              var q=parseInt(qArr[i])||0; if(!it.trim()||!q) return '';
-              return '<span style="display:inline-block;background:#fff8e1;color:#7a4800;border:1px solid #ffe082;border-radius:8px;padding:3px 8px;font-size:10px;font-weight:700;font-family:monospace;margin-right:6px;margin-bottom:4px">'+esc(it.trim())+' ×'+q+'</span>';
-            }).filter(Boolean).join('');
-
             html += '<div style="'+(idx > 0 ? 'margin-top:10px;padding-top:10px;border-top:1px dashed #f0e8dc;' : '')+'">';
             html += '<div style="font-size:13px;font-weight:700;color:#1e1611">'+esc(o.shop_name)+'</div>';
-            html += '<div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:2px">📍 '+esc(o.address||'—')+'</div>';
-            if(itemsSummary) html += '<div style="margin-top:6px">'+itemsSummary+'</div>';
+            html += brandItemLines(o.items, o.qty);
             html += '</div>';
           });
           html += '</div>';
@@ -1186,24 +1194,15 @@
 
           shopList.forEach(function(o, idx){
             var del = delMap[o.shop_id] || null;
-            var iArr=(o.items||'').split(','), qArr=(o.qty||'').split(',');
-            var itemsSummary=iArr.map(function(it,i){
-              var q=parseInt(qArr[i])||0; if(!it.trim()||!q) return '';
-              return '<span style="display:inline-block;background:#e8f5e9;color:#2d7a4f;border:1px solid #a5d6a7;border-radius:8px;padding:3px 8px;font-size:10px;font-weight:700;font-family:monospace;margin-right:6px;margin-bottom:4px">'+esc(it.trim())+' ×'+q+'</span>';
-            }).filter(Boolean).join('');
 
             html += '<div style="'+(idx > 0 ? 'margin-top:10px;padding-top:10px;border-top:1px dashed #e8f5e9;' : '')+'">';
             html += '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">';
             html += '<div style="flex:1">';
             html += '<div style="font-size:13px;font-weight:700;color:#1e1611">'+esc(o.shop_name)+'</div>';
-            html += '<div style="font-size:10px;color:#546e7a;font-family:monospace;margin-top:2px">📍 '+esc(o.address||'—')+'</div>';
-            html += '</div>';
+                        html += '</div>';
             html += '<div style="text-align:right;font-size:10px;font-weight:700;color:#2d7a4f;font-family:monospace;white-space:nowrap">🕐 '+(del?esc(fmtTime(del.time)):'—')+'</div>';
             html += '</div>';
-            if(itemsSummary) html += '<div style="margin-top:6px">'+itemsSummary+'</div>';
-            if(del && del.lat && del.lng){
-              html += '<div style="margin-top:6px"><a href="https://www.google.com/maps?q='+del.lat+','+del.lng+'" target="_blank" style="font-size:9px;color:#1565c0;font-family:monospace">📍 View location</a></div>';
-            }
+            html += brandItemLines(o.items, o.qty);
             html += '</div>';
           });
           html += '</div>';
