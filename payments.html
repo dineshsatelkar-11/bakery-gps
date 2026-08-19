@@ -1,88 +1,88 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>IBCAB — Payments</title>
-    <link rel="stylesheet" href="styles.css" />
-    <style>
-        :root { --brown:#5c3d2e; --cream:#faf6f1; --ok:#1a5a38; --warn:#7a4800; --er:#c8382a; }
-        * { box-sizing: border-box; }
-        body { margin:0; font-family: system-ui, sans-serif; background:#f0ebe4; color:#2a1f18; }
-        .top { background: var(--brown); color:#fff; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
-        .top h1 { margin:0; font-size:16px; font-weight:800; }
-        .top a { color:#ffe8c8; font-size:12px; font-weight:700; text-decoration:none; }
-        .wrap { max-width:960px; margin:0 auto; padding:14px 12px 40px; }
-        .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:14px; }
-        @media(max-width:640px){ .stats { grid-template-columns:repeat(2,1fr); } }
-        .stat { background:#fff; border-radius:12px; padding:12px; border:1px solid #e8ddd0; text-align:center; }
-        .stat-n { font-size:22px; font-weight:800; font-family:monospace; }
-        .stat-l { font-size:10px; color:#8a7a6a; font-weight:700; text-transform:uppercase; margin-top:2px; }
-        .toolbar { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; align-items:center; }
-        .toolbar input, .toolbar select { padding:8px 10px; border:1.5px solid #ddd0c0; border-radius:8px; font-size:13px; }
-        .toolbar input { flex:1; min-width:140px; }
-        .btn { border:none; border-radius:8px; padding:8px 14px; font-weight:800; font-size:12px; cursor:pointer; }
-        .btn-brown { background:var(--brown); color:#fff; }
-        .btn-ok { background:#e8f5e9; color:var(--ok); border:1px solid #a5d6a7; }
-        .btn-warn { background:#fff8e1; color:var(--warn); border:1px solid #ffe082; }
-        .btn-ghost { background:#fff; color:#5c3d2e; border:1.5px solid #ddd0c0; }
-        .card { background:#fff; border:1px solid #e8ddd0; border-radius:12px; padding:12px 14px; margin-bottom:10px; }
-        .card h3 { margin:0 0 6px; font-size:14px; }
-        .meta { font-size:11px; color:#8a7a6a; font-family:monospace; line-height:1.5; }
-        .badge { display:inline-block; border-radius:6px; padding:2px 8px; font-size:10px; font-weight:800; margin-right:4px; }
-        .b-unpaid { background:#fde8e8; color:#c8382a; }
-        .b-partial { background:#fff8e1; color:#7a4800; }
-        .b-claim { background:#e3f2fd; color:#1565c0; }
-        .b-paid { background:#e8f5e9; color:#1a5a38; }
-        .b-challan { background:#f3e5f5; color:#6a1b9a; }
-        .row-actions { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
-        .msg { padding:10px 12px; border-radius:8px; font-size:12px; font-weight:700; margin-bottom:10px; display:none; }
-        .msg.ok { display:block; background:#e8f5e9; color:#1a5a38; }
-        .msg.er { display:block; background:#fde8e8; color:#c8382a; }
-        .msg.in { display:block; background:#e8f0ff; color:#1a3a8a; }
-        .hint { font-size:11px; color:#8a7a6a; margin-bottom:12px; line-height:1.45; }
-        .empty { text-align:center; padding:28px; color:#8a7a6a; font-size:13px; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>IBCAB — Payments</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    :root { --brown:#5c3d2e; --cream:#faf6f1; --ok:#1a5a38; --warn:#7a4800; --er:#c8382a; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, sans-serif; background:#f0ebe4; color:#2a1f18; }
+    .top { background: var(--brown); color:#fff; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+    .top h1 { margin:0; font-size:16px; font-weight:800; }
+    .top a { color:#ffe8c8; font-size:12px; font-weight:700; text-decoration:none; }
+    .wrap { max-width:960px; margin:0 auto; padding:14px 12px 40px; }
+    .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:14px; }
+    @media(max-width:640px){ .stats { grid-template-columns:repeat(2,1fr); } }
+    .stat { background:#fff; border-radius:12px; padding:12px; border:1px solid #e8ddd0; text-align:center; }
+    .stat-n { font-size:22px; font-weight:800; font-family:monospace; }
+    .stat-l { font-size:10px; color:#8a7a6a; font-weight:700; text-transform:uppercase; margin-top:2px; }
+    .toolbar { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; align-items:center; }
+    .toolbar input, .toolbar select { padding:8px 10px; border:1.5px solid #ddd0c0; border-radius:8px; font-size:13px; }
+    .toolbar input { flex:1; min-width:140px; }
+    .btn { border:none; border-radius:8px; padding:8px 14px; font-weight:800; font-size:12px; cursor:pointer; }
+    .btn-brown { background:var(--brown); color:#fff; }
+    .btn-ok { background:#e8f5e9; color:var(--ok); border:1px solid #a5d6a7; }
+    .btn-warn { background:#fff8e1; color:var(--warn); border:1px solid #ffe082; }
+    .btn-ghost { background:#fff; color:#5c3d2e; border:1.5px solid #ddd0c0; }
+    .card { background:#fff; border:1px solid #e8ddd0; border-radius:12px; padding:12px 14px; margin-bottom:10px; }
+    .card h3 { margin:0 0 6px; font-size:14px; }
+    .meta { font-size:11px; color:#8a7a6a; font-family:monospace; line-height:1.5; }
+    .badge { display:inline-block; border-radius:6px; padding:2px 8px; font-size:10px; font-weight:800; margin-right:4px; }
+    .b-unpaid { background:#fde8e8; color:#c8382a; }
+    .b-partial { background:#fff8e1; color:#7a4800; }
+    .b-claim { background:#e3f2fd; color:#1565c0; }
+    .b-paid { background:#e8f5e9; color:#1a5a38; }
+    .b-challan { background:#f3e5f5; color:#6a1b9a; }
+    .row-actions { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+    .msg { padding:10px 12px; border-radius:8px; font-size:12px; font-weight:700; margin-bottom:10px; display:none; }
+    .msg.ok { display:block; background:#e8f5e9; color:#1a5a38; }
+    .msg.er { display:block; background:#fde8e8; color:#c8382a; }
+    .msg.in { display:block; background:#e8f0ff; color:#1a3a8a; }
+    .hint { font-size:11px; color:#8a7a6a; margin-bottom:12px; line-height:1.45; }
+    .empty { text-align:center; padding:28px; color:#8a7a6a; font-size:13px; }
+  </style>
 </head>
 <body>
-<div class="top">
+  <div class="top">
     <h1>💰 Payments</h1>
     <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-        <a href="admin.html">← Admin</a>
-        <span id="who" style="font-size:11px;opacity:.85"></span>
+      <a href="admin.html">← Admin</a>
+      <span id="who" style="font-size:11px;opacity:.85"></span>
     </div>
-</div>
-<div class="wrap">
+  </div>
+  <div class="wrap">
     <p class="hint">
-        Weekly collections — not tied to placing an order.<br>
-        Flow: <b>Delivery challan</b> on approve → after delivery convert to <b>invoice</b> → customer requests payment here → you mark paid.<br>
-        Order screen no longer has pay-reminder / mark-received.
+      Weekly collections — not tied to placing an order.<br>
+      Flow: <b>Delivery challan</b> on approve → after delivery convert to <b>invoice</b> → customer requests payment here → you mark paid.<br>
+      Order screen no longer has pay-reminder / mark-received.
     </p>
     <div id="msg" class="msg"></div>
     <div class="stats">
-        <div class="stat"><div class="stat-n" id="st-unpaid">0</div><div class="stat-l">Unpaid inv</div></div>
-        <div class="stat"><div class="stat-n" id="st-claim">0</div><div class="stat-l">Pay requests</div></div>
-        <div class="stat"><div class="stat-n" id="st-due">₹0</div><div class="stat-l">Total due</div></div>
-        <div class="stat"><div class="stat-n" id="st-challan">0</div><div class="stat-l">Challan only</div></div>
+      <div class="stat"><div class="stat-n" id="st-unpaid">0</div><div class="stat-l">Unpaid inv</div></div>
+      <div class="stat"><div class="stat-n" id="st-claim">0</div><div class="stat-l">Pay requests</div></div>
+      <div class="stat"><div class="stat-n" id="st-due">₹0</div><div class="stat-l">Total due</div></div>
+      <div class="stat"><div class="stat-n" id="st-challan">0</div><div class="stat-l">Challan only</div></div>
     </div>
     <div class="toolbar">
-        <input id="q" type="search" placeholder="Search shop / inv #…" oninput="render()" />
-        <select id="filter" onchange="render()">
-            <option value="open">Unpaid + requests</option>
-            <option value="claim">Pay requests only</option>
-            <option value="unpaid">Unpaid (no request)</option>
-            <option value="challan">Challan not invoiced</option>
-            <option value="paid">Recently paid</option>
-            <option value="all">All with Zoho doc</option>
-        </select>
-        <button class="btn btn-brown" onclick="load()">↻ Refresh</button>
+      <input id="q" type="search" placeholder="Search shop / inv #…" oninput="render()" />
+      <select id="filter" onchange="render()">
+        <option value="open">Unpaid + requests</option>
+        <option value="claim">Pay requests only</option>
+        <option value="unpaid">Unpaid (no request)</option>
+        <option value="challan">Challan not invoiced</option>
+        <option value="paid">Recently paid</option>
+        <option value="all">All with Zoho doc</option>
+      </select>
+      <button class="btn btn-brown" onclick="load()">↻ Refresh</button>
     </div>
     <div id="list"><div class="empty">Loading…</div></div>
-</div>
+  </div>
 
-<script src="config.js"></script>
-<script src="api.js"></script>
-<script>
+  <script src="config.js"></script>
+  <script src="api.js"></script>
+  <script>
     var session = null;
     try { session = JSON.parse(localStorage.getItem('bakerySession') || localStorage.getItem('adminSession') || 'null'); } catch(e) {}
     if (!session || !session.name) {
@@ -292,6 +292,6 @@
     };
 
     load();
-</script>
+  </script>
 </body>
 </html>

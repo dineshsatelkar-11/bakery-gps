@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Satelkar Logistics — Finance</title>
 <script src="config.js"></script>
 <meta name="theme-color" content="#1a3a5c">
@@ -11,14 +11,14 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
+*{box-sizing:border-box;margin:0;padding:0}:root{--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);--sal:env(safe-area-inset-left,0px);--sar:env(safe-area-inset-right,0px)}
 body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#eef2f7;color:#1a2535;max-width:520px;margin:0 auto;min-height:100vh}
 
 /* ── LOGIN ── */
-#loginScreen{position:fixed;inset:0;background:#1a3a5c;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;padding:24px}
+#loginScreen{position:fixed;inset:0;background:#1a3a5c;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;padding:24px;padding-top:max(24px,calc(16px + var(--sat)));padding-bottom:max(24px,calc(16px + var(--sab)));padding-left:max(24px,var(--sal));padding-right:max(24px,var(--sar))}
 #loginScreen h1{color:#fff;font-size:22px;font-weight:900;margin-bottom:4px}
 #loginScreen p{color:#8ab4d8;font-size:12px;margin-bottom:32px}
-#loginScreen input{width:100%;max-width:280px;padding:14px;border:none;border-radius:14px;font-size:24px;letter-spacing:8px;text-align:center;background:#fff;color:#1a3a5c;font-weight:800;margin-bottom:14px;outline:none}
+#loginScreen input{width:100%;max-width:280px;padding:16px;border:none;border-radius:14px;font-size:24px;-webkit-appearance:none;letter-spacing:8px;text-align:center;background:#fff;color:#1a3a5c;font-weight:800;margin-bottom:14px;outline:none}
 #loginScreen button{width:100%;max-width:280px;padding:14px;border:none;border-radius:14px;background:#f0a500;color:#fff;font-size:16px;font-weight:800;cursor:pointer}
 #loginErr{color:#ff8080;font-size:12px;margin-top:10px;font-family:monospace}
 
@@ -6248,7 +6248,67 @@ function printSalarySlip(s,tr){
     (s.note&&s.note.indexOf('Advance excess')>=0?'<p style="font-size:12px;background:#fff3cd;padding:6px 10px;border-radius:6px;border-left:3px solid #e09000">⚠ '+s.note.split('|').find(function(x){return x.indexOf('Advance excess')>=0;}).trim()+'</p>':'')+
     (s.note?'<p style="font-size:12px;color:#7a8fa6">Note: '+s.note+'</p>':'')+
     '<div class="sig"><div>Driver Signature</div><div>Authorised By</div></div>'+
-    '</body></html>';
+    '
+<script>
+/* Dynamic iOS notch / safe-area handling */
+(function () {
+  if (window.__safeAreaDyn) return;
+  window.__safeAreaDyn = true;
+  var root = document.documentElement;
+  var probe = null;
+  function ensureProbe() {
+    if (probe && probe.parentNode) return probe;
+    probe = document.createElement('div');
+    probe.setAttribute('aria-hidden', 'true');
+    probe.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;padding:0;padding-top:env(safe-area-inset-top,0px);padding-right:env(safe-area-inset-right,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px)';
+    (document.body || root).appendChild(probe);
+    return probe;
+  }
+  function px(n) { n = parseFloat(n); return (isFinite(n) ? n : 0) + 'px'; }
+  function apply() {
+    var el = ensureProbe();
+    var cs = window.getComputedStyle(el);
+    var sat = parseFloat(cs.paddingTop) || 0;
+    var sar = parseFloat(cs.paddingRight) || 0;
+    var sab = parseFloat(cs.paddingBottom) || 0;
+    var sal = parseFloat(cs.paddingLeft) || 0;
+    try {
+      var vv = window.visualViewport;
+      if (vv && window.innerHeight) {
+        var gap = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
+        if (gap > sab && gap < 120) sab = gap;
+      }
+    } catch (e) {}
+    root.style.setProperty('--sat', px(sat));
+    root.style.setProperty('--sab', px(sab));
+    root.style.setProperty('--sal', px(sal));
+    root.style.setProperty('--sar', px(sar));
+    root.classList.toggle('has-notch', sat >= 20);
+    root.classList.toggle('has-home-bar', sab >= 10);
+  }
+  var scheduled = false;
+  function schedule() {
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(function () { scheduled = false; apply(); });
+  }
+  function boot() {
+    ensureProbe(); apply();
+    window.addEventListener('resize', schedule, { passive: true });
+    window.addEventListener('orientationchange', function () { schedule(); setTimeout(apply, 50); setTimeout(apply, 300); }, { passive: true });
+    window.addEventListener('pageshow', schedule, { passive: true });
+    if (window.visualViewport) {
+      visualViewport.addEventListener('resize', schedule, { passive: true });
+      visualViewport.addEventListener('scroll', schedule, { passive: true });
+    }
+    setTimeout(apply, 100); setTimeout(apply, 500);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+
+</body></html>';
   var win=window.open('','_blank');
   if(win){win.document.write(html);win.document.close();win.print();}
 }

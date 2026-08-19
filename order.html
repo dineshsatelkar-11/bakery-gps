@@ -2,14 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
     <title>Place Order — IBCAB</title>
     <link rel="manifest" href="/manifest.json">
     <script src="config.js"></script>
     <script src="api.js"></script>
     <style>
-        *{box-sizing:border-box;margin:0;padding:0}
-        body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:440px;margin:0 auto;min-height:100vh}
+        *{box-sizing:border-box;margin:0;padding:0}:root{--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);--sal:env(safe-area-inset-left,0px);--sar:env(safe-area-inset-right,0px)}
+        body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:440px;margin:0 auto;min-height:100vh;min-height:100dvh;padding-left:var(--sal);padding-right:var(--sar)}
         @keyframes slideIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
         @keyframes bellRing{0%,100%{transform:rotate(0)}15%{transform:rotate(18deg)}30%{transform:rotate(-14deg)}45%{transform:rotate(10deg)}60%{transform:rotate(-6deg)}75%{transform:rotate(3deg)}}
         .bell-ring{animation:bellRing .6s ease both}
@@ -21,14 +21,147 @@
         .btn-grey{background:#e8dfd2;color:#4a2f14}
         .err{color:#c8382a;font-size:12px;font-family:monospace;text-align:center;margin-top:8px}
         /* ── App ── */
-        .topbar{background:#4a2f14;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:99}
+        .topbar{background:#4a2f14;padding:13px 14px;padding-top:max(13px,var(--sat));display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:99}
         .topbar-title{color:#fff;font-size:15px;font-weight:800}
         .topbar-sub{color:#c8a87a;font-size:11px;font-family:monospace;margin-top:1px}
         .logout-btn{background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 11px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif}
+        .ptr-indicator{position:fixed;left:0;right:0;top:0;z-index:120;display:flex;align-items:flex-end;justify-content:center;pointer-events:none;opacity:0;transition:opacity .15s;padding-top:var(--sat);height:0;overflow:visible}
+        .ptr-indicator.show{opacity:1}
+        .ptr-bubble{background:#4a2f14;color:#fff;font-size:11px;font-weight:700;font-family:monospace;padding:6px 14px;border-radius:20px;margin-top:calc(8px + var(--sat));box-shadow:0 4px 12px rgba(0,0,0,.15)}
         .tabs{display:flex;background:#fff;border-bottom:2px solid #e8dfd2;position:sticky;top:53px;z-index:98}
+
+        /* Customer bottom nav (app-style) */
+        .cust-bottom-nav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:200;background:#fff;border-top:1.5px solid #e8dfd2;padding:6px 4px max(6px,var(--sab));max-width:440px;margin:0 auto;box-shadow:0 -4px 16px rgba(74,47,20,.08)}
+        .cust-bottom-nav-inner{display:flex;justify-content:space-around;align-items:stretch}
+        .cbnav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 2px;border:none;background:transparent;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;-webkit-tap-highlight-color:transparent}
+        .cbnav-item.on{color:#4a2f14}
+        .cbnav-ico{font-size:18px;line-height:1}
+        .cbnav-lbl{font-size:10px;font-weight:800}
+        /* Mobile: bottom nav · Desktop: top tabs + wide layout */
+        .cust-bottom-nav{display:none}
+        body.cust-app{padding-bottom:calc(62px + var(--sab))}
+        body.cust-app .tabs.cust-top-tabs{display:none !important}
+        body.cust-app .cust-bottom-nav{display:block !important}
+
+        @media (min-width:768px){
+          body{
+            max-width:none;
+            background:#ebe4da;
+          }
+          body.cust-app{
+            padding-bottom:24px;
+          }
+          /* Shell */
+          body.cust-app .topbar{
+            padding:14px 28px;
+            padding-top:max(14px,var(--sat));
+          }
+          body.cust-app .topbar-title{font-size:18px}
+          body.cust-app .topbar-sub{font-size:12px}
+          /* Top tabs on desktop */
+          body.cust-app .tabs.cust-top-tabs{
+            display:flex !important;
+            max-width:1100px;
+            margin:0 auto;
+            border-bottom:2px solid #e8dfd2;
+            background:#fff;
+            position:sticky;
+            top:56px;
+            z-index:98;
+            box-shadow:0 1px 0 rgba(74,47,20,.04);
+          }
+          body.cust-app .tabs.cust-top-tabs .tab{
+            flex:1;
+            max-width:160px;
+            padding:14px 12px;
+            font-size:13px;
+          }
+          /* Hide bottom nav on desktop */
+          body.cust-app .cust-bottom-nav{display:none !important}
+          /* Content width */
+          body.cust-app .page{
+            max-width:1100px;
+            margin:0 auto;
+            padding:20px 24px 40px;
+          }
+          body.cust-app #broadcastBanner{
+            max-width:1100px;
+            margin-left:auto;
+            margin-right:auto;
+          }
+          /* Product grid */
+          body.cust-app #productsList{
+            display:grid;
+            grid-template-columns:repeat(2,minmax(0,1fr));
+            gap:10px 16px;
+            align-items:start;
+          }
+          body.cust-app #productsList .cat-label{
+            grid-column:1 / -1;
+            margin-top:8px;
+            margin-bottom:4px;
+            padding:8px 0 4px;
+            font-size:12px;
+            letter-spacing:1px;
+          }
+          body.cust-app #productsList .prod-row{
+            margin-bottom:0 !important;
+            padding:12px 14px;
+            border:1.5px solid #e8dfd2;
+            border-radius:12px;
+            background:#faf8f5;
+            border-bottom:1.5px solid #e8dfd2;
+          }
+          body.cust-app #productsCard{
+            padding:18px 20px;
+          }
+          body.cust-app .order-total-bar{
+            bottom:0;
+            width:min(1100px, calc(100% - 48px));
+            margin:0;
+          }
+          /* Order bar full width under content */
+          body.cust-app .order-total-bar{
+            max-width:1100px;
+            left:50%;
+            transform:translateX(-50%);
+            border-radius:14px 14px 0 0;
+            box-shadow:0 -6px 24px rgba(74,47,20,.12);
+          }
+          /* Sheets centered modal on desktop */
+          body.cust-app #invPreviewSheet,
+          body.cust-app #payRequestSheet,
+          body.cust-app .preview-sheet{
+            align-items:center !important;
+          }
+          body.cust-app #invPreviewSheet > div,
+          body.cust-app #payRequestSheet > div{
+            max-width:520px !important;
+            border-radius:16px !important;
+            max-height:85vh !important;
+          }
+          /* Notifications panel wider */
+          body.cust-app #custNotifPanel{
+            max-width:420px;
+            margin-left:auto;
+            margin-right:0;
+          }
+          /* Pay / history cards slightly larger type */
+          body.cust-app .card{padding:16px 18px}
+        }
+        @media (min-width:1100px){
+          body.cust-app #productsList{
+            grid-template-columns:repeat(3,minmax(0,1fr));
+          }
+          body.cust-app .tabs.cust-top-tabs,
+          body.cust-app .page,
+          body.cust-app #broadcastBanner{
+            max-width:1200px;
+          }
+        }
         .tab{flex:1;padding:12px 4px;border:none;background:none;font-size:11px;font-weight:700;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;border-bottom:3px solid transparent;margin-bottom:-2px}
         .tab.on{color:#4a2f14;border-bottom-color:#4a2f14}
-        .page{display:none;padding:14px 14px 100px}.page.on{display:block}
+        .page{display:none;padding:14px 14px calc(80px + var(--sab))}.page.on{display:block}
         .card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:14px;margin-bottom:10px}
         .msg{padding:11px 14px;border-radius:12px;font-size:12px;font-weight:600;font-family:monospace;margin-bottom:10px;line-height:1.8;white-space:pre-line}
         .ok{background:#e8f5e9;color:#2d7a4f;border:1px solid #a5d6a7}
@@ -74,8 +207,11 @@
         .trk-status-delivered{background:linear-gradient(135deg,#e8f5e9,#c8e6c9)!important;border-color:#a5d6a7!important}
         .trk-status-pending{background:linear-gradient(135deg,#fff8e1,#ffecb3)!important;border-color:#ffe082!important}
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
+<div class="ptr-indicator" id="ptrIndicator"><div class="ptr-bubble" id="ptrBubble">↓ Pull to refresh</div></div>
+
 
 <!-- ── APP SCREEN ── -->
 <div id="appScreen" style="display:none">
@@ -106,7 +242,10 @@
                     <div style="font-size:15px;font-weight:900;color:#fff">Notifications</div>
                     <div id="custNotifSubtitle" style="font-size:11px;color:#c8a87a;font-family:monospace"></div>
                 </div>
-                <button id="markAllReadBtn" onclick="markCustNotifsRead()" style="display:none;background:rgba(255,255,255,.15);border:none;color:#fff;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif;white-space:nowrap">✓ All read</button>
+                <div style="display:flex;gap:6px;align-items:center">
+                    <button id="markAllReadBtn" onclick="markCustNotifsRead()" style="display:none;background:rgba(255,255,255,.15);border:none;color:#fff;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif;white-space:nowrap">✓ All read</button>
+                    <button id="clearAllNotifBtn" onclick="clearCustNotifs()" style="display:none;background:rgba(255,80,80,.2);border:none;color:#fff;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif;white-space:nowrap">Clear</button>
+                </div>
             </div>
 
             <!-- Notification list -->
@@ -115,19 +254,85 @@
         </div>
     </div>
 
-    <div class="tabs">
+    <div class="tabs cust-top-tabs">
         <button class="tab on" id="tb-order" onclick="showTab('order')">🛒 Order</button>
         <button class="tab" id="tb-payments" onclick="showTab('payments')">💰 Pay</button>
         <button class="tab" id="tb-history" onclick="showTab('history')">📋 History</button>
         <button class="tab" id="tb-track" onclick="showTab('track')">📍 Track</button>
-        <button class="tab" id="tb-settings" onclick="showTab('settings')">⚙️</button>
+        <button class="tab" id="tb-settings" onclick="showTab('settings')">⚙️ Settings</button>
     </div>
+    <!-- Customer bottom navigation -->
+    <nav class="cust-bottom-nav" id="custBottomNav" aria-label="Main">
+        <div class="cust-bottom-nav-inner">
+            <button type="button" class="cbnav-item on" id="cbnav-order" onclick="showTab('order')">
+                <span class="cbnav-ico">🛒</span><span class="cbnav-lbl">Order</span>
+            </button>
+            <button type="button" class="cbnav-item" id="cbnav-payments" onclick="showTab('payments')">
+                <span class="cbnav-ico">💰</span><span class="cbnav-lbl">Pay</span>
+            </button>
+            <button type="button" class="cbnav-item" id="cbnav-history" onclick="showTab('history')">
+                <span class="cbnav-ico">📋</span><span class="cbnav-lbl">History</span>
+            </button>
+            <button type="button" class="cbnav-item" id="cbnav-track" onclick="showTab('track')">
+                <span class="cbnav-ico">📍</span><span class="cbnav-lbl">Track</span>
+            </button>
+            <button type="button" class="cbnav-item" id="cbnav-settings" onclick="showTab('settings')">
+                <span class="cbnav-ico">⚙️</span><span class="cbnav-lbl">More</span>
+            </button>
+        </div>
+    </nav>
 
-    <!-- Global banners — shown on all tabs -->
-    <div id="broadcastBanner" style="display:none;margin:10px 14px 0;background:#fff8e1;border:1.5px solid #ffe082;border-radius:12px;padding:10px 12px">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-            <div id="broadcastText" style="font-size:12px;font-weight:700;color:#7a4800;font-family:monospace;line-height:1.6;flex:1"></div>
-            <button onclick="document.getElementById('broadcastBanner').style.display='none'" style="background:none;border:none;font-size:16px;color:#7a4800;cursor:pointer;flex-shrink:0;padding:0 2px;line-height:1">✖</button>
+
+    <!-- Global announcement banner -->
+    <style>
+        #broadcastBanner{
+          display:none;margin:10px 14px 0;border-radius:14px;padding:12px 14px;
+          border:1.5px solid #e8dfd2;background:#faf7f2;
+          box-shadow:0 2px 10px rgba(74,47,20,.06);
+        }
+        #broadcastBanner.bcast-info{background:#f7f3ee;border-color:#e0d4c4}
+        #broadcastBanner.bcast-reminder{background:#fff8e8;border-color:#ffe082}
+        #broadcastBanner.bcast-urgent{background:#fdf2f2;border-color:#f0b0b0}
+        #broadcastBanner.bcast-success{background:#f0faf3;border-color:#a5d6a7}
+        #broadcastBanner .bcast-inner{display:flex;align-items:flex-start;gap:12px}
+        #broadcastBanner .bcast-ico{
+          width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+          font-size:20px;flex-shrink:0;background:rgba(74,47,20,.06);
+        }
+        #broadcastBanner.bcast-reminder .bcast-ico{background:rgba(200,140,40,.12)}
+        #broadcastBanner.bcast-urgent .bcast-ico{background:rgba(200,56,42,.1)}
+        #broadcastBanner.bcast-success .bcast-ico{background:rgba(45,122,79,.1)}
+        #broadcastBanner .bcast-body{flex:1;min-width:0}
+        #broadcastBanner .bcast-title{
+          font-size:11px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;
+          color:#8a7a6a;margin-bottom:3px;
+        }
+        #broadcastBanner.bcast-reminder .bcast-title{color:#9a6a10}
+        #broadcastBanner.bcast-urgent .bcast-title{color:#c8382a}
+        #broadcastBanner.bcast-success .bcast-title{color:#1a5a38}
+        #broadcastBanner .bcast-text{
+          font-size:13px;font-weight:600;color:#3d2a1a;line-height:1.45;
+          font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+        }
+        #broadcastBanner .bcast-actions{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
+        #broadcastBanner .bcast-gotit{
+          border:none;background:rgba(74,47,20,.08);color:#4a2f14;
+          font-size:12px;font-weight:800;padding:8px 12px;border-radius:10px;
+          cursor:pointer;font-family:inherit;min-height:36px;-webkit-tap-highlight-color:transparent;
+        }
+        #broadcastBanner.bcast-urgent .bcast-gotit{background:rgba(200,56,42,.1);color:#c8382a}
+        #broadcastBanner.bcast-success .bcast-gotit{background:rgba(45,122,79,.12);color:#1a5a38}
+    </style>
+    <div id="broadcastBanner" class="bcast-info" role="status" aria-live="polite">
+        <div class="bcast-inner">
+            <div class="bcast-ico" id="broadcastIco">📢</div>
+            <div class="bcast-body">
+                <div class="bcast-title" id="broadcastTitle">Announcement</div>
+                <div class="bcast-text" id="broadcastText"></div>
+            </div>
+            <div class="bcast-actions">
+                <button type="button" class="bcast-gotit" id="broadcastGotIt" onclick="dismissBroadcast()">Got it</button>
+            </div>
         </div>
     </div>
 
@@ -186,19 +391,75 @@
         <div style="padding:12px 14px 8px">
             <div style="font-size:13px;font-weight:800;color:#5c3d2e;margin-bottom:6px">Weekly payments</div>
             <div style="font-size:11px;color:#8a7a6a;line-height:1.45;margin-bottom:10px">
-                Review unpaid invoices and send a payment request to admin. You do not pay at order time.
+                Weekly cycle — pay the total overdue, then tap <b>send request</b>. Admin confirms from the bank (usually within <b>~24 working hours</b>).
             </div>
             <div id="pay-total-card" style="background:#fff;border:1.5px solid #e8ddd0;border-radius:12px;padding:14px;margin-bottom:12px;text-align:center">
-                <div style="font-size:10px;font-weight:800;color:#8a7a6a;text-transform:uppercase">Total unpaid</div>
+                <div style="font-size:10px;font-weight:800;color:#8a7a6a;text-transform:uppercase">Total overdue</div>
                 <div id="pay-total-amt" style="font-size:28px;font-weight:800;font-family:monospace;color:#c8382a;margin:4px 0">₹0</div>
                 <div id="pay-total-sub" style="font-size:11px;color:#8a7a6a">0 invoice(s)</div>
             </div>
-            <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-                <button type="button" class="btn" style="flex:1;background:#5c3d2e;color:#fff;font-weight:800;padding:10px" onclick="paySelectAllUnpaid()">Select all unpaid</button>
-                <button type="button" class="btn" style="flex:1;background:#e8f5e9;color:#1a5a38;border:1px solid #a5d6a7;font-weight:800;padding:10px" onclick="paySubmitRequest()">Send pay request</button>
+            <div id="payUpiBox" style="display:none;background:#fff;border:1.5px solid #c8e6c9;border-radius:14px;padding:14px;margin-bottom:12px;text-align:center">
+                <div style="font-size:12px;font-weight:800;color:#1a5a38;margin-bottom:8px">Pay with UPI</div>
+                <div id="payQrWrap" style="display:inline-block;padding:10px;background:#fff;border-radius:12px;border:1px solid #e8dfd2;min-height:160px;min-width:160px"></div>
+                <div id="payUpiAmtLbl" style="font-size:14px;font-weight:800;font-family:monospace;color:#c8382a;margin:10px 0 4px">₹0</div>
+                <div id="payUpiMeta" style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:10px"></div>
+                <a id="payUpiLink" href="#" style="display:block;background:#5f259f;color:#fff;text-decoration:none;font-weight:800;padding:12px;border-radius:12px;margin-bottom:8px">💜 Pay with UPI (any app)</a>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
+                    <a id="payUpiPhonepe" href="#" style="display:block;background:#5f259f;color:#fff;text-decoration:none;font-weight:700;padding:10px 4px;border-radius:10px;font-size:11px;text-align:center">PhonePe</a>
+                    <a id="payUpiGpay" href="#" style="display:block;background:#1a73e8;color:#fff;text-decoration:none;font-weight:700;padding:10px 4px;border-radius:10px;font-size:11px;text-align:center">GPay</a>
+                    <a id="payUpiPaytm" href="#" style="display:block;background:#00baf2;color:#fff;text-decoration:none;font-weight:700;padding:10px 4px;border-radius:10px;font-size:11px;text-align:center">Paytm</a>
+                </div>
+                <button type="button" onclick="copyUpiLink()" style="width:100%;background:#f5ede0;border:1.5px solid #e8dfd2;border-radius:10px;padding:8px;font-size:11px;font-weight:700;color:#4a2f14;margin-bottom:6px;cursor:pointer">Copy UPI link</button>
+                <div style="font-size:10px;color:#8a7a6a;line-height:1.4">Scan QR or open PhonePe / GPay / Paytm → pay → then send request. Admin confirms within ~24 working hours.</div>
+            </div>
+            <button type="button" class="btn" id="payRequestBtn" style="width:100%;background:#5c3d2e;color:#fff;font-weight:800;padding:14px;margin-bottom:10px;border:none;border-radius:14px;font-size:15px" onclick="openPayRequestSheet()">📨 After paying — send request to admin</button>
+            <div id="payStatusPoll" style="display:none;margin-bottom:10px;padding:12px;border-radius:12px;border:1.5px solid #90caf9;background:#e3f2fd">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                    <div style="flex:1;min-width:0">
+                        <div id="payStatusTitle" style="font-size:12px;font-weight:800;color:#1565c0">Checking payment status…</div>
+                        <div id="payStatusSub" style="font-size:11px;color:#5472a0;margin-top:4px;line-height:1.4;font-family:monospace">Waiting for bakery to confirm</div>
+                    </div>
+                    <button type="button" onclick="stopPaymentStatusPoll(true)" style="background:#fff;border:1px solid #90caf9;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;color:#1565c0;cursor:pointer;flex-shrink:0">Stop</button>
+                </div>
             </div>
             <div id="pay-msg" style="display:none;padding:10px;border-radius:8px;font-size:12px;font-weight:700;margin-bottom:10px"></div>
+            <div style="font-size:11px;font-weight:800;color:#8a7a6a;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Invoice breakdown</div>
             <div id="pay-list"><div style="text-align:center;color:#8a7a6a;padding:20px;font-size:12px">Open this tab to load invoices…</div></div>
+        </div>
+    </div>
+    <!-- Pay request sheet -->
+
+    <!-- Invoice preview (customer) -->
+    <div id="invPreviewSheet" style="display:none;position:fixed;inset:0;z-index:420;background:rgba(30,22,17,.5);align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeInvoicePreview()">
+        <div style="background:#fff;width:100%;max-width:440px;max-height:88vh;border-radius:18px 18px 0 0;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 -8px 32px rgba(0,0,0,.2)">
+            <div style="padding:14px 16px;border-bottom:1px solid #e8dfd2;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0">
+                <div>
+                    <div style="font-size:15px;font-weight:900;color:#4a2f14" id="invPrevTitle">Invoice</div>
+                    <div style="font-size:11px;color:#8a7a6a;margin-top:2px" id="invPrevSub"></div>
+                </div>
+                <button type="button" onclick="closeInvoicePreview()" style="border:none;background:#f5ede0;color:#4a2f14;width:36px;height:36px;border-radius:50%;font-size:18px;cursor:pointer;font-weight:700">×</button>
+            </div>
+            <div id="invPrevBody" style="padding:14px 16px;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch"></div>
+            <div style="padding:12px 16px calc(14px + var(--sab));border-top:1px solid #e8dfd2;flex-shrink:0">
+                <button type="button" class="btn btn-grey" style="width:100%;padding:12px" onclick="closeInvoicePreview()">Close</button>
+            </div>
+        </div>
+    </div>
+    <div id="payRequestSheet" style="display:none;position:fixed;inset:0;z-index:400;background:rgba(30,22,17,.45);align-items:flex-end;justify-content:center" onclick="if(event.target===this)closePayRequestSheet()">
+        <div style="background:#fff;width:100%;max-width:440px;border-radius:20px 20px 0 0;padding:20px 16px max(20px,var(--sab));box-shadow:0 -8px 32px rgba(0,0,0,.15)">
+            <div style="font-size:15px;font-weight:900;color:#4a2f14;margin-bottom:6px">Send payment request</div>
+            <div style="font-size:12px;color:#8a7a6a;margin-bottom:12px;line-height:1.45">You are telling admin: <b>I have paid the full overdue total</b>.<br><br>Send the request after paying. Admin will match the amount in the bank (usually within <b>24 working hours</b>). You get a notification when confirmed.</div>
+            <div style="background:#f9f6f1;border:1.5px solid #e8dfd2;border-radius:12px;padding:14px;text-align:center;margin-bottom:12px">
+                <div style="font-size:10px;font-weight:800;color:#8a7a6a;text-transform:uppercase">Amount</div>
+                <div id="paySheetAmt" style="font-size:26px;font-weight:900;font-family:monospace;color:#c8382a;margin:4px 0">₹0</div>
+                <div id="paySheetSub" style="font-size:11px;color:#8a7a6a">0 invoice(s)</div>
+            </div>
+            <div class="lbl" style="margin-bottom:6px">Optional note (not required)</div>
+            <input type="text" id="paySheetNote" placeholder="Optional — only if you want to add something" style="width:100%;padding:12px;border:1.5px solid #e8dfd2;border-radius:12px;font-size:14px;margin-bottom:12px;box-sizing:border-box">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <button type="button" class="btn btn-grey" style="margin:0;padding:14px" onclick="closePayRequestSheet()">Cancel</button>
+                <button type="button" class="btn" style="margin:0;padding:14px;background:#2d7a4f;color:#fff;font-weight:800;border:none;border-radius:14px" onclick="paySubmitTotalRequest()">Send request</button>
+            </div>
         </div>
     </div>
 
@@ -341,10 +602,11 @@
 
     <!-- Sticky bottom bar (order tab) -->
     <div class="order-total-bar" id="orderBar" style="display:none">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
             <div style="font-size:12px;font-weight:700;color:#4a2f14"><span id="totalItems">0</span> items selected</div>
             <div style="font-size:11px;color:#8a7a6a;font-family:monospace">For: <span id="barDate"></span></div>
         </div>
+        <div id="cartTotalLine" style="font-size:12px;font-family:monospace;color:#4a2f14;margin-bottom:8px;line-height:1.45;display:none"></div>
         <button class="btn btn-green" id="submitBtn" onclick="showPreview()">👁 Review & Place Order</button>
         <div id="orderLockedNote" style="display:none;font-size:11px;color:#c8382a;font-family:monospace;text-align:center;margin-top:6px">✅ Order approved — editing is no longer allowed.</div>
     </div>
@@ -356,6 +618,7 @@
         <div class="preview-title">🧾 Order Summary</div>
         <div style="font-size:11px;color:#8a7a6a;font-family:monospace;text-align:center;margin-bottom:12px">Delivery: <span id="pvDate"></span></div>
         <div id="pvItems"></div>
+        <div id="pvTotals" style="margin-top:12px;padding:12px;background:#f9f6f1;border:1.5px solid #e8dfd2;border-radius:12px;font-family:monospace;font-size:12px;line-height:1.75;display:none"></div>
         <div id="pvNote" style="margin-top:10px;font-size:11px;color:#8a7a6a;font-family:monospace;display:none"></div>
         <div id="pvMsg" style="display:none;margin-top:10px" class="msg ok"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px">
@@ -376,14 +639,21 @@
     var products = [];  // active products for this customer's group
     var qty = {};       // { product_id: qty }
     var existingOrder = null; // existing order for tomorrow (if any)
-    var _customerPayEnabled = true; // admin setting customer_payments_enabled
+    var _customerPayEnabled = true; // set by allowlist in loadCustomerPaySetting
+    var PAY_TAB_ALLOWED_USERNAMES = ['xyz111', 'appa_filter_coffee_railway_metro_station'];
+    function _sessionLoginUser(){
+      if (!session) return '';
+      return String(session.login_username || session.username || session.user || '').toLowerCase().trim();
+    }
+    function isPayTabAllowedForSession(){
+      var u = _sessionLoginUser();
+      if (!u) return false;
+      var list = Array.isArray(PAY_TAB_ALLOWED_USERNAMES) ? PAY_TAB_ALLOWED_USERNAMES : [];
+      return list.indexOf(u) >= 0;
+    }
 
-    // Restore session from localStorage — redirect to login if no session
-    (function(){
-      var s = localStorage.getItem('custSession');
-      if (s) { try { session = JSON.parse(s); } catch(e) {} }
-      if (session) { showApp(); } else { goto(''); }
-    })();
+    // Session restore runs after showApp is defined (see end of init).
+
 
     function doLogout(){
       localStorage.removeItem('custSession');
@@ -393,31 +663,28 @@
     }
 
     // ── APP INIT ──
+    function loadCustomerPaySetting(){
+      try {
+        _customerPayEnabled = isPayTabAllowedForSession();
+      } catch (e) {
+        _customerPayEnabled = false;
+      }
+      applyCustPayTabVisibility();
+      return Promise.resolve();
+    }
     function applyCustPayTabVisibility(){
       var tb = document.getElementById('tb-payments');
+      var bn = document.getElementById('cbnav-payments');
       var pg = document.getElementById('pg-payments');
       var on = !!_customerPayEnabled;
       if (tb) tb.style.display = on ? '' : 'none';
+      if (bn) bn.style.display = on ? '' : 'none';
       if (!on && pg && pg.classList.contains('on')) {
         showTab('order');
       }
     }
-    function loadCustomerPaySetting(){
-      return api({ action:'getSetting', key:'customer_payments_enabled' }).then(function(row){
-        // Default ON when setting missing; only hide when explicitly '0' / 'false'
-        if (!row || row.value == null || row.value === '') {
-          _customerPayEnabled = true;
-        } else {
-          var v = String(row.value).toLowerCase();
-          _customerPayEnabled = !(v === '0' || v === 'false' || v === 'off');
-        }
-        applyCustPayTabVisibility();
-      }).catch(function(){
-        _customerPayEnabled = true;
-        applyCustPayTabVisibility();
-      });
-    }
     function showApp(){
+      try { document.body.classList.add('cust-app'); } catch(e) {}
       // Reset all stale state from any previous session / user
       existingOrder = null; qty = {}; products = []; _editLocked = false; _orderClosed = false; _amendMode = false; _amendMinQty = {};
       loadCustomerPaySetting();
@@ -770,7 +1037,12 @@
         session.area               = mine.area || '';
         session.address            = mine.address || '';
         session.mobile             = mine.mobile || session.mobile || '';
-        localStorage.setItem('custSession', JSON.stringify(session));
+                if (mine.login_username) session.login_username = mine.login_username;
+        if (mine.username) session.username = mine.username;
+        session.login_username = session.login_username || session.username || '';
+        // Refresh Pay tab visibility after shop fields load
+        try { _customerPayEnabled = isPayTabAllowedForSession(); applyCustPayTabVisibility(); } catch(e) {}
+localStorage.setItem('custSession', JSON.stringify(session));
         console.log('[order] refreshed group ids:', ids);
       }).catch(function(){ console.log('[order] refreshSession failed'); });
     }
@@ -990,6 +1262,119 @@
         return (parseInt(qty[pid], 10) || 0) !== (parseInt(_amendMinQty[pid], 10) || 0);
       });
     }
+
+    function _cartShippingAmt(){
+      var s = session && session.shipping_charge != null && session.shipping_charge !== ''
+        ? parseFloat(session.shipping_charge) : NaN;
+      if(!isNaN(s) && s >= 0) return s;
+      return 20; // default same as Zoho
+    }
+
+    var _paymentHoldActive = false;
+    var _paymentHoldMsg = '';
+    function checkPaymentOrderHold(){
+      if(!session || !session.shop_id) return Promise.resolve(false);
+      return Promise.all([
+        api({ action:'getSetting', key:'block_orders_when_unpaid' }).catch(function(){ return null; }),
+        api({ action:'getSetting', key:'order_blocked_shops' }).catch(function(){ return null; }),
+        api({ action:'getCustomerOrders', shop_id: session.shop_id, limit: 80 }).catch(function(){ return []; })
+      ]).then(function(res){
+        function setVal(row){
+          if(!row) return '';
+          if(Array.isArray(row)) return row[0] ? String(row[0].value||'') : '';
+          return String(row.value||'');
+        }
+        var blockAll = setVal(res[0]) === 'true';
+        var blockedList = [];
+        try { blockedList = JSON.parse(setVal(res[1]) || '[]'); } catch(e){ blockedList = []; }
+        if(!Array.isArray(blockedList)) blockedList = [];
+        var list = Array.isArray(res[2]) ? res[2] : [];
+        var due = 0, n = 0;
+        list.forEach(function(o){
+          var st = String(o.payment_status||'').toLowerCase();
+          if(st === 'paid' || st === 'void') return;
+          var d = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
+          if(isNaN(d) || d <= 0) return;
+          if(!(o.zoho_invoice_id || o.zoho_invoice_number || o.invoice_total != null)) return;
+          due += d; n++;
+        });
+        var shopBlocked = blockedList.indexOf(String(session.shop_id)) >= 0;
+        _paymentHoldActive = shopBlocked || (blockAll && due > 0.01);
+        _paymentHoldMsg = _paymentHoldActive
+          ? ('🔒 Ordering on hold — unpaid balance ₹' + due.toLocaleString('en-IN',{maximumFractionDigits:0})
+             + (n ? (' on '+n+' invoice(s)') : '') + '. Please clear dues from the Pay tab.')
+          : '';
+        var banner = document.getElementById('orderClosedBanner');
+        // Don't override global order closed
+        if(_paymentHoldActive && !_orderClosed){
+          if(banner){
+            banner.textContent = _paymentHoldMsg;
+            banner.style.display = 'block';
+          }
+          var pc = document.getElementById('productsCard');
+          var nc = document.getElementById('orderNoteCard');
+          var ob = document.getElementById('orderBar');
+          if(pc) pc.style.display = 'none';
+          if(nc) nc.style.display = 'none';
+          if(ob) ob.style.display = 'none';
+        }
+        return _paymentHoldActive;
+      }).catch(function(){ return false; });
+    }
+    function loadShopShippingForSession(){
+      if(!session || !session.shop_id) return Promise.resolve();
+      if(session.shipping_charge != null && session.shipping_charge !== '') return Promise.resolve();
+      return apiPost({ action:'getCustomers' }).then(function(list){
+        if(!Array.isArray(list)) return;
+        var shop = list.find(function(c){ return String(c.shop_id||c.customer_id||'') === String(session.shop_id); });
+        if(shop && shop.shipping_charge != null && shop.shipping_charge !== ''){
+          session.shipping_charge = shop.shipping_charge;
+        }
+      }).catch(function(){});
+    }
+
+    function computeCartTotals(){
+      var sub = 0, tax = 0, lines = [];
+      (products||[]).forEach(function(p){
+        var q = parseInt(qty[p.product_id],10) || 0;
+        if(q <= 0) return;
+        var rate = parseFloat(p.price);
+        if(isNaN(rate)) rate = 0;
+        var amt = rate * q;
+        var pct = parseFloat(p.tax_percent);
+        if(isNaN(pct)) pct = 0;
+        var t = Math.round(amt * pct) / 100;
+        sub += amt;
+        tax += t;
+        lines.push({ name: p.name, qty: q, rate: rate, amt: amt, tax_percent: pct, tax: t });
+      });
+      var ship = lines.length ? _cartShippingAmt() : 0;
+      var cgst = Math.round((tax/2) * 100) / 100;
+      var sgst = Math.round((tax - cgst) * 100) / 100;
+      var grand = Math.round((sub + tax + ship) * 100) / 100;
+      return { lines: lines, subtotal: Math.round(sub*100)/100, tax: Math.round(tax*100)/100,
+        tax_cgst: cgst, tax_sgst: sgst, shipping: ship, grand: grand, count: lines.length };
+    }
+    function formatCartTotalsHtml(t, compact){
+      if(!t || !t.count) return '';
+      if(compact){
+        return 'Est. <b style="color:#2d7a4f">₹'+t.grand.toFixed(2)+'</b>'
+          +' <span style="color:#8a7a6a">(items ₹'+t.subtotal.toFixed(0)
+          +(t.tax>0?' +GST ₹'+t.tax.toFixed(0):'')
+          +(t.shipping>0?' +ship ₹'+t.shipping.toFixed(0):'')+')</span>';
+      }
+      var h = '<div style="display:flex;justify-content:space-between"><span>Items</span><b>₹'+t.subtotal.toFixed(2)+'</b></div>';
+      if(t.tax > 0){
+        h += '<div style="display:flex;justify-content:space-between"><span>CGST</span><b>₹'+t.tax_cgst.toFixed(2)+'</b></div>';
+        h += '<div style="display:flex;justify-content:space-between"><span>SGST</span><b>₹'+t.tax_sgst.toFixed(2)+'</b></div>';
+      }
+      if(t.shipping > 0)
+        h += '<div style="display:flex;justify-content:space-between"><span>Shipping</span><b>₹'+t.shipping.toFixed(2)+'</b></div>';
+      h += '<div style="display:flex;justify-content:space-between;border-top:1.5px solid #e8dfd2;margin-top:6px;padding-top:6px;font-size:14px"><span>Est. total</span><b style="color:#2d7a4f">₹'+t.grand.toFixed(2)+'</b></div>';
+      h += '<div style="font-size:10px;color:#8a7a6a;margin-top:6px">Estimate only. Final invoice may vary after admin approval.</div>';
+      return h;
+    }
+
     function updateBar(){
       var total = totalItemCount();
       var totalEl = document.getElementById('totalItems');
@@ -1002,6 +1387,16 @@
       }
       var bar = document.getElementById('orderBar');
       if (bar) bar.style.display = total > 0 ? 'block' : 'none';
+      var ctl = document.getElementById('cartTotalLine');
+      if (ctl) {
+        if (total > 0 && typeof computeCartTotals === 'function') {
+          var ct = computeCartTotals();
+          ctl.innerHTML = formatCartTotalsHtml(ct, true);
+          ctl.style.display = 'block';
+        } else {
+          ctl.style.display = 'none';
+        }
+      }
 
       // Disable Review/Update when editing existing order and nothing changed (2→3→2)
       var submitBtn = document.getElementById('submitBtn');
@@ -1045,7 +1440,7 @@
     }
 
     function customerClaimInvoicePaid(id){
-      var note = prompt('Optional: UPI/UTR reference or note','') || '';
+      var note = prompt('Optional note for admin (can leave blank)','') || '';
       apiPost({ action:'customerClaimPaid', id: id, note: note }).then(function(res){
         if (res && res.ok) {
           if (existingOrder && String(existingOrder.id) === String(id)) {
@@ -1298,8 +1693,17 @@
       var note = document.getElementById('orderNote').value.trim();
       document.getElementById('pvDate').textContent = fmtDate(tomorrowStr());
       document.getElementById('pvItems').innerHTML = selected.map(function(p){
-        return '<div class="preview-row"><span class="pn">'+esc(p.name)+'</span><span class="pq">× '+qty[p.product_id]+'</span></div>';
+        var rate = parseFloat(p.price); if(isNaN(rate)) rate = 0;
+        var q = qty[p.product_id];
+        var amt = (rate * q).toFixed(2);
+        return '<div class="preview-row"><span class="pn">'+esc(p.name)+' <span style="color:#8a7a6a;font-weight:600">@ ₹'+rate.toFixed(2)+'</span></span><span class="pq">× '+q+' · ₹'+amt+'</span></div>';
       }).join('');
+      var pvTot = document.getElementById('pvTotals');
+      if (pvTot && typeof computeCartTotals === 'function') {
+        var ct = computeCartTotals();
+        pvTot.innerHTML = formatCartTotalsHtml(ct, false);
+        pvTot.style.display = ct.count ? 'block' : 'none';
+      }
       var pvNote = document.getElementById('pvNote');
       if (note){ pvNote.textContent = '📝 ' + note; pvNote.style.display='block'; }
       else { pvNote.style.display='none'; }
@@ -1317,6 +1721,12 @@
     // ── SUBMIT ORDER ──
     function submitOrder(){
       if (_editLocked) { closePreview(); return; }
+      if (_paymentHoldActive) {
+        closePreview();
+        var msgEl = document.getElementById('orderMsg');
+        if(msgEl){ msgEl.textContent = _paymentHoldMsg || 'Ordering on hold due to unpaid invoices.'; msgEl.className='msg er'; msgEl.style.display='block'; }
+        return;
+      }
 
       // Fast local check first
       if (_orderClosed) {
@@ -1615,7 +2025,8 @@
         api({action:'getSetting', key:'order_message'}),
         api({action:'getSetting', key:'customer_broadcast'}),
         api({action:'getSetting', key:'customer_broadcast_at'}),
-        api({action:'getSetting', key:'customer_broadcast_enabled'})
+        api({action:'getSetting', key:'customer_broadcast_enabled'}),
+        api({action:'getSetting', key:'customer_broadcast_type'})
       ]).then(function(results){
         // getSetting returns a single row object (or null), NOT an array
         var enabled       = !results[0] || results[0].value !== 'false';
@@ -1646,18 +2057,74 @@
           renderOrderBanner(); // refresh no-order button visibility
         }
 
-        // Broadcast banner — only show if admin has it enabled
-        var bb = document.getElementById('broadcastBanner');
-        if(bcast && bcastOn){
-          if(bcastAt !== _lastBroadcastAt){
-            _lastBroadcastAt = bcastAt;
-            document.getElementById('broadcastText').textContent = '📢 ' + bcast;
-            bb.style.display = 'block';
-          }
-        } else {
-          bb.style.display = 'none'; // admin disabled or cleared
-        }
+        // Broadcast banner — polished card; hide if dismissed for this message
+        applyBroadcastBanner(bcast, bcastOn, bcastAt, results[5] ? (results[5].value || '') : '');
       });
+    }
+
+    function _bcastDismissKey(msg, at) {
+      return String(msg || '') + '|' + String(at || '');
+    }
+    function _bcastWasDismissed(msg, at) {
+      try {
+        return localStorage.getItem('ibcab_bcast_dismissed') === _bcastDismissKey(msg, at);
+      } catch (e) { return false; }
+    }
+    function dismissBroadcast() {
+      var msg = window._bcastCurrentMsg || '';
+      var at = window._bcastCurrentAt || '';
+      try { localStorage.setItem('ibcab_bcast_dismissed', _bcastDismissKey(msg, at)); } catch (e) {}
+      var bb = document.getElementById('broadcastBanner');
+      if (bb) bb.style.display = 'none';
+    }
+    function _inferBroadcastType(msg, typeSetting) {
+      var t = String(typeSetting || '').toLowerCase().trim();
+      if (t === 'info' || t === 'reminder' || t === 'urgent' || t === 'success') return t;
+      var m = String(msg || '');
+      if (/🔒|closed|urgent|cancel|holiday|no delivery/i.test(m)) return 'urgent';
+      if (/✅|all set|thank|received|confirmed/i.test(m)) return 'success';
+      if (/⏰|soon|reminder|closing|before|by \d/i.test(m)) return 'reminder';
+      return 'info';
+    }
+    function applyBroadcastBanner(bcast, bcastOn, bcastAt, typeSetting) {
+      var bb = document.getElementById('broadcastBanner');
+      if (!bb) return;
+      if (!(bcast && bcastOn)) {
+        bb.style.display = 'none';
+        return;
+      }
+      window._bcastCurrentMsg = bcast;
+      window._bcastCurrentAt = bcastAt || '';
+      if (_bcastWasDismissed(bcast, bcastAt)) {
+        bb.style.display = 'none';
+        return;
+      }
+      var type = _inferBroadcastType(bcast, typeSetting);
+      var meta = {
+        info:     { title: 'Announcement', ico: '📢' },
+        reminder: { title: 'Reminder',     ico: '⏰' },
+        urgent:   { title: 'Important',    ico: '🔒' },
+        success:  { title: 'Update',       ico: '✅' }
+      };
+      var m = meta[type] || meta.info;
+      // Prefer emoji already in message for icon if present
+      var body = bcast;
+      var lead = '';
+      if (/^[📢⏰🔒✅🔔]/.test(bcast)) {
+        lead = bcast.charAt(0);
+        body = bcast.slice(1).replace(/^\s+/, '') || bcast;
+      }
+      if (lead) m = { title: m.title, ico: lead };
+
+      bb.className = 'bcast-' + type;
+      var ico = document.getElementById('broadcastIco');
+      var title = document.getElementById('broadcastTitle');
+      var text = document.getElementById('broadcastText');
+      if (ico) ico.textContent = m.ico;
+      if (title) title.textContent = m.title;
+      if (text) text.textContent = body;
+      bb.style.display = 'block';
+      _lastBroadcastAt = bcastAt || '';
     }
 
     // ── HELPERS ──
@@ -1895,15 +2362,50 @@
       btn.style.color       = isOpen ? '' : '#c8382a';
     }
 
+
+    function openPayTabFromLink(){
+      try {
+        var h = (location.hash || '').replace(/^#/, '').toLowerCase();
+        var q = (location.search || '');
+        var wantPay = (h === 'payments' || h === 'pay' || /(?:\?|&)tab=payments?/i.test(q) || /(?:\?|&)pay=1/i.test(q));
+        if (wantPay && typeof showTab === 'function' && session) {
+          showTab('payments');
+        }
+      } catch(e){}
+    }
+    // When user opens app from payment reminder notification
+    window.addEventListener('hashchange', function(){
+      if ((location.hash||'').toLowerCase().indexOf('pay') >= 0 && session) showTab('payments');
+    });
+
+
+    function setCustBottomNav(tab){
+      ['order','payments','history','track','settings'].forEach(function(k){
+        var el = document.getElementById('cbnav-'+k);
+        if (el) el.classList.toggle('on', k === tab);
+      });
+      ['order','payments','history','track','settings'].forEach(function(k){
+        var el = document.getElementById('tb-'+k);
+        if (el) el.classList.toggle('on', k === tab);
+      });
+    }
+
     function showTab(t){
+
+      if (t === 'payments' && !_customerPayEnabled) t = 'order';
+      setCustBottomNav(t);
+if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
       ['order','payments','history','track','settings'].forEach(function(x){
         var pg = document.getElementById('pg-'+x);
         var tb = document.getElementById('tb-'+x);
         if (pg) pg.classList.toggle('on', x===t);
         if (tb) tb.classList.toggle('on', x===t);
       });
+      _custSwipeTab = t;
       document.getElementById('orderBar').style.display = (t==='order' && totalItemCount()>0 && !_orderClosed && (!_editLocked || _amendMode)) ? 'block' : 'none';
       if(t==='order'){
+        checkPaymentOrderHold();
+        loadShopShippingForSession().then(function(){ updateBar(); });
         // Always refresh order from server so admin qty changes show up
         loadExistingOrder().then(function(){
           applyExistingOrderQty(_amendMode);
@@ -1918,11 +2420,277 @@
       }
       if(t==='payments'){
         if(!_customerPayEnabled){ showTab('order'); return; }
-        loadPaymentsTab();
+        loadUpiSettings().then(function(){ loadPaymentsTab(); }).catch(function(){ loadPaymentsTab(); });
       }
       if(t==='track') loadTrack();
       if(t==='history') loadHistory();
       if(t==='settings'){ renderSettingsProfile(); renderNotifSettings(); }
+    }
+
+    /* ── SWIPE BETWEEN TABS + CONFLICT RESOLUTION ── */
+    var _custSwipeTab = 'order';
+    var _custSwipeAll = ['order','payments','history','track','settings'];
+    var _csg = {
+      active:false, ignore:false, axis:null,
+      startX:0, startY:0, startT:0,
+      startScrollY:0, startScrollX:0,
+      scrollParent:null, hScrollParent:null
+    };
+    var CSG_LOCK=12, CSG_MIN_DX=80, CSG_MAX_MS=550, CSG_RATIO=1.75, CSG_EDGE=28;
+
+    function _custVisibleTabs(){
+      return _custSwipeAll.filter(function(id){
+        if(id==='payments' && !_customerPayEnabled) return false;
+        var tb = document.getElementById('tb-'+id);
+        if(!tb) return false;
+        if(tb.style.display === 'none') return false;
+        return true;
+      });
+    }
+    function _custScrollParent(el, horizontal){
+      var node = el;
+      while(node && node !== document.body && node !== document.documentElement){
+        var st = window.getComputedStyle(node);
+        if(horizontal){
+          var ox = st.overflowX;
+          if((ox==='auto'||ox==='scroll'||ox==='overlay') && node.scrollWidth > node.clientWidth+4) return node;
+          if(node.classList && node.classList.contains('tabs')) return node;
+          if(node.classList && node.classList.contains('cat-pills')) return node;
+        } else {
+          var oy = st.overflowY;
+          if((oy==='auto'||oy==='scroll'||oy==='overlay') && node.scrollHeight > node.clientHeight+4) return node;
+        }
+        node = node.parentElement;
+      }
+      return horizontal ? null : (document.scrollingElement || document.documentElement);
+    }
+    function _custScrollPos(el, horizontal){
+      if(!el) return 0;
+      if(el===document.scrollingElement||el===document.documentElement||el===document.body)
+        return horizontal ? (window.scrollX||0) : (window.scrollY||0);
+      return horizontal ? el.scrollLeft : el.scrollTop;
+    }
+    function _custIgnoreTarget(el){
+      var node = el;
+      while(node && node !== document.body){
+        var tag = (node.tagName||'').toLowerCase();
+        if(tag==='input'||tag==='textarea'||tag==='select'||tag==='button'||tag==='a'||tag==='label') return true;
+        if(node.isContentEditable) return true;
+        if(node.classList){
+          if(node.classList.contains('tabs')) return true;
+          if(node.classList.contains('qty-btn') || node.classList.contains('order-total-bar')) return true;
+        }
+        if(node.id === 'orderBar' || node.id === 'previewModal' || node.id === 'custNotifPanel'){
+          var disp = node.style && node.style.display;
+          if(node.id === 'orderBar' && disp !== 'none') return true;
+          if(node.id === 'previewModal' || node.id === 'custNotifPanel'){
+            try {
+              if(window.getComputedStyle(node).display !== 'none') return true;
+            } catch(e){}
+          }
+        }
+        node = node.parentElement;
+      }
+      return false;
+    }
+    function initCustomerSwipe(){
+      document.addEventListener('touchstart', function(e){
+        if(!e.touches || e.touches.length!==1){ _csg.active=false; return; }
+        // Only when app UI is shown
+        var app = document.getElementById('app');
+        if(app && app.style.display==='none'){ _csg.active=false; return; }
+        var touch = e.touches[0];
+        _csg.active = true;
+        _csg.axis = null;
+        _csg.ignore = _custIgnoreTarget(e.target);
+        _csg.startX = touch.clientX;
+        _csg.startY = touch.clientY;
+        _csg.startT = Date.now();
+        _csg.scrollParent = _custScrollParent(e.target, false);
+        _csg.hScrollParent = _custScrollParent(e.target, true);
+        _csg.startScrollY = _custScrollPos(_csg.scrollParent, false);
+        _csg.startScrollX = _custScrollPos(_csg.hScrollParent, true);
+      }, {passive:true});
+
+      document.addEventListener('touchmove', function(e){
+        if(!_csg.active || _csg.ignore) return;
+        if(!e.touches || e.touches.length!==1){ _csg.active=false; return; }
+        var touch = e.touches[0];
+        var dx = touch.clientX - _csg.startX;
+        var dy = touch.clientY - _csg.startY;
+        var adx = Math.abs(dx), ady = Math.abs(dy);
+        if(!_csg.axis && (adx > CSG_LOCK || ady > CSG_LOCK)){
+          if(ady > adx * 1.15){
+            _csg.axis = 'y';
+          } else if(adx > ady * 1.15){
+            _csg.axis = 'x';
+            if(_csg.hScrollParent){
+              var sl = _custScrollPos(_csg.hScrollParent, true);
+              var maxSl = (_csg.hScrollParent.scrollWidth||0) - (_csg.hScrollParent.clientWidth||0);
+              if((dx < 0 && sl < maxSl-1) || (dx > 0 && sl > 1)){
+                _csg.ignore = true;
+                _csg.active = false;
+                return;
+              }
+            }
+          } else {
+            _csg.ignore = true;
+            _csg.active = false;
+            return;
+          }
+        }
+        if(_csg.axis === 'y'){
+          if(Math.abs(_custScrollPos(_csg.scrollParent, false) - _csg.startScrollY) > 2){
+            _csg.ignore = true;
+            _csg.active = false;
+          }
+        }
+      }, {passive:true});
+
+      document.addEventListener('touchend', function(e){
+        if(!_csg.active){ _csg.active=false; return; }
+        _csg.active = false;
+        if(_csg.ignore) return;
+        if(!e.changedTouches || !e.changedTouches.length) return;
+        var touch = e.changedTouches[0];
+        var dx = touch.clientX - _csg.startX;
+        var dy = touch.clientY - _csg.startY;
+        var adx = Math.abs(dx), ady = Math.abs(dy);
+        var dt = Date.now() - _csg.startT;
+        if(dt > CSG_MAX_MS || dt < 30) return;
+        if(Math.abs(_custScrollPos(_csg.scrollParent, false) - _csg.startScrollY) > 4) return;
+        if(_csg.hScrollParent && Math.abs(_custScrollPos(_csg.hScrollParent, true) - _csg.startScrollX) > 4) return;
+        if(_csg.axis && _csg.axis !== 'x') return;
+        if(adx < CSG_MIN_DX) return;
+        if(adx < ady * CSG_RATIO) return;
+        var fromEdge = _csg.startX <= CSG_EDGE || _csg.startX >= (window.innerWidth - CSG_EDGE);
+        if(!fromEdge && adx < CSG_MIN_DX * 1.35) return;
+
+        var tabs = _custVisibleTabs();
+        if(tabs.length < 2) return;
+        var cur = _custSwipeTab;
+        if(tabs.indexOf(cur) < 0) cur = tabs[0];
+        var idx = tabs.indexOf(cur);
+        if(dx < 0 && idx < tabs.length - 1) showTab(tabs[idx+1]);
+        else if(dx > 0 && idx > 0) showTab(tabs[idx-1]);
+      }, {passive:true});
+
+      document.addEventListener('touchcancel', function(){
+        _csg.active = false;
+        _csg.ignore = true;
+      }, {passive:true});
+    }
+    if(document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', initCustomerSwipe);
+    } else {
+      initCustomerSwipe();
+    }
+
+    /* ── PULL TO REFRESH ── */
+    var _ptr = { tracking:false, pulling:false, startY:0, dy:0, refreshing:false };
+    var PTR_THRESHOLD = 72;
+
+    async function runPullRefresh(){
+      if(_ptr.refreshing) return;
+      _ptr.refreshing = true;
+      var bubble = document.getElementById('ptrBubble');
+      var ind = document.getElementById('ptrIndicator');
+      if(bubble) bubble.textContent = 'Refreshing…';
+      if(ind) ind.classList.add('show');
+      try {
+        var tab = _custSwipeTab || 'order';
+        if(tab === 'order'){
+          if(typeof loadProducts === 'function') { try { await loadProducts(); } catch(e){} }
+          if(typeof loadExistingOrder === 'function'){
+            await loadExistingOrder();
+            if(typeof applyExistingOrderQty === 'function') applyExistingOrderQty(_amendMode);
+            if(typeof renderOrderBanner === 'function') renderOrderBanner();
+            if(typeof renderProducts === 'function') renderProducts();
+            if(typeof updateBar === 'function') updateBar();
+          }
+        } else if(tab === 'payments' && typeof loadPaymentsTab === 'function'){
+          await loadPaymentsTab();
+        } else if(tab === 'history' && typeof loadHistory === 'function'){
+          await loadHistory();
+        } else if(tab === 'track' && typeof loadTrack === 'function'){
+          await loadTrack();
+        } else if(tab === 'settings'){
+          if(typeof renderSettingsProfile === 'function') renderSettingsProfile();
+          if(typeof renderNotifSettings === 'function') renderNotifSettings();
+        }
+        if(bubble) bubble.textContent = '✓ Updated';
+      } catch(err){
+        if(bubble) bubble.textContent = 'Failed — try again';
+      }
+      setTimeout(function(){
+        if(ind) ind.classList.remove('show');
+        if(bubble) bubble.textContent = '↓ Pull to refresh';
+        _ptr.refreshing = false;
+        _ptr.dy = 0;
+      }, 700);
+    }
+
+    function initPullToRefresh(){
+      document.addEventListener('touchstart', function(e){
+        if(_ptr.refreshing || !e.touches || e.touches.length!==1) return;
+        var app = document.getElementById('app');
+        if(app && app.style.display==='none') return;
+        var scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+        if(scrollY > 2) { _ptr.tracking = false; return; }
+        _ptr.tracking = true;
+        _ptr.pulling = false;
+        _ptr.startY = e.touches[0].clientY;
+        _ptr.dy = 0;
+      }, {passive:true});
+
+      document.addEventListener('touchmove', function(e){
+        if(!_ptr.tracking || _ptr.refreshing) return;
+        if(!e.touches || e.touches.length!==1) return;
+        var scrollY = window.scrollY || document.documentElement.scrollTop || 0;
+        if(scrollY > 2) { _ptr.tracking = false; return; }
+        var dy = e.touches[0].clientY - _ptr.startY;
+        if(dy < 8) return;
+        // Don't fight horizontal swipe
+        // (axis lock handled separately; here only pull when clearly downward)
+        _ptr.pulling = true;
+        _ptr.dy = Math.min(dy * 0.45, 100);
+        var ind = document.getElementById('ptrIndicator');
+        var bubble = document.getElementById('ptrBubble');
+        if(ind){
+          ind.classList.add('show');
+          ind.style.height = _ptr.dy + 'px';
+        }
+        if(bubble){
+          bubble.textContent = _ptr.dy >= PTR_THRESHOLD ? '↑ Release to refresh' : '↓ Pull to refresh';
+        }
+      }, {passive:true});
+
+      document.addEventListener('touchend', function(){
+        if(!_ptr.tracking) return;
+        var should = _ptr.pulling && _ptr.dy >= PTR_THRESHOLD && !_ptr.refreshing;
+        _ptr.tracking = false;
+        _ptr.pulling = false;
+        var ind = document.getElementById('ptrIndicator');
+        if(should){
+          if(ind) ind.style.height = '48px';
+          runPullRefresh();
+        } else {
+          if(ind){ ind.style.height = '0'; ind.classList.remove('show'); }
+          _ptr.dy = 0;
+        }
+      }, {passive:true});
+
+      document.addEventListener('touchcancel', function(){
+        _ptr.tracking = false;
+        _ptr.pulling = false;
+        var ind = document.getElementById('ptrIndicator');
+        if(ind && !_ptr.refreshing){ ind.style.height='0'; ind.classList.remove('show'); }
+      }, {passive:true});
+    }
+    if(document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', initPullToRefresh);
+    } else {
+      initPullToRefresh();
     }
 
     var _payInvoices = [];
@@ -1940,32 +2708,480 @@
         return;
       }
       document.getElementById('pay-list').innerHTML = '<div style="text-align:center;color:#8a7a6a;padding:16px">Loading…</div>';
-      apiPost({ action:'getCustomerOrders', shop_id: session.shop_id, limit: 100 }).then(function(list){
+      var sid = String(session.shop_id || '').trim();
+      api({ action:'getCustomerOrders', shop_id: sid, limit: 100 }).then(function(list){
         if(!Array.isArray(list)) list = [];
-        _payInvoices = list.filter(function(o){
-          var st = String(o.payment_status||'').toLowerCase();
-          if(st === 'paid') return true; // show recent paid too
-          return o.zoho_invoice_id || o.zoho_invoice_number || o.invoice_total != null || o.balance_due != null;
+        // If shop_id filter returns nothing, try broader fetch and match local ids
+        var finish = function(rows){
+          _payInvoices = (rows||[]).filter(function(o){
+            var st = String(o.payment_status||'').toLowerCase();
+            if(st === 'void' || st === 'stale') return false;
+            if(st === 'paid') return !!(o.zoho_invoice_id || o.zoho_invoice_number || o.invoice_total != null);
+            return !!(o.zoho_invoice_id || o.zoho_invoice_number || o.invoice_total != null || o.balance_due != null);
+          });
+          if(!_payInvoices.length){
+            document.getElementById('pay-list').innerHTML = '<div style="text-align:center;color:#8a7a6a;padding:20px;font-size:12px;line-height:1.5">No invoices yet.<br>When admin creates an invoice in Zoho, it will show here.</div>';
+          }
+          renderPaymentsTab();
+        };
+        if(list.length){ finish(list); return; }
+        // Fallback: load more recent orders for this shop without relying only on filter edge cases
+        return api({ action:'getCustomerOrders', shop_id: sid, limit: 200 }).then(function(list2){
+          if(!Array.isArray(list2)) list2 = [];
+          finish(list2);
         });
-        renderPaymentsTab();
       }).catch(function(e){
-        document.getElementById('pay-list').innerHTML = '<div style="color:#c8382a;padding:12px;font-size:12px">Failed to load</div>';
+        document.getElementById('pay-list').innerHTML = '<div style="color:#c8382a;padding:12px;font-size:12px">Failed to load: '+String(e.message||e)+'</div>';
       });
     }
-    function renderPaymentsTab(){
-      var unpaid = _payInvoices.filter(function(o){ return String(o.payment_status||'').toLowerCase() !== 'paid'; });
-      var total = unpaid.reduce(function(s,o){
+    function _payUnpaidList(){
+      return (_payInvoices||[]).filter(function(o){ return String(o.payment_status||'').toLowerCase() !== 'paid'; });
+    }
+
+    var _upiVpa = '';
+    var _upiPayee = 'IBCAB';
+    var _payQrObj = null;
+    function _settingVal(row){
+      if(!row) return '';
+      if(Array.isArray(row)) return row[0] ? String(row[0].value||'') : '';
+      return String(row.value||'');
+    }
+    function loadUpiSettings(){
+      return Promise.all([
+        api({action:'getSetting', key:'upi_vpa'}).catch(function(){return null;}),
+        api({action:'getSetting', key:'upi_payee_name'}).catch(function(){return null;})
+      ]).then(function(res){
+        _upiVpa = _settingVal(res[0]).trim();
+        _upiPayee = _settingVal(res[1]).trim() || 'IBCAB';
+        renderPayUpiBox();
+      });
+    }
+    /**
+     * UPI intent URL schemes (NPCI + app-specific)
+     * QR always uses standard upi://pay — every app can scan it.
+     * Buttons try app schemes, then generic upi://, then Android intent://
+     */
+    function buildUpiQuery(amount, txnNote){
+      if(!_upiVpa) return '';
+      var am = Number(amount);
+      if(isNaN(am) || am < 0) am = 0;
+      var note = txnNote || ('Weekly payment ' + (session && session.shop_name ? session.shop_name : ''));
+      var tr = 'IBCAB' + Date.now().toString(36).toUpperCase();
+      var parts = [
+        'pa=' + encodeURIComponent(_upiVpa),
+        'pn=' + encodeURIComponent(_upiPayee || 'IBCAB'),
+        'cu=INR',
+        'tn=' + encodeURIComponent(String(note).slice(0, 50)),
+        'tr=' + encodeURIComponent(tr)
+      ];
+      if(am > 0) parts.push('am=' + encodeURIComponent(am.toFixed(2)));
+      return parts.join('&');
+    }
+    /** Standard NPCI scheme — use for QR + default open */
+    function buildUpiPayUrl(amount){
+      var q = buildUpiQuery(amount);
+      return q ? ('upi://pay?' + q) : '';
+    }
+    /** App-specific intent URLs */
+    function buildUpiAppUrls(amount){
+      var q = buildUpiQuery(amount);
+      if(!q) return {};
+      var upi = 'upi://pay?' + q;
+      return {
+        upi: upi,
+        // PhonePe
+        phonepe: 'phonepe://pay?' + q,
+        // Google Pay
+        gpay: 'gpay://upi/pay?' + q,
+        // Paytm
+        paytm: 'paytmmp://cash_wallet?featuretype=money_transfer&' + q,
+        paytmAlt: 'paytmmp://pay?' + q,
+        // Android Chrome intent fallback (opens chooser if app handles upi)
+        androidIntent: 'intent://pay?' + q + '#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end'
+      };
+    }
+
+    /* ── Payment status polling (app-side; not bank UPI API) ──
+       Real-time bank UPI status needs a Payment Gateway.
+       Here we poll our invoices until admin confirms / marks paid / balance clears.
+    */
+    var _payPollTimer = null;
+    var _payPollStartedAt = 0;
+    var _payPollBaselineDue = null;
+    var _payPollCount = 0;
+    var PAY_POLL_MS = 8000;
+    var PAY_POLL_MAX_MS = 15 * 60 * 1000; // 15 min active; then show 24h message
+
+    function _payPollUi(show, title, sub, kind){
+      var box = document.getElementById('payStatusPoll');
+      var tEl = document.getElementById('payStatusTitle');
+      var sEl = document.getElementById('payStatusSub');
+      if(!box) return;
+      box.style.display = show ? 'block' : 'none';
+      if(kind === 'ok'){
+        box.style.background = '#e8f5e9';
+        box.style.borderColor = '#a5d6a7';
+        if(tEl) tEl.style.color = '#1a5a38';
+        if(sEl) sEl.style.color = '#2d7a4f';
+      } else if(kind === 'err'){
+        box.style.background = '#fde8e8';
+        box.style.borderColor = '#f0b0b0';
+        if(tEl) tEl.style.color = '#c8382a';
+        if(sEl) sEl.style.color = '#8a5a5a';
+      } else {
+        box.style.background = '#e3f2fd';
+        box.style.borderColor = '#90caf9';
+        if(tEl) tEl.style.color = '#1565c0';
+        if(sEl) sEl.style.color = '#5472a0';
+      }
+      if(tEl && title) tEl.textContent = title;
+      if(sEl && sub != null) sEl.textContent = sub;
+    }
+
+    function stopPaymentStatusPoll(manual){
+      if(_payPollTimer){ clearInterval(_payPollTimer); _payPollTimer = null; }
+      if(manual){
+        _payPollUi(true, 'Status check stopped', 'You can start again after paying or sending a request.', 'err');
+        setTimeout(function(){ _payPollUi(false); }, 4000);
+      }
+    }
+
+    function startPaymentStatusPoll(reason){
+      if(!session || !session.shop_id) return;
+      stopPaymentStatusPoll(false);
+      _payPollStartedAt = Date.now();
+      _payPollCount = 0;
+      _payPollBaselineDue = typeof _payUnpaidTotal === 'function' ? _payUnpaidTotal() : null;
+      var why = reason || 'payment';
+      _payPollUi(true,
+        why === 'request' ? 'Request received — awaiting admin' : 'Checking payment status…',
+        'Admin may take up to 24 working hours (not instant). We will update if status changes while this page is open.',
+        'wait'
+      );
+      // immediate check once
+      _pollPaymentStatusOnce();
+      _payPollTimer = setInterval(_pollPaymentStatusOnce, PAY_POLL_MS);
+      // When user returns from PhonePe/GPay, re-check quickly
+    }
+
+    function _pollPaymentStatusOnce(){
+      if(!session || !session.shop_id){ stopPaymentStatusPoll(false); return; }
+      var elapsed = Date.now() - _payPollStartedAt;
+      if(elapsed > PAY_POLL_MAX_MS){
+        stopPaymentStatusPoll(false);
+        _payPollUi(true, 'Request is with admin', 'Not confirmed yet. Admin usually approves within 24 working hours. You will get a notification — or reopen Pay tab later / pull to refresh.', 'wait');
+        return;
+      }
+      _payPollCount++;
+      api({ action:'getCustomerOrders', shop_id: session.shop_id, limit: 100 }).then(function(list){
+        if(!Array.isArray(list)) list = [];
+        // Keep local list in sync
+        _payInvoices = list.filter(function(o){
+          var st = String(o.payment_status||'').toLowerCase();
+          if(st === 'paid') return true;
+          return o.zoho_invoice_id || o.zoho_invoice_number || o.invoice_total != null || o.balance_due != null;
+        });
+        var unpaid = _payInvoices.filter(function(o){ return String(o.payment_status||'').toLowerCase() !== 'paid'; });
+        var due = unpaid.reduce(function(s,o){
+          var d = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
+          return s + (isNaN(d)?0:d);
+        }, 0);
+        var pendingReq = unpaid.some(function(o){ return !!o.customer_claimed_paid; });
+        var paidCount = _payInvoices.filter(function(o){ return String(o.payment_status||'').toLowerCase() === 'paid'; }).length;
+
+        // Success: no unpaid left
+        if(due <= 0.009){
+          stopPaymentStatusPoll(false);
+          _payPollUi(true, '✅ Payment confirmed', 'Balance ₹0. Thank you! Invoices marked paid.', 'ok');
+          try { renderPaymentsTab(); } catch(e){}
+          try { if(typeof checkPaymentOrderHold === 'function') checkPaymentOrderHold(); } catch(e){}
+          setTimeout(function(){ _payPollUi(false); }, 8000);
+          return;
+        }
+
+        // Partial progress: due dropped vs baseline
+        if(_payPollBaselineDue != null && due < _payPollBaselineDue - 0.5){
+          _payPollUi(true,
+            'Partial payment detected',
+            'Overdue now ₹' + due.toLocaleString('en-IN',{maximumFractionDigits:2}) + ' (was ₹' + _payPollBaselineDue.toLocaleString('en-IN',{maximumFractionDigits:0}) + '). Still checking…',
+            'wait'
+          );
+          _payPollBaselineDue = due;
+          try { renderPaymentsTab(); } catch(e){}
+          return;
+        }
+
+        var mins = Math.floor(elapsed/60000);
+        var secs = Math.floor((elapsed%60000)/1000);
+        var sub = 'Overdue ₹' + due.toLocaleString('en-IN',{maximumFractionDigits:0});
+        if(pendingReq) sub += ' · request with admin';
+        sub += ' · checked ' + _payPollCount + 'x · ' + mins + 'm ' + secs + 's';
+        _payPollUi(true,
+          pendingReq ? 'Request with admin (not instant)' : 'Waiting for payment confirmation…',
+          sub + (pendingReq ? ' · usually within 24 working hours' : ''),
+          'wait'
+        );
+      }).catch(function(){
+        _payPollUi(true, 'Checking payment status…', 'Network issue — will retry.', 'wait');
+      });
+    }
+
+    // Resume poll when returning from UPI app
+    document.addEventListener('visibilitychange', function(){
+      if(document.visibilityState === 'visible' && _payPollTimer){
+        _pollPaymentStatusOnce();
+      }
+    });
+
+    function openUpiIntent(preferred){
+      var total = typeof _payUnpaidTotal === 'function' ? _payUnpaidTotal() : 0;
+      var urls = buildUpiAppUrls(total);
+      if(!urls.upi){
+        alert('UPI not configured. Ask bakery for UPI ID.');
+        return;
+      }
+      var order = [];
+      if(preferred === 'phonepe') order = [urls.phonepe, urls.upi];
+      else if(preferred === 'gpay') order = [urls.gpay, urls.upi, urls.androidIntent];
+      else if(preferred === 'paytm') order = [urls.paytmAlt, urls.paytm, urls.upi];
+      else order = [urls.upi, urls.phonepe, urls.gpay, urls.paytmAlt];
+
+      // Try navigation to scheme; browsers ignore unknown schemes quietly on some devices
+      var tried = 0;
+      function tryNext(){
+        if(tried >= order.length) return;
+        var u = order[tried++];
+        if(!u) return tryNext();
+        try {
+          // iframe trick helps some Android browsers
+          var a = document.createElement('a');
+          a.href = u;
+          a.style.display = 'none';
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(function(){ try { document.body.removeChild(a); } catch(e){} }, 500);
+        } catch(e){
+          try { window.location.href = u; } catch(e2){}
+        }
+      }
+      tryNext();
+      // After opening UPI app, poll our invoice status when user comes back
+      setTimeout(function(){
+        if(typeof startPaymentStatusPoll === 'function') startPaymentStatusPoll('upi');
+      }, 1200);
+    }
+    function copyUpiLink(){
+      var total = typeof _payUnpaidTotal === 'function' ? _payUnpaidTotal() : 0;
+      var url = buildUpiPayUrl(total);
+      if(!url) return;
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(url).then(function(){
+          _payMsg('UPI link copied. Open PhonePe/GPay and paste if needed.', true);
+        }).catch(function(){ prompt('Copy UPI link:', url); });
+      } else {
+        prompt('Copy UPI link:', url);
+      }
+    }
+    function renderPayUpiBox(){
+      var box = document.getElementById('payUpiBox');
+      if(!box) return;
+      var total = typeof _payUnpaidTotal === 'function' ? _payUnpaidTotal() : 0;
+      if(!_upiVpa || total <= 0){
+        box.style.display = 'none';
+        return;
+      }
+      box.style.display = 'block';
+      var urls = buildUpiAppUrls(total);
+      var url = urls.upi;
+      var amtLbl = document.getElementById('payUpiAmtLbl');
+      var meta = document.getElementById('payUpiMeta');
+      var link = document.getElementById('payUpiLink');
+      if(amtLbl) amtLbl.textContent = '₹' + total.toLocaleString('en-IN', {maximumFractionDigits:2});
+      if(meta) meta.textContent = _upiPayee + ' · ' + _upiVpa;
+      if(link){
+        link.href = url;
+        link.onclick = function(e){
+          e.preventDefault();
+          openUpiIntent('upi');
+          return false;
+        };
+      }
+      var pp = document.getElementById('payUpiPhonepe');
+      var gp = document.getElementById('payUpiGpay');
+      var pt = document.getElementById('payUpiPaytm');
+      if(pp){ pp.href = urls.phonepe || '#'; pp.onclick = function(e){ e.preventDefault(); openUpiIntent('phonepe'); return false; }; }
+      if(gp){ gp.href = urls.gpay || '#'; gp.onclick = function(e){ e.preventDefault(); openUpiIntent('gpay'); return false; }; }
+      if(pt){ pt.href = urls.paytmAlt || '#'; pt.onclick = function(e){ e.preventDefault(); openUpiIntent('paytm'); return false; }; }
+      var wrap = document.getElementById('payQrWrap');
+      if(wrap){
+        wrap.innerHTML = '';
+        // QR must be standard upi:// so any app can scan
+        if(typeof QRCode !== 'undefined'){
+          try {
+            _payQrObj = new QRCode(wrap, {
+              text: url,
+              width: 160,
+              height: 160,
+              correctLevel: QRCode.CorrectLevel.M
+            });
+          } catch(err){
+            wrap.innerHTML = '<img alt="UPI QR" width="160" height="160" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data='+encodeURIComponent(url)+'" />';
+          }
+        } else {
+          wrap.innerHTML = '<img alt="UPI QR" width="160" height="160" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data='+encodeURIComponent(url)+'" />';
+        }
+      }
+    }
+
+function _payUnpaidTotal(){
+      return _payUnpaidList().reduce(function(s,o){
         var d = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
         return s + (isNaN(d)?0:d);
       }, 0);
-      document.getElementById('pay-total-amt').textContent = '₹' + total.toLocaleString('en-IN', {maximumFractionDigits:2});
-      document.getElementById('pay-total-sub').textContent = unpaid.length + ' unpaid · ' + _payInvoices.length + ' total shown';
-      document.getElementById('pay-total-amt').style.color = total > 0 ? '#c8382a' : '#1a5a38';
+    }
+
+    function closeInvoicePreview(){
+      var sh = document.getElementById('invPreviewSheet');
+      if(sh){ sh.style.display = 'none'; }
+    }
+    function _payParseOrderItems(o){
+      // App stores items/qty as comma-separated strings: "A,B" / "2,3"
+      // Also accept arrays, JSON arrays, or a single number for qty.
+      function toNameList(v){
+        if (v == null || v === '') return [];
+        if (Array.isArray(v)) return v;
+        if (typeof v === 'object') return [v];
+        var s = String(v).trim();
+        if (!s) return [];
+        if (s.charAt(0) === '[') {
+          try {
+            var j = JSON.parse(s);
+            if (Array.isArray(j)) return j;
+          } catch (e) {}
+        }
+        return s.split(',').map(function(x){ return x.trim(); }).filter(function(x){ return !!x; });
+      }
+      function toQtyList(v, nameCount){
+        if (v == null || v === '') return [];
+        if (Array.isArray(v)) return v.map(function(x){ return parseFloat(x) || 0; });
+        if (typeof v === 'number') return [v];
+        var s = String(v).trim();
+        if (!s) return [];
+        if (s.charAt(0) === '[') {
+          try {
+            var j = JSON.parse(s);
+            if (Array.isArray(j)) return j.map(function(x){ return parseFloat(x) || 0; });
+            if (typeof j === 'number') return [j];
+          } catch (e) {}
+        }
+        // Single number "2" or list "2,3,4"
+        if (/^-?\d+(\.\d+)?$/.test(s)) return [parseFloat(s) || 0];
+        return s.split(',').map(function(x){ return parseFloat(String(x).trim()) || 0; });
+      }
+      var names = toNameList(o.items);
+      var qtys = toQtyList(o.qty, names.length);
+      var rows = [];
+      for (var i = 0; i < names.length; i++) {
+        var n = names[i];
+        if (n && typeof n === 'object') {
+          rows.push({
+            name: n.name || n.item || n.product || 'Item',
+            qty: parseFloat(n.qty != null ? n.qty : (qtys[i] != null ? qtys[i] : 0)) || 0,
+            rate: parseFloat(n.rate || n.price || 0) || 0
+          });
+        } else {
+          rows.push({
+            name: String(n || 'Item'),
+            qty: parseFloat(qtys[i] != null ? qtys[i] : 0) || 0,
+            rate: 0
+          });
+        }
+      }
+      return rows;
+    }
+    function openInvoicePreview(orderId){
+      var o = (_payInvoices || []).find(function(x){ return String(x.id) === String(orderId); });
+      if (!o) return;
+      var sh = document.getElementById('invPreviewSheet');
+      var body = document.getElementById('invPrevBody');
+      var title = document.getElementById('invPrevTitle');
+      var sub = document.getElementById('invPrevSub');
+      if (!sh || !body) return;
+      var st = String(o.payment_status || 'unpaid').toLowerCase();
+      var paid = st === 'paid';
+      var due = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
+      if (isNaN(due)) due = 0;
+      var total = o.invoice_total != null ? parseFloat(o.invoice_total) : due;
+      if (isNaN(total)) total = due;
+      var docNo = o.zoho_invoice_number || ('Order #' + o.id);
+      var zst = o.zoho_invoice_status ? String(o.zoho_invoice_status) : '';
+      if (title) title.textContent = docNo;
+      if (sub) sub.textContent = (o.delivery_date || '') + (zst ? (' · Zoho: ' + zst) : '') + (paid ? ' · Paid' : ' · Unpaid');
+      var lines = _payParseOrderItems(o);
+      var linesHtml = '';
+      if (lines.length) {
+        linesHtml = '<div style="margin-bottom:12px">' + lines.map(function(r, idx){
+          return '<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid #f0e8dc;font-size:13px">' +
+            '<div style="flex:1;min-width:0"><span style="color:#8a7a6a;font-size:11px">'+(idx+1)+'.</span> '+esc(r.name)+'</div>' +
+            '<div style="font-weight:800;color:#4a2f14;flex-shrink:0">× '+(r.qty || 0)+'</div>' +
+          '</div>';
+        }).join('') + '</div>';
+      } else {
+        linesHtml = '<div style="font-size:12px;color:#8a7a6a;margin-bottom:12px">Line items not stored on this order. Totals below are from the invoice.</div>';
+      }
+      var subtotal = o.invoice_subtotal != null ? parseFloat(o.invoice_subtotal) : null;
+      var cgst = o.tax_cgst != null ? parseFloat(o.tax_cgst) : null;
+      var sgst = o.tax_sgst != null ? parseFloat(o.tax_sgst) : null;
+      var ship = o.shipping_amount != null ? parseFloat(o.shipping_amount) : null;
+      function money(n){ return '₹' + (Number(n)||0).toLocaleString('en-IN', { maximumFractionDigits: 2 }); }
+      var totals = '<div style="background:#f9f6f1;border-radius:12px;padding:12px;border:1px solid #e8dfd2">';
+      if (subtotal != null && !isNaN(subtotal)) totals += '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span>Taxable</span><b>'+money(subtotal)+'</b></div>';
+      if (cgst != null && !isNaN(cgst)) totals += '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span>CGST</span><b>'+money(cgst)+'</b></div>';
+      if (sgst != null && !isNaN(sgst)) totals += '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span>SGST</span><b>'+money(sgst)+'</b></div>';
+      if (ship != null && !isNaN(ship)) totals += '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span>Shipping</span><b>'+money(ship)+'</b></div>';
+      totals += '<div style="display:flex;justify-content:space-between;font-size:15px;font-weight:900;margin-top:8px;padding-top:8px;border-top:1.5px solid #e8dfd2;color:#4a2f14"><span>Total</span><span>'+money(total)+'</span></div>';
+      if (!paid) totals += '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:800;margin-top:6px;color:#c8382a"><span>Balance due</span><span>'+money(due)+'</span></div>';
+      else totals += '<div style="margin-top:6px;font-size:12px;font-weight:800;color:#1a5a38">Paid · Balance ₹0</div>';
+      totals += '</div>';
+      body.innerHTML =
+        '<div style="font-size:11px;color:#8a7a6a;margin-bottom:10px">Shop: <b style="color:#4a2f14">'+esc((session && session.shop_name) || o.shop_name || '')+'</b></div>' +
+        linesHtml + totals +
+        '<div style="font-size:10px;color:#8a7a6a;margin-top:12px;line-height:1.45">This is your order / invoice summary from the app. Official tax invoice is in Zoho Books.</div>';
+      sh.style.display = 'flex';
+    }
+    window.openInvoicePreview = openInvoicePreview;
+    window.closeInvoicePreview = closeInvoicePreview;
+
+
+    function renderPaymentsTab(){
+      var unpaid = _payUnpaidList();
+      var total = _payUnpaidTotal();
+      var amtEl = document.getElementById('pay-total-amt');
+      var subEl = document.getElementById('pay-total-sub');
+      var btn = document.getElementById('payRequestBtn');
+      if(amtEl){
+        amtEl.textContent = '₹' + total.toLocaleString('en-IN', {maximumFractionDigits:2});
+        amtEl.style.color = total > 0 ? '#c8382a' : '#1a5a38';
+      }
+      if(subEl) subEl.textContent = unpaid.length + ' unpaid invoice(s) · weekly total';
+      if(btn){
+        btn.disabled = total <= 0;
+        btn.style.opacity = total > 0 ? '1' : '0.5';
+        btn.textContent = total > 0
+          ? ('💰 Request payment for ₹' + total.toLocaleString('en-IN', {maximumFractionDigits:0}))
+          : '✓ No overdue amount';
+      }
+      // any request already pending?
+      var pendingReq = unpaid.some(function(o){ return !!o.customer_claimed_paid; });
+      if(btn && pendingReq && total > 0){
+        btn.textContent = '📨 Request already sent — send again?';
+      }
 
       if(!_payInvoices.length){
-        document.getElementById('pay-list').innerHTML = '<div style="text-align:center;color:#8a7a6a;padding:20px;font-size:12px">No invoices yet. Amounts appear after delivery challan is converted to invoice.</div>';
+        document.getElementById('pay-list').innerHTML = '<div style="text-align:center;color:#8a7a6a;padding:20px;font-size:12px">No invoices yet. Amounts appear after delivery / invoice is created.</div>';
         return;
       }
+      // Read-only breakdown (no invoice checkboxes)
       document.getElementById('pay-list').innerHTML = _payInvoices.map(function(o){
         var st = String(o.payment_status||'unpaid').toLowerCase();
         var paid = st === 'paid';
@@ -1975,47 +3191,71 @@
         var badge = paid ? '<span style="background:#e8f5e9;color:#1a5a38;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">Paid · ₹0</span>'
           : (claim ? '<span style="background:#e3f2fd;color:#1565c0;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">Request sent</span>'
           : '<span style="background:#fde8e8;color:#c8382a;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">Unpaid</span>');
-        var cb = paid ? '' : '<input type="checkbox" class="pay-inv-cb" data-id="'+o.id+'" '+(claim?'':'checked')+' style="width:18px;height:18px;margin-right:10px" />';
+        var zst = o.zoho_invoice_status ? (' · Zoho: ' + esc(String(o.zoho_invoice_status))) : '';
         var taxLine = '';
         if(o.tax_cgst != null || o.tax_sgst != null){
           taxLine = '<div style="font-size:10px;color:#8a7a6a">CGST ₹'+(o.tax_cgst||0)+' · SGST ₹'+(o.tax_sgst||0)+(o.shipping_amount!=null?' · Ship ₹'+o.shipping_amount:'')+'</div>';
         }
-        return '<label style="display:flex;align-items:flex-start;background:#fff;border:1.5px solid #e8ddd0;border-radius:12px;padding:12px;margin-bottom:8px">'+
-          cb+
-          '<div style="flex:1">'+
+        return '<div role="button" tabindex="0" onclick="openInvoicePreview(\''+String(o.id).replace(/'/g,'')+'\')" style="background:#fff;border:1.5px solid #e8ddd0;border-radius:12px;padding:12px;margin-bottom:8px;cursor:pointer;-webkit-tap-highlight-color:transparent">'+
             '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center">'+
               '<div style="font-size:13px;font-weight:800">'+(o.zoho_invoice_number||('Order #'+o.id))+'</div>'+badge+
             '</div>'+
-            '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:4px">'+esc(o.delivery_date||'')+' · Due <b style="color:'+(paid?'#1a5a38':'#c8382a')+'">₹'+due.toLocaleString('en-IN',{maximumFractionDigits:2})+'</b></div>'+
+            '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:4px">'+esc(o.delivery_date||'')+zst+' · <b style="color:'+(paid?'#1a5a38':'#c8382a')+'">₹'+due.toLocaleString('en-IN',{maximumFractionDigits:2})+'</b></div>'+
             taxLine+
-            (claim && o.customer_claim_note ? '<div style="font-size:10px;color:#1565c0;margin-top:4px">Note: '+esc(o.customer_claim_note)+'</div>' : '')+
-          '</div></label>';
+            '<div style="font-size:10px;color:#c8864a;font-weight:700;margin-top:8px">Tap for invoice preview →</div>'+
+          '</div>';
       }).join('');
+      try { renderPayUpiBox(); } catch(e){}
     }
-    function paySelectAllUnpaid(){
-      document.querySelectorAll('.pay-inv-cb').forEach(function(cb){ cb.checked = true; });
+    function openPayRequestSheet(){
+      var unpaid = _payUnpaidList();
+      var total = _payUnpaidTotal();
+      if(total <= 0 || !unpaid.length){
+        _payMsg('No overdue amount.', false);
+        return;
+      }
+      var a = document.getElementById('paySheetAmt');
+      var s = document.getElementById('paySheetSub');
+      if(a) a.textContent = '₹' + total.toLocaleString('en-IN', {maximumFractionDigits:2});
+      if(s) s.textContent = unpaid.length + ' unpaid invoice(s) included';
+      var n = document.getElementById('paySheetNote');
+      if(n) n.value = '';
+      var sheet = document.getElementById('payRequestSheet');
+      if(sheet){ sheet.style.display = 'flex'; }
     }
-    function paySubmitRequest(){
-      var ids = Array.from(document.querySelectorAll('.pay-inv-cb:checked')).map(function(cb){ return cb.dataset.id; });
-      if(!ids.length){ _payMsg('Select at least one unpaid invoice.', false); return; }
-      var note = prompt('Optional note for admin (UTR / cash / date)', '') || '';
-      _payMsg('Sending payment request…', null);
+    function closePayRequestSheet(){
+      var sheet = document.getElementById('payRequestSheet');
+      if(sheet) sheet.style.display = 'none';
+    }
+    function paySubmitTotalRequest(){
+      var unpaid = _payUnpaidList();
+      var ids = unpaid.map(function(o){ return o.id; });
+      if(!ids.length){ _payMsg('No unpaid invoices.', false); closePayRequestSheet(); return; }
+      var noteEl = document.getElementById('paySheetNote');
+      var note = (noteEl && noteEl.value) ? noteEl.value.trim() : '';
+      var total = _payUnpaidTotal();
+      _payMsg('Sending request for ₹'+total.toLocaleString('en-IN',{maximumFractionDigits:2})+'…', null);
+      closePayRequestSheet();
       apiPost({ action:'customerRequestPayment', ids: ids, shop_id: session.shop_id, note: note }).then(function(res){
         if(res && res.ok === false) throw new Error(res.error||'Failed');
-        _payMsg('Request sent for '+ids.length+' invoice(s). Admin will verify and mark paid.', true);
+        _payMsg('Request sent for ₹'+total.toLocaleString('en-IN',{maximumFractionDigits:2})+' ('+ids.length+' invoices). Admin usually confirms within 24 working hours — not immediate.', true);
         loadPaymentsTab();
-      }).catch(function(e){
-        // fallback one-by-one
+        startPaymentStatusPoll('request');
+      }).catch(function(){
         return Promise.all(ids.map(function(id){
           return apiPost({ action:'customerClaimPaid', id: id, note: note });
         })).then(function(){
-          _payMsg('Request sent for '+ids.length+' invoice(s). Admin will verify.', true);
+          _payMsg('Request sent for ₹'+total.toLocaleString('en-IN',{maximumFractionDigits:2})+'. Admin usually confirms within 24 working hours.', true);
           loadPaymentsTab();
+          startPaymentStatusPoll('request');
         });
       }).catch(function(e2){
         _payMsg('Failed: '+(e2.message||e2), false);
       });
     }
+    // legacy aliases
+    function paySelectAllUnpaid(){ openPayRequestSheet(); }
+    function paySubmitRequest(){ openPayRequestSheet(); }
 
     // ── CHANGE PASSWORD ──
     function changePassword(){
@@ -2045,19 +3285,23 @@
     var _custNotifs = [];
     var _custNotifOpen = false;
 
+    function _custUnreadCount(){
+      return (_custNotifs || []).filter(function(n){ return !n.is_read; }).length;
+    }
     function loadCustomerNotifs(){
       if(!session) return;
       api({ action:'getCustomerNotifications', shop_id: session.shop_id }).then(function(data){
-        var prev = _custNotifs.length;
+        var prevUnread = _custUnreadCount();
         _custNotifs = Array.isArray(data) ? data : [];
         var badge   = document.getElementById('custNotifBadge');
         var bellBtn = document.querySelector('[onclick*="toggleCustNotifPanel"]');
-        if(_custNotifs.length > 0){
-          badge.textContent = _custNotifs.length > 9 ? '9+' : _custNotifs.length;
+        var unread = _custUnreadCount();
+        if(unread > 0){
+          badge.textContent = unread > 9 ? '9+' : String(unread);
           badge.style.display = 'flex';
-          // Ring bell animation + browser notif when new ones arrive
-          if(_custNotifs.length > prev && !_custNotifOpen){
-            _showCustBrowserNotif(_custNotifs[0]);
+          if(unread > prevUnread && !_custNotifOpen){
+            var firstUnread = _custNotifs.find(function(n){ return !n.is_read; });
+            if(firstUnread) _showCustBrowserNotif(firstUnread);
             if(bellBtn){ bellBtn.classList.remove('bell-ring'); void bellBtn.offsetWidth; bellBtn.classList.add('bell-ring'); }
           }
         } else {
@@ -2094,35 +3338,43 @@
       var markBtn  = document.getElementById('markAllReadBtn');
       if(!el) return;
 
+      var unread = _custUnreadCount();
       if(!_custNotifs.length){
-        if(subtitle) subtitle.textContent = 'Nothing new';
+        if(subtitle) subtitle.textContent = 'Last 7 days';
         if(markBtn)  markBtn.style.display = 'none';
+        var clearBtn0 = document.getElementById('clearAllNotifBtn');
+        if(clearBtn0) clearBtn0.style.display = 'none';
         el.innerHTML =
           '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 24px;gap:14px">'+
             '<div style="font-size:52px;opacity:.3">🔔</div>'+
-            '<div style="font-size:14px;font-weight:700;color:#8a7a6a">All caught up!</div>'+
-            '<div style="font-size:12px;color:#b0a090;font-family:monospace;text-align:center">Messages from the bakery will appear here</div>'+
+            '<div style="font-size:14px;font-weight:700;color:#8a7a6a">No messages</div>'+
+            '<div style="font-size:12px;color:#b0a090;font-family:monospace;text-align:center">Showing last 7 days only. Older alerts are removed.</div>'+
           '</div>';
         return;
       }
 
-      if(subtitle) subtitle.textContent = _custNotifs.length + ' message' + (_custNotifs.length>1?'s':'');
-      if(markBtn)  markBtn.style.display = 'block';
+      if(subtitle) subtitle.textContent = _custNotifs.length + ' in 7 days · ' + unread + ' unread';
+      if(markBtn)  markBtn.style.display = unread ? 'block' : 'none';
+      var clearBtn = document.getElementById('clearAllNotifBtn');
+      if(clearBtn) clearBtn.style.display = 'block';
 
       el.innerHTML = _custNotifs.map(function(n, i){
         var t    = _notifIcon(n.message);
         var time = _timeAgo(n.created_at);
         var fullTime = n.created_at ? new Date(n.created_at).toLocaleString('en-IN',{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
-        return '<div style="background:#fff;border-radius:16px;margin-bottom:8px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.07);animation:slideIn .2s ease both;animation-delay:'+Math.min(i*0.05,0.3)+'s">'+
+        var read = !!n.is_read;
+        var op = read ? '0.72' : '1';
+        var dot = read ? '' : '<span style="width:8px;height:8px;border-radius:50%;background:#e53935;flex-shrink:0;margin-top:6px"></span>';
+        return '<div style="background:#fff;border-radius:16px;margin-bottom:8px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.07);opacity:'+op+';animation:slideIn .2s ease both;animation-delay:'+Math.min(i*0.05,0.3)+'s">'+
           '<div style="display:flex;gap:12px;padding:14px 14px 10px;align-items:flex-start">'+
             '<div style="width:40px;height:40px;border-radius:12px;background:'+t.bg+';display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">'+t.icon+'</div>'+
             '<div style="flex:1;min-width:0">'+
-              '<div style="font-size:13px;font-weight:700;color:'+t.fg+';line-height:1.5;margin-bottom:4px">'+esc(n.message)+'</div>'+
+              '<div style="font-size:13px;font-weight:'+(read?'600':'800')+';color:'+t.fg+';line-height:1.5;margin-bottom:4px">'+esc(n.message)+'</div>'+
               '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px">'+
-                '<div style="font-size:10px;color:#8a7a6a;font-family:monospace" title="'+esc(fullTime)+'">'+time+'</div>'+
-                '<div style="font-size:10px;color:#b0a090;font-family:monospace">IBCAB Bakery</div>'+
+                '<div style="font-size:10px;color:#8a7a6a;font-family:monospace" title="'+esc(fullTime)+'">'+time+(read?' · Read':'')+'</div>'+
+                '<div style="font-size:10px;color:#b0a090;font-family:monospace">IBCAB</div>'+
               '</div>'+
-            '</div>'+
+            '</div>'+dot+
           '</div>'+
         '</div>';
       }).join('');
@@ -2141,8 +3393,7 @@
           drawer.style.transform      = 'translateX(0)';
         }, 10);
         _renderCustNotifPanel();
-        // Auto mark as read after viewing
-        setTimeout(function(){ if(_custNotifOpen) markCustNotifsRead(); }, 2000);
+        // Do NOT auto-mark as read — user uses Mark all read / Clear
       } else {
         backdrop.style.opacity   = '0';
         drawer.style.transform   = 'translateX(100%)';
@@ -2156,12 +3407,24 @@
     function markCustNotifsRead(){
       if(!session) return;
       apiPost({ action:'markCustomerNotifsRead', shop_id: session.shop_id }).then(function(){
+        (_custNotifs || []).forEach(function(n){ n.is_read = true; });
+        var badge = document.getElementById('custNotifBadge');
+        if(badge) badge.style.display = 'none';
+        if(_custNotifOpen) _renderCustNotifPanel();
+      });
+    }
+    function clearCustNotifs(){
+      if(!session) return;
+      if(!confirm('Clear all notifications? This cannot be undone.')) return;
+      apiPost({ action:'clearCustomerNotifs', shop_id: session.shop_id }).then(function(){
         _custNotifs = [];
         var badge = document.getElementById('custNotifBadge');
         if(badge) badge.style.display = 'none';
         if(_custNotifOpen) _renderCustNotifPanel();
       });
     }
+    window.markCustNotifsRead = markCustNotifsRead;
+    window.clearCustNotifs = clearCustNotifs;
 
     function _showCustBrowserNotif(n){
       if(!('Notification' in window) || Notification.permission !== 'granted') return;
@@ -2170,5 +3433,122 @@
 
     function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 </script>
+
+<script>
+    /* Dynamic iOS notch / safe-area handling */
+    (function () {
+      if (window.__safeAreaDyn) return;
+      window.__safeAreaDyn = true;
+
+      var root = document.documentElement;
+      var probe = null;
+
+      function ensureProbe() {
+        if (probe && probe.parentNode) return probe;
+        probe = document.createElement('div');
+        probe.setAttribute('aria-hidden', 'true');
+        probe.style.cssText = [
+          'position:fixed', 'left:0', 'top:0', 'width:0', 'height:0',
+          'visibility:hidden', 'pointer-events:none', 'padding:0',
+          'padding-top:env(safe-area-inset-top,0px)',
+          'padding-right:env(safe-area-inset-right,0px)',
+          'padding-bottom:env(safe-area-inset-bottom,0px)',
+          'padding-left:env(safe-area-inset-left,0px)'
+        ].join(';');
+        (document.body || root).appendChild(probe);
+        return probe;
+      }
+
+      function px(n) {
+        n = parseFloat(n);
+        return (isFinite(n) ? n : 0) + 'px';
+      }
+
+      function readEnvInsets() {
+        var el = ensureProbe();
+        var cs = window.getComputedStyle(el);
+        return {
+          top: parseFloat(cs.paddingTop) || 0,
+          right: parseFloat(cs.paddingRight) || 0,
+          bottom: parseFloat(cs.paddingBottom) || 0,
+          left: parseFloat(cs.paddingLeft) || 0
+        };
+      }
+
+      function apply() {
+        var env = readEnvInsets();
+        var sat = env.top;
+        var sab = env.bottom;
+        var sal = env.left;
+        var sar = env.right;
+
+        // When mobile browser chrome collapses, keep a sensible bottom inset
+        // using visualViewport (does not replace home-indicator inset when larger).
+        try {
+          var vv = window.visualViewport;
+          if (vv && window.innerHeight) {
+            var gap = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
+            // Only boost bottom when browser UI leaves a gap larger than env bottom
+            // and gap is small (typical toolbar), not full keyboard.
+            if (gap > sab && gap < 120) sab = gap;
+          }
+        } catch (e) {}
+
+        root.style.setProperty('--sat', px(sat));
+        root.style.setProperty('--sab', px(sab));
+        root.style.setProperty('--sal', px(sal));
+        root.style.setProperty('--sar', px(sar));
+
+        root.classList.toggle('has-notch', sat >= 20);
+        root.classList.toggle('has-home-bar', sab >= 10);
+        root.setAttribute('data-safe-top', String(Math.round(sat)));
+        root.setAttribute('data-safe-bottom', String(Math.round(sab)));
+      }
+
+      var scheduled = false;
+      function schedule() {
+        if (scheduled) return;
+        scheduled = true;
+        requestAnimationFrame(function () {
+          scheduled = false;
+          apply();
+        });
+      }
+
+      function boot() {
+        ensureProbe();
+        apply();
+        window.addEventListener('resize', schedule, { passive: true });
+        window.addEventListener('orientationchange', function () {
+          // iOS often updates env() one frame after orientation settles
+          schedule();
+          setTimeout(apply, 50);
+          setTimeout(apply, 300);
+        }, { passive: true });
+        window.addEventListener('pageshow', schedule, { passive: true });
+        if (window.visualViewport) {
+          visualViewport.addEventListener('resize', schedule, { passive: true });
+          visualViewport.addEventListener('scroll', schedule, { passive: true });
+        }
+        // Late paint (PWA / standalone)
+        setTimeout(apply, 100);
+        setTimeout(apply, 500);
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', boot);
+      } else {
+        boot();
+      }
+    })();
+
+        // Session restore after functions are defined
+        (function(){
+          var s = localStorage.getItem('custSession');
+          if (s) { try { session = JSON.parse(s); } catch(e) {} }
+          if (session) { showApp(); } else { goto(''); }
+        })();
+</script>
+
 </body>
 </html>

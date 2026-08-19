@@ -52,11 +52,12 @@ var STATIC = [
   '/',
   '/index.html',
   '/admin.html',
+  '/admin-payments.html',
   '/driver.html',
   '/order.html',
   '/kitchen.html',
   '/packaging.html',
-  '/tracking.html',
+  // '/tracking.html',  // not needed now — role-based dashboards via index.html
   '/superadmin.html',
   '/teapost-head.html',
   '/config.js',

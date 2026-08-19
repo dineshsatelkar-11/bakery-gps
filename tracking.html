@@ -1,14 +1,20 @@
 <!DOCTYPE html>
+<!--
+  tracking.html — NOT IN USE for now.
+  Standalone customer tracking page is disabled.
+  Customers use index.html (role-based login) → order.html.
+  File kept for reference only; not linked from index / SW cache.
+-->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-    <title>Track My Delivery — Satelkar's Logistics</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
+    <title>Track My Delivery — Satelkar's Logistics (DISABLED)</title>
     <script src="config.js"></script>
     <script src="api.js"></script>
     <style>
-        *{box-sizing:border-box;margin:0;padding:0}
-        body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:440px;margin:0 auto;min-height:100vh}
+        *{box-sizing:border-box;margin:0;padding:0}:root{--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);--sal:env(safe-area-inset-left,0px);--sar:env(safe-area-inset-right,0px)}
+        body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:440px;margin:0 auto;min-height:100vh;min-height:100dvh;padding-left:var(--sal);padding-right:var(--sar);padding-top:var(--sat);padding-bottom:var(--sab)}
 
         /* ── TOP BAR ── */
         .topbar{background:linear-gradient(135deg,#2d7a4f 0%,#1a5a38 100%);padding:16px 14px 14px;text-align:center;position:relative}
@@ -650,5 +656,65 @@
       return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
 </script>
+
+<script>
+/* Dynamic iOS notch / safe-area handling */
+(function () {
+  if (window.__safeAreaDyn) return;
+  window.__safeAreaDyn = true;
+  var root = document.documentElement;
+  var probe = null;
+  function ensureProbe() {
+    if (probe && probe.parentNode) return probe;
+    probe = document.createElement('div');
+    probe.setAttribute('aria-hidden', 'true');
+    probe.style.cssText = 'position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;padding:0;padding-top:env(safe-area-inset-top,0px);padding-right:env(safe-area-inset-right,0px);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px)';
+    (document.body || root).appendChild(probe);
+    return probe;
+  }
+  function px(n) { n = parseFloat(n); return (isFinite(n) ? n : 0) + 'px'; }
+  function apply() {
+    var el = ensureProbe();
+    var cs = window.getComputedStyle(el);
+    var sat = parseFloat(cs.paddingTop) || 0;
+    var sar = parseFloat(cs.paddingRight) || 0;
+    var sab = parseFloat(cs.paddingBottom) || 0;
+    var sal = parseFloat(cs.paddingLeft) || 0;
+    try {
+      var vv = window.visualViewport;
+      if (vv && window.innerHeight) {
+        var gap = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
+        if (gap > sab && gap < 120) sab = gap;
+      }
+    } catch (e) {}
+    root.style.setProperty('--sat', px(sat));
+    root.style.setProperty('--sab', px(sab));
+    root.style.setProperty('--sal', px(sal));
+    root.style.setProperty('--sar', px(sar));
+    root.classList.toggle('has-notch', sat >= 20);
+    root.classList.toggle('has-home-bar', sab >= 10);
+  }
+  var scheduled = false;
+  function schedule() {
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(function () { scheduled = false; apply(); });
+  }
+  function boot() {
+    ensureProbe(); apply();
+    window.addEventListener('resize', schedule, { passive: true });
+    window.addEventListener('orientationchange', function () { schedule(); setTimeout(apply, 50); setTimeout(apply, 300); }, { passive: true });
+    window.addEventListener('pageshow', schedule, { passive: true });
+    if (window.visualViewport) {
+      visualViewport.addEventListener('resize', schedule, { passive: true });
+      visualViewport.addEventListener('scroll', schedule, { passive: true });
+    }
+    setTimeout(apply, 100); setTimeout(apply, 500);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+
 </body>
 </html>

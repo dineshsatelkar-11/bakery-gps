@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
     <title>IBCAB — Admin</title>
     <script src="config.js"></script>
     <script src="api.js"></script>
@@ -17,21 +17,56 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         *{box-sizing:border-box;margin:0;padding:0}
-        body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:520px;margin:0 auto;min-height:100vh}
-        .topbar{background:#4a2f14;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:99}
+        :root{
+          --sat:env(safe-area-inset-top,0px);
+          --sab:env(safe-area-inset-bottom,0px);
+          --sal:env(safe-area-inset-left,0px);
+          --sar:env(safe-area-inset-right,0px);
+        }
+        html{height:100%;background:#4a2f14}
+        body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:520px;margin:0 auto;min-height:100vh;min-height:100dvh;padding-left:var(--sal);padding-right:var(--sar);overflow-x:hidden}
+        .topbar{background:#4a2f14;padding:13px 14px;padding-top:max(13px,var(--sat));display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:99}
         .topbar-title{color:#fff;font-size:15px;font-weight:800}
         .topbar-sub{color:#c8a87a;font-size:11px;font-family:monospace}
         .topbar-right{display:flex;gap:8px}
         .tbtn{background:rgba(255,255,255,.2);border:none;color:#fff;padding:6px 11px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif;text-decoration:none;display:inline-block}
-        .tabs{display:flex;background:#fff;border-bottom:2px solid #e8dfd2;position:sticky;top:53px;z-index:98;overflow-x:auto;scrollbar-width:none}
+        .tabs{display:flex;background:#fff;border-bottom:2px solid #e8dfd2;position:sticky;top:calc(53px + var(--sat));z-index:98;overflow-x:auto;scrollbar-width:none}
+        /* Mobile bottom navigation */
+        .bottom-nav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:200;background:#fff;border-top:1.5px solid #e8dfd2;padding:6px 4px max(6px,var(--sab));max-width:520px;margin:0 auto;box-shadow:0 -4px 16px rgba(74,47,20,.08)}
+        .bottom-nav-inner{display:flex;align-items:stretch;justify-content:space-around;max-width:520px;margin:0 auto}
+        .bnav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 4px;border:none;background:none;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;-webkit-tap-highlight-color:transparent;min-height:48px}
+        .bnav-item .bnav-ico{font-size:18px;line-height:1}
+        .bnav-item .bnav-lbl{font-size:10px;font-weight:700;letter-spacing:.2px}
+        .bnav-item.on{color:#4a2f14}
+        .bnav-item.on .bnav-ico{transform:scale(1.05)}
+        .more-sheet{display:none;position:fixed;inset:0;z-index:250;background:rgba(30,22,17,.45)}
+        .more-sheet.open{display:block}
+        .more-panel{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:16px 16px 0 0;padding:14px 14px max(16px,var(--sab));max-width:520px;margin:0 auto;max-height:75vh;overflow-y:auto;box-shadow:0 -8px 32px rgba(0,0,0,.15)}
+        .more-panel h3{font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:10px}
+        .more-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+        .more-item{display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 6px;border:1.5px solid #e8dfd2;border-radius:12px;background:#f5ede0;cursor:pointer;font-size:11px;font-weight:700;color:#4a2f14;font-family:-apple-system,sans-serif;text-align:center}
+        .more-item:active{background:#ebe0d0}
+        .more-item .mi{font-size:20px}
+        .more-hint{font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:10px;line-height:1.4}
+        @media (max-width:700px){
+          .tabs{display:none !important}
+          .bottom-nav{display:block}
+          body{padding-bottom:calc(62px + var(--sab))}
+          #subTabs{top:calc(53px + var(--sat)) !important}
+        }
+        @media (min-width:701px){
+          .bottom-nav{display:none !important}
+          .more-sheet{display:none !important}
+        }
+
         .tabs::-webkit-scrollbar{display:none}
         .tab{flex:1;padding:11px 6px;border:none;background:none;font-size:10px;font-weight:700;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;text-align:center}
         .tab.on{color:#4a2f14;border-bottom-color:#4a2f14}
-        #subTabs{display:none;background:#f5ede0;border-bottom:1.5px solid #e8dfd2;position:sticky;top:96px;z-index:97;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+        #subTabs{display:none;background:#f5ede0;border-bottom:1.5px solid #e8dfd2;position:sticky;top:calc(96px + var(--sat));z-index:97;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
         #subTabs::-webkit-scrollbar{display:none}
         .sub-tab{flex:none;padding:7px 14px;border:none;background:none;font-size:11px;font-weight:700;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;border-bottom:2.5px solid transparent;margin-bottom:-1.5px;white-space:nowrap}
         .sub-tab.on{color:#4a2f14;border-bottom-color:#4a2f14;background:rgba(74,47,20,.06)}
-        .page{display:none;padding:12px 14px 80px}.page.on{display:block}
+        .page{display:none;padding:12px 14px calc(80px + var(--sab))}.page.on{display:block}
         .card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:14px;margin-bottom:10px}
         .lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:8px;text-transform:uppercase}
         select,input[type=text],input[type=date],input[type=tel],input[type=url],textarea{width:100%;padding:11px 14px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:8px}
@@ -82,7 +117,7 @@
         .pr-driver-row{display:flex;align-items:center;gap:8px;margin-top:8px}
         .pr-driver-row select{flex:1;padding:7px 10px;font-size:12px;margin-bottom:0;border:1.5px solid #e8dfd2;border-radius:8px;background:#f5ede0;outline:none}
         .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:flex;align-items:flex-end;justify-content:center}
-        .modal{background:#f5ede0;border-radius:20px 20px 0 0;padding:20px 16px 40px;width:100%;max-width:520px;max-height:92vh;overflow-y:auto}
+        .modal{background:#f5ede0;border-radius:20px 20px 0 0;padding:20px 16px calc(40px + var(--sab));width:100%;max-width:520px;max-height:92vh;max-height:92dvh;overflow-y:auto}
         .modal-title{font-size:17px;font-weight:900;color:#4a2f14;margin-bottom:4px}
         .modal-sub{font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:14px}
         .queue-banner{background:#fff3e0;border:1.5px solid #ffc87a;border-radius:12px;padding:12px 14px;margin-bottom:10px;font-size:12px;font-family:monospace;color:#7a4800;line-height:1.8}
@@ -101,8 +136,8 @@
           .tabs{justify-content:flex-start}
           .tab{padding:11px 14px}
           .card{padding:16px 20px}
-          .page{padding:16px 20px 80px}
-          .topbar{padding:13px 24px}
+          .page{padding:16px 20px calc(80px + var(--sab))}
+          .topbar{padding:13px 24px;padding-top:max(13px,var(--sat))}
         }
         @media(min-width:1024px){
           body{max-width:1200px}
@@ -132,14 +167,44 @@
     <button class="tab on" id="mtb-home"      onclick="showGroup('home')">🏠 Home</button>
     <button class="tab"    id="mtb-orders"    onclick="showGroup('orders')">📋 Orders</button>
     <button class="tab"    id="mtb-delivery"  onclick="showGroup('delivery')">🚚 Delivery</button>
+    <button class="tab"    id="mtb-payments"  onclick="showGroup('payments')">💰 Payments</button>
     <button class="tab"    id="mtb-customers" onclick="showGroup('customers')">🏪 Customers</button>
-    <button class="tab" id="mtb-myBrand" onclick="showGroup('myBrand')">🏪 Franchise</button>
-    <button class="tab"    id="mtb-manage"    onclick="showGroup('manage')">⚙️ Manage</button>
     <button class="tab"    id="mtb-notify"    onclick="showGroup('notify')">🔔 Notify</button>
     <button class="tab"    id="mtb-zoho"      onclick="showGroup('zoho')">🔗 Zoho</button>
-    <button class="tab"    id="mtb-payments"  onclick="showGroup('payments')">💰 Payments</button>
+    <button class="tab"    id="mtb-manage"    onclick="showGroup('manage')">⚙️ Manage</button>
+    <button class="tab"    id="mtb-myBrand"   onclick="showGroup('myBrand')">🏷 Franchise</button>
 </div>
 <div id="subTabs" style="display:flex"></div>
+
+<!-- Mobile bottom navigation (hidden on desktop via CSS) -->
+<nav class="bottom-nav" id="bottomNav" aria-label="Main">
+    <div class="bottom-nav-inner">
+        <button type="button" class="bnav-item on" id="bnav-home" onclick="mobileNav('home')">
+            <span class="bnav-ico">🏠</span><span class="bnav-lbl">Home</span>
+        </button>
+        <button type="button" class="bnav-item" id="bnav-orders" onclick="mobileNav('orders')">
+            <span class="bnav-ico">📋</span><span class="bnav-lbl">Orders</span>
+        </button>
+        <button type="button" class="bnav-item" id="bnav-delivery" onclick="mobileNav('delivery')">
+            <span class="bnav-ico">🚚</span><span class="bnav-lbl">Delivery</span>
+        </button>
+        <button type="button" class="bnav-item" id="bnav-payments" onclick="mobileNav('payments')">
+            <span class="bnav-ico">💰</span><span class="bnav-lbl">Payments</span>
+        </button>
+        <button type="button" class="bnav-item" id="bnav-more" onclick="mobileNav('more')">
+            <span class="bnav-ico">☰</span><span class="bnav-lbl">More</span>
+        </button>
+    </div>
+</nav>
+<div class="more-sheet" id="moreSheet" onclick="if(event.target===this)closeMoreSheet()">
+    <div class="more-panel">
+        <h3>More</h3>
+        <div class="more-grid" id="moreGrid"></div>
+        <p class="more-hint">Zoho, bulk tools &amp; settings work best on a computer. Daily ops: Orders, Delivery &amp; Payments.</p>
+        <button type="button" class="btn-sm btn-grey" style="width:100%;margin-top:10px;padding:10px" onclick="closeMoreSheet()">Close</button>
+    </div>
+</div>
+
 
 <!-- DASHBOARD -->
 <div class="page" id="pg-dashboard">
@@ -770,10 +835,19 @@
             <div id="broadcastActiveBar" style="display:none;background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:9px 12px;margin-bottom:10px;font-size:12px;font-weight:700;color:#7a4800;font-family:monospace;line-height:1.5"></div>
             <div class="lbl" style="margin-bottom:6px">Quick Templates</div>
             <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
-                <button class="btn-sm" style="background:#f5ede0;color:#4a2f14;border:1.5px solid #e8dfd2;text-align:left;padding:9px 12px" onclick="broadcastTemplate('📢 Orders are now open! Place your order as early as possible.')">📢 Orders are now open! Place your order as early as possible.</button>
-                <button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082;text-align:left;padding:9px 12px" onclick="broadcastTemplate('⏰ Order window will close soon. Place your order now!')">⏰ Order window will close soon. Place your order now!</button>
-                <button class="btn-sm" style="background:#f5ede0;color:#4a2f14;border:1.5px solid #e8dfd2;text-align:left;padding:9px 12px" onclick="broadcastTemplate('✅ Already placed your order? You\'re all set — nothing more to do!')">✅ Already placed your order? You're all set — nothing more to do!</button>
-                <button class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1.5px solid #f0b0b0;text-align:left;padding:9px 12px" onclick="broadcastTemplate('🔒 Orders are now closed for today. See you tomorrow!')">🔒 Orders are now closed for today. See you tomorrow!</button>
+                <button class="btn-sm" style="background:#f5ede0;color:#4a2f14;border:1.5px solid #e8dfd2;text-align:left;padding:9px 12px" onclick="broadcastTemplate('📢 Orders are now open! Place your order as early as possible.', 'info')">📢 Orders are now open! Place your order as early as possible.</button>
+                <button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082;text-align:left;padding:9px 12px" onclick="broadcastTemplate('⏰ Order window will close soon. Place your order now!', 'reminder')">⏰ Order window will close soon. Place your order now!</button>
+                <button class="btn-sm" style="background:#f5ede0;color:#4a2f14;border:1.5px solid #e8dfd2;text-align:left;padding:9px 12px" onclick="broadcastTemplate('✅ Already placed your order? You\'re all set — nothing more to do!', 'success')">✅ Already placed your order? You're all set — nothing more to do!</button>
+                <button class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1.5px solid #f0b0b0;text-align:left;padding:9px 12px" onclick="broadcastTemplate('🔒 Orders are now closed for today. See you tomorrow!', 'urgent')">🔒 Orders are now closed for today. See you tomorrow!</button>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px">
+                <label style="font-size:11px;font-weight:800;color:#8a7a6a">Style</label>
+                <select id="broadcastType" style="flex:1;min-width:140px;padding:8px 10px;border:1.5px solid #e8dfd2;border-radius:8px;font-size:13px;background:#fff">
+                    <option value="info">📢 Announcement</option>
+                    <option value="reminder">⏰ Reminder</option>
+                    <option value="urgent">🔒 Important</option>
+                    <option value="success">✅ Update / OK</option>
+                </select>
             </div>
             <textarea id="broadcastMsg" rows="2" placeholder="Type a message or pick a template above…" style="resize:vertical;margin-bottom:8px"></textarea>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
@@ -872,50 +946,16 @@
 <!-- ZOHO INTEGRATION -->
 
 <!-- PAYMENTS DESK (same admin app) -->
-<div class="page" id="pg-pay-challan">
-    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">📋 Daily Challans</div>
-    <div style="font-size:11px;color:#8a7a6a;margin-bottom:10px;line-height:1.45">
-        Daily flow: <b>Edit</b> (damage/missing) → <b>Send/Update Zoho</b> → <b>Mark delivered</b> → <b>Convert to Invoice</b>.
-        Only shops with doc type Challan (or existing challan id).
-    </div>
-    <div class="filter-row" style="margin-bottom:10px">
-        <input type="date" id="challan-desk-date" onchange="loadChallanDesk()" style="margin-bottom:0;flex:1">
-        <input type="search" id="challan-desk-q" placeholder="Search shop…" oninput="renderChallanDesk()" style="margin-bottom:0;flex:1.4;padding:8px 10px;border:1.5px solid #e8dfd2;border-radius:8px;font-size:13px">
-        <button class="btn-sm btn-grey" onclick="loadChallanDesk()">↻ Refresh</button>
-    </div>
-    <div id="challan-desk-stats" class="stats-grid" style="margin-bottom:10px;grid-template-columns:repeat(4,1fr)"></div>
-    <div id="challan-desk-msg" style="display:none;margin-bottom:8px;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:700"></div>
-    <div id="challan-desk-list"><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Loading…</div></div>
+<!-- Payments — same admin UI; module loaded in embed frame (no second app chrome) -->
+<div class="page" id="pg-pay-challan" style="padding:0;margin:0">
+    <iframe id="payEmbedFrame" title="Payments" src="admin-payments.html?embed=1&tab=pay-challan"
+            style="width:100%;border:0;display:block;min-height:calc(100dvh - 130px);height:calc(100dvh - 130px);background:#f9f6f1"></iframe>
 </div>
-<div class="page" id="pg-pay-open">
-    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">💰 Payments — Unpaid</div>
-    <div style="font-size:11px;color:#8a7a6a;margin-bottom:10px;line-height:1.45">Weekly collections. Doc type (invoice / challan) follows each customer setting.</div>
-    <div id="pay-desk-stats" class="stats-grid" style="margin-bottom:10px"></div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-        <input type="search" id="pay-desk-q" placeholder="Search shop / inv #…" oninput="renderPaymentsDesk()" style="flex:1;min-width:140px;padding:8px 10px;border:1.5px solid #e8dfd2;border-radius:8px;font-size:13px">
-        <button class="btn-sm btn-grey" onclick="loadPaymentsDesk()">↻ Refresh</button>
-        <button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082" onclick="payDeskSyncFromZoho()">🔗 Sync from Zoho</button>
-    </div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px">
-        <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSelect('visible')">Select visible</button>
-        <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSelect('none')">Clear</button>
-        <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSelect('unpaid')">Unpaid only</button>
-        <button type="button" class="btn-sm" style="background:#e3f2fd;color:#1565c0;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSendReminders()">📨 Send payment reminder</button>
-        <span id="pay-desk-selcount" style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-left:4px"></span>
-    </div>
-    <div id="pay-desk-msg" style="display:none;margin-bottom:8px;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:700"></div>
-    <div id="pay-desk-list"><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Loading…</div></div>
-</div>
-<div class="page" id="pg-pay-requests">
-    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">📨 Payment requests</div>
-    <div style="font-size:11px;color:#8a7a6a;margin-bottom:10px">Customers who sent a pay request from the Pay tab. Verify and mark paid.</div>
-    <div id="pay-desk-list-req"><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Open tab to load…</div></div>
-</div>
-<div class="page" id="pg-pay-paid">
-    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">✅ Paid</div>
-    <div style="font-size:11px;color:#8a7a6a;margin-bottom:10px">Recently marked paid invoices.</div>
-    <div id="pay-desk-list-paid"><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Open tab to load…</div></div>
-</div>
+<div class="page" id="pg-pay-open" style="padding:0;margin:0"></div>
+<div class="page" id="pg-pay-requests" style="padding:0;margin:0"></div>
+<div class="page" id="pg-pay-paid" style="padding:0;margin:0"></div>
+
+
 
 <div class="page" id="pg-zoho">
     <div class="card" style="margin-bottom:12px;border-color:#ffe082;background:#fffaf0">
@@ -1075,7 +1115,8 @@
                 <option value="dispatched">🚚 Dispatched</option>
             </select>
         </div>
-        <button class="btn btn-grey" onclick="loadCustOrders()" style="margin-top:4px">↻ Refresh</button>
+        <input type="search" id="co-search" placeholder="🔍 Search shop, mobile, invoice #, items…" oninput="renderCustOrders()" style="width:100%;margin:8px 0 0;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:13px;background:#f9f6f1">
+        <button class="btn btn-grey" onclick="loadCustOrders()" style="margin-top:8px">↻ Refresh</button>
     </div>
     <div class="stats-grid" id="coStats"></div>
     <div id="coMsg" style="display:none" class="msg in"></div>
@@ -1715,6 +1756,12 @@ allTabKeys.forEach(function(t){
         var btn = document.getElementById('mtb-'+g);
         if(btn) btn.style.display = anyVisible ? '' : 'none';
       });
+      // Mobile bottom nav: hide primary items if that group has no visible tabs
+      ['home','orders','delivery','payments'].forEach(function(g){
+        var anyVisible = (GROUP_MAP[g]||[]).some(function(item){ return _visibleTabs[item.key]; });
+        var b = document.getElementById('bnav-'+g);
+        if(b) b.style.display = anyVisible ? '' : 'none';
+      });
       // Show topbar name
       var sub = document.getElementById('topDate');
       if(sub) sub.textContent = _staffName + ' · ' + sub.textContent;
@@ -1748,7 +1795,7 @@ allTabKeys.forEach(function(t){
     }
     // Delivery date = challan date + 1 day
     function nextDay(dateStr){var d=new Date(dateStr);d.setDate(d.getDate()+1);return d.getFullYear()+'-'+zp(d.getMonth()+1)+'-'+zp(d.getDate());}
-
+    
 function fmtQtyPack(name, qty) {
   if (window.ProductsShared && typeof ProductsShared.formatQtyWithPackets === 'function') {
     return ProductsShared.formatQtyWithPackets(name, qty);
@@ -1833,23 +1880,302 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
       goto('');
     };
 
+
+    /* ── MOBILE BOTTOM NAV ── */
+    var MOBILE_PRIMARY = { home:1, orders:1, delivery:1, payments:1 };
+    var MORE_GROUPS = [
+      { group:'customers', ico:'🏪', label:'Customers' },
+      { group:'notify',    ico:'🔔', label:'Notify' },
+      { group:'zoho',      ico:'🔗', label:'Zoho' },
+      { group:'manage',    ico:'⚙️', label:'Manage' },
+      { group:'myBrand',   ico:'🏷', label:'Franchise' }
+    ];
+    function isMobileNav(){ return window.matchMedia('(max-width:700px)').matches; }
+    function setBottomNavActive(key){
+      ['home','orders','delivery','payments','more'].forEach(function(k){
+        var el = document.getElementById('bnav-'+k);
+        if(el) el.classList.toggle('on', k === key);
+      });
+    }
+    function closeMoreSheet(){
+      var s = document.getElementById('moreSheet');
+      if(s) s.classList.remove('open');
+    }
+    function openMoreSheet(){
+      var grid = document.getElementById('moreGrid');
+      if(grid){
+        grid.innerHTML = MORE_GROUPS.filter(function(m){
+          var btn = document.getElementById('mtb-'+m.group);
+          return !btn || btn.style.display !== 'none';
+        }).map(function(m){
+          return '<button type="button" class="more-item" onclick="mobileNavMore(\''+m.group+'\')"><span class="mi">'+m.ico+'</span>'+m.label+'</button>';
+        }).join('');
+      }
+      var s = document.getElementById('moreSheet');
+      if(s) s.classList.add('open');
+      setBottomNavActive('more');
+    }
+    function mobileNavMore(group){
+      closeMoreSheet();
+      showGroup(group);
+      setBottomNavActive('more');
+    }
+    function mobileNav(key){
+      if(key === 'more'){
+        openMoreSheet();
+        return;
+      }
+      closeMoreSheet();
+      showGroup(key);
+      setBottomNavActive(key);
+      _mobileSwipeGroup = key;
+    }
+
+    /* ── SWIPE GESTURES + CONFLICT RESOLUTION (mobile) ── */
+    var _mobileSwipeGroup = 'home';
+    var _swipePrimary = ['home', 'orders', 'delivery', 'payments'];
+    // Gesture state
+    var _sg = {
+      active: false,
+      ignore: false,
+      axis: null,          // 'x' | 'y' | null (undecided)
+      startX: 0,
+      startY: 0,
+      startT: 0,
+      startScrollY: 0,
+      startScrollX: 0,
+      scrollParent: null,
+      hScrollParent: null,
+      moreOpen: false
+    };
+    // Tunables
+    var SG_LOCK_PX = 12;       // movement before axis lock
+    var SG_MIN_DX = 80;        // min horizontal distance for tab change
+    var SG_MIN_DY_CLOSE = 70;  // min vertical for more-sheet close
+    var SG_MAX_MS = 550;       // max gesture duration
+    var SG_RATIO = 1.75;       // |primary| must exceed |secondary| * ratio
+    var SG_EDGE = 28;          // edge zone soft preference (px)
+
+    function _visibleSwipeGroups(){
+      return _swipePrimary.filter(function(g){
+        var b = document.getElementById('bnav-'+g);
+        return b && b.style.display !== 'none';
+      });
+    }
+
+    function _closestScrollParent(el, horizontal){
+      var node = el;
+      while (node && node !== document.body && node !== document.documentElement) {
+        var st = window.getComputedStyle(node);
+        var ox = st.overflowX;
+        var oy = st.overflowY;
+        if (horizontal) {
+          if ((ox === 'auto' || ox === 'scroll' || ox === 'overlay') && node.scrollWidth > node.clientWidth + 4)
+            return node;
+          // flex row chips / subTabs often scroll without overflow set explicitly
+          if (node.id === 'subTabs' || (node.classList && node.classList.contains('tabs')))
+            return node;
+        } else {
+          if ((oy === 'auto' || oy === 'scroll' || oy === 'overlay') && node.scrollHeight > node.clientHeight + 4)
+            return node;
+        }
+        node = node.parentElement;
+      }
+      return horizontal ? null : (document.scrollingElement || document.documentElement);
+    }
+
+    function _swipeShouldIgnoreTarget(el){
+      var node = el;
+      while (node && node !== document.body) {
+        var tag = (node.tagName || '').toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || tag === 'select' || tag === 'button' || tag === 'a' || tag === 'label')
+          return true;
+        if (node.isContentEditable) return true;
+        if (node.classList) {
+          if (node.classList.contains('bottom-nav') || node.classList.contains('tabs')) return true;
+          if (node.classList.contains('modal') || node.classList.contains('more-panel')) {
+            // more-panel handled separately for vertical close
+          }
+        }
+        if (node.id === 'subTabs' || node.id === 'bottomNav') return true;
+        // Open overlays that are not more sheet
+        if (node.id && node.id.indexOf('Modal') >= 0 && node.style && node.style.display !== 'none') {
+          var disp = window.getComputedStyle(node).display;
+          if (disp !== 'none') return true;
+        }
+        node = node.parentElement;
+      }
+      return false;
+    }
+
+    function _scrollPos(el, horizontal){
+      if (!el) return 0;
+      if (el === document.scrollingElement || el === document.documentElement || el === document.body)
+        return horizontal ? (window.scrollX || 0) : (window.scrollY || 0);
+      return horizontal ? el.scrollLeft : el.scrollTop;
+    }
+
+    function initSwipeGestures(){
+      document.addEventListener('touchstart', function(e){
+        if (!isMobileNav()) return;
+        if (!e.touches || e.touches.length !== 1) {
+          _sg.active = false;
+          return;
+        }
+        var touch = e.touches[0];
+        var more = document.getElementById('moreSheet');
+        _sg.moreOpen = !!(more && more.classList.contains('open'));
+        _sg.active = true;
+        _sg.axis = null;
+        _sg.startX = touch.clientX;
+        _sg.startY = touch.clientY;
+        _sg.startT = Date.now();
+        _sg.ignore = _swipeShouldIgnoreTarget(e.target);
+        // When more is open, only allow gestures starting on the sheet (not full-page nav)
+        if (_sg.moreOpen) {
+          var onPanel = e.target.closest && e.target.closest('.more-panel');
+          var onSheet = e.target.closest && e.target.closest('#moreSheet');
+          if (!onSheet) { _sg.ignore = true; }
+          // Allow vertical dismiss from panel; block horizontal tab swipe
+        }
+        _sg.scrollParent = _closestScrollParent(e.target, false);
+        _sg.hScrollParent = _closestScrollParent(e.target, true);
+        _sg.startScrollY = _scrollPos(_sg.scrollParent, false);
+        _sg.startScrollX = _scrollPos(_sg.hScrollParent, true);
+      }, { passive: true });
+
+      document.addEventListener('touchmove', function(e){
+        if (!_sg.active || !isMobileNav() || _sg.ignore) return;
+        if (!e.touches || e.touches.length !== 1) {
+          _sg.active = false;
+          return;
+        }
+        var touch = e.touches[0];
+        var dx = touch.clientX - _sg.startX;
+        var dy = touch.clientY - _sg.startY;
+        var adx = Math.abs(dx), ady = Math.abs(dy);
+
+        // Axis lock once movement is decisive
+        if (!_sg.axis && (adx > SG_LOCK_PX || ady > SG_LOCK_PX)) {
+          if (ady > adx * 1.15) {
+            _sg.axis = 'y';
+          } else if (adx > ady * 1.15) {
+            _sg.axis = 'x';
+            // If a horizontal scroller can absorb this swipe, prefer it over nav
+            if (_sg.hScrollParent) {
+              var sl = _scrollPos(_sg.hScrollParent, true);
+              var maxSl = (_sg.hScrollParent.scrollWidth || 0) - (_sg.hScrollParent.clientWidth || 0);
+              var canLeft = dx < 0 && sl < maxSl - 1;
+              var canRight = dx > 0 && sl > 1;
+              if (canLeft || canRight) {
+                _sg.ignore = true; // conflict: horizontal list wins
+                _sg.active = false;
+                return;
+              }
+            }
+          } else {
+            // Diagonal ambiguous — cancel nav to avoid fighting scroll
+            _sg.ignore = true;
+            _sg.active = false;
+            return;
+          }
+        }
+
+        // If user is vertically scrolling content, kill horizontal nav
+        if (_sg.axis === 'y') {
+          var sy = _scrollPos(_sg.scrollParent, false);
+          if (Math.abs(sy - _sg.startScrollY) > 2) {
+            _sg.ignore = true;
+            _sg.active = false;
+          }
+        }
+      }, { passive: true });
+
+      document.addEventListener('touchend', function(e){
+        if (!_sg.active || !isMobileNav()) {
+          _sg.active = false;
+          return;
+        }
+        _sg.active = false;
+        if (_sg.ignore) return;
+        if (!e.changedTouches || !e.changedTouches.length) return;
+
+        var touch = e.changedTouches[0];
+        var dx = touch.clientX - _sg.startX;
+        var dy = touch.clientY - _sg.startY;
+        var adx = Math.abs(dx), ady = Math.abs(dy);
+        var dt = Date.now() - _sg.startT;
+        if (dt > SG_MAX_MS || dt < 30) return;
+
+        // Scroll position changed → user was scrolling, not navigating
+        var sy = _scrollPos(_sg.scrollParent, false);
+        if (Math.abs(sy - _sg.startScrollY) > 4) return;
+        if (_sg.hScrollParent && Math.abs(_scrollPos(_sg.hScrollParent, true) - _sg.startScrollX) > 4) return;
+
+        // ── More sheet: vertical dismiss only ──
+        if (_sg.moreOpen) {
+          if (_sg.axis === 'y' && dy > SG_MIN_DY_CLOSE && ady > adx * SG_RATIO) {
+            closeMoreSheet();
+          }
+          return; // never tab-swipe while more is open
+        }
+
+        // ── Horizontal tab navigation ──
+        if (_sg.axis && _sg.axis !== 'x') return;
+        if (adx < SG_MIN_DX) return;
+        if (adx < ady * SG_RATIO) return;
+
+        // Soft edge preference: strong center swipes still OK if ratio is high;
+        // weak center swipes near threshold require starting near screen edge
+        var fromEdge = _sg.startX <= SG_EDGE || _sg.startX >= (window.innerWidth - SG_EDGE);
+        if (!fromEdge && adx < SG_MIN_DX * 1.35) return;
+
+        var groups = _visibleSwipeGroups();
+        if (groups.length < 2) return;
+        var cur = _mobileSwipeGroup;
+        if (groups.indexOf(cur) < 0) cur = groups[0];
+        var idx = groups.indexOf(cur);
+        if (dx < 0 && idx < groups.length - 1) {
+          mobileNav(groups[idx + 1]);
+        } else if (dx > 0 && idx > 0) {
+          mobileNav(groups[idx - 1]);
+        }
+      }, { passive: true });
+
+      document.addEventListener('touchcancel', function(){
+        _sg.active = false;
+        _sg.ignore = true;
+      }, { passive: true });
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initSwipeGestures);
+    } else {
+      initSwipeGestures();
+    }
+
     /* ── GROUP + SUB-TAB NAVIGATION ── */
     var GROUP_MAP = {
       home:      [{key:'dashboard',   label:'🏠 Dashboard'}],
-      orders:    [{key:'orders',      label:'📋 Orders'},
+      /* Daily order work first; default open = Shop orders (cust-orders) */
+      orders:    [{key:'cust-orders', label:'🛒 Shop orders'},
+                  {key:'approve',     label:'⏳ Pending'},
+                  {key:'summary',     label:'📊 Summary'},
                   {key:'production',  label:'🏭 Production'},
-                  {key:'cust-orders', label:'🛒 Cust Orders'},
-                  {key:'manual-order',label:'📝 Manual'},
-                  {key:'approve',     label:'⏳ New'},
-                  {key:'queue',       label:'⚠️ Queue'},
-                  {key:'summary',     label:'📊 Summary'}],
+                  {key:'orders',      label:'📋 Dispatch'},
+                  {key:'manual-order',label:'📝 Place for shop'},
+                  {key:'queue',       label:'⚠️ Queue'}],
       delivery:  [{key:'delivery',    label:'🚚 Delivery'},
                   {key:'routes',      label:'🗺 Routes'},
                   {key:'gps',         label:'📍 GPS'},
-                   {key:'attendance',  label:'📊 Attendance'},
+                  {key:'attendance',  label:'📊 Attendance'},
                   {key:'audit',       label:'🔍 Audit'}],
+      payments:  [{key:'pay-challan',  label:'📋 Challans'},
+                  {key:'pay-open',     label:'💸 Unpaid'},
+                  {key:'pay-requests', label:'📨 Pay requests'},
+                  {key:'pay-paid',     label:'✅ Paid'}],
       customers: [{key:'customers',   label:'🏪 Customers'}],
-      myBrand: [{key:'my-brand', label:'🏪 Franchise'}],
+      notify:    [{key:'notify',      label:'🔔 Notify'}],
+      zoho:      [{key:'zoho',        label:'🔗 Zoho'}],
       manage:    [{key:'products',    label:'📦 Products'},
                   {key:'ingredients', label:'🧂 Ingredients'},
                   {key:'recipes',     label:'📋 Recipes'},
@@ -1857,12 +2183,7 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
                   {key:'drivers',     label:'🚗 Drivers'},
                   {key:'users',       label:'👥 Users'},
                   {key:'cleanup',     label:'🗑 Cleanup'}],
-      notify:    [{key:'notify',      label:'🔔 Notify'}],
-      zoho:      [{key:'zoho',        label:'🔗 Zoho'}],
-      payments:  [{key:'pay-challan',  label:'📋 Challans'},
-                  {key:'pay-open',     label:'💸 Unpaid'},
-                  {key:'pay-requests', label:'📨 Requests'},
-                  {key:'pay-paid',     label:'✅ Paid'}]
+      myBrand:   [{key:'my-brand', label:'🏷 Franchise'}]
     };
     var TAB_TO_GROUP = {};
     Object.keys(GROUP_MAP).forEach(function(g){
@@ -1871,8 +2192,15 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 
     function showGroup(group){
       var items = GROUP_MAP[group] || GROUP_MAP.home;
-      var first = items.find(function(item){ return _visibleTabs[item.key] !== false; });
-      if(first) showTab(first.key);
+      // Orders group: prefer Shop orders (cust-orders) as default landing
+      var first = null;
+      if (group === 'orders') {
+        first = items.find(function(item){
+          return item.key === 'cust-orders' && _visibleTabs[item.key] !== false;
+        });
+      }
+      if (!first) first = items.find(function(item){ return _visibleTabs[item.key] !== false; });
+      if (first) showTab(first.key);
     }
 
     function showTab(t){
@@ -1880,13 +2208,26 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
       if(t === 'attendance' && _staffRole !== 'super_admin') return;
       if(_visibleTabs[t] === false) return;
       ['dashboard','orders','approve','queue','summary','delivery','routes','customers','cust-orders','manual-order','products','groups','ingredients','recipes','production','drivers','gps','users','notify','zoho','cleanup','audit', 'attendance', 'my-brand','pay-challan','pay-open','pay-requests','pay-paid'].forEach(function(x){
-        var pg=document.getElementById('pg-'+x); if(pg) pg.classList.toggle('on',x===t);
+        var pg=document.getElementById('pg-'+x); if(!pg) return;
+        var on = (x===t);
+        // All payment subtabs share the embed frame on pg-pay-challan
+        if (t==='pay-challan'||t==='pay-open'||t==='pay-requests'||t==='pay-paid') {
+          on = (x === 'pay-challan');
+        }
+        pg.classList.toggle('on', on);
       });
-      // Highlight active group tab
+      // Highlight active group tab (desktop top + mobile bottom)
       var group = TAB_TO_GROUP[t] || 'home';
       ['home','orders','delivery','customers','manage','notify','zoho','payments','myBrand'].forEach(function(g){
         var el=document.getElementById('mtb-'+g); if(el) el.classList.toggle('on',g===group);
       });
+      if (typeof setBottomNavActive === 'function') {
+        if (MOBILE_PRIMARY[group]) {
+          setBottomNavActive(group);
+          _mobileSwipeGroup = group;
+        } else setBottomNavActive('more');
+      }
+      if (typeof closeMoreSheet === 'function' && MOBILE_PRIMARY[group]) closeMoreSheet();
       // Build sub-tabs for this group
       var subEl   = document.getElementById('subTabs');
       var allItems = GROUP_MAP[group] || [];
@@ -1927,7 +2268,7 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
       if(t==='attendance')   initAttendanceTab();
       if(t==='my-brand')   initMyBrandTab();
       if(t==='pay-challan') loadChallanDesk();
-      if(t==='pay-open' || t==='pay-requests' || t==='pay-paid') loadPaymentsDesk(t);
+      if(t==='pay-challan' || t==='pay-open' || t==='pay-requests' || t==='pay-paid'){ ensurePayEmbed(t); }
     }
 
     /* ── DASHBOARD ── */
@@ -3526,6 +3867,7 @@ if(tbQueue) tbQueue.textContent = '⚠️ Queue ('+data.length+')';
       win.focus();
       setTimeout(function(){ win.print(); }, 400);
     }
+
 
     /* ── DELIVERY ── */
     var _delivOrds=[], _delivMap={}, _delivFilter='all';
@@ -7086,721 +7428,48 @@ apiPost({
     }
 
 
-    /* ── CHALLAN DESK (daily: edit → Zoho → deliver → invoice) ── */
-    var _challanDeskRows = [];
 
-    function _challanMsg(t, ok) {
-      var el = document.getElementById('challan-desk-msg');
-      if (!el) return;
-      el.style.display = 'block';
-      el.textContent = t;
-      el.style.background = ok === false ? '#fde8e8' : (ok ? '#e8f5e9' : '#e8f0ff');
-      el.style.color = ok === false ? '#c8382a' : (ok ? '#1a5a38' : '#1a3a8a');
-    }
-    function _challanIsChallanOrder(o, shopMap) {
-      var dt = String(o.zoho_doc_type || '').toLowerCase();
-      if (dt === 'delivery_challan') return true;
-      if (dt === 'invoice') return false;
-      var shop = shopMap[String(o.shop_id || '')];
-      if (shop && String(shop.zoho_doc_type || '').toLowerCase() === 'delivery_challan') return true;
-      // Has challan id style or explicit flag
-      if (o.zoho_challan_id) return true;
-      return false;
-    }
-    function loadChallanDesk() {
-      var dateEl = document.getElementById('challan-desk-date');
-      if (dateEl && !dateEl.value) dateEl.value = todayStr();
-      var date = (dateEl && dateEl.value) || todayStr();
-      _challanMsg('Loading…', null);
-      Promise.all([
-        api({ action: 'getCustomerOrders', limit: 500 }),
-        (typeof loadCustomerMaster === 'function' ? loadCustomerMaster() : Promise.resolve()),
-        api({ action: 'getDeliveries', date: date }).catch(function(){ return []; })
-      ]).then(function(res) {
-        var list = Array.isArray(res[0]) ? res[0] : [];
-        var shopMap = {};
-        (allCustomers || []).forEach(function(c) {
-          shopMap[String(c.customer_id || c.shop_id || '')] = c;
-        });
-        var delivs = Array.isArray(res[2]) ? res[2] : [];
-        var deliveredShop = {};
-        delivs.forEach(function(d) {
-          deliveredShop[String(d.shop_id || d.customer_id || '')] = d;
-        });
-        _challanDeskRows = list.filter(function(o) {
-          if (String(o.delivery_date || '') !== String(date)) return false;
-          if (String(o.status || '') === 'rejected' || String(o.status || '') === 'no_order') return false;
-          return _challanIsChallanOrder(o, shopMap);
-        }).map(function(o) {
-          o._delivered = !!deliveredShop[String(o.shop_id || '')];
-          o._deliv = deliveredShop[String(o.shop_id || '')] || null;
-          return o;
-        });
-        _challanMsg('Challans for ' + date + ': ' + _challanDeskRows.length, true);
-        renderChallanDesk();
-      }).catch(function(e) {
-        _challanDeskRows = [];
-        _challanMsg('Failed: ' + (e && e.message ? e.message : e), false);
-        renderChallanDesk();
+    /* Payments embed — same admin chrome; module in iframe without its own header */
+    function ensurePayEmbed(tab){
+      tab = tab || 'pay-challan';
+      var host = document.getElementById('pg-pay-challan');
+      var frame = document.getElementById('payEmbedFrame');
+      if(!host) return;
+      // Always show the challan page slot which holds the iframe (all pay subtabs share it)
+      ['pg-pay-challan','pg-pay-open','pg-pay-requests','pg-pay-paid'].forEach(function(id){
+        var el = document.getElementById(id);
+        if(el) el.classList.toggle('on', id === 'pg-pay-challan');
       });
-    }
-    function renderChallanDesk() {
-      var q = ((document.getElementById('challan-desk-q') || {}).value || '').toLowerCase().trim();
-      var rows = _challanDeskRows.filter(function(o) {
-        if (!q) return true;
-        var hay = [o.shop_name, o.shop_id, o.zoho_invoice_number, o.zoho_invoice_id].join(' ').toLowerCase();
-        return hay.indexOf(q) >= 0;
-      });
-      var nSent = rows.filter(function(o){ return !!o.zoho_invoice_id; }).length;
-      var nDel = rows.filter(function(o){ return o._delivered; }).length;
-      var nInv = rows.filter(function(o){ return String(o.zoho_doc_type||'').toLowerCase() === 'invoice'; }).length;
-      var st = document.getElementById('challan-desk-stats');
-      if (st) {
-        st.innerHTML =
-          '<div class="stat"><div class="stat-n">'+rows.length+'</div><div class="stat-l">Challans</div></div>'+
-          '<div class="stat" style="background:#fff8e1"><div class="stat-n" style="color:#7a4800">'+nSent+'</div><div class="stat-l">In Zoho</div></div>'+
-          '<div class="stat" style="background:#e8f5e9"><div class="stat-n" style="color:#1a5a38">'+nDel+'</div><div class="stat-l">Delivered</div></div>'+
-          '<div class="stat" style="background:#e3f2fd"><div class="stat-n" style="color:#1565c0">'+nInv+'</div><div class="stat-l">Invoiced</div></div>';
+      if(!frame){
+        frame = document.createElement('iframe');
+        frame.id = 'payEmbedFrame';
+        frame.title = 'Payments';
+        frame.style.cssText = 'width:100%;border:0;display:block;min-height:calc(100dvh - 130px);height:calc(100dvh - 130px);background:#f9f6f1';
+        host.appendChild(frame);
       }
-      var el = document.getElementById('challan-desk-list');
-      if (!el) return;
-      if (!rows.length) {
-        el.innerHTML = '<div style="text-align:center;padding:20px;color:#8a7a6a;font-size:12px">No challan orders for this date</div>';
-        return;
-      }
-      el.innerHTML = rows.map(function(o) {
-        var st2 = String(o.status||'');
-        var badges = '';
-        if (o.zoho_invoice_id) badges += '<span style="background:#fff8e1;color:#7a4800;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">In Zoho</span>';
-        else badges += '<span style="background:#fde8e8;color:#c8382a;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">Not sent</span>';
-        if (o._delivered) badges += '<span style="background:#e8f5e9;color:#1a5a38;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">Delivered</span>';
-        else badges += '<span style="background:#fff3e0;color:#c8864a;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">Not delivered</span>';
-        if (String(o.zoho_doc_type||'').toLowerCase() === 'invoice')
-          badges += '<span style="background:#e3f2fd;color:#1565c0;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">Invoice</span>';
-        else
-          badges += '<span style="background:#f3e5f5;color:#6a1b9a;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">Challan</span>';
-
-        var actions = '';
-        // Edit quantities before send/deliver
-        actions += '<button class="btn-sm btn-edit" onclick="challanDeskEdit(\''+o.id+'\')">✏️ Edit qty</button> ';
-        // Send / update Zoho challan
-        actions += '<button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1px solid #ffe082" onclick="challanDeskSendZoho(\''+o.id+'\')">'+(o.zoho_invoice_id ? '✏️ Update Zoho' : '📤 Send Zoho')+'</button> ';
-        // Mark delivered (only if not yet)
-        if (!o._delivered) {
-          actions += '<button class="btn-sm" style="background:#e8f5e9;color:#1a5a38;border:1px solid #a5d6a7" onclick="challanDeskMarkDelivered(\''+o.id+'\')">✅ Mark delivered</button> ';
-        }
-        // Convert to invoice after delivered
-        if (o._delivered && String(o.zoho_doc_type||'').toLowerCase() !== 'invoice') {
-          actions += '<button class="btn-sm" style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9" onclick="challanDeskConvertInvoice(\''+o.id+'\')">🧾 Convert to Invoice</button>';
-        }
-        return '<div class="card" style="margin-bottom:8px;padding:12px">'+
-          '<div style="font-size:13px;font-weight:800;margin-bottom:4px">'+esc(o.shop_name||o.shop_id||'Shop')+'</div>'+
-          '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;line-height:1.5">'+badges+'<br>'+
-          'Status: '+esc(st2)+' · Doc: '+esc(o.zoho_invoice_number||o.zoho_invoice_id||'—')+
-          (o.invoice_total != null ? ' · ₹'+Number(o.invoice_total).toLocaleString('en-IN',{maximumFractionDigits:2}) : '')+
-          '<br>'+esc(String(o.items||'').slice(0,120))+
-          '</div><div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">'+actions+'</div></div>';
-      }).join('');
-    }
-    function challanDeskEdit(id) {
-      var o = _challanDeskRows.find(function(r){ return String(r.id) === String(id); });
-      if (!o) return;
-      // Open same Zoho preview/edit path used on cust-orders (edit qty via items string prompt for now)
-      var items = prompt('Edit items (name,name,…) — current:\\n' + (o.items || ''), o.items || '');
-      if (items == null) return;
-      var qtys = prompt('Edit qty (comma-separated) — current:\\n' + (o.qty || ''), o.qty || '');
-      if (qtys == null) return;
-      _challanMsg('Saving qty…', null);
-      apiPost({
-        action: 'updateCustomerOrder',
-        id: o.id,
-        items: items,
-        qty: qtys,
-        item_ids: o.item_ids || '',
-        note: o.note || ''
-      }).then(function(res) {
-        if (res && res.ok === false) throw new Error(res.error || 'Save failed');
-        o.items = items;
-        o.qty = qtys;
-        _challanMsg('Quantities updated. Next: Send/Update Zoho.', true);
-        renderChallanDesk();
-      }).catch(function(e) {
-        _challanMsg('Failed: ' + (e.message || e), false);
-      });
-    }
-    function challanDeskSendZoho(id) {
-      var o = _challanDeskRows.find(function(r){ return String(r.id) === String(id); });
-      if (!o) return;
-      if (!_zohoEnabled) { alert('Turn on Zoho Integration first'); return; }
-      // Force challan doc type for this flow
-      o.zoho_doc_type = 'delivery_challan';
-      // Refresh shipping from customer master (e.g. user just set ₹50)
-      var shop = findShopForZoho(o);
-      o.shipping_charge = resolveShippingAmt(o, shop);
-      if (typeof openZohoInvPreview === 'function') {
-        openZohoInvPreview(o);
-      } else {
-        alert('Zoho preview not available');
-      }
-    }
-    function challanDeskMarkDelivered(id) {
-      var o = _challanDeskRows.find(function(r){ return String(r.id) === String(id); });
-      if (!o) return;
-      if (!o.zoho_invoice_id) {
-        if (!confirm('Challan not sent to Zoho yet. Mark delivered in app anyway?')) return;
-      } else {
-        if (!confirm('Mark delivered for ' + (o.shop_name || '') + '?')) return;
-      }
-      var driver = o.driver || o.assigned_driver || '';
-      if (!driver) {
-        var shop = (allCustomers || []).find(function(c){
-          return String(c.customer_id || c.shop_id || '') === String(o.shop_id || '');
-        });
-        driver = (shop && (shop.assigned_driver || shop.driver)) || prompt('Driver name', '') || '';
-      }
-      var time = new Date().toTimeString().slice(0, 5);
-      _challanMsg('Marking delivered…', null);
-      apiPost({
-        action: 'markDelivered',
-        shop_id: o.shop_id,
-        shop_name: o.shop_name || '',
-        date: o.delivery_date,
-        time: time,
-        driver: driver
-      }).then(function(res) {
-        if (res && res.ok === false) throw new Error(res.error || 'Failed');
-        // also mark order dispatched if not already
-        return apiPost({
-          action: 'updateCustomerOrderStatus',
-          id: o.id,
-          status: 'dispatched'
-        });
-      }).then(function() {
-        _challanMsg('Marked delivered. Next: Convert to Invoice.', true);
-        loadChallanDesk();
-      }).catch(function(e) {
-        _challanMsg('Failed: ' + (e.message || e), false);
-      });
-    }
-    function challanDeskConvertInvoice(id) {
-      var o = _challanDeskRows.find(function(r){ return String(r.id) === String(id); });
-      if (!o) return;
-      if (!_zohoEnabled) { alert('Turn on Zoho Integration first'); return; }
-      if (!confirm('Create Tax Invoice in Zoho from this order for ' + (o.shop_name || '') + '?\n\n(Note: Zoho API has no direct "convert challan→invoice". We create a new Invoice with same lines + shipping.)')) return;
-      _challanMsg('Creating invoice…', null);
-      var challanRef = o.zoho_invoice_number || o.zoho_invoice_id || '';
-      // MUST force invoice — shop policy is often delivery_challan
-      var orderForInv = Object.assign({}, o, {
-        zoho_doc_type: 'invoice',
-        _forceDocType: 'invoice',
-        zoho_invoice_id: '',
-        notes: (challanRef ? ('From DC ' + challanRef + '. ') : '') + 'Converted by IBCAB'
-      });
-      if (typeof zohoCreateInvoiceReal !== 'function') {
-        _challanMsg('Invoice create function missing', false);
-        return;
-      }
-      zohoCreateInvoiceReal(orderForInv).then(function(inv) {
-        if (!inv || !(inv.invoice_id || inv.invoice_number)) {
-          throw new Error('Zoho did not return invoice id (maybe still created as challan?)');
-        }
-        // Guard: if edge returned a challan id by mistake, flag it
-        if (inv.doc_type === 'delivery_challan') {
-          throw new Error('Zoho created delivery challan instead of invoice. Check shop force flag.');
-        }
-        var body = {
-          action: 'updateCustomerOrderStatus',
-          id: o.id,
-          status: o.status || 'dispatched',
-          zoho_doc_type: 'invoice',
-          zoho_invoice_id: inv.invoice_id || '',
-          zoho_invoice_number: inv.invoice_number || '',
-          payment_status: o.payment_status || 'unpaid'
-        };
-        if (inv.total != null) {
-          body.invoice_total = inv.total;
-          body.balance_due = inv.total;
-        }
-        return apiPost(body).then(function(){ return inv; });
-      }).then(function(inv) {
-        _challanMsg('Invoice created: ' + (inv.invoice_number || inv.invoice_id || 'OK'), true);
-        loadChallanDesk();
-      }).catch(function(e) {
-        _challanMsg('Convert failed: ' + (e && e.message ? e.message : e), false);
-      });
-    }
-
-    /* ── PAYMENTS DESK (in-app, 3 tabs) ── */
-    var _payDeskRows = [];
-    var _payDeskTab = 'pay-open';
-
-    function _payDeskMsg(t, ok) {
-      var el = document.getElementById('pay-desk-msg');
-      if (!el) return;
-      el.style.display = 'block';
-      el.textContent = t;
-      el.style.background = ok === false ? '#fde8e8' : (ok ? '#e8f5e9' : '#e8f0ff');
-      el.style.color = ok === false ? '#c8382a' : (ok ? '#1a5a38' : '#1a3a8a');
-    }
-    function _payDue(o) {
-      if (o.balance_due != null && o.balance_due !== '') return parseFloat(o.balance_due) || 0;
-      if (o.invoice_total != null && o.invoice_total !== '') return parseFloat(o.invoice_total) || 0;
-      return 0;
-    }
-    function _payIsPaid(o) { return String(o.payment_status || '').toLowerCase() === 'paid'; }
-    function _payIsVoid(o) { return String(o.payment_status || '').toLowerCase() === 'void' || String(o.zoho_invoice_status || '').toLowerCase() === 'void'; }
-    function _payHasDoc(o) {
-      return !!(o.zoho_invoice_id || o.zoho_invoice_number || o.invoice_total != null || o.balance_due != null || o.payment_status);
-    }
-    function loadPaymentsDesk(tab) {
-      if (tab) _payDeskTab = tab;
-      _payDeskMsg('Loading…', null);
-      api({ action: 'getCustomerOrders', limit: 500 }).then(function(list) {
-        if (!Array.isArray(list)) list = [];
-        _payDeskRows = list.filter(_payHasDoc);
-        _payDeskMsg('Loaded ' + _payDeskRows.length + ' document(s).', true);
-        renderPaymentsDesk();
-      }).catch(function(e) {
-        _payDeskRows = [];
-        _payDeskMsg('Failed: ' + (e && e.message ? e.message : e), false);
-        renderPaymentsDesk();
-      });
-    }
-    /** Zoho Books invoice statuses: draft, pending_approval, approved, sent, viewed,
-     *  partially_paid, paid, overdue, void, unpaid, … */
-    function _payNormalizeZohoStatus(zStatus) {
-      var s = String(zStatus || '').toLowerCase().replace(/\s+/g, '_');
-      if (s === 'partiallypaid') s = 'partially_paid';
-      if (s === 'pendingapproval') s = 'pending_approval';
-      return s;
-    }
-    function _payZohoStatusLabel(zStatus) {
-      var s = _payNormalizeZohoStatus(zStatus);
-      var map = {
-        draft: 'Draft',
-        pending_approval: 'Pending approval',
-        approved: 'Approved',
-        rejected: 'Rejected',
-        sent: 'Sent',
-        viewed: 'Viewed',
-        unpaid: 'Unpaid',
-        partially_paid: 'Partially paid',
-        paid: 'Paid',
-        overdue: 'Overdue',
-        void: 'Void',
-        open: 'Open',
-        closed: 'Closed',
-        delivered: 'Delivered'
-      };
-      if (map[s]) return map[s];
-      if (!s) return '';
-      return s.replace(/_/g, ' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
-    }
-    function _payZohoStatusBadge(zStatus) {
-      var s = _payNormalizeZohoStatus(zStatus);
-      if (!s) return '';
-      var bg = '#eceff1', fg = '#37474f';
-      if (s === 'draft' || s === 'pending_approval') { bg = '#f5f5f5'; fg = '#616161'; }
-      else if (s === 'sent' || s === 'viewed' || s === 'approved') { bg = '#e3f2fd'; fg = '#1565c0'; }
-      else if (s === 'overdue' || s === 'unpaid') { bg = '#fde8e8'; fg = '#c8382a'; }
-      else if (s === 'partially_paid') { bg = '#fff8e1'; fg = '#7a4800'; }
-      else if (s === 'paid' || s === 'closed') { bg = '#e8f5e9'; fg = '#1a5a38'; }
-      else if (s === 'void' || s === 'rejected') { bg = '#efebe9'; fg = '#5d4037'; }
-      return '<span style="background:'+bg+';color:'+fg+';border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px" title="Zoho status">Zoho: '+esc(_payZohoStatusLabel(s))+'</span>';
-    }
-    /** Map Zoho invoice/challan status → local payment_status for Pay desk */
-    function _payMapZohoStatus(zStatus, balance) {
-      var s = _payNormalizeZohoStatus(zStatus);
-      var bal = parseFloat(balance);
-      if (s === 'void') return 'void';
-      if (s === 'paid') return 'paid';
-      if (s === 'partially_paid' || s.indexOf('partial') >= 0) return 'partial';
-      if (s === 'overdue') return 'unpaid';
-      if (s === 'draft' || s === 'pending_approval' || s === 'approved' || s === 'sent' || s === 'viewed' || s === 'unpaid') {
-        if (!isNaN(bal) && bal <= 0 && (s === 'sent' || s === 'viewed' || s === 'approved')) return 'paid';
-        return 'unpaid';
-      }
-      if (!isNaN(bal) && bal <= 0 && s) return 'paid';
-      if (!isNaN(bal) && bal > 0) return 'unpaid';
-      return 'unpaid';
-    }
-    /** Fetch one Zoho doc (invoice first, then delivery challan). */
-    function _payFetchZohoDoc(zohoId, docType) {
-      var isDc = String(docType || '').toLowerCase() === 'delivery_challan';
-      var first = isDc ? 'get_delivery_challan' : 'get_invoice';
-      var second = isDc ? 'get_invoice' : 'get_delivery_challan';
-      return zohoEdge(first, { invoice_id: String(zohoId) }).then(function(data) {
-        if (data && (data.code === 0 || data.invoice || data.deliverychallan)) return data;
-        return zohoEdge(second, { invoice_id: String(zohoId) });
-      });
-    }
-    function _payApplyZohoDocToOrder(o, data) {
-      var doc = (data && (data.invoice || data.deliverychallan || data.deliveryschedule)) || {};
-      if (!doc.invoice_id && !doc.deliverychallan_id && data && data.code && data.code !== 0) {
-        return Promise.reject(new Error(data.message || ('Zoho code ' + data.code)));
-      }
-      var total = parseFloat(doc.total);
-      var balance = doc.balance != null ? parseFloat(doc.balance) : total;
-      if (isNaN(total)) total = null;
-      if (isNaN(balance)) balance = total;
-      var zStatus = _payNormalizeZohoStatus(doc.status || doc.challan_status || doc.current_sub_status || '');
-      var paySt = _payMapZohoStatus(zStatus, balance);
-      if (paySt === 'paid') balance = 0;
-      var isDc = !!(data && data.deliverychallan) || String(o.zoho_doc_type || '').toLowerCase() === 'delivery_challan';
-      var body = {
-        action: 'updateCustomerOrderStatus',
-        id: o.id,
-        status: o.status || 'approved',
-        zoho_invoice_id: doc.invoice_id || doc.deliverychallan_id || o.zoho_invoice_id || '',
-        zoho_invoice_number: doc.invoice_number || doc.deliverychallan_number || o.zoho_invoice_number || '',
-        payment_status: paySt === 'void' ? 'void' : paySt,
-        zoho_invoice_status: zStatus || ''
-      };
-      if (total != null) body.invoice_total = total;
-      if (balance != null) body.balance_due = balance;
-      if (isDc) body.zoho_doc_type = 'delivery_challan';
-      else if (data && data.invoice) body.zoho_doc_type = 'invoice';
-      return apiPost(body).then(function(res) {
-        if (res && res.ok === false) throw new Error(res.error || 'DB update failed');
-        o.invoice_total = total != null ? total : o.invoice_total;
-        o.balance_due = balance != null ? balance : o.balance_due;
-        o.payment_status = body.payment_status;
-        o.zoho_invoice_status = zStatus || o.zoho_invoice_status;
-        if (body.zoho_invoice_number) o.zoho_invoice_number = body.zoho_invoice_number;
-        return o;
-      });
-    }
-    /** Sync all rows that have zoho_invoice_id (throttled). */
-    function payDeskSyncFromZoho() {
-      if (!_zohoEnabled) {
-        _payDeskMsg('Turn on Zoho Integration first (Users / Zoho tab).', false);
-        return;
-      }
-      var targets = _payDeskRows.filter(function(o){ return o.zoho_invoice_id; });
-      if (!targets.length) {
-        _payDeskMsg('No rows with Zoho document id to sync.', false);
-        return;
-      }
-      if (!confirm('Sync ' + targets.length + ' document(s) from Zoho Books?\nUpdates total, balance and Zoho status (draft/sent/paid/overdue…) from Zoho.')) return;
-      _payDeskMsg('Syncing 0/' + targets.length + ' from Zoho…', null);
-      var ok = 0, fail = 0, i = 0;
-      function next() {
-        if (i >= targets.length) {
-          _payDeskMsg('Zoho sync done: ' + ok + ' updated, ' + fail + ' failed.', fail && !ok ? false : true);
-          renderPaymentsDesk();
+      var src = 'admin-payments.html?embed=1&tab=' + encodeURIComponent(tab);
+      try {
+        if (frame.contentWindow && frame.contentWindow.payShowTab) {
+          frame.contentWindow.payShowTab(tab);
           return;
         }
-        var o = targets[i++];
-        _payDeskMsg('Syncing ' + i + '/' + targets.length + ' — ' + (o.shop_name || o.zoho_invoice_number || o.id), null);
-        _payFetchZohoDoc(o.zoho_invoice_id, o.zoho_doc_type)
-          .then(function(data){ return _payApplyZohoDocToOrder(o, data); })
-          .then(function(){ ok++; })
-          .catch(function(err){
-            fail++;
-            console.warn('[pay sync]', o.id, err);
-          })
-          .then(function(){
-            // small delay to respect Zoho rate limits
-            setTimeout(next, 350);
-          });
+      } catch(e) {}
+      if (frame.getAttribute('data-tab') !== tab || !frame.src || frame.src.indexOf('admin-payments') < 0) {
+        frame.setAttribute('data-tab', tab);
+        frame.src = src;
+      } else {
+        frame.setAttribute('data-tab', tab);
+        // reload hash only
+        try { frame.contentWindow.location.replace(src); } catch(e2) { frame.src = src; }
       }
-      next();
     }
-    function payDeskSyncOne(id) {
-      if (!_zohoEnabled) {
-        _payDeskMsg('Turn on Zoho Integration first.', false);
-        return;
-      }
-      var o = _payDeskRows.find(function(r){ return String(r.id) === String(id); });
-      if (!o || !o.zoho_invoice_id) {
-        _payDeskMsg('No Zoho document id on this row.', false);
-        return;
-      }
-      _payDeskMsg('Syncing from Zoho…', null);
-      _payFetchZohoDoc(o.zoho_invoice_id, o.zoho_doc_type)
-        .then(function(data){ return _payApplyZohoDocToOrder(o, data); })
-        .then(function(){
-          _payDeskMsg('Updated from Zoho: ' + (o.zoho_invoice_number || '') + ' · due ₹' + _payDue(o), true);
-          renderPaymentsDesk();
-        })
-        .catch(function(e){
-          _payDeskMsg('Zoho sync failed: ' + (e && e.message ? e.message : e) + ' — ensure edge supports get_invoice.', false);
-        });
-    }
-    function renderPaymentsDesk() {
-      var q = ((document.getElementById('pay-desk-q') || {}).value || '').toLowerCase().trim();
-      var unpaid = _payDeskRows.filter(function(o){ return !_payIsPaid(o) && !_payIsVoid(o); });
-      var claims = _payDeskRows.filter(function(o){ return o.customer_claimed_paid && !_payIsPaid(o) && !_payIsVoid(o); });
-      var paid = _payDeskRows.filter(function(o){ return _payIsPaid(o); });
-      var due = unpaid.reduce(function(s,o){ return s + _payDue(o); }, 0);
-      var st = document.getElementById('pay-desk-stats');
-      if (st) {
-        st.innerHTML =
-          '<div class="stat" style="background:#fde8e8"><div class="stat-n" style="color:#c8382a">'+unpaid.length+'</div><div class="stat-l">Unpaid</div></div>'+
-          '<div class="stat" style="background:#e3f2fd"><div class="stat-n" style="color:#1565c0">'+claims.length+'</div><div class="stat-l">Requests</div></div>'+
-          '<div class="stat" style="background:#fff8e1"><div class="stat-n" style="color:#7a4800">₹'+due.toLocaleString('en-IN',{maximumFractionDigits:0})+'</div><div class="stat-l">Total due</div></div>'+
-          '<div class="stat" style="background:#e8f5e9"><div class="stat-n" style="color:#1a5a38">'+paid.length+'</div><div class="stat-l">Paid</div></div>';
-      }
-      function matchQ(o) {
-        if (!q) return true;
-        var hay = [o.shop_name, o.shop_id, o.zoho_invoice_number, o.delivery_date, o.customer_claim_note].join(' ').toLowerCase();
-        return hay.indexOf(q) >= 0;
-      }
-      var listOpen = unpaid.filter(matchQ).sort(function(a,b){
-        var ca = a.customer_claimed_paid ? 0 : 1, cb = b.customer_claimed_paid ? 0 : 1;
-        if (ca !== cb) return ca - cb;
-        return String(b.delivery_date||'').localeCompare(String(a.delivery_date||''));
-      });
-      var listReq = claims.filter(matchQ);
-      var listPaid = paid.filter(matchQ).sort(function(a,b){
-        return String(b.paid_at||b.delivery_date||'').localeCompare(String(a.paid_at||a.delivery_date||''));
-      });
+    function loadChallanDesk(){ ensurePayEmbed('pay-challan'); }
+    function loadPaymentsDesk(tab){ ensurePayEmbed(tab || 'pay-open'); }
+    function renderPaymentsDesk(){}
+    function payDeskLoadBlockSettings(){}
+    function payDeskLoadUpi(){}
+    function payDeskRunReconcile(){}
 
-      function card(o) {
-        var st2 = String(o.payment_status||'unpaid').toLowerCase();
-        var badges = '';
-        if (o.customer_claimed_paid && st2 !== 'paid') badges += '<span style="background:#e3f2fd;color:#1565c0;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">Request</span>';
-        if (st2 === 'paid') badges += '<span style="background:#e8f5e9;color:#1a5a38;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">Paid</span>';
-        else if (st2 === 'partial') badges += '<span style="background:#fff8e1;color:#7a4800;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">Partial</span>';
-        else if (st2 === 'void') badges += '<span style="background:#efebe9;color:#5d4037;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">Void</span>';
-        else badges += '<span style="background:#fde8e8;color:#c8382a;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">Unpaid</span>';
-        badges += _payZohoStatusBadge(o.zoho_invoice_status);
-        if (String(o.zoho_doc_type||'').toLowerCase()==='delivery_challan')
-          badges += '<span style="background:#f3e5f5;color:#6a1b9a;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">Challan</span>';
-        else if (o.zoho_invoice_number || o.zoho_invoice_id)
-          badges += '<span style="background:#eceff1;color:#37474f;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">Invoice</span>';
-        if (o.payment_reminder_sent_at)
-          badges += '<span style="background:#eceff1;color:#546e7a;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-left:4px">Reminded</span>';
-        var actions = '';
-        if (o.zoho_invoice_id) {
-          actions += '<button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1px solid #ffe082" onclick="payDeskSyncOne(\''+o.id+'\')">🔗 Zoho</button> ';
-        }
-        if (st2 !== 'paid') {
-          actions += '<button class="btn-sm" style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9" onclick="payDeskRemindOne(\''+o.id+'\')">📨 Remind</button> ';
-          actions += '<button class="btn-sm" style="background:#e8f5e9;color:#1a5a38;border:1px solid #a5d6a7" onclick="payDeskMarkPaid(\''+o.id+'\')">✓ Mark paid</button>';
-        } else {
-          actions += '<button class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0" onclick="payDeskUndoPaid(\''+o.id+'\')">↩ Undo paid</button>';
-        }
-        actions += ' <button class="btn-sm btn-grey" onclick="showTab(\'cust-orders\')">Cust orders</button>';
-        var canSelect = st2 !== 'paid';
-        return '<div class="card" style="margin-bottom:8px;padding:12px">'+
-          '<div style="display:flex;gap:10px;align-items:flex-start">'+
-          (canSelect ? '<input type="checkbox" class="pay-desk-cb" data-id="'+esc(String(o.id))+'" data-shop="'+esc(String(o.shop_id||''))+'" onchange="payDeskUpdateSelCount()" style="margin-top:4px;width:18px;height:18px;accent-color:#c8864a;flex-shrink:0">' : '<span style="width:18px;flex-shrink:0"></span>')+
-          '<div style="flex:1;min-width:0">'+
-          '<div style="font-size:13px;font-weight:800;margin-bottom:4px">'+esc(o.shop_name||o.shop_id||'Shop')+'</div>'+
-          '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;line-height:1.5">'+badges+'<br>'+
-          'Date: '+esc(o.delivery_date||'—')+' · Doc: '+esc(o.zoho_invoice_number||o.zoho_invoice_id||'—')+
-          ' · Due: <b>₹'+_payDue(o).toLocaleString('en-IN',{maximumFractionDigits:2})+'</b>'+
-          (o.invoice_total != null ? ' · Total: ₹'+Number(o.invoice_total).toLocaleString('en-IN',{maximumFractionDigits:2}) : '')+
-          (o.customer_claimed_paid && st2!=='paid' ? '<br>Note: '+esc(o.customer_claim_note||'—') : '')+
-          (o.payment_reminder_sent_at ? '<br>Last reminder: '+esc(String(o.payment_reminder_sent_at).slice(0,16).replace('T',' ')) : '')+
-          (st2==='paid' ? '<br>Paid: ₹'+(o.paid_amount!=null?o.paid_amount:_payDue(o))+' · '+esc(o.payment_mode||'') : '')+
-          '</div><div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">'+actions+'</div></div></div></div>';
-      }
-      var elOpen = document.getElementById('pay-desk-list');
-      var elReq = document.getElementById('pay-desk-list-req');
-      var elPaid = document.getElementById('pay-desk-list-paid');
-      if (elOpen) elOpen.innerHTML = listOpen.length ? listOpen.map(card).join('') : '<div style="text-align:center;padding:20px;color:#8a7a6a;font-size:12px">No unpaid documents</div>';
-      if (elReq) elReq.innerHTML = listReq.length ? listReq.map(card).join('') : '<div style="text-align:center;padding:20px;color:#8a7a6a;font-size:12px">No payment requests</div>';
-      if (elPaid) elPaid.innerHTML = listPaid.length ? listPaid.map(card).join('') : '<div style="text-align:center;padding:20px;color:#8a7a6a;font-size:12px">No paid rows yet</div>';
-    }
-    function payDeskUpdateSelCount() {
-      var n = document.querySelectorAll('.pay-desk-cb:checked').length;
-      var el = document.getElementById('pay-desk-selcount');
-      if (el) el.textContent = n ? (n + ' selected') : '';
-    }
-    function payDeskSelect(mode) {
-      var boxes = document.querySelectorAll('.pay-desk-cb');
-      boxes.forEach(function(cb) {
-        var id = cb.getAttribute('data-id');
-        var o = _payDeskRows.find(function(r){ return String(r.id) === String(id); });
-        if (!o) { cb.checked = false; return; }
-        if (mode === 'none') cb.checked = false;
-        else if (mode === 'unpaid') cb.checked = !_payIsPaid(o);
-        else if (mode === 'visible') cb.checked = true;
-      });
-      payDeskUpdateSelCount();
-    }
-    function _payReminderMessage(o) {
-      var due = _payDue(o);
-      var doc = o.zoho_invoice_number || o.zoho_invoice_id || 'your invoice';
-      var date = o.delivery_date || '';
-      return 'Payment reminder: ' + due.toLocaleString('en-IN', { maximumFractionDigits: 2 }) +
-        ' due for ' + doc + (date ? (' (' + date + ')') : '') +
-        '. Please pay and send request from the Pay tab. Thank you.';
-    }
-    function _paySendReminder(o) {
-      if (!o || !o.shop_id) return Promise.reject(new Error('No shop'));
-      var msg = _payReminderMessage(o);
-      return apiPost({
-        action: 'sendCustomerNotification',
-        shop_id: o.shop_id,
-        shop_name: o.shop_name || '',
-        message: msg
-      }).then(function(res) {
-        if (res && res.ok === false) throw new Error(res.error || 'Notify failed');
-        // stamp reminder time
-        return apiPost({
-          action: 'updateCustomerOrderStatus',
-          id: o.id,
-          status: o.status || 'approved',
-          payment_reminder_sent_at: new Date().toISOString()
-        }).then(function() {
-          o.payment_reminder_sent_at = new Date().toISOString();
-          return o;
-        });
-      });
-    }
-    function payDeskRemindOne(id) {
-      var o = _payDeskRows.find(function(r){ return String(r.id) === String(id); });
-      if (!o) return;
-      if (_payIsPaid(o)) { _payDeskMsg('Already paid.', false); return; }
-      if (!confirm('Send payment reminder to ' + (o.shop_name || o.shop_id) + '?')) return;
-      _payDeskMsg('Sending reminder…', null);
-      _paySendReminder(o).then(function() {
-        _payDeskMsg('Reminder sent to ' + (o.shop_name || ''), true);
-        renderPaymentsDesk();
-      }).catch(function(e) {
-        _payDeskMsg('Failed: ' + (e.message || e), false);
-      });
-    }
-    function payDeskSendReminders() {
-      var boxes = document.querySelectorAll('.pay-desk-cb:checked');
-      if (!boxes.length) {
-        _payDeskMsg('Select one or more unpaid invoices first.', false);
-        return;
-      }
-      var targets = [];
-      var seenShop = {};
-      boxes.forEach(function(cb) {
-        var id = cb.getAttribute('data-id');
-        var o = _payDeskRows.find(function(r){ return String(r.id) === String(id); });
-        if (!o || _payIsPaid(o) || !o.shop_id) return;
-        // One reminder per shop in this batch (combine? or per invoice)
-        targets.push(o);
-      });
-      if (!targets.length) {
-        _payDeskMsg('No valid unpaid rows selected.', false);
-        return;
-      }
-      if (!confirm('Send payment reminder for ' + targets.length + ' invoice(s)?')) return;
-      _payDeskMsg('Sending 0/' + targets.length + '…', null);
-      var ok = 0, fail = 0, i = 0;
-      function next() {
-        if (i >= targets.length) {
-          _payDeskMsg('Reminders: ' + ok + ' sent, ' + fail + ' failed.', fail && !ok ? false : true);
-          renderPaymentsDesk();
-          return;
-        }
-        var o = targets[i++];
-        _payDeskMsg('Sending ' + i + '/' + targets.length + ' — ' + (o.shop_name || ''), null);
-        _paySendReminder(o)
-          .then(function(){ ok++; })
-          .catch(function(e){ fail++; console.warn(e); })
-          .then(function(){ setTimeout(next, 200); });
-      }
-      next();
-    }
-
-    function payDeskMarkPaid(id) {
-      var o = _payDeskRows.find(function(r){ return String(r.id) === String(id); });
-      if (!o) return;
-      var amt = _payDue(o);
-      var mode = prompt('Payment mode (cash / upi / bank / other)', 'upi');
-      if (mode == null) return;
-      var ref = prompt('Reference / UTR (optional)', '') || '';
-      if (!confirm('Mark paid ₹'+amt+' for '+(o.shop_name||'')+'?')) return;
-      _payDeskMsg('Saving…', null);
-      apiPost({
-        action: 'markInvoicePayment',
-        id: o.id,
-        payment_status: 'paid',
-        balance_due: 0,
-        paid_amount: amt,
-        payment_mode: mode,
-        payment_ref: ref,
-        paid_by: (_staffName || 'admin'),
-        invoice_total: o.invoice_total != null ? o.invoice_total : amt
-      }).then(function(res) {
-        if (res && res.ok === false) throw new Error(res.error || 'Failed');
-        if (o.shop_id) {
-          apiPost({
-            action: 'sendCustomerNotification',
-            shop_id: o.shop_id,
-            shop_name: o.shop_name || '',
-            message: 'Payment received ₹'+amt+' for '+(o.zoho_invoice_number||'invoice')+'. Balance ₹0. Thank you.'
-          }).catch(function(){});
-        }
-        _payDeskMsg('Marked paid.', true);
-        loadPaymentsDesk(_payDeskTab);
-      }).catch(function(e) {
-        _payDeskMsg('Failed: '+(e.message||e), false);
-      });
-    }
-
-
-    function payDeskUndoPaid(id) {
-      var o = _payDeskRows.find(function(r){ return String(r.id) === String(id); });
-      if (!o) return;
-      if (String(o.payment_status || '').toLowerCase() !== 'paid') {
-        _payDeskMsg('Not marked paid.', false);
-        return;
-      }
-      if (!confirm('Undo paid for ' + (o.shop_name || '') + '?\nThis sets status back to unpaid.')) return;
-      var due = o.invoice_total != null && o.invoice_total !== ''
-        ? parseFloat(o.invoice_total)
-        : (o.paid_amount != null ? parseFloat(o.paid_amount) : _payDue(o));
-      if (isNaN(due)) due = 0;
-      _payDeskMsg('Undoing…', null);
-      apiPost({
-        action: 'markInvoicePayment',
-        id: o.id,
-        payment_status: 'unpaid',
-        balance_due: due,
-        paid_amount: null,
-        payment_mode: '',
-        payment_ref: '',
-        paid_at: null,
-        paid_by: '',
-        invoice_total: o.invoice_total != null ? o.invoice_total : due
-      }).then(function(res) {
-        if (res && res.ok === false) throw new Error(res.error || 'Failed');
-        if (o.shop_id) {
-          apiPost({
-            action: 'sendCustomerNotification',
-            shop_id: o.shop_id,
-            shop_name: o.shop_name || '',
-            message: 'Payment status updated: ' + (o.zoho_invoice_number || 'invoice') + ' is unpaid again. Please ignore previous paid confirmation if any.'
-          }).catch(function(){});
-        }
-        _payDeskMsg('Undone — now unpaid. Due ₹' + due, true);
-        loadPaymentsDesk(_payDeskTab);
-      }).catch(function(e) {
-        _payDeskMsg('Undo failed: ' + (e.message || e), false);
-      });
-    }
-
-    /* ── ZOHO HELPERS ── */
-    function _zohoShowMsg(elId, txt, type){
-      var el=document.getElementById(elId); if(!el) return;
-      el.textContent=txt;
-      el.style.background=type==='ok'?'#e8f5e9':type==='er'?'#fde8e8':'#fff8e1';
-      el.style.color=type==='ok'?'#2d7a4f':type==='er'?'#c8382a':'#7a4800';
-      el.style.border='1px solid '+(type==='ok'?'#a5d6a7':type==='er'?'#f0b0b0':'#ffe082');
-      el.style.display='block';
-      if(type==='ok') setTimeout(function(){el.style.display='none';},3000);
-    }
-
-    /* ── ZOHO CUSTOMER SYNC ── */
-    function zohoUpdateCustCount(){
-      var cbs=document.querySelectorAll('.zoho-cust-cb:checked');
-      var el=document.getElementById('zoho-cust-sel-count');
-      if(el) el.textContent=cbs.length?cbs.length+' selected':'';
-    }
-    function zohoToggleAllCustomers(checked){
-      document.querySelectorAll('.zoho-cust-cb').forEach(function(cb){cb.checked=checked;});
-      zohoUpdateCustCount();
-    }
   async function zohoSyncCustomerReal(customer) {
   const token = await zohoGetAccessToken();
 
@@ -8523,6 +8192,17 @@ onStaffRoleChange();
         var want = String(_coStatusFilter).toLowerCase();
         list = list.filter(function(o){ return String(o.status||'').toLowerCase() === want; });
       }
+      var q = ((document.getElementById('co-search')||{}).value||'').toLowerCase().trim();
+      if(q){
+        list = list.filter(function(o){
+          var shop = (typeof allCustomers !== 'undefined' ? allCustomers : []).find(function(c){
+            return String(c.shop_id||c.customer_id||'') === String(o.shop_id||'');
+          }) || {};
+          var hay = [o.shop_name, o.shop_id, o.items, o.zoho_invoice_number, o.zoho_invoice_id,
+            o.driver, o.admin_note, o.note, shop.mobile, shop.area, shop.name, o.status].join(' ').toLowerCase();
+          return hay.indexOf(q) >= 0;
+        });
+      }
       list.sort(sortCustOrdersList);
 
       if(!allCustOrders.length){
@@ -8950,13 +8630,16 @@ onStaffRoleChange();
     function loadBroadcast(){
       Promise.all([
         api({action:'getSetting', key:'customer_broadcast'}),
-        api({action:'getSetting', key:'customer_broadcast_enabled'})
+        api({action:'getSetting', key:'customer_broadcast_enabled'}),
+        api({action:'getSetting', key:'customer_broadcast_type'})
       ]).then(function(r){
         _broadcastMsg     = r[0] ? (r[0].value||'') : '';
         _broadcastEnabled = r[1] ? r[1].value === 'true' : false;
+        var btype = r[2] ? (r[2].value || 'info') : 'info';
         renderBroadcastStatus();
-        // Populate textarea with current message so admin can see & edit it
         if(_broadcastMsg) document.getElementById('broadcastMsg').value = _broadcastMsg;
+        var sel = document.getElementById('broadcastType');
+        if (sel && btype) sel.value = btype;
       });
     }
 
@@ -8981,13 +8664,15 @@ onStaffRoleChange();
       var msg = document.getElementById('broadcastMsg').value.trim();
       var el  = document.getElementById('broadcast-msg');
       if(!msg){ el.textContent='Enter a message first.'; el.className='msg er'; el.style.display='block'; return; }
+      var btype = ((document.getElementById('broadcastType')||{}).value) || 'info';
       el.textContent='Sending…'; el.className='msg in'; el.style.display='block';
       _broadcastMsg     = msg;
       _broadcastEnabled = true;
       Promise.all([
         apiPost({action:'setSetting', key:'customer_broadcast',         value: msg}),
         apiPost({action:'setSetting', key:'customer_broadcast_enabled', value: 'true'}),
-        apiPost({action:'setSetting', key:'customer_broadcast_at',      value: new Date().toISOString()})
+        apiPost({action:'setSetting', key:'customer_broadcast_at',      value: new Date().toISOString()}),
+        apiPost({action:'setSetting', key:'customer_broadcast_type',    value: btype})
       ]).then(function(){
         el.textContent='✅ Broadcast sent and now visible to all customers.'; el.className='msg ok';
         renderBroadcastStatus();
@@ -9012,8 +8697,10 @@ onStaffRoleChange();
       });
     }
 
-    function broadcastTemplate(msg){
+    function broadcastTemplate(msg, type){
       document.getElementById('broadcastMsg').value = msg;
+      var sel = document.getElementById('broadcastType');
+      if (sel && type) sel.value = type;
       document.getElementById('broadcastMsg').focus();
     }
 
@@ -11747,11 +11434,16 @@ function openZohoInvPreview(order){
 
   var sub = document.getElementById('zoho-inv-preview-sub');
   if(sub){
-    sub.innerHTML = (isDC ? '📋 Delivery Challan' : '🧾 Tax Invoice')
-      + ' · ' + esc(order.shop_name||'')
-      + ' · ' + esc(order.delivery_date||'')
-      + (existing ? '<br><span style="color:#c8864a">Will <b>UPDATE</b> existing Zoho doc: '+esc(order.zoho_invoice_number||existing)+'</span>'
-                 : '<br><span style="color:#2d7a4f">Will <b>create</b> a new document in Zoho</span>');
+    var zSt = order.zoho_invoice_status ? String(order.zoho_invoice_status) : '';
+    sub.innerHTML = '<div style="font-size:15px;font-weight:900;color:#4a2f14;margin-bottom:4px">'
+      + (isDC ? '📋 Edit Delivery Challan' : '🧾 Edit Tax Invoice') + '</div>'
+      + '<div style="font-size:12px;color:#8a7a6a;line-height:1.55">'
+      + esc(order.shop_name||'') + ' · ' + esc(order.delivery_date||'')
+      + (existing ? '<br>Zoho: <b>'+esc(order.zoho_invoice_number||existing)+'</b>'
+          + (zSt ? ' · Status: <b style="color:#7a4800">'+esc(zSt)+'</b>' : '')
+          + '<br><span style="color:#c8864a">Review lines & GST below, then <b>Update in Zoho</b></span>'
+        : '<br><span style="color:#2d7a4f">New document — review lines & shipping, then <b>Send to Zoho</b></span>')
+      + '</div>';
   }
 
   var body = document.getElementById('zoho-inv-preview-body');
@@ -11804,7 +11496,7 @@ function renderZohoInvPreviewHtml(order, shop, isDC){
   }).join('');
 
   return '<div style="border:1.5px solid #e8dfd2;border-radius:12px;padding:12px;background:#f9f6f1">'+
-    '<div style="font-size:11px;font-weight:900;letter-spacing:1px;color:#7a4800;margin-bottom:8px">'+(isDC?'DELIVERY CHALLAN':'TAX INVOICE')+' PREVIEW</div>'+
+    '<div style="font-size:11px;font-weight:900;letter-spacing:1px;color:#7a4800;margin-bottom:8px">'+(isDC?'📋 DELIVERY CHALLAN':'🧾 TAX INVOICE')+' · REVIEW BEFORE ZOHO</div>'+
     '<div style="font-size:13px;font-weight:800;margin-bottom:4px">'+esc(order.shop_name||'—')+'</div>'+
     '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;line-height:1.6;margin-bottom:10px">'+
       (addr?esc(addr)+'<br>':'')+(area?esc(area)+'<br>':'')+(mobile?esc(mobile)+'<br>':'')+
@@ -12153,6 +11845,46 @@ function testZohoConnection() {
     msg.className = 'msg er';
   });
 }
+
+    (function(){
+      try {
+        var p = new URLSearchParams(location.search);
+        var oid = p.get('openOrder');
+        if (oid) {
+          setTimeout(function(){
+            try {
+              if (typeof loadCustOrders === 'function') loadCustOrders();
+              // try open modal when rows loaded
+              var tries = 0;
+              var t = setInterval(function(){
+                tries++;
+                if (typeof openCoModal === 'function' && typeof _coRows !== 'undefined') {
+                  var o = (_coRows||[]).find(function(r){ return String(r.id)===String(oid); });
+                  if (o) { openCoModal(o); clearInterval(t); }
+                }
+                if (tries > 20) clearInterval(t);
+              }, 400);
+            } catch(e) {}
+          }, 600);
+        }
+      } catch(e) {}
+    })();
+
+
+    (function(){
+      try {
+        var h = (location.hash || '').replace(/^#/, '').toLowerCase();
+        if (!h) return;
+        var map = { orders:'orders', delivery:'delivery', payments:'payments', more:'more', home:'home', customers:'customers', zoho:'zoho', notify:'notify', manage:'manage' };
+        var g = map[h];
+        if (!g) return;
+        setTimeout(function(){
+                    if (typeof mobileNav === 'function' && (g==='home'||g==='orders'||g==='delivery'||g==='more')) mobileNav(g);
+          else if (typeof showGroup === 'function') showGroup(g);
+        }, 400);
+      } catch(e) {}
+    })();
+
 </script>
 <div class="modal-bg" id="zohoSettingsModal" style="display:none" onclick="if(event.target===this)closeZohoSettingsModal()">
     <div class="modal">

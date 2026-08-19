@@ -1126,6 +1126,15 @@ function normalizeProducts(list) {
         .then(function(r){ return r.ok ? { ok: true } : { ok: false }; })
         .catch(function(){ return { ok: false }; });
 
+      case 'clearNotifications':
+        var nurl = BASE + '/notifications?driver_name=eq.' + encodeURIComponent(b.driver);
+        if (b.only_read) nurl += '&is_read=eq.true';
+        return fetch(nurl, {
+          method: 'DELETE',
+          headers: hdrs({ 'Prefer': 'return=minimal' })
+        }).then(function(r){ return r.ok ? { ok: true } : { ok: false }; })
+          .catch(function(){ return { ok: false }; });
+
       case 'cleanOldData': {
         // Delete data older than N days from orders, deliveries, routes, notifications
         var days = (!isNaN(parseInt(b.days)) && parseInt(b.days) >= 0) ? parseInt(b.days) : 7;
