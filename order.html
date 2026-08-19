@@ -32,21 +32,21 @@
         .tabs{display:flex;background:#fff;border-bottom:2px solid #e8dfd2;position:sticky;top:53px;z-index:98}
 
         /* Customer bottom nav (app-style) */
-        .cust-bottom-nav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:300;background:#fff;border-top:1.5px solid #e8dfd2;padding:6px 4px max(6px,var(--sab));max-width:100%;width:100%;margin:0;box-shadow:0 -4px 16px rgba(74,47,20,.08);transform:translateZ(0);-webkit-transform:translateZ(0);backface-visibility:hidden}
-        .cust-bottom-nav-inner{display:flex;justify-content:space-around;align-items:stretch}
-        .cbnav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 2px;border:none;background:transparent;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;-webkit-tap-highlight-color:transparent}
+        .cust-bottom-nav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:300;background:#fff;border-top:1.5px solid #e8dfd2;padding:8px 4px max(10px,var(--sab));max-width:100%;width:100%;margin:0;box-shadow:0 -6px 24px rgba(74,47,20,.12);transform:translateZ(0);-webkit-transform:translateZ(0);backface-visibility:hidden;min-height:calc(64px + var(--sab))}
+        .cust-bottom-nav-inner{display:flex;justify-content:space-around;align-items:stretch;min-height:56px}
+        .cbnav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 4px;border:none;background:transparent;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;-webkit-tap-highlight-color:transparent;min-height:56px}
         .cbnav-item.on{color:#4a2f14}
-        .cbnav-ico{font-size:18px;line-height:1}
-        .cbnav-lbl{font-size:10px;font-weight:800}
+        .cbnav-ico{font-size:26px;line-height:1}
+        .cbnav-lbl{font-size:12px;font-weight:800;letter-spacing:.2px}
         /* Mobile: bottom nav · Desktop: top tabs + wide layout */
         .cust-bottom-nav{display:none}
-        body.cust-app{padding-bottom:calc(62px + var(--sab))}
+        body.cust-app{padding-bottom:calc(76px + var(--sab))}
         body.cust-app .tabs.cust-top-tabs{display:none !important}
         body.cust-app .cust-bottom-nav{display:block !important}
 
         /* Cart sits above bottom nav on phone */
         body.cust-app .order-total-bar{
-          bottom: calc(58px + var(--sab));
+          bottom: calc(72px + var(--sab));
           z-index: 310;
           transform:translateZ(0);
           -webkit-transform:translateZ(0);
@@ -63,6 +63,55 @@
         body.cust-app.preview-open .order-total-bar{display:none !important}
         body.cust-app.preview-open .cust-bottom-nav{display:none !important}
         body.cust-app.preview-open{padding-bottom:0}
+
+        /* More/Settings: one profile header (no double title bar) */
+        body.cust-app.tab-settings{
+          padding-top: 0 !important;
+        }
+        body.cust-app.tab-settings .topbar{
+          display: none !important;
+        }
+        body.cust-app.tab-settings #pg-settings.settings-as-profile{
+          padding-top: 0;
+        }
+        .settings-hero{
+          background:#4a2f14;
+          padding: max(20px, var(--sat)) 20px 28px;
+          display:flex;
+          flex-direction:column;
+          align-items:center;
+          gap:10px;
+          position:relative;
+        }
+        .settings-hero-bell{
+          position:absolute;
+          top: max(12px, var(--sat));
+          right: 14px;
+          background:rgba(255,255,255,.15);
+          border:none;
+          color:#fff;
+          width:40px;height:40px;
+          border-radius:12px;
+          font-size:18px;
+          cursor:pointer;
+          display:flex;align-items:center;justify-content:center;
+        }
+        .settings-hero-avatar{
+          width:72px;height:72px;border-radius:50%;
+          background:#c8a020;
+          display:flex;align-items:center;justify-content:center;
+          font-size:28px;font-weight:900;color:#fff;
+          letter-spacing:-1px;margin-top:8px;
+          box-shadow:0 4px 16px rgba(0,0,0,.2);
+        }
+        .settings-hero-name{
+          font-size:17px;font-weight:900;color:#fff;text-align:center;
+          line-height:1.3;padding:0 36px;
+        }
+        .settings-hero-meta{
+          font-size:11px;font-family:monospace;color:#c8a87a;line-height:1.7;text-align:center;
+        }
+
         .preview-actions{display:flex;gap:10px;margin-top:14px}
         .preview-actions .btn{flex:1;min-height:52px;font-size:16px}
         @media (max-width:767px){
@@ -520,21 +569,22 @@
     </div>
 
     <!-- SETTINGS TAB -->
-    <div class="page" id="pg-settings" style="padding:0 0 80px">
+    <div class="page settings-as-profile" id="pg-settings" style="padding:0 0 80px">
 
-        <!-- Profile Card -->
-        <div style="background:#4a2f14;padding:28px 20px 24px;display:flex;flex-direction:column;align-items:center;gap:10px">
-            <div id="settingsAvatar" style="width:68px;height:68px;border-radius:50%;background:#c8a020;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:900;color:#fff;letter-spacing:-1px;flex-shrink:0"></div>
-            <div style="text-align:center">
-                <div id="settingsName" style="font-size:18px;font-weight:900;color:#fff;margin-bottom:6px"></div>
-                <!-- Driver info row -->
-                <div id="settingsDriverRow" style="display:none;background:rgba(255,255,255,.12);border-radius:12px;padding:8px 16px;margin-bottom:6px">
-                    <div style="font-size:10px;letter-spacing:1px;color:#c8a87a;font-family:monospace;text-transform:uppercase;margin-bottom:3px">Your Delivery Driver</div>
-                    <div id="settingsDriverName" style="font-size:14px;font-weight:800;color:#fff"></div>
-                    <div id="settingsDriverMobile" style="font-size:12px;font-family:monospace;color:#c8a87a"></div>
-                </div>
-                <div id="settingsMeta" style="font-size:11px;font-family:monospace;color:#c8a87a;line-height:1.8"></div>
+        <!-- Single profile hero (replaces topbar on More tab) -->
+        <div class="settings-hero" id="settingsHero">
+            <button type="button" class="settings-hero-bell" onclick="toggleCustNotifPanel()" aria-label="Notifications">
+              🔔
+              <span id="custNotifBadgeSettings" style="display:none;position:absolute;top:4px;right:4px;background:#e53935;color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:900;align-items:center;justify-content:center;font-family:monospace">0</span>
+            </button>
+            <div id="settingsAvatar" class="settings-hero-avatar"></div>
+            <div id="settingsName" class="settings-hero-name"></div>
+            <div id="settingsDriverRow" style="display:none;background:rgba(255,255,255,.12);border-radius:12px;padding:8px 16px;width:100%;max-width:280px;box-sizing:border-box">
+                <div style="font-size:10px;letter-spacing:1px;color:#c8a87a;font-family:monospace;text-transform:uppercase;margin-bottom:3px;text-align:center">Your Delivery Driver</div>
+                <div id="settingsDriverName" style="font-size:14px;font-weight:800;color:#fff;text-align:center"></div>
+                <div id="settingsDriverMobile" style="font-size:12px;font-family:monospace;color:#c8a87a;text-align:center"></div>
             </div>
+            <div id="settingsMeta" class="settings-hero-meta"></div>
         </div>
 
         <div style="padding:14px">
@@ -2469,6 +2519,9 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
       if(t==='track') loadTrack();
       if(t==='history') loadHistory();
       if(t==='settings'){ renderSettingsProfile(); renderNotifSettings(); }
+      try {
+        document.body.classList.toggle('tab-settings', t === 'settings');
+      } catch(e) {}
     }
 
     /* ── SWIPE BETWEEN TABS + CONFLICT RESOLUTION ── */
@@ -3356,6 +3409,16 @@ function _payUnpaidTotal(){
         } else {
           badge.style.display = 'none';
         }
+        var badge2 = document.getElementById('custNotifBadgeSettings');
+        if(badge2){
+          if(unread > 0){
+            badge2.textContent = unread > 9 ? '9+' : String(unread);
+            badge2.style.display = 'flex';
+          } else {
+            badge2.style.display = 'none';
+          }
+        }
+
         if(_custNotifOpen) _renderCustNotifPanel();
       }).catch(function(){});
     }

@@ -74,6 +74,25 @@ select,input[type=text],input[type=password],input[type=date]{width:100%;padding
 .modal-title{font-size:16px;font-weight:900;color:#4a2f14;margin-bottom:4px}
 .modal-sub{font-size:12px;color:#8a7a6a;font-family:monospace;margin-bottom:14px;line-height:1.6}
 .modal-warn{font-size:12px;font-family:monospace;padding:10px 12px;background:#fff8e1;border:1px solid #ffe082;border-radius:10px;color:#7a4800;margin-bottom:14px;line-height:1.7;white-space:pre-line}
+
+/* Mobile app shell */
+.topbar{position:fixed;top:0;left:0;right:0;max-width:480px;margin:0 auto;z-index:300;-webkit-transform:translateZ(0);transform:translateZ(0)}
+.tabs{display:none}
+.bottom-nav{display:flex;position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;z-index:300;background:#fff;border-top:1.5px solid #e8dfd2;padding:8px 4px;padding-bottom:max(10px,var(--sab));justify-content:space-around;align-items:center;box-shadow:0 -6px 24px rgba(40,20,0,.12);-webkit-transform:translateZ(0);transform:translateZ(0);min-height:calc(64px + var(--sab))}
+.bn-item{flex:1;border:none;background:transparent;padding:8px 4px;cursor:pointer;font-family:-apple-system,sans-serif;display:flex;flex-direction:column;align-items:center;gap:4px;color:#8a7a6a;-webkit-tap-highlight-color:transparent;min-height:56px}
+.bn-item.on{color:#e67e22}
+.bn-ico{font-size:26px;line-height:1}
+.bn-lab{font-size:12px;font-weight:800}
+#appScreen{padding-top:calc(56px + var(--sat));padding-bottom:calc(80px + var(--sab))}
+.packet-summary-card{background:#fff8f0;border:2px solid #f5c87a;border-radius:14px;padding:12px 14px;margin-bottom:12px}
+@media(min-width:768px){
+  .bottom-nav{display:none}
+  .tabs{display:flex;position:sticky;top:0;z-index:98}
+  #appScreen{padding-bottom:24px}
+  body{max-width:900px}
+  .topbar{max-width:900px;position:sticky}
+}
+
 </style>
 </head>
 <body>
@@ -107,6 +126,10 @@ select,input[type=text],input[type=password],input[type=date]{width:100%;padding
     <button class="tab on" id="tb-make" onclick="showTab('make')">📊 Make This</button>
     <button class="tab" id="tb-summary" onclick="showTab('summary')">📋 Summary</button>
   </div>
+  <nav class="bottom-nav" id="bottomNav" aria-label="Kitchen">
+    <button type="button" class="bn-item on" id="bn-make" onclick="showTab('make')"><span class="bn-ico">📊</span><span class="bn-lab">Make</span></button>
+    <button type="button" class="bn-item" id="bn-summary" onclick="showTab('summary')"><span class="bn-ico">📋</span><span class="bn-lab">Summary</span></button>
+  </nav>
 
   <!-- MAKE THIS TAB -->
   <div class="page on" id="pg-make">
@@ -306,8 +329,9 @@ function showApp(){
 
 function showTab(t){
   ['make','summary'].forEach(function(x){
-    document.getElementById('pg-'+x).classList.toggle('on',x===t);
-    document.getElementById('tb-'+x).classList.toggle('on',x===t);
+    var p=document.getElementById('pg-'+x); if(p) p.classList.toggle('on',x===t);
+    var b=document.getElementById('tb-'+x); if(b) b.classList.toggle('on',x===t);
+    var bn=document.getElementById('bn-'+x); if(bn) bn.classList.toggle('on',x===t);
   });
   if(t==='summary') renderSummary();
 }
@@ -472,7 +496,7 @@ function renderCountGrid(){
   var html='';
   // Packet totals (×15 / ×10) — pack each shop order, then sum packets
   if (window.ProductsShared && ProductsShared.packPacketsHtml) {
-    html += ProductsShared.packPacketsHtml(kitchenOrders || []);
+    html += '<div class="packet-summary-card"><div style="font-size:11px;font-weight:900;color:#7a4800;margin-bottom:6px">Puff packets (per shop → ×15 + ×10)</div>' + ProductsShared.packPacketsHtml(kitchenOrders || []) + '</div>';
   }
   catNames.forEach(function(cat){
     var names=byCat[cat].sort(function(a,b){ return a.localeCompare(b); });

@@ -87,7 +87,28 @@
         .modal-title{font-size:16px;font-weight:900;color:#4a2f14;margin-bottom:4px}
         .modal-sub{font-size:12px;color:#8a7a6a;font-family:monospace;margin-bottom:14px;line-height:1.6}
         .modal-items{font-size:12px;font-family:monospace;background:#f5ede0;border-radius:10px;padding:10px 12px;line-height:1.9;margin-bottom:14px}
-    </style>
+    
+/* Mobile app shell */
+.topbar{position:fixed;top:0;left:0;right:0;max-width:480px;margin:0 auto;z-index:300;-webkit-transform:translateZ(0);transform:translateZ(0)}
+.tabs{display:none}
+.bottom-nav{display:flex;position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;z-index:300;background:#fff;border-top:1.5px solid #e8dfd2;padding:8px 4px;padding-bottom:max(10px,var(--sab));justify-content:space-around;align-items:center;box-shadow:0 -6px 24px rgba(40,20,0,.12);-webkit-transform:translateZ(0);transform:translateZ(0);min-height:calc(64px + var(--sab))}
+.bn-item{flex:1;border:none;background:transparent;padding:8px 2px;cursor:pointer;font-family:-apple-system,sans-serif;display:flex;flex-direction:column;align-items:center;gap:4px;color:#8a7a6a;-webkit-tap-highlight-color:transparent;min-width:0;min-height:56px}
+.bn-item.on{color:#2d6a4f}
+.bn-ico{font-size:24px;line-height:1}
+.bn-lab{font-size:11px;font-weight:800;white-space:nowrap}
+#appScreen{padding-top:calc(56px + var(--sat));padding-bottom:calc(80px + var(--sab))}
+.packet-summary-card{background:#e8f5e9;border:2px solid #a5d6a7;border-radius:14px;padding:12px 14px;margin-bottom:12px}
+@media(min-width:768px){
+  .bottom-nav{display:none}
+  .tabs{display:flex}
+  #appScreen{padding-bottom:24px}
+  body{max-width:900px}
+  .topbar{max-width:900px;position:sticky}
+}
+
+#allDoneBar.sticky-bottom, #allDoneBar{bottom:calc(68px + var(--sab)) !important;z-index:250}
+@media(min-width:768px){#allDoneBar{bottom:0 !important}}
+</style>
 </head>
 <body>
 
@@ -107,6 +128,12 @@
         <button class="tab" id="tb-brands" onclick="showTab('brands')">🏷 Brands</button>
         <button class="tab" id="tb-summary" onclick="showTab('summary')">📋 Summary</button>
     </div>
+  <nav class="bottom-nav" id="bottomNav" aria-label="Packaging">
+    <button type="button" class="bn-item on" id="bn-pack" onclick="showTab('pack')"><span class="bn-ico">📦</span><span class="bn-lab">Pack</span></button>
+    <button type="button" class="bn-item" id="bn-drivers" onclick="showTab('drivers')"><span class="bn-ico">🚗</span><span class="bn-lab">Drivers</span></button>
+    <button type="button" class="bn-item" id="bn-brands" onclick="showTab('brands')"><span class="bn-ico">🏷</span><span class="bn-lab">Brands</span></button>
+    <button type="button" class="bn-item" id="bn-summary" onclick="showTab('summary')"><span class="bn-ico">📋</span><span class="bn-lab">Summary</span></button>
+  </nav>
 
     <!-- ── PACK TAB ── -->
     <div class="page on" id="pg-pack">
@@ -280,8 +307,9 @@
 
     function showTab(t){
       ['pack','drivers','brands','summary'].forEach(function(x){
-        document.getElementById('pg-'+x).classList.toggle('on',x===t);
-        document.getElementById('tb-'+x).classList.toggle('on',x===t);
+        var pg=document.getElementById('pg-'+x); if(pg) pg.classList.toggle('on',x===t);
+        var tb=document.getElementById('tb-'+x); if(tb) tb.classList.toggle('on',x===t);
+        var bn=document.getElementById('bn-'+x); if(bn) bn.classList.toggle('on',x===t);
       });
       // Sticky bar only on Pack tab
       var pending = packOrders.length - packedIds.size;
@@ -453,7 +481,10 @@
           '</div>';
         });
       });
-      document.getElementById('prodCountBody').innerHTML=html;
+      var _puffBar=(window.ProductsShared&&ProductsShared.packPacketsHtml)
+        ?('<div class="packet-summary-card"><div style="font-size:11px;font-weight:900;color:#1b5e20;margin-bottom:6px">Puff packets (per shop → ×15 + ×10)</div>'+ProductsShared.packPacketsHtml((packOrders||[]).concat(kitchenOrders||[]).concat(dispatchOrders||[]))+'</div>')
+        :'';
+      document.getElementById('prodCountBody').innerHTML=_puffBar+html;
     }
 
     // ── RENDER PACK ORDERS ──
@@ -983,7 +1014,7 @@
           '</div>';
         }).join('');
         var packBar = (window.ProductsShared && ProductsShared.packPacketsHtml)
-          ? ProductsShared.packPacketsHtml(all) : '';
+          ? ('<div class="packet-summary-card"><div style="font-size:11px;font-weight:900;color:#1b5e20;margin-bottom:6px">Puff packets (per shop → ×15 + ×10)</div>' + ProductsShared.packPacketsHtml(all) + '</div>') : '';
         document.getElementById('sumProdBody').innerHTML = packBar + prodHtml;
       } else {
         document.getElementById('sumProdCard').style.display='none';
