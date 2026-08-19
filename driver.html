@@ -28,8 +28,30 @@
         .tab{flex:1;padding:12px 4px;border:none;background:none;font-size:11px;font-weight:700;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;border-bottom:3px solid transparent;margin-bottom:-2px}
         .tab.on{color:#2d7a4f;border-bottom-color:#2d7a4f}
         /* Mobile bottom navigation (app-like) */
-        .bottom-nav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:300;background:#fff;border-top:1.5px solid #e8dfd2;padding:8px 4px max(10px,var(--sab));max-width:440px;margin:0 auto;box-shadow:0 -6px 24px rgba(45,122,79,.12);min-height:calc(64px + var(--sab));-webkit-transform:translateZ(0);transform:translateZ(0)}
-        .bottom-nav-inner{display:flex;align-items:stretch;justify-content:space-around;min-height:56px}
+        html, body{overscroll-behavior-y:none}
+        .bottom-nav{
+          display:none;
+          position:fixed !important;
+          left:0 !important;
+          right:0 !important;
+          bottom:0 !important;
+          width:100% !important;
+          max-width:440px;
+          margin:0 auto;
+          z-index:999 !important;
+          background:#fff;
+          border-top:1.5px solid #e8dfd2;
+          padding:8px 4px 0;
+          padding-bottom:max(10px,var(--sab));
+          box-shadow:0 -6px 24px rgba(45,122,79,.14);
+          min-height:calc(64px + var(--sab));
+          -webkit-transform:translate3d(0,0,0);
+          transform:translate3d(0,0,0);
+          -webkit-backface-visibility:hidden;
+          backface-visibility:hidden;
+          will-change:transform;
+        }
+        .bottom-nav-inner{display:flex;align-items:stretch;justify-content:space-around;min-height:56px;width:100%}
         .bnav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 4px;border:none;background:none;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;-webkit-tap-highlight-color:transparent;min-height:56px}
         .bnav-item .bnav-ico{font-size:26px;line-height:1}
         .bnav-item .bnav-lbl{font-size:12px;font-weight:800;letter-spacing:.2px}
@@ -37,8 +59,9 @@
         .bnav-item.on .bnav-ico{transform:scale(1.08)}
         @media (max-width:700px){
           .tabs{display:none !important}
-          .bottom-nav{display:block}
-          body{padding-bottom:calc(76px + var(--sab))}
+          .bottom-nav{display:block !important}
+          body{padding-bottom:calc(80px + var(--sab)) !important}
+          .page{padding-bottom:calc(96px + var(--sab)) !important}
         }
         @media (min-width:701px){
           .bottom-nav{display:none !important}
@@ -158,22 +181,7 @@
     <button class="tab" id="tb-team" onclick="showTab('team')"><span id="t-team">👥 Team</span></button>
 </div>
 
-<nav class="bottom-nav" id="bottomNav" aria-label="Main">
-    <div class="bottom-nav-inner">
-        <button type="button" class="bnav-item on" id="bnav-orders" onclick="showTab('orders')">
-            <span class="bnav-ico">📋</span><span class="bnav-lbl">Orders</span>
-        </button>
-        <button type="button" class="bnav-item" id="bnav-route" onclick="showTab('route')">
-            <span class="bnav-ico">🗺</span><span class="bnav-lbl">Route</span>
-        </button>
-        <button type="button" class="bnav-item" id="bnav-gps" onclick="showTab('gps')">
-            <span class="bnav-ico">📍</span><span class="bnav-lbl">GPS</span>
-        </button>
-        <button type="button" class="bnav-item" id="bnav-team" onclick="showTab('team')">
-            <span class="bnav-ico">👥</span><span class="bnav-lbl">Team</span>
-        </button>
-    </div>
-</nav>
+
 
 <!-- ── ORDERS ── -->
 <div class="page on" id="pg-orders">
@@ -2428,5 +2436,22 @@ async function deleteDropPhoto(){
     })();
 </script>
 
+
+<nav class="bottom-nav" id="bottomNav" aria-label="Main">
+    <div class="bottom-nav-inner">
+        <button type="button" class="bnav-item on" id="bnav-orders" onclick="showTab('orders')">
+            <span class="bnav-ico">📋</span><span class="bnav-lbl">Orders</span>
+        </button>
+        <button type="button" class="bnav-item" id="bnav-route" onclick="showTab('route')">
+            <span class="bnav-ico">🗺</span><span class="bnav-lbl">Route</span>
+        </button>
+        <button type="button" class="bnav-item" id="bnav-gps" onclick="showTab('gps')">
+            <span class="bnav-ico">📍</span><span class="bnav-lbl">GPS</span>
+        </button>
+        <button type="button" class="bnav-item" id="bnav-team" onclick="showTab('team')">
+            <span class="bnav-ico">👥</span><span class="bnav-lbl">Team</span>
+        </button>
+    </div>
+</nav>
 </body>
 </html>
