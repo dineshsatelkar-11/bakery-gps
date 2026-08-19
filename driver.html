@@ -27,6 +27,22 @@
         .tabs{display:flex;background:#fff;border-bottom:2px solid #e8dfd2;position:sticky;top:calc(56px + var(--sat));z-index:98}
         .tab{flex:1;padding:12px 4px;border:none;background:none;font-size:11px;font-weight:700;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;border-bottom:3px solid transparent;margin-bottom:-2px}
         .tab.on{color:#2d7a4f;border-bottom-color:#2d7a4f}
+        /* Mobile bottom navigation (app-like) */
+        .bottom-nav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:300;background:#fff;border-top:1.5px solid #e8dfd2;padding:8px 4px max(10px,var(--sab));max-width:440px;margin:0 auto;box-shadow:0 -6px 24px rgba(45,122,79,.12);min-height:calc(64px + var(--sab));-webkit-transform:translateZ(0);transform:translateZ(0)}
+        .bottom-nav-inner{display:flex;align-items:stretch;justify-content:space-around;min-height:56px}
+        .bnav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 4px;border:none;background:none;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;-webkit-tap-highlight-color:transparent;min-height:56px}
+        .bnav-item .bnav-ico{font-size:26px;line-height:1}
+        .bnav-item .bnav-lbl{font-size:12px;font-weight:800;letter-spacing:.2px}
+        .bnav-item.on{color:#2d7a4f}
+        .bnav-item.on .bnav-ico{transform:scale(1.08)}
+        @media (max-width:700px){
+          .tabs{display:none !important}
+          .bottom-nav{display:block}
+          body{padding-bottom:calc(76px + var(--sab))}
+        }
+        @media (min-width:701px){
+          .bottom-nav{display:none !important}
+        }
         .page{display:none;padding:12px 14px calc(80px + var(--sab))}
         .page.on{display:block}
         .card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:14px;margin-bottom:10px}
@@ -87,7 +103,7 @@
         /* NOTIFICATIONS */
         .notif-btn{position:relative;background:rgba(255,255,255,.15);border:none;color:#fff;padding:5px 10px;border-radius:8px;font-size:15px;cursor:pointer;line-height:1}
         .notif-badge{position:absolute;top:-4px;right:-4px;background:#e53935;color:#fff;border-radius:50%;width:17px;height:17px;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;font-family:monospace}
-        .notif-panel{display:none;position:fixed;top:53px;left:0;right:0;max-width:440px;margin:0 auto;background:#fff;border-bottom:2px solid #e8dfd2;z-index:200;max-height:60vh;overflow-y:auto;box-shadow:0 4px 20px rgba(0,0,0,.15)}
+        .notif-panel{display:none;position:fixed;top:calc(56px + var(--sat));left:0;right:0;max-width:440px;margin:0 auto;background:#fff;border-bottom:2px solid #e8dfd2;z-index:400;max-height:60vh;overflow-y:auto;box-shadow:0 4px 20px rgba(0,0,0,.15)}
         .notif-panel.open{display:block}
         .notif-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid #f0e8e0;background:#f5ede0}
         .notif-header-title{font-size:13px;font-weight:800;color:#4a2f14}
@@ -101,7 +117,7 @@
     .ptr-indicator{position:fixed;left:0;right:0;top:0;z-index:520;display:flex;align-items:flex-end;justify-content:center;pointer-events:none;opacity:0;transition:opacity .15s;padding-top:var(--sat,0px);height:0;overflow:visible}
 .ptr-indicator.show{opacity:1}
 .ptr-bubble{background:#4a2f14;color:#fff;font-size:11px;font-weight:700;font-family:monospace;padding:6px 14px;border-radius:20px;margin-top:calc(8px + var(--sat,0px));box-shadow:0 4px 12px rgba(0,0,0,.15)}
-</style>
+    </style>
 </head>
 <body>
 <div class="ptr-indicator" id="ptrIndicator"><div class="ptr-bubble" id="ptrBubble">↓ Pull to refresh</div></div>
@@ -141,6 +157,23 @@
     <button class="tab" id="tb-gps" onclick="showTab('gps')"><span id="t-gps">📍 GPS</span></button>
     <button class="tab" id="tb-team" onclick="showTab('team')"><span id="t-team">👥 Team</span></button>
 </div>
+
+<nav class="bottom-nav" id="bottomNav" aria-label="Main">
+    <div class="bottom-nav-inner">
+        <button type="button" class="bnav-item on" id="bnav-orders" onclick="showTab('orders')">
+            <span class="bnav-ico">📋</span><span class="bnav-lbl">Orders</span>
+        </button>
+        <button type="button" class="bnav-item" id="bnav-route" onclick="showTab('route')">
+            <span class="bnav-ico">🗺</span><span class="bnav-lbl">Route</span>
+        </button>
+        <button type="button" class="bnav-item" id="bnav-gps" onclick="showTab('gps')">
+            <span class="bnav-ico">📍</span><span class="bnav-lbl">GPS</span>
+        </button>
+        <button type="button" class="bnav-item" id="bnav-team" onclick="showTab('team')">
+            <span class="bnav-ico">👥</span><span class="bnav-lbl">Team</span>
+        </button>
+    </div>
+</nav>
 
 <!-- ── ORDERS ── -->
 <div class="page on" id="pg-orders">
@@ -476,23 +509,44 @@
     var _notifs = [];
     var _notifOpen = false;
 
+    function toggleNotifPanel() {
+      var panel = document.getElementById('notifPanel');
+      if (!panel) return;
+      _notifOpen = !_notifOpen;
+      panel.classList.toggle('open', _notifOpen);
+      if (_notifOpen) {
+        loadNotifications();
+        renderNotifPanel();
+      }
+    }
+    window.toggleNotifPanel = toggleNotifPanel;
+
     function loadNotifications() {
+      if (!driver) return;
       api({ action: 'getNotifications', driver: driver }).then(function(data) {
         var prevUnread = (_notifs || []).filter(function(n){ return !n.is_read; }).length;
         _notifs = Array.isArray(data) ? data : [];
         var unread = _notifs.filter(function(n){ return !n.is_read; }).length;
         var badge = document.getElementById('notifBadge');
-        if (unread > 0) {
-          badge.textContent = unread > 9 ? '9+' : String(unread);
-          badge.style.display = 'flex';
-          if (!_notifOpen && unread > prevUnread) {
-            var first = _notifs.find(function(n){ return !n.is_read; });
-            if (first) showBrowserNotif(first);
+        if (badge) {
+          if (unread > 0) {
+            badge.textContent = unread > 9 ? '9+' : String(unread);
+            badge.style.display = 'flex';
+            if (!_notifOpen && unread > prevUnread) {
+              var first = _notifs.find(function(n){ return !n.is_read; });
+              if (first) showBrowserNotif(first);
+            }
+          } else {
+            badge.style.display = 'none';
           }
-        } else {
-          badge.style.display = 'none';
         }
         if (_notifOpen) renderNotifPanel();
+      }).catch(function(err){
+        console.warn('[driver notif]', err);
+        if (_notifOpen) {
+          var list = document.getElementById('notifList');
+          if (list) list.innerHTML = '<div class="notif-empty">Could not load notifications</div>';
+        }
       });
     }
 
@@ -508,7 +562,8 @@
         var icon = icons[n.type] || '📣';
         var time = n.created_at ? new Date(n.created_at).toLocaleString('en-IN', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
         var read = !!n.is_read;
-        return '<div class="notif-item" style="opacity:'+(read?'0.7':'1')+'"><span class="notif-icon">'+icon+'</span><div class="notif-body"><div class="notif-msg" style="font-weight:'+(read?'500':'700')+'">'+n.message+'</div><div class="notif-time">'+time+(read?' · Read':'')+'</div></div></div>';
+        var msg = String(n.message || '').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        return '<div class="notif-item" style="opacity:'+(read?'0.7':'1')+'"><span class="notif-icon">'+icon+'</span><div class="notif-body"><div class="notif-msg" style="font-weight:'+(read?'500':'700')+'">'+msg+'</div><div class="notif-time">'+time+(read?' · Read':'')+'</div></div></div>';
       }).join('');
     }
 
@@ -519,7 +574,7 @@
         var badge = document.getElementById('notifBadge');
         if (badge) badge.style.display = 'none';
         renderNotifPanel();
-      });
+      }).catch(function(e){ console.warn(e); });
     }
     function clearAllNotifs() {
       if (!confirm(lang==='mr' ? 'सर्व सूचना काढायच्या?' : 'Clear all notifications?')) return;
@@ -544,6 +599,16 @@
     // Load on start, then poll every 60 seconds
     loadNotifications();
     setInterval(loadNotifications, 60000);
+    // Close panel when tapping outside
+    document.addEventListener('click', function(e) {
+      if (!_notifOpen) return;
+      var panel = document.getElementById('notifPanel');
+      var btn = document.getElementById('notifBtn');
+      if (panel && !panel.contains(e.target) && btn && !btn.contains(e.target)) {
+        _notifOpen = false;
+        panel.classList.remove('open');
+      }
+    });
 
     document.getElementById('topDriver').textContent = driver;
     document.getElementById('topDate').textContent = todayStr();
@@ -551,7 +616,7 @@
     function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 
     // ── TABS ──
-    
+
 function fmtQtyPack(name, qty) {
   if (window.ProductsShared && typeof ProductsShared.formatQtyWithPackets === 'function') {
     return ProductsShared.formatQtyWithPackets(name, qty);
@@ -564,8 +629,12 @@ function fmtCatTotal(cat, total) {
 
 function showTab(tab) {
       ['orders','route','gps','team'].forEach(x=>{
-        document.getElementById('pg-'+x).classList.toggle('on',x===tab);
-        document.getElementById('tb-'+x).classList.toggle('on',x===tab);
+        var pg = document.getElementById('pg-'+x);
+        var tb = document.getElementById('tb-'+x);
+        var bn = document.getElementById('bnav-'+x);
+        if (pg) pg.classList.toggle('on', x===tab);
+        if (tb) tb.classList.toggle('on', x===tab);
+        if (bn) bn.classList.toggle('on', x===tab);
       });
       if(tab==='route') buildRouteUI();
       if(tab==='team')  loadTeamSummary();
@@ -2251,112 +2320,112 @@ async function deleteDropPhoto(){
 </script>
 
 <script>
-/* Dynamic iOS notch / safe-area handling */
-(function () {
-  if (window.__safeAreaDyn) return;
-  window.__safeAreaDyn = true;
+    /* Dynamic iOS notch / safe-area handling */
+    (function () {
+      if (window.__safeAreaDyn) return;
+      window.__safeAreaDyn = true;
 
-  var root = document.documentElement;
-  var probe = null;
+      var root = document.documentElement;
+      var probe = null;
 
-  function ensureProbe() {
-    if (probe && probe.parentNode) return probe;
-    probe = document.createElement('div');
-    probe.setAttribute('aria-hidden', 'true');
-    probe.style.cssText = [
-      'position:fixed', 'left:0', 'top:0', 'width:0', 'height:0',
-      'visibility:hidden', 'pointer-events:none', 'padding:0',
-      'padding-top:env(safe-area-inset-top,0px)',
-      'padding-right:env(safe-area-inset-right,0px)',
-      'padding-bottom:env(safe-area-inset-bottom,0px)',
-      'padding-left:env(safe-area-inset-left,0px)'
-    ].join(';');
-    (document.body || root).appendChild(probe);
-    return probe;
-  }
-
-  function px(n) {
-    n = parseFloat(n);
-    return (isFinite(n) ? n : 0) + 'px';
-  }
-
-  function readEnvInsets() {
-    var el = ensureProbe();
-    var cs = window.getComputedStyle(el);
-    return {
-      top: parseFloat(cs.paddingTop) || 0,
-      right: parseFloat(cs.paddingRight) || 0,
-      bottom: parseFloat(cs.paddingBottom) || 0,
-      left: parseFloat(cs.paddingLeft) || 0
-    };
-  }
-
-  function apply() {
-    var env = readEnvInsets();
-    var sat = env.top;
-    var sab = env.bottom;
-    var sal = env.left;
-    var sar = env.right;
-
-    // When mobile browser chrome collapses, keep a sensible bottom inset
-    // using visualViewport (does not replace home-indicator inset when larger).
-    try {
-      var vv = window.visualViewport;
-      if (vv && window.innerHeight) {
-        var gap = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
-        // Only boost bottom when browser UI leaves a gap larger than env bottom
-        // and gap is small (typical toolbar), not full keyboard.
-        if (gap > sab && gap < 120) sab = gap;
+      function ensureProbe() {
+        if (probe && probe.parentNode) return probe;
+        probe = document.createElement('div');
+        probe.setAttribute('aria-hidden', 'true');
+        probe.style.cssText = [
+          'position:fixed', 'left:0', 'top:0', 'width:0', 'height:0',
+          'visibility:hidden', 'pointer-events:none', 'padding:0',
+          'padding-top:env(safe-area-inset-top,0px)',
+          'padding-right:env(safe-area-inset-right,0px)',
+          'padding-bottom:env(safe-area-inset-bottom,0px)',
+          'padding-left:env(safe-area-inset-left,0px)'
+        ].join(';');
+        (document.body || root).appendChild(probe);
+        return probe;
       }
-    } catch (e) {}
 
-    root.style.setProperty('--sat', px(sat));
-    root.style.setProperty('--sab', px(sab));
-    root.style.setProperty('--sal', px(sal));
-    root.style.setProperty('--sar', px(sar));
+      function px(n) {
+        n = parseFloat(n);
+        return (isFinite(n) ? n : 0) + 'px';
+      }
 
-    root.classList.toggle('has-notch', sat >= 20);
-    root.classList.toggle('has-home-bar', sab >= 10);
-    root.setAttribute('data-safe-top', String(Math.round(sat)));
-    root.setAttribute('data-safe-bottom', String(Math.round(sab)));
-  }
+      function readEnvInsets() {
+        var el = ensureProbe();
+        var cs = window.getComputedStyle(el);
+        return {
+          top: parseFloat(cs.paddingTop) || 0,
+          right: parseFloat(cs.paddingRight) || 0,
+          bottom: parseFloat(cs.paddingBottom) || 0,
+          left: parseFloat(cs.paddingLeft) || 0
+        };
+      }
 
-  var scheduled = false;
-  function schedule() {
-    if (scheduled) return;
-    scheduled = true;
-    requestAnimationFrame(function () {
-      scheduled = false;
-      apply();
-    });
-  }
+      function apply() {
+        var env = readEnvInsets();
+        var sat = env.top;
+        var sab = env.bottom;
+        var sal = env.left;
+        var sar = env.right;
 
-  function boot() {
-    ensureProbe();
-    apply();
-    window.addEventListener('resize', schedule, { passive: true });
-    window.addEventListener('orientationchange', function () {
-      // iOS often updates env() one frame after orientation settles
-      schedule();
-      setTimeout(apply, 50);
-      setTimeout(apply, 300);
-    }, { passive: true });
-    window.addEventListener('pageshow', schedule, { passive: true });
-    if (window.visualViewport) {
-      visualViewport.addEventListener('resize', schedule, { passive: true });
-      visualViewport.addEventListener('scroll', schedule, { passive: true });
-    }
-    // Late paint (PWA / standalone)
-    setTimeout(apply, 100);
-    setTimeout(apply, 500);
-  }
+        // When mobile browser chrome collapses, keep a sensible bottom inset
+        // using visualViewport (does not replace home-indicator inset when larger).
+        try {
+          var vv = window.visualViewport;
+          if (vv && window.innerHeight) {
+            var gap = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
+            // Only boost bottom when browser UI leaves a gap larger than env bottom
+            // and gap is small (typical toolbar), not full keyboard.
+            if (gap > sab && gap < 120) sab = gap;
+          }
+        } catch (e) {}
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot);
-  } else {
-    boot();
-  }
-})();
+        root.style.setProperty('--sat', px(sat));
+        root.style.setProperty('--sab', px(sab));
+        root.style.setProperty('--sal', px(sal));
+        root.style.setProperty('--sar', px(sar));
+
+        root.classList.toggle('has-notch', sat >= 20);
+        root.classList.toggle('has-home-bar', sab >= 10);
+        root.setAttribute('data-safe-top', String(Math.round(sat)));
+        root.setAttribute('data-safe-bottom', String(Math.round(sab)));
+      }
+
+      var scheduled = false;
+      function schedule() {
+        if (scheduled) return;
+        scheduled = true;
+        requestAnimationFrame(function () {
+          scheduled = false;
+          apply();
+        });
+      }
+
+      function boot() {
+        ensureProbe();
+        apply();
+        window.addEventListener('resize', schedule, { passive: true });
+        window.addEventListener('orientationchange', function () {
+          // iOS often updates env() one frame after orientation settles
+          schedule();
+          setTimeout(apply, 50);
+          setTimeout(apply, 300);
+        }, { passive: true });
+        window.addEventListener('pageshow', schedule, { passive: true });
+        if (window.visualViewport) {
+          visualViewport.addEventListener('resize', schedule, { passive: true });
+          visualViewport.addEventListener('scroll', schedule, { passive: true });
+        }
+        // Late paint (PWA / standalone)
+        setTimeout(apply, 100);
+        setTimeout(apply, 500);
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', boot);
+      } else {
+        boot();
+      }
+    })();
 </script>
 
 </body>

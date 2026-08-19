@@ -331,8 +331,13 @@ function normalizeProducts(list) {
       }
 
       case 'getNotifications': {
+        // Last 7 days (read + unread). Unread-only made the panel look "broken" after Mark all read.
+        var since = new Date();
+        since.setDate(since.getDate() - 7);
+        var sinceIso = since.toISOString();
         var url = BASE + '/notifications?driver_name=eq.' + encodeURIComponent(p.driver) +
-                  '&is_read=eq.false&order=created_at.desc&limit=50';
+                  '&created_at=gte.' + encodeURIComponent(sinceIso) +
+                  '&order=created_at.desc&limit=100';
         return fetch(url, { headers: hdrs() })
           .then(function(r){ return r.ok ? r.json() : []; })
           .catch(function(){ return []; });
