@@ -1296,6 +1296,63 @@ function normalizeProducts(list) {
 
 
       // ── Invoice payment (Phase A) ─────────────────────────────────────────────
+
+      // Confirm weekly pay request: mark all claimed unpaid invoices for shop as paid
+      case 'confirmShopPaymentRequest': {
+        var shopId = b.shop_id != null ? String(b.shop_id) : '';
+        var ids = Array.isArray(b.ids) ? b.ids.map(String) : [];
+        if (!shopId && !ids.length) return Promise.resolve({ ok: false, error: 'shop_id or ids required' });
+        var mode = b.payment_mode || 'bank';
+        var ref = b.payment_ref || '';
+        var paidBy = b.paid_by || 'admin';
+        var paidAt = b.paid_at || new Date().toISOString();
+        // Fetch open claimed rows for shop
+        var q = BASE + '/customer_orders?select=id,shop_id,balance_due,invoice_total,payment_status,customer_claimed_paid,zoho_invoice_number';
+        if (ids.length) {
+          q += '&id=in.(' + ids.join(',') + ')';
+        } else {
+          q += '&shop_id=eq.' + encodeURIComponent(shopId) + '&customer_claimed_paid=eq.true';
+        }
+        return fetch(q, { headers: hdrs() })
+          .then(function(r){ return r.ok ? r.json() : []; })
+          .then(function(rows){
+            if (!Array.isArray(rows)) rows = [];
+            // Also include explicitly requested ids even if claim flag missing
+            var targets = rows.filter(function(o){
+              var st = String(o.payment_status||'').toLowerCase();
+              if (st === 'paid') return false;
+              if (ids.length) return ids.indexOf(String(o.id)) >= 0;
+              return !!o.customer_claimed_paid;
+            });
+            if (!targets.length && ids.length) {
+              // Fallback patch each id
+              targets = ids.map(function(id){ return { id: id }; });
+            }
+            if (!targets.length) return { ok: true, updated: 0, message: 'No open requests' };
+            var chain = Promise.resolve();
+            var updated = 0;
+            targets.forEach(function(o){
+              chain = chain.then(function(){
+                var due = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
+                if (isNaN(due)) due = 0;
+                var body = {
+                  payment_status: 'paid',
+                  balance_due: 0,
+                  paid_amount: due,
+                  payment_mode: mode,
+                  payment_ref: ref,
+                  paid_by: paidBy,
+                  paid_at: paidAt,
+                  customer_claimed_paid: false
+                };
+                return sbPatch('customer_orders', { id: o.id }, body).then(function(){ updated++; });
+              });
+            });
+            return chain.then(function(){ return { ok: true, updated: updated }; });
+          })
+          .catch(function(e){ return { ok: false, error: String(e && e.message || e) }; });
+      }
+
       case 'markInvoicePayment': {
         // Admin verifies payment received — or undoes paid → unpaid
         var st = (b.payment_status || 'paid').toLowerCase();

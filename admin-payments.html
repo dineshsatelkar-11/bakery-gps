@@ -1,292 +1,292 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#4a2f14">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>IBCAB — Payments</title>
-    <style>
-        :root {
-          --sat: env(safe-area-inset-top, 0px);
-          --sab: env(safe-area-inset-bottom, 0px);
-          --brown: #4a2f14;
-        }
-        * { box-sizing: border-box; }
-        body {
-          margin: 0;
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-          background: #f9f6f1;
-          color: #1e1611;
-          padding-left: env(safe-area-inset-left, 0px);
-          padding-right: env(safe-area-inset-right, 0px);
-          padding-bottom: calc(72px + var(--sab));
-          min-height: 100dvh;
-          max-width: 520px;
-          margin-left: auto;
-          margin-right: auto;
-        }
-        .topbar {
-          position: sticky; top: 0; z-index: 50;
-          background: #4a2f14; color: #fff;
-          padding: max(12px, var(--sat)) 14px 12px;
-          display: flex; align-items: center; justify-content: space-between; gap: 10px;
-          box-shadow: 0 2px 12px rgba(74,47,20,.18);
-        }
-        .topbar .brand { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-        .topbar .brand-title { margin: 0; font-size: 16px; font-weight: 900; letter-spacing: .2px; }
-        .topbar .brand-sub { font-size: 11px; font-weight: 600; opacity: .85; font-family: monospace; }
-        .topbar .top-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-        .topbar a.back-link {
-          color: #ffe8c8; font-size: 12px; font-weight: 800; text-decoration: none;
-          background: rgba(255,255,255,.12); padding: 7px 10px; border-radius: 10px;
-        }
-        /* Same chip style as admin main tabs */
-        .subtabs {
-          display: flex; gap: 6px; overflow-x: auto; padding: 8px 10px;
-          background: #fff; border-bottom: 1.5px solid #e8dfd2;
-          position: sticky; top: 0; z-index: 40;
-          -webkit-overflow-scrolling: touch;
-        }
-        .subtabs button {
-          flex-shrink: 0; border: none; background: transparent;
-          border-radius: 12px; padding: 9px 12px; font-size: 12px; font-weight: 800;
-          color: #8a7a6a; cursor: pointer; font-family: inherit;
-        }
-        .subtabs button.active {
-          background: #4a2f14; color: #fff;
-        }
-        .page { display: none; padding: 12px 14px 20px; max-width: 520px; margin: 0 auto; }
-        .page.active { display: block; }
-        .card {
-          background: #fff; border: 1.5px solid #e8dfd2; border-radius: 14px;
-          padding: 12px 14px; margin-bottom: 10px;
-        }
-        .lbl { font-size: 11px; font-weight: 800; color: #8a7a6a; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .3px; }
-        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-        @media (max-width: 480px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
-        .stat-card { background: #fff; border: 1.5px solid #e8dfd2; border-radius: 12px; padding: 10px; text-align: center; }
-        .stat-n { font-size: 20px; font-weight: 900; font-family: monospace; color: var(--brown); }
-        .stat-l { font-size: 10px; color: #8a7a6a; font-weight: 700; margin-top: 2px; }
-        .btn-sm { border: none; border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; }
-        .btn-grey { background: #f0e8dc; color: #4a2f14; }
-        .filter-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-        .bottom-nav {
-          position: fixed; left: 0; right: 0; bottom: 0; z-index: 200;
-          background: #fff; border-top: 1.5px solid #e8dfd2;
-          padding: 6px 4px max(6px, var(--sab));
-          max-width: 520px; margin: 0 auto;
-          box-shadow: 0 -4px 16px rgba(74,47,20,.08);
-        }
-        .bottom-nav-inner { display: flex; justify-content: space-around; }
-        .bnav-item {
-          flex: 1; display: flex; flex-direction: column; align-items: center;
-          text-decoration: none; color: #8a7a6a; font-size: 10px; font-weight: 700;
-          padding: 4px; border: none; background: none; cursor: pointer;
-        }
-        .bnav-item.active { color: #4a2f14; }
-        .bnav-lbl { font-size: 10px; font-weight: 700; display: block; }
-        .bnav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 48px; justify-content: center; }
-        .bnav-item.active .bnav-ico { transform: scale(1.05); }
-        .bnav-ico { font-size: 18px; }
-        @media (min-width: 701px) {
-          .bottom-nav { display: none; }
-          body { padding-bottom: 24px; max-width: 900px; margin: 0 auto; }
-        }
-
-        @media (min-width: 701px) {
-          .bottom-nav { display: none; }
-          body { padding-bottom: 20px; max-width: 720px; }
-          .page { max-width: 720px; }
-        }
-        @media (max-width: 700px) {
-          .bottom-nav { display: block; }
-        }
-
-        /* Embed inside admin.html — hide second chrome */
-        html.embed-mode body,
-        body.embed-mode {
-          max-width: none !important;
-          margin: 0 !important;
-          padding-bottom: 8px !important;
-          padding-top: 0 !important;
-          background: #f9f6f1 !important;
-          min-height: 0 !important;
-        }
-        html.embed-mode .topbar,
-        html.embed-mode .bottom-nav,
-        html.embed-mode .subtabs,
-        html.embed-mode #bottomNav,
-        body.embed-mode .topbar,
-        body.embed-mode .bottom-nav,
-        body.embed-mode .subtabs,
-        body.embed-mode #bottomNav {
-          display: none !important;
-          height: 0 !important;
-          overflow: hidden !important;
-          visibility: hidden !important;
-          pointer-events: none !important;
-        }
-        html.embed-mode .page,
-        body.embed-mode .page {
-          padding: 8px 10px 12px !important;
-          max-width: none !important;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#4a2f14">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>IBCAB — Payments</title>
+  <style>
+    :root {
+      --sat: env(safe-area-inset-top, 0px);
+      --sab: env(safe-area-inset-bottom, 0px);
+      --brown: #4a2f14;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f9f6f1;
+      color: #1e1611;
+      padding-left: env(safe-area-inset-left, 0px);
+      padding-right: env(safe-area-inset-right, 0px);
+      padding-bottom: calc(72px + var(--sab));
+      min-height: 100dvh;
+      max-width: 520px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .topbar {
+      position: sticky; top: 0; z-index: 50;
+      background: #4a2f14; color: #fff;
+      padding: max(12px, var(--sat)) 14px 12px;
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      box-shadow: 0 2px 12px rgba(74,47,20,.18);
+    }
+    .topbar .brand { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .topbar .brand-title { margin: 0; font-size: 16px; font-weight: 900; letter-spacing: .2px; }
+    .topbar .brand-sub { font-size: 11px; font-weight: 600; opacity: .85; font-family: monospace; }
+    .topbar .top-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .topbar a.back-link {
+      color: #ffe8c8; font-size: 12px; font-weight: 800; text-decoration: none;
+      background: rgba(255,255,255,.12); padding: 7px 10px; border-radius: 10px;
+    }
+    /* Same chip style as admin main tabs */
+    .subtabs {
+      display: flex; gap: 6px; overflow-x: auto; padding: 8px 10px;
+      background: #fff; border-bottom: 1.5px solid #e8dfd2;
+      position: sticky; top: 0; z-index: 40;
+      -webkit-overflow-scrolling: touch;
+    }
+    .subtabs button {
+      flex-shrink: 0; border: none; background: transparent;
+      border-radius: 12px; padding: 9px 12px; font-size: 12px; font-weight: 800;
+      color: #8a7a6a; cursor: pointer; font-family: inherit;
+    }
+    .subtabs button.active {
+      background: #4a2f14; color: #fff;
+    }
+    .page { display: none; padding: 12px 14px 20px; max-width: 520px; margin: 0 auto; }
+    .page.active { display: block; }
+    .card {
+      background: #fff; border: 1.5px solid #e8dfd2; border-radius: 14px;
+      padding: 12px 14px; margin-bottom: 10px;
+    }
+    .lbl { font-size: 11px; font-weight: 800; color: #8a7a6a; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .3px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    @media (max-width: 480px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+    .stat-card { background: #fff; border: 1.5px solid #e8dfd2; border-radius: 12px; padding: 10px; text-align: center; }
+    .stat-n { font-size: 20px; font-weight: 900; font-family: monospace; color: var(--brown); }
+    .stat-l { font-size: 10px; color: #8a7a6a; font-weight: 700; margin-top: 2px; }
+    .btn-sm { border: none; border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; }
+    .btn-grey { background: #f0e8dc; color: #4a2f14; }
+    .filter-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .bottom-nav {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 200;
+      background: #fff; border-top: 1.5px solid #e8dfd2;
+      padding: 6px 4px max(6px, var(--sab));
+      max-width: 520px; margin: 0 auto;
+      box-shadow: 0 -4px 16px rgba(74,47,20,.08);
+    }
+    .bottom-nav-inner { display: flex; justify-content: space-around; }
+    .bnav-item {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      text-decoration: none; color: #8a7a6a; font-size: 10px; font-weight: 700;
+      padding: 4px; border: none; background: none; cursor: pointer;
+    }
+    .bnav-item.active { color: #4a2f14; }
+    .bnav-lbl { font-size: 10px; font-weight: 700; display: block; }
+    .bnav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 48px; justify-content: center; }
+    .bnav-item.active .bnav-ico { transform: scale(1.05); }
+    .bnav-ico { font-size: 18px; }
+    @media (min-width: 701px) {
+      .bottom-nav { display: none; }
+      body { padding-bottom: 24px; max-width: 900px; margin: 0 auto; }
+    }
+  
+    @media (min-width: 701px) {
+      .bottom-nav { display: none; }
+      body { padding-bottom: 20px; max-width: 720px; }
+      .page { max-width: 720px; }
+    }
+    @media (max-width: 700px) {
+      .bottom-nav { display: block; }
+    }
+    
+    /* Embed inside admin.html — hide second chrome */
+    html.embed-mode body,
+    body.embed-mode {
+      max-width: none !important;
+      margin: 0 !important;
+      padding-bottom: 8px !important;
+      padding-top: 0 !important;
+      background: #f9f6f1 !important;
+      min-height: 0 !important;
+    }
+    html.embed-mode .topbar,
+    html.embed-mode .bottom-nav,
+    html.embed-mode .subtabs,
+    html.embed-mode #bottomNav,
+    body.embed-mode .topbar,
+    body.embed-mode .bottom-nav,
+    body.embed-mode .subtabs,
+    body.embed-mode #bottomNav {
+      display: none !important;
+      height: 0 !important;
+      overflow: hidden !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+    html.embed-mode .page,
+    body.embed-mode .page {
+      padding: 8px 10px 12px !important;
+      max-width: none !important;
+    }
     </style>
-    <script>
-        (function(){
-          try {
-            var q = location.search || '';
-            if (/[?&]embed=1\b/.test(q) || /[?&]embed=true\b/.test(q)) {
-              document.documentElement.className += (document.documentElement.className ? ' ' : '') + 'embed-mode';
-            }
-          } catch(e) {}
-        })();
-    </script>
+  <script>
+    (function(){
+      try {
+        var q = location.search || '';
+        if (/[?&]embed=1\b/.test(q) || /[?&]embed=true\b/.test(q)) {
+          document.documentElement.className += (document.documentElement.className ? ' ' : '') + 'embed-mode';
+        }
+      } catch(e) {}
+    })();
+  </script>
 </head>
 <body>
-<div class="topbar" id="pay-chrome-top">
+  <div class="topbar" id="pay-chrome-top">
     <div class="brand">
-        <div class="brand-title">🍞 IBCAB · Payments</div>
-        <div class="brand-sub" id="who">Admin</div>
+      <div class="brand-title">🍞 IBCAB · Payments</div>
+      <div class="brand-sub" id="who">Admin</div>
     </div>
     <div class="top-actions">
-        <a class="back-link" href="admin.html">← Admin</a>
+      <a class="back-link" href="admin.html">← Admin</a>
     </div>
-</div>
-<div class="subtabs" id="paySubtabs" data-chrome="1" role="tablist">
+  </div>
+    <div class="subtabs" id="paySubtabs" data-chrome="1" role="tablist">
     <button type="button" class="active" data-tab="pay-challan" onclick="payShowTab('pay-challan')">📋 Challans</button>
     <button type="button" data-tab="pay-open" onclick="payShowTab('pay-open')">💸 Unpaid</button>
     <button type="button" data-tab="pay-requests" onclick="payShowTab('pay-requests')">📨 Pay requests</button>
     <button type="button" data-tab="pay-paid" onclick="payShowTab('pay-paid')">✅ Paid</button>
-</div>
+  </div>
 
 <div class="page active" id="pg-pay-challan">
-    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">📋 Daily Challans</div>
-    <div style="font-size:11px;color:#8a7a6a;margin-bottom:10px;line-height:1.45">
-        Daily flow: <b>Edit</b> (damage/missing) → <b>Send/Update Zoho</b> → <b>Mark delivered</b> → <b>Convert to Invoice</b>.
-        Only shops with doc type Challan (or existing challan id).
+  <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">📋 Daily Challans</div>
+  <div style="font-size:11px;color:#8a7a6a;margin-bottom:10px;line-height:1.45">
+    Daily flow: <b>Edit</b> (damage/missing) → <b>Send/Update Zoho</b> → <b>Mark delivered</b> → <b>Convert to Invoice</b>.
+    Only shops with doc type Challan (or existing challan id).
+  </div>
+  <div class="card" style="margin-bottom:10px;padding:12px">
+    <div style="font-size:11px;font-weight:800;color:#8a7a6a;letter-spacing:.3px;margin-bottom:8px">DELIVERY DATE</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">
+      <button type="button" class="btn-sm btn-grey" style="min-width:40px;padding:10px 12px;font-size:16px;font-weight:900" onclick="challanDeskShiftDate(-1)" title="Previous day">‹</button>
+      <input type="date" id="challan-desk-date" onchange="challanDeskOnDateChange()"
+        style="margin:0;flex:1;min-width:150px;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:15px;font-weight:700;color:#4a2f14;background:#fff;font-family:inherit">
+      <button type="button" class="btn-sm btn-grey" style="min-width:40px;padding:10px 12px;font-size:16px;font-weight:900" onclick="challanDeskShiftDate(1)" title="Next day">›</button>
+      <button type="button" class="btn-sm" style="background:#4a2f14;color:#fff;padding:10px 14px;border-radius:10px;font-weight:800" onclick="challanDeskSetToday()">Today</button>
     </div>
-    <div class="card" style="margin-bottom:10px;padding:12px">
-        <div style="font-size:11px;font-weight:800;color:#8a7a6a;letter-spacing:.3px;margin-bottom:8px">DELIVERY DATE</div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">
-            <button type="button" class="btn-sm btn-grey" style="min-width:40px;padding:10px 12px;font-size:16px;font-weight:900" onclick="challanDeskShiftDate(-1)" title="Previous day">‹</button>
-            <input type="date" id="challan-desk-date" onchange="challanDeskOnDateChange()"
-                   style="margin:0;flex:1;min-width:150px;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:15px;font-weight:700;color:#4a2f14;background:#fff;font-family:inherit">
-            <button type="button" class="btn-sm btn-grey" style="min-width:40px;padding:10px 12px;font-size:16px;font-weight:900" onclick="challanDeskShiftDate(1)" title="Next day">›</button>
-            <button type="button" class="btn-sm" style="background:#4a2f14;color:#fff;padding:10px 14px;border-radius:10px;font-weight:800" onclick="challanDeskSetToday()">Today</button>
-        </div>
-        <div id="challan-desk-date-label" style="font-size:13px;font-weight:800;color:#4a2f14;margin-bottom:10px"></div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
-            <input type="search" id="challan-desk-q" placeholder="Search shop…" oninput="renderChallanDesk()"
-                   style="margin:0;flex:1;min-width:140px;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:13px;background:#fff">
-            <button type="button" class="btn-sm btn-grey" style="padding:10px 14px" onclick="loadChallanDesk()">↻ Refresh</button>
-        </div>
+    <div id="challan-desk-date-label" style="font-size:13px;font-weight:800;color:#4a2f14;margin-bottom:10px"></div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+      <input type="search" id="challan-desk-q" placeholder="Search shop…" oninput="renderChallanDesk()"
+        style="margin:0;flex:1;min-width:140px;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:13px;background:#fff">
+      <button type="button" class="btn-sm btn-grey" style="padding:10px 14px" onclick="loadChallanDesk()">↻ Refresh</button>
     </div>
-    <div id="challan-desk-stats" class="stats-grid" style="margin-bottom:10px;grid-template-columns:repeat(4,1fr)"></div>
-    <div id="challan-desk-msg" style="display:none;margin-bottom:8px;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:700"></div>
-    <div id="challan-desk-list"><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Loading…</div></div>
+  </div>
+  <div id="challan-desk-stats" class="stats-grid" style="margin-bottom:10px;grid-template-columns:repeat(4,1fr)"></div>
+  <div id="challan-desk-msg" style="display:none;margin-bottom:8px;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:700"></div>
+  <div id="challan-desk-list"><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Loading…</div></div>
 </div>
 <div class="page" id="pg-pay-open">
-    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">💰 Payments — Unpaid</div>
-    <div style="font-size:11px;color:#8a7a6a;margin-bottom:10px;line-height:1.45">Weekly collections — <b>invoices only</b>. Delivery challans stay under the Challans tab until converted to invoice.</div>
-    <div id="pay-desk-stats" class="stats-grid" style="margin-bottom:10px"></div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-        <input type="search" id="pay-desk-q" placeholder="Search shop / inv #…" oninput="renderPaymentsDesk()" style="flex:1;min-width:140px;padding:8px 10px;border:1.5px solid #e8dfd2;border-radius:8px;font-size:13px">
-        <button class="btn-sm btn-grey" onclick="loadPaymentsDesk()">↻ Refresh</button>
-        <button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082" onclick="payDeskSyncFromZoho('all')">🔗 Sync all statuses</button>
+  <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">💰 Payments — Unpaid</div>
+  <div style="font-size:11px;color:#8a7a6a;margin-bottom:10px;line-height:1.45">Weekly collections — <b>invoices only</b>. Delivery challans stay under the Challans tab until converted to invoice.</div>
+  <div id="pay-desk-stats" class="stats-grid" style="margin-bottom:10px"></div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+    <input type="search" id="pay-desk-q" placeholder="Search shop / inv #…" oninput="renderPaymentsDesk()" style="flex:1;min-width:140px;padding:8px 10px;border:1.5px solid #e8dfd2;border-radius:8px;font-size:13px">
+    <button class="btn-sm btn-grey" onclick="loadPaymentsDesk()">↻ Refresh</button>
+    <button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082" onclick="payDeskSyncFromZoho('all')">🔗 Sync all statuses</button>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px">
+    <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSelect('visible')">Select visible</button>
+    <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSelect('none')">Clear</button>
+    <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSelect('unpaid')">Unpaid only</button>
+    <button type="button" class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1px solid #ffe082;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSyncFromZoho('selected')">↻ Sync selected status</button>
+    <button type="button" class="btn-sm" style="background:#fff3e0;color:#e65100;border:1px solid #ffcc80;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSyncFromZoho('unpaid')">↻ Sync unpaid status</button>
+    <button type="button" class="btn-sm" style="background:#e3f2fd;color:#1565c0;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSendReminders()">📨 Send payment reminder</button>
+    <button type="button" class="btn-sm" id="pay-desk-sync-stop" style="display:none;background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSyncStop()">⏹ Stop sync</button>
+    <span id="pay-desk-selcount" style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-left:4px"></span>
+  </div>
+  <div id="pay-desk-msg" style="display:none;margin-bottom:8px;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:700"></div>
+  <div class="card" id="pay-upi-owner-card" style="display:none;margin-bottom:10px;padding:12px;background:#e8f5e9;border:1.5px solid #a5d6a7">
+    <div style="font-size:12px;font-weight:900;color:#1a5a38;margin-bottom:6px">📱 UPI QR for customers (PhonePe / GPay / Paytm)</div>
+    <div style="font-size:11px;color:#8a7a6a;line-height:1.45;margin-bottom:8px">Owner only — not visible to regular admin. Customers see QR / Pay with UPI on their Pay tab.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      <div>
+        <div class="lbl">UPI ID (VPA)</div>
+        <input type="text" id="pay-upi-vpa" placeholder="yourshop@ybl" style="width:100%;padding:8px 10px;border:1.5px solid #e8dfd2;border-radius:8px;font-size:13px;margin:0;box-sizing:border-box">
+      </div>
+      <div>
+        <div class="lbl">Payee name</div>
+        <input type="text" id="pay-upi-name" placeholder="IBCAB Bakery" style="width:100%;padding:8px 10px;border:1.5px solid #e8dfd2;border-radius:8px;font-size:13px;margin:0;box-sizing:border-box">
+      </div>
     </div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px">
-        <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSelect('visible')">Select visible</button>
-        <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSelect('none')">Clear</button>
-        <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSelect('unpaid')">Unpaid only</button>
-        <button type="button" class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1px solid #ffe082;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSyncFromZoho('selected')">↻ Sync selected status</button>
-        <button type="button" class="btn-sm" style="background:#fff3e0;color:#e65100;border:1px solid #ffcc80;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSyncFromZoho('unpaid')">↻ Sync unpaid status</button>
-        <button type="button" class="btn-sm" style="background:#e3f2fd;color:#1565c0;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSendReminders()">📨 Send payment reminder</button>
-        <button type="button" class="btn-sm" id="pay-desk-sync-stop" style="display:none;background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSyncStop()">⏹ Stop sync</button>
-        <span id="pay-desk-selcount" style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-left:4px"></span>
+    <button type="button" class="btn-sm" style="background:#2d7a4f;color:#fff;border:none" onclick="payDeskSaveUpi()">💾 Save UPI</button>
+    <span id="pay-upi-status" style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-left:8px"></span>
+  </div>
+  <div class="card" style="margin-bottom:10px;padding:12px;background:#fff8f0;border:1.5px solid #ffe0b2">
+    <div style="font-size:12px;font-weight:900;color:#e65100;margin-bottom:6px">🔒 Block place-order (unpaid)</div>
+    <div style="font-size:11px;color:#8a7a6a;line-height:1.45;margin-bottom:8px">When on, customers with balance cannot place new orders. Or block only selected shops below.</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px">
+      <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#4a2f14;cursor:pointer">
+        <input type="checkbox" id="pay-block-all-unpaid" onchange="payDeskSaveBlockAll(this.checked)" style="width:18px;height:18px;accent-color:#e65100">
+        Block <b>all</b> with unpaid balance
+      </label>
+      <button type="button" class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0" onclick="payDeskBlockSelected(true)">Block selected shops</button>
+      <button type="button" class="btn-sm btn-grey" onclick="payDeskBlockSelected(false)">Unblock selected</button>
     </div>
-    <div id="pay-desk-msg" style="display:none;margin-bottom:8px;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:700"></div>
-    <div class="card" id="pay-upi-owner-card" style="display:none;margin-bottom:10px;padding:12px;background:#e8f5e9;border:1.5px solid #a5d6a7">
-        <div style="font-size:12px;font-weight:900;color:#1a5a38;margin-bottom:6px">📱 UPI QR for customers (PhonePe / GPay / Paytm)</div>
-        <div style="font-size:11px;color:#8a7a6a;line-height:1.45;margin-bottom:8px">Owner only — not visible to regular admin. Customers see QR / Pay with UPI on their Pay tab.</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-            <div>
-                <div class="lbl">UPI ID (VPA)</div>
-                <input type="text" id="pay-upi-vpa" placeholder="yourshop@ybl" style="width:100%;padding:8px 10px;border:1.5px solid #e8dfd2;border-radius:8px;font-size:13px;margin:0;box-sizing:border-box">
-            </div>
-            <div>
-                <div class="lbl">Payee name</div>
-                <input type="text" id="pay-upi-name" placeholder="IBCAB Bakery" style="width:100%;padding:8px 10px;border:1.5px solid #e8dfd2;border-radius:8px;font-size:13px;margin:0;box-sizing:border-box">
-            </div>
-        </div>
-        <button type="button" class="btn-sm" style="background:#2d7a4f;color:#fff;border:none" onclick="payDeskSaveUpi()">💾 Save UPI</button>
-        <span id="pay-upi-status" style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-left:8px"></span>
-    </div>
-    <div class="card" style="margin-bottom:10px;padding:12px;background:#fff8f0;border:1.5px solid #ffe0b2">
-        <div style="font-size:12px;font-weight:900;color:#e65100;margin-bottom:6px">🔒 Block place-order (unpaid)</div>
-        <div style="font-size:11px;color:#8a7a6a;line-height:1.45;margin-bottom:8px">When on, customers with balance cannot place new orders. Or block only selected shops below.</div>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px">
-            <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#4a2f14;cursor:pointer">
-                <input type="checkbox" id="pay-block-all-unpaid" onchange="payDeskSaveBlockAll(this.checked)" style="width:18px;height:18px;accent-color:#e65100">
-                Block <b>all</b> with unpaid balance
-            </label>
-            <button type="button" class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0" onclick="payDeskBlockSelected(true)">Block selected shops</button>
-            <button type="button" class="btn-sm btn-grey" onclick="payDeskBlockSelected(false)">Unblock selected</button>
-        </div>
-        <div id="pay-block-status" style="font-size:11px;font-family:monospace;color:#8a7a6a"></div>
-    </div>
-    <div id="pay-desk-list"><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Loading…</div></div>
+    <div id="pay-block-status" style="font-size:11px;font-family:monospace;color:#8a7a6a"></div>
+  </div>
+  <div id="pay-desk-list"><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Loading…</div></div>
 </div>
 <div class="page" id="pg-pay-requests">
-    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">📨 Pay requests</div>
-    <div style="font-size:11px;color:#8a7a6a;margin-bottom:10px;line-height:1.45">Customer says they paid. Match in bank by <b>shop name / amount / time</b> → <b>Confirm received</b>. Customers expect up to <b>24 working hours</b>.</div>
-    <div class="card" style="margin-bottom:10px;padding:12px;background:#e8f5e9;border:1.5px solid #a5d6a7">
-        <div style="font-size:12px;font-weight:900;color:#1a5a38;margin-bottom:6px">🔄 Auto-reconcile helper</div>
-        <div style="font-size:11px;color:#8a7a6a;line-height:1.45;margin-bottom:8px">
-            No bank feed / no gateway. Suggests matches when a request amount is <b>unique</b> among open requests (safe to confirm after you see the credit in bank).
-        </div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
-            <button type="button" class="btn-sm" style="background:#2d7a4f;color:#fff;border:none" onclick="payDeskRunReconcile()">↻ Build suggestions</button>
-            <button type="button" class="btn-sm" style="background:#e8f5e9;color:#1a5a38;border:1px solid #a5d6a7" onclick="payDeskConfirmReconcileHigh()">✓ Confirm all high-confidence</button>
-        </div>
-        <div style="font-size:11px;color:#8a7a6a;margin-bottom:6px">Paste bank credits (one per line: amount or amount + text). Optional.</div>
-        <textarea id="pay-reconcile-paste" rows="3" placeholder="4500&#10;1280 FRANKS&#10;3200" style="width:100%;padding:8px 10px;border:1.5px solid #e8dfd2;border-radius:8px;font-size:12px;font-family:monospace;box-sizing:border-box;margin-bottom:6px"></textarea>
-        <button type="button" class="btn-sm btn-grey" onclick="payDeskMatchBankPaste()">Match pasted amounts</button>
-        <div id="pay-reconcile-out" style="margin-top:10px;font-size:12px"></div>
+  <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">📨 Pay requests</div>
+  <div style="font-size:11px;color:#8a7a6a;margin-bottom:10px;line-height:1.45">Customer says they paid. Match in bank by <b>shop name / amount / time</b> → <b>Confirm received</b>. Customers expect up to <b>24 working hours</b>.</div>
+  <div class="card" style="margin-bottom:10px;padding:12px;background:#e8f5e9;border:1.5px solid #a5d6a7">
+    <div style="font-size:12px;font-weight:900;color:#1a5a38;margin-bottom:6px">🔄 Auto-reconcile helper</div>
+    <div style="font-size:11px;color:#8a7a6a;line-height:1.45;margin-bottom:8px">
+      No bank feed / no gateway. Suggests matches when a request amount is <b>unique</b> among open requests (safe to confirm after you see the credit in bank).
     </div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
-        <button type="button" class="btn-sm" style="background:#e8f5e9;color:#1a5a38;border:1px solid #a5d6a7;font-weight:700" onclick="payDeskConfirmSelectedRequests()">✓ Confirm received (selected)</button>
-        <button type="button" class="btn-sm btn-grey" onclick="payDeskSelect('unpaid')">Select unpaid</button>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+      <button type="button" class="btn-sm" style="background:#2d7a4f;color:#fff;border:none" onclick="payDeskRunReconcile()">↻ Build suggestions</button>
+      <button type="button" class="btn-sm" style="background:#e8f5e9;color:#1a5a38;border:1px solid #a5d6a7" onclick="payDeskConfirmReconcileHigh()">✓ Confirm all high-confidence</button>
     </div>
-    <div id="pay-desk-list-req"><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Open tab to load…</div></div>
+    <div style="font-size:11px;color:#8a7a6a;margin-bottom:6px">Paste bank credits (one per line: amount or amount + text). Optional.</div>
+    <textarea id="pay-reconcile-paste" rows="3" placeholder="4500&#10;1280 FRANKS&#10;3200" style="width:100%;padding:8px 10px;border:1.5px solid #e8dfd2;border-radius:8px;font-size:12px;font-family:monospace;box-sizing:border-box;margin-bottom:6px"></textarea>
+    <button type="button" class="btn-sm btn-grey" onclick="payDeskMatchBankPaste()">Match pasted amounts</button>
+    <div id="pay-reconcile-out" style="margin-top:10px;font-size:12px"></div>
+  </div>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+    <button type="button" class="btn-sm" style="background:#e8f5e9;color:#1a5a38;border:1px solid #a5d6a7;font-weight:700" onclick="payDeskConfirmSelectedRequests()">✓ Confirm received (selected)</button>
+    <button type="button" class="btn-sm btn-grey" onclick="payDeskSelect('unpaid')">Select unpaid</button>
+  </div>
+  <div id="pay-desk-list-req"><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Open tab to load…</div></div>
 </div>
 <div class="page" id="pg-pay-paid">
-    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">✅ Paid</div>
-    <div style="font-size:11px;color:#8a7a6a;margin-bottom:8px;line-height:1.45">By default: <b>last 7 days</b> only.</div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">
-        <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#4a2f14;cursor:pointer">
-            <input type="checkbox" id="pay-paid-all" onchange="window._payPaidShowAll=this.checked;renderPaymentsDesk()" style="width:16px;height:16px;accent-color:#2d7a4f">
-            Show all paid
-        </label>
-        <span id="pay-paid-range-hint" style="font-size:11px;font-family:monospace;color:#8a7a6a"></span>
-    </div>
-    <div id="pay-desk-list-paid"><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Open tab to load…</div></div>
+  <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">✅ Paid</div>
+  <div style="font-size:11px;color:#8a7a6a;margin-bottom:8px;line-height:1.45">By default: <b>last 7 days</b> only.</div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">
+    <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#4a2f14;cursor:pointer">
+      <input type="checkbox" id="pay-paid-all" onchange="window._payPaidShowAll=this.checked;renderPaymentsDesk()" style="width:16px;height:16px;accent-color:#2d7a4f">
+      Show all paid
+    </label>
+    <span id="pay-paid-range-hint" style="font-size:11px;font-family:monospace;color:#8a7a6a"></span>
+  </div>
+  <div id="pay-desk-list-paid"><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Open tab to load…</div></div>
 </div>
 
 
-<nav class="bottom-nav" id="bottomNav" aria-label="Main">
+  <nav class="bottom-nav" id="bottomNav" aria-label="Main">
     <div class="bottom-nav-inner">
-        <a class="bnav-item" href="admin.html"><span class="bnav-ico">🏠</span><span class="bnav-lbl">Home</span></a>
-        <a class="bnav-item" href="admin.html#orders"><span class="bnav-ico">📋</span><span class="bnav-lbl">Orders</span></a>
-        <a class="bnav-item" href="admin.html#delivery"><span class="bnav-ico">🚚</span><span class="bnav-lbl">Delivery</span></a>
-        <a class="bnav-item active" href="admin-payments.html"><span class="bnav-ico">💰</span><span class="bnav-lbl">Payments</span></a>
-        <a class="bnav-item" href="admin.html#more"><span class="bnav-ico">☰</span><span class="bnav-lbl">More</span></a>
+      <a class="bnav-item" href="admin.html"><span class="bnav-ico">🏠</span><span class="bnav-lbl">Home</span></a>
+      <a class="bnav-item" href="admin.html#orders"><span class="bnav-ico">📋</span><span class="bnav-lbl">Orders</span></a>
+      <a class="bnav-item" href="admin.html#delivery"><span class="bnav-ico">🚚</span><span class="bnav-lbl">Delivery</span></a>
+      <a class="bnav-item active" href="admin-payments.html"><span class="bnav-ico">💰</span><span class="bnav-lbl">Payments</span></a>
+      <a class="bnav-item" href="admin.html#more"><span class="bnav-ico">☰</span><span class="bnav-lbl">More</span></a>
     </div>
-</nav>
+  </nav>
 
-
-<script>
+  
+    <script>
     (function(){
       var params = new URLSearchParams(location.search || '');
       var embed = params.get('embed') === '1' || params.get('embed') === 'true';
@@ -310,10 +310,10 @@
         applyEmbed();
       }
     })();
-</script>
+    </script>
 <script src="config.js"></script>
-<script src="api.js"></script>
-<script>
+  <script src="api.js"></script>
+  <script>
     (function(){
       // Same session keys as admin.html / index.html (staff login)
       if (!sessionStorage.getItem('role') && localStorage.getItem('staffRole')) {
@@ -769,7 +769,7 @@
         });
       };
     }
-
+    
     function challanDeskSyncStatus(id) {
       var o = _challanDeskRows.find(function(r){ return String(r.id) === String(id); });
       if (!o || !o.zoho_invoice_id) {
@@ -1414,7 +1414,10 @@
             '<div style="font-size:18px;color:#8a7a6a;flex-shrink:0" id="pay-cust-chev-'+sid+'">'+(open?'▾':'▸')+'</div>'+
           '</div>'+
           '<div id="pay-cust-'+sid+'" style="display:'+(open?'block':'none')+';border-top:1.5px solid #e8dfd2;background:#faf7f2;padding:10px">'+
-            '<div style="font-size:10px;font-weight:800;color:#8a7a6a;font-family:monospace;margin-bottom:8px;letter-spacing:1px">INVOICES / CHALLANS · ZOHO STATUS</div>'+
+            '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">'+
+              '<div style="font-size:10px;font-weight:800;color:#8a7a6a;font-family:monospace;letter-spacing:1px;flex:1">INVOICES · ZOHO STATUS</div>'+
+              '<button type="button" class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082;font-weight:800" onclick="event.stopPropagation();payDeskSyncShopStatuses(\''+sid+'\')">↻ Sync Zoho status</button>'+
+            '</div>'+
             details+
           '</div>'+
         '</div>';
@@ -1483,7 +1486,12 @@
       var i = 0;
       function next() {
         if (i >= rows.length) {
-          if (typeof _payDeskMsg === 'function') _payDeskMsg('Zoho status updated for shop.', true);
+          var newlyPaid = rows.filter(function(r){ return String(r.payment_status||'').toLowerCase()==='paid'; }).length;
+          if (typeof _payDeskMsg === 'function') {
+            _payDeskMsg(newlyPaid
+              ? ('Zoho sync done · '+newlyPaid+' marked paid in app (from Zoho) · customer notified if newly paid')
+              : 'Zoho status updated for this customer.', true);
+          }
           renderPaymentsDesk();
           // keep expanded
           if (window._payCustOpen) window._payCustOpen[sid] = true;
@@ -1504,7 +1512,7 @@
     function payDeskEditDoc(id) {
       window.location.href = 'admin.html?openOrder=' + encodeURIComponent(String(id));
     }
-
+    
     function payDeskUpdateSelCount() {
       var n = document.querySelectorAll('.pay-desk-cb:checked').length;
       var el = document.getElementById('pay-desk-selcount');
@@ -1611,40 +1619,167 @@
       next();
     }
 
-    function payDeskMarkPaid(id) {
-      var o = _payDeskRows.find(function(r){ return String(r.id) === String(id); });
-      if (!o) return;
-      var amt = _payDue(o);
-      var mode = prompt('Payment mode (cash / upi / bank / other)', 'upi');
-      if (mode == null) return;
-      var ref = prompt('Optional note', '') || '';
-      if (!confirm('Mark paid ₹'+amt+' for '+(o.shop_name||'')+'?')) return;
-      _payDeskMsg('Saving…', null);
-      apiPost({
+    
+    /** Resolve Zoho Books contact id for an order */
+    function payDeskZohoContactId(o) {
+      var shop = null;
+      try {
+        if (typeof findShopForZoho === 'function') shop = findShopForZoho(o);
+      } catch (e) {}
+      if (!shop && typeof allCustomers !== 'undefined' && Array.isArray(allCustomers)) {
+        var sid = String((o && o.shop_id) || '');
+        shop = allCustomers.find(function(c){
+          return String(c.shop_id||'')===sid || String(c.customer_id||'')===sid;
+        }) || null;
+      }
+      if (shop && shop.zoho_contact_id) return String(shop.zoho_contact_id);
+      // Fallback: invoice customer may equal shop_id if synced that way
+      return String((shop && (shop.customer_id || shop.shop_id)) || (o && o.shop_id) || '');
+    }
+
+    /**
+     * Record payment in Zoho Books for one invoice (mandatory when zoho_invoice_id exists).
+     * Uses edge action create_customer_payment.
+     */
+    function payDeskRecordZohoPayment(o, amount, mode, ref) {
+      if (!o || !o.zoho_invoice_id) return Promise.resolve({ skipped: true, reason: 'no_zoho_id' });
+      if (String(o.zoho_doc_type||'').toLowerCase().indexOf('challan') >= 0 ||
+          String(o.zoho_doc_type||'') === 'delivery_challan') {
+        return Promise.reject(new Error('Convert challan to invoice in Zoho first, then mark paid'));
+      }
+      if (typeof zohoEdge !== 'function') return Promise.reject(new Error('Zoho not available'));
+      var contactId = payDeskZohoContactId(o);
+      if (!contactId) return Promise.reject(new Error('Missing Zoho contact id for shop — sync customer to Zoho first'));
+      var amt = Number(amount);
+      if (!(amt > 0)) amt = _payDue(o);
+      var dateStr = (typeof todayStr === 'function' ? todayStr() : new Date().toISOString().slice(0,10));
+      return zohoEdge('create_customer_payment', {
+        payment_payload: {
+          customer_id: contactId,
+          amount: amt,
+          date: dateStr,
+          payment_mode: mode || 'Bank Transfer',
+          reference_number: ref || ('IBCAB-' + o.id),
+          invoices: [{ invoice_id: String(o.zoho_invoice_id), amount_applied: amt }]
+        }
+      }).then(function(data){
+        if (!data) throw new Error('Empty Zoho response');
+        // Zoho success is usually code === 0
+        if (data.code != null && Number(data.code) !== 0) {
+          throw new Error(data.message || data.error || ('Zoho error code ' + data.code));
+        }
+        if (data.error && !data.payment && !data.customerpayment) {
+          throw new Error(data.error || data.message || 'Zoho payment failed');
+        }
+        var pay = data.payment || data.customerpayment || {};
+        return {
+          ok: true,
+          zoho_payment_id: pay.payment_id || pay.customerpayment_id || '',
+          data: data
+        };
+      });
+    }
+
+    /** Mark one order paid in app after Zoho (or when no Zoho id). */
+    function payDeskMarkLocalPaid(o, amt, mode, ref, zohoPaymentId) {
+      return apiPost({
         action: 'markInvoicePayment',
         id: o.id,
         payment_status: 'paid',
         balance_due: 0,
         paid_amount: amt,
-        payment_mode: mode,
-        payment_ref: ref,
-        paid_by: (_staffName || 'admin'),
-        invoice_total: o.invoice_total != null ? o.invoice_total : amt
-      }).then(function(res) {
-        if (res && res.ok === false) throw new Error(res.error || 'Failed');
-        if (o.shop_id) {
-          apiPost({
-            action: 'sendCustomerNotification',
-            shop_id: o.shop_id,
-            shop_name: o.shop_name || '',
-            message: 'Payment received ₹'+amt+' for '+(o.zoho_invoice_number||'invoice')+'. Balance ₹0. Thank you.'
-          }).catch(function(){});
-        }
-        _payDeskMsg('Marked paid.', true);
-        loadPaymentsDesk(_payDeskTab);
-      }).catch(function(e) {
-        _payDeskMsg('Failed: '+(e.message||e), false);
+        payment_mode: mode || 'bank',
+        payment_ref: ref || '',
+        paid_by: (window._staffName || 'admin'),
+        invoice_total: o.invoice_total != null ? o.invoice_total : amt,
+        zoho_payment_id: zohoPaymentId || '',
+        customer_claimed_paid: false
+      }).then(function(res){
+        if (res && res.ok === false) throw new Error(res.error || 'DB mark paid failed');
+        o.payment_status = 'paid';
+        o.balance_due = 0;
+        o.customer_claimed_paid = false;
+        o.zoho_invoice_status = 'paid';
+        return res;
       });
+    }
+
+    /**
+     * Full path: Zoho paid (if invoice id) → local paid → notify.
+     * relatedRows: array of order rows to settle (weekly batch).
+     */
+    function payDeskSettleWithZoho(relatedRows, mode, ref) {
+      relatedRows = (relatedRows || []).slice();
+      if (!relatedRows.length) return Promise.reject(new Error('No invoices'));
+      var mode2 = mode || 'bank';
+      var ref2 = ref || '';
+      var total = relatedRows.reduce(function(s,o){ return s + _payDue(o); }, 0);
+      var chain = Promise.resolve();
+      var results = [];
+      relatedRows.forEach(function(o){
+        chain = chain.then(function(){
+          var amt = _payDue(o);
+          var step;
+          if (o.zoho_invoice_id && !_payIsChallan(o)) {
+            step = payDeskRecordZohoPayment(o, amt, mode2, ref2).then(function(zr){
+              return payDeskMarkLocalPaid(o, amt, mode2, ref2, zr && zr.zoho_payment_id).then(function(){
+                results.push({ id: o.id, zoho: true });
+              });
+            });
+          } else {
+            // No Zoho invoice: still mark local (challan must convert first if needed)
+            step = payDeskMarkLocalPaid(o, amt, mode2, ref2, '').then(function(){
+              results.push({ id: o.id, zoho: false });
+            });
+          }
+          return step;
+        });
+      });
+      return chain.then(function(){
+        var shopId = relatedRows[0].shop_id;
+        var shopName = relatedRows[0].shop_name || '';
+        if (shopId) {
+          return apiPost({
+            action: 'sendCustomerNotification',
+            shop_id: shopId,
+            shop_name: shopName,
+            message: '✅ Payment received ₹'+total.toLocaleString('en-IN',{maximumFractionDigits:2})+'. Invoice(s) marked paid in Zoho & app. Balance ₹0. Thank you!'
+          }).catch(function(){}).then(function(){ return { ok: true, results: results, total: total }; });
+        }
+        return { ok: true, results: results, total: total };
+      });
+    }
+
+function payDeskMarkPaid(id) {
+      var o = _payDeskRows.find(function(r){ return String(r.id) === String(id); });
+      if (!o) return;
+      var shopId = String(o.shop_id || '');
+      // Include open claimed siblings for same shop (weekly payment)
+      var related = (_payDeskRows || []).filter(function(r){
+        if (_payIsPaid(r) || _payIsVoid(r)) return false;
+        if (String(r.id) === String(id)) return true;
+        return shopId && String(r.shop_id)===shopId && r.customer_claimed_paid;
+      });
+      if (!related.length) related = [o];
+      var totalAmt = related.reduce(function(s,r){ return s + _payDue(r); }, 0);
+      var mode = prompt('Payment mode (cash / upi / bank / other)', 'upi');
+      if (mode == null) return;
+      var ref = prompt('Optional note / UTR', '') || '';
+      if (!confirm('Mark paid ₹'+totalAmt.toLocaleString('en-IN',{maximumFractionDigits:2})+' for '+(o.shop_name||'')+'?\n'+related.length+' invoice(s). Zoho will be updated when invoice id exists.')) return;
+      var needZoho = related.some(function(r){ return r.zoho_invoice_id && !_payIsChallan(r); });
+      if (needZoho && !_zohoEnabled) {
+        _payDeskMsg('Enable Zoho Integration to mark Zoho invoices paid.', false);
+        return;
+      }
+      _payDeskMsg('Updating Zoho + app…', null);
+      payDeskSettleWithZoho(related, mode, ref)
+        .then(function(res){
+          _payDeskMsg('Marked paid in Zoho + app · customer notified', true);
+          loadPaymentsDesk(_payDeskTab);
+        })
+        .catch(function(e){
+          _payDeskMsg('Failed: '+(e && e.message ? e.message : e), false);
+        });
     }
 
 
@@ -1916,36 +2051,36 @@
     function payDeskConfirmReceived(id) {
       var o = _payDeskRows.find(function(r){ return String(r.id) === String(id); });
       if (!o) return;
-      var amt = _payDue(o);
-      if (!confirm('Confirm ₹'+amt.toLocaleString('en-IN',{maximumFractionDigits:2})+' received for '+(o.shop_name||'')+'?\n\n• Marks invoice paid in app\n• Notifies customer\n• Clear their pay request\n\n(Update Zoho as paid separately, then bulk status sync if needed.)')) return;
-      _payDeskMsg('Confirming received…', null);
-      apiPost({
-        action: 'markInvoicePayment',
-        id: o.id,
-        payment_status: 'paid',
-        balance_due: 0,
-        paid_amount: amt,
-        payment_mode: 'bank',
-        payment_ref: (o.customer_claim_note || ''),
-        paid_by: (_staffName || 'admin'),
-        invoice_total: o.invoice_total != null ? o.invoice_total : amt,
-        customer_claimed_paid: false
-      }).then(function(res) {
-        if (res && res.ok === false) throw new Error(res.error || 'Failed');
-        if (o.shop_id) {
-          return apiPost({
-            action: 'sendCustomerNotification',
-            shop_id: o.shop_id,
-            shop_name: o.shop_name || '',
-            message: '✅ Payment received ₹'+amt.toLocaleString('en-IN',{maximumFractionDigits:2})+' for '+(o.zoho_invoice_number||'invoice')+'. We marked this invoice paid. Balance ₹0. Thank you!'
-          }).catch(function(){});
-        }
-      }).then(function() {
-        _payDeskMsg('Confirmed received · customer notified.', true);
-        loadPaymentsDesk(_payDeskTab);
-      }).catch(function(e) {
-        _payDeskMsg('Failed: '+(e.message||e), false);
+      var shopId = String(o.shop_id || '');
+      var related = (_payDeskRows || []).filter(function(r){
+        if (_payIsPaid(r) || _payIsVoid(r)) return false;
+        if (shopId && String(r.shop_id) === shopId && r.customer_claimed_paid) return true;
+        return String(r.id) === String(id);
       });
+      if (!related.length) related = [o];
+      var totalAmt = related.reduce(function(s,r){ return s + _payDue(r); }, 0);
+      var needZoho = related.filter(function(r){ return r.zoho_invoice_id && !_payIsChallan(r); });
+      var msg = 'Confirm ₹'+totalAmt.toLocaleString('en-IN',{maximumFractionDigits:2})+' received for '+(o.shop_name||'')+'?\n\n'+
+        related.length+' invoice(s).\n';
+      if (needZoho.length) {
+        msg += '\n• Zoho will be marked PAID for '+needZoho.length+' invoice(s) (mandatory)\n• Then app status → paid\n• Customer notified';
+      } else {
+        msg += '\n• No Zoho invoice id — app only will be marked paid';
+      }
+      if (!confirm(msg)) return;
+      if (!_zohoEnabled && needZoho.length) {
+        _payDeskMsg('Turn on Zoho Integration first — required to mark Zoho paid.', false);
+        return;
+      }
+      _payDeskMsg('Updating Zoho + app…', null);
+      payDeskSettleWithZoho(related, 'bank', o.customer_claim_note || '')
+        .then(function(res){
+          _payDeskMsg('Zoho + app paid · ₹'+(res.total||totalAmt).toLocaleString('en-IN',{maximumFractionDigits:0})+' · customer notified', true);
+          loadPaymentsDesk(_payDeskTab);
+        })
+        .catch(function(e){
+          _payDeskMsg('Failed (Zoho or app): '+(e && e.message ? e.message : e), false);
+        });
     }
     function payDeskConfirmSelectedRequests() {
       var boxes = document.querySelectorAll('.pay-desk-cb:checked');
@@ -1996,7 +2131,7 @@
       next();
     }
 
-
+    
     function payDeskSaveUpi() {
       if (!window._isSuperAdmin && window._staffRole !== 'super_admin') {
         _payDeskMsg('Only super admin can change bank / UPI settings', false);
@@ -2225,6 +2360,6 @@ function payDeskLoadBlockSettings() {
       var startTab = params.get('tab') || start || 'pay-challan';
       payShowTab(startTab);
     })();
-</script>
+  </script>
 </body>
 </html>
