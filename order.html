@@ -9,13 +9,13 @@
     <script src="api.js"></script>
     <style>
         *{box-sizing:border-box;margin:0;padding:0}:root{--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);--sal:env(safe-area-inset-left,0px);--sar:env(safe-area-inset-right,0px)}
-        body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:440px;margin:0 auto;min-height:100vh;min-height:100dvh;padding-left:var(--sal);padding-right:var(--sar)}
+        body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:100%;width:100%;margin:0;min-height:100vh;min-height:100dvh;padding-left:var(--sal);padding-right:var(--sar);overflow-x:hidden}
         @keyframes slideIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
         @keyframes bellRing{0%,100%{transform:rotate(0)}15%{transform:rotate(18deg)}30%{transform:rotate(-14deg)}45%{transform:rotate(10deg)}60%{transform:rotate(-6deg)}75%{transform:rotate(3deg)}}
         .bell-ring{animation:bellRing .6s ease both}
         .lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:6px;text-transform:uppercase;display:block}
         input[type=text],input[type=password]{width:100%;padding:13px 14px;border:1.5px solid #e8dfd2;border-radius:12px;font-size:15px;color:#1e1611;background:#f5ede0;outline:none;-webkit-appearance:none;font-family:-apple-system,sans-serif;margin-bottom:12px}
-        .btn{width:100%;padding:14px;border:none;border-radius:14px;font-size:15px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif}
+        .btn{width:100%;padding:15px 16px;border:none;border-radius:14px;font-size:16px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;min-height:52px;display:inline-flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}
         .btn-brown{background:#4a2f14;color:#fff}
         .btn-green{background:#2d7a4f;color:#fff}
         .btn-grey{background:#e8dfd2;color:#4a2f14}
@@ -31,7 +31,7 @@
         .tabs{display:flex;background:#fff;border-bottom:2px solid #e8dfd2;position:sticky;top:53px;z-index:98}
 
         /* Customer bottom nav (app-style) */
-        .cust-bottom-nav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:200;background:#fff;border-top:1.5px solid #e8dfd2;padding:6px 4px max(6px,var(--sab));max-width:440px;margin:0 auto;box-shadow:0 -4px 16px rgba(74,47,20,.08)}
+        .cust-bottom-nav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:200;background:#fff;border-top:1.5px solid #e8dfd2;padding:6px 4px max(6px,var(--sab));max-width:100%;width:100%;margin:0;box-shadow:0 -4px 16px rgba(74,47,20,.08)}
         .cust-bottom-nav-inner{display:flex;justify-content:space-around;align-items:stretch}
         .cbnav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 2px;border:none;background:transparent;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;-webkit-tap-highlight-color:transparent}
         .cbnav-item.on{color:#4a2f14}
@@ -48,7 +48,34 @@
           bottom: calc(58px + var(--sab));
           z-index: 210;
         }
-        body.cust-app .order-total-bar .btn{min-height:44px}
+        body.cust-app .order-total-bar .btn{min-height:52px}
+        /* Full-bleed phone chrome */
+        html,body{width:100%;max-width:100%}
+        body.cust-app .topbar{width:100%}
+        body.cust-app .page{padding-left:14px;padding-right:14px}
+        body.cust-app .card{border-radius:14px}
+        body.cust-app .order-total-bar .btn-green{
+          width:100%;font-size:16px;min-height:52px;border-radius:14px;
+        }
+        body.cust-app.preview-open .order-total-bar{display:none !important}
+        body.cust-app.preview-open .cust-bottom-nav{display:none !important}
+        body.cust-app.preview-open{padding-bottom:0}
+        .preview-actions{display:flex;gap:10px;margin-top:14px}
+        .preview-actions .btn{flex:1;min-height:52px;font-size:16px}
+        @media (max-width:767px){
+          body.cust-app .order-total-bar{
+            left:0;right:0;width:100%;max-width:100%;
+            transform:none;
+            border-radius:0;
+          }
+          body.cust-app .cust-bottom-nav{
+            left:0;right:0;width:100%;max-width:100%;
+          }
+          #custNotifPanel,#notifPromptBanner{
+            max-width:100% !important;
+          }
+        }
+
 
 
         @media (min-width:768px){
@@ -190,14 +217,14 @@
         .qty-val{width:52px;text-align:center;font-size:15px;font-weight:800;color:#4a2f14;font-family:monospace;border:1.5px solid #e8dfd2;border-left:none;border-right:none;background:#f9f6f1;padding:5px 2px;outline:none;-webkit-appearance:none;-moz-appearance:textfield}
         .qty-val:focus{background:#fff;border-color:#4a2f14}
         /* preview sheet */
-        .preview-sheet{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:flex-end;justify-content:center}
-        .preview-card{background:#fff;width:100%;max-width:440px;border-radius:20px 20px 0 0;padding:20px 16px 32px;max-height:85vh;overflow-y:auto}
+        .preview-sheet{position:fixed;inset:0;background:rgba(30,22,17,.55);z-index:320;display:flex;align-items:flex-end;justify-content:center;padding:0}
+        .preview-card{background:#fff;width:100%;max-width:100%;border-radius:20px 20px 0 0;padding:18px 16px max(20px,var(--sab));max-height:90vh;overflow-y:auto;box-shadow:0 -8px 32px rgba(0,0,0,.2)}
         .preview-title{font-size:16px;font-weight:900;color:#4a2f14;margin-bottom:14px;text-align:center}
         .preview-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f5ede0;font-size:13px}
         .preview-row:last-child{border-bottom:none}
         .preview-row .pn{font-weight:700;color:#1e1611;flex:1}
         .preview-row .pq{font-weight:800;color:#2d7a4f;font-family:monospace;flex-shrink:0}
-        .order-total-bar{position:fixed;bottom:0;left:0;right:0;max-width:440px;margin:0 auto;background:#fff;border-top:2px solid #e8dfd2;padding:12px 14px;z-index:210;box-shadow:0 -6px 20px rgba(74,47,20,.12)}
+        .order-total-bar{position:fixed;bottom:0;left:0;right:0;max-width:100%;width:100%;margin:0;background:#fff;border-top:2px solid #e8dfd2;padding:12px 14px;padding-bottom:max(12px,var(--sab));z-index:210;box-shadow:0 -6px 20px rgba(74,47,20,.12)}
         .hist-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;padding:12px 14px;margin-bottom:8px}
         .hist-date{font-size:12px;font-weight:800;color:#4a2f14}
         .hist-status{display:inline-block;padding:2px 9px;border-radius:20px;font-size:10px;font-weight:700;font-family:monospace}
@@ -239,7 +266,7 @@
     </div>
 
     <!-- Notification drawer — full screen overlay -->
-    <div id="custNotifPanel" style="display:none;position:fixed;inset:0;max-width:440px;margin:0 auto;z-index:300;pointer-events:none">
+    <div id="custNotifPanel" style="display:none;position:fixed;inset:0;max-width:100%;margin:0;z-index:300;pointer-events:none">
         <!-- Backdrop -->
         <div id="custNotifBackdrop" onclick="toggleCustNotifPanel()" style="position:absolute;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(2px);pointer-events:all;opacity:0;transition:opacity .25s"></div>
         <!-- Drawer slides in from right -->
@@ -441,7 +468,7 @@
 
     <!-- Invoice preview (customer) -->
     <div id="invPreviewSheet" style="display:none;position:fixed;inset:0;z-index:420;background:rgba(30,22,17,.5);align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeInvoicePreview()">
-        <div style="background:#fff;width:100%;max-width:440px;max-height:88vh;border-radius:18px 18px 0 0;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 -8px 32px rgba(0,0,0,.2)">
+        <div style="background:#fff;width:100%;max-width:100%;max-height:88vh;border-radius:18px 18px 0 0;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 -8px 32px rgba(0,0,0,.2)">
             <div style="padding:14px 16px;border-bottom:1px solid #e8dfd2;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0">
                 <div>
                     <div style="font-size:15px;font-weight:900;color:#4a2f14" id="invPrevTitle">Invoice</div>
@@ -456,7 +483,7 @@
         </div>
     </div>
     <div id="payRequestSheet" style="display:none;position:fixed;inset:0;z-index:400;background:rgba(30,22,17,.45);align-items:flex-end;justify-content:center" onclick="if(event.target===this)closePayRequestSheet()">
-        <div style="background:#fff;width:100%;max-width:440px;border-radius:20px 20px 0 0;padding:20px 16px max(20px,var(--sab));box-shadow:0 -8px 32px rgba(0,0,0,.15)">
+        <div style="background:#fff;width:100%;max-width:100%;border-radius:20px 20px 0 0;padding:20px 16px max(20px,var(--sab));box-shadow:0 -8px 32px rgba(0,0,0,.15)">
             <div style="font-size:15px;font-weight:900;color:#4a2f14;margin-bottom:6px">Send payment request</div>
             <div style="font-size:12px;color:#8a7a6a;margin-bottom:12px;line-height:1.45">You are telling admin: <b>I have paid the full overdue total</b>.<br><br>Send the request after paying. Admin will match the amount in the bank (usually within <b>24 working hours</b>). You get a notification when confirmed.</div>
             <div style="background:#f9f6f1;border:1.5px solid #e8dfd2;border-radius:12px;padding:14px;text-align:center;margin-bottom:12px">
@@ -599,7 +626,7 @@
     </div>
 
     <!-- Notification permission prompt banner (auto-shown on first visit) -->
-    <div id="notifPromptBanner" style="display:none;position:fixed;bottom:80px;left:0;right:0;max-width:440px;margin:0 auto;padding:0 12px;z-index:300">
+    <div id="notifPromptBanner" style="display:none;position:fixed;bottom:80px;left:0;right:0;max-width:100%;margin:0;padding:0 12px;z-index:300">
         <div style="background:#4a2f14;color:#fff;border-radius:16px;padding:16px;box-shadow:0 4px 24px rgba(0,0,0,.3)">
             <div style="font-size:14px;font-weight:800;margin-bottom:4px">🔔 Stay updated on your orders</div>
             <div style="font-size:12px;font-family:monospace;color:#c8a87a;margin-bottom:12px;line-height:1.6">Enable notifications to get order status updates even when the app is closed.</div>
@@ -617,7 +644,7 @@
             <div style="font-size:11px;color:#8a7a6a;font-family:monospace">For: <span id="barDate"></span></div>
         </div>
         <div id="cartTotalLine" style="font-size:12px;font-family:monospace;color:#4a2f14;margin-bottom:8px;line-height:1.45;display:none"></div>
-        <button class="btn btn-green" id="submitBtn" onclick="showPreview()">👁 Review & Place Order</button>
+        <button class="btn btn-green" id="submitBtn" onclick="showPreview()">👁 Review order</button>
         <div id="orderLockedNote" style="display:none;font-size:11px;color:#c8382a;font-family:monospace;text-align:center;margin-top:6px">✅ Order approved — editing is no longer allowed.</div>
     </div>
 </div>
@@ -631,9 +658,9 @@
         <div id="pvTotals" style="margin-top:12px;padding:12px;background:#f9f6f1;border:1.5px solid #e8dfd2;border-radius:12px;font-family:monospace;font-size:12px;line-height:1.75;display:none"></div>
         <div id="pvNote" style="margin-top:10px;font-size:11px;color:#8a7a6a;font-family:monospace;display:none"></div>
         <div id="pvMsg" style="display:none;margin-top:10px" class="msg ok"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px">
-            <button class="btn btn-grey" style="margin-bottom:0" onclick="closePreview()">← Edit</button>
-            <button class="btn btn-green" style="margin-bottom:0" id="confirmBtn" onclick="submitOrder()">✅ Confirm</button>
+        <div class="preview-actions">
+            <button type="button" class="btn btn-grey" onclick="closePreview()">← Edit</button>
+            <button type="button" class="btn btn-green" id="confirmBtn" onclick="submitOrder()">✅ Place Order</button>
         </div>
     </div>
 </div>
@@ -1481,7 +1508,7 @@ localStorage.setItem('custSession', JSON.stringify(session));
       if (!existingOrder) {
         banner.style.display = 'none';
         summaryCard.style.display = 'none';
-        submitBtn.textContent = '👁 Review & Place Order';
+        submitBtn.textContent = '👁 Review order';
         submitBtn.disabled = false;
         lockNote.style.display = 'none';
         if (label) label.textContent = 'Select Products';
@@ -1723,9 +1750,13 @@ localStorage.setItem('custSession', JSON.stringify(session));
       var isEdit = existingOrder && (stPrev === 'pending' || stPrev === 'rejected' || _amendMode);
       document.getElementById('confirmBtn').textContent = _amendMode ? '✅ Add to Order' : (stPrev === 'rejected' ? '✅ Place New Order' : isEdit ? '✅ Update Order' : '✅ Place Order');
       document.getElementById('previewSheet').style.display='flex';
+      try { document.body.classList.add('preview-open'); } catch(e) {}
+      var ob = document.getElementById('orderBar'); if (ob) ob.style.display = 'none';
     }
     function closePreview(){
       document.getElementById('previewSheet').style.display='none';
+      try { document.body.classList.remove('preview-open'); } catch(e) {}
+      try { if (typeof updateBar === 'function') updateBar(); } catch(e) {}
     }
 
     // ── SUBMIT ORDER ──
