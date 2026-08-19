@@ -1437,28 +1437,36 @@
 
         <div id="cd-info-body" style="background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:12px;font-family:monospace;line-height:2"></div>
 
-        <div style="display:flex;gap:8px;margin-bottom:10px">
-            <button class="btn-sm btn-edit" style="flex:1;padding:9px" onclick="closeCustDetailModal();openEditCustomer(_cdCustomer)">✏️ Edit Customer</button>
-            <button class="btn-sm" style="flex:1;padding:9px;background:#e3f2fd;color:#1565c0" id="cd-hist-toggle-btn" onclick="toggleCdHistory()">📅 Delivery History</button>
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+            <button class="btn-sm btn-edit" style="flex:1;min-width:120px;padding:9px" onclick="closeCustDetailModal();openEditCustomer(_cdCustomer)">✏️ Edit Customer</button>
+            <button class="btn-sm" style="flex:1;min-width:120px;padding:9px;background:#e8f5e9;color:#1b5e20;border:1.5px solid #a5d6a7" id="cd-hist-toggle-btn" onclick="toggleCdHistory()">📋 Order / Delivery History</button>
         </div>
 
         <div id="cd-hist-section" style="display:none;border-top:1.5px dashed #e8dfd2;margin-top:6px;padding-top:12px">
+            <div style="display:flex;gap:8px;margin-bottom:10px">
+                <button type="button" class="btn-sm" id="cd-hist-tab-orders" onclick="setCdHistoryMode('orders')" style="flex:1;padding:10px;font-weight:800;background:#e8f5e9;color:#1b5e20;border:1.5px solid #a5d6a7">📋 Orders</button>
+                <button type="button" class="btn-sm" id="cd-hist-tab-deliveries" onclick="setCdHistoryMode('deliveries')" style="flex:1;padding:10px;font-weight:800;background:#f5ede0;color:#8a7a6a;border:1.5px solid #e8dfd2">🚚 Deliveries</button>
+            </div>
+            <div id="cd-hist-filters" style="margin-bottom:10px"></div>
             <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
                 <select id="cd-hist-range" onchange="loadCdHistory()" style="flex:1;margin-bottom:0;min-width:120px">
                     <option value="7">Last 7 days</option>
                     <option value="30" selected>Last 30 days</option>
                     <option value="90">Last 90 days</option>
                     <option value="365">Last 1 year</option>
+                    <option value="all">All</option>
                 </select>
                 <button class="btn-sm btn-grey" onclick="loadCdHistory()">🔄 Refresh</button>
             </div>
             <div class="stats-grid" id="cd-hist-stats" style="margin-bottom:10px"></div>
-            <div id="cd-hist-list" style="max-height:280px;overflow-y:auto;border:1.5px solid #e8dfd2;border-radius:10px;background:#f9f6f1;margin-bottom:10px"></div>
-            <div style="display:flex;gap:8px">
-                <button class="btn" style="flex:1;margin-bottom:0;background:#2d7a4f;color:#fff;padding:11px" onclick="exportCdHistoryCSV()">⬇ Export CSV</button>
-                <button class="btn" style="flex:1;margin-bottom:0;background:#25d366;color:#fff;padding:11px" onclick="shareCdHistoryReport()">📤 Share Report</button>
+            <div id="cd-hist-list" style="max-height:360px;overflow-y:auto;border:1.5px solid #e8dfd2;border-radius:12px;background:#faf8f5;margin-bottom:10px;padding:8px"></div>
+            <div id="cd-hist-export-wrap" style="display:none">
+                <div style="display:flex;gap:8px">
+                    <button class="btn" style="flex:1;margin-bottom:0;background:#2d7a4f;color:#fff;padding:11px" onclick="exportCdHistoryCSV()">⬇ Export CSV</button>
+                    <button class="btn" style="flex:1;margin-bottom:0;background:#25d366;color:#fff;padding:11px" onclick="shareCdHistoryReport()">📤 Share Report</button>
+                </div>
+                <button class="btn btn-brown" style="margin-top:8px;margin-bottom:0" onclick="printCdHistoryReport()">🖨️ Print / PDF Report</button>
             </div>
-            <button class="btn btn-brown" style="margin-top:8px;margin-bottom:0" onclick="printCdHistoryReport()">🖨️ Print / PDF Report</button>
         </div>
     </div>
 </div>
@@ -1795,7 +1803,7 @@ allTabKeys.forEach(function(t){
     }
     // Delivery date = challan date + 1 day
     function nextDay(dateStr){var d=new Date(dateStr);d.setDate(d.getDate()+1);return d.getFullYear()+'-'+zp(d.getMonth()+1)+'-'+zp(d.getDate());}
-    
+
 function fmtQtyPack(name, qty) {
   if (window.ProductsShared && typeof ProductsShared.formatQtyWithPackets === 'function') {
     return ProductsShared.formatQtyWithPackets(name, qty);
@@ -4687,6 +4695,9 @@ dpEl.innerHTML = c.drop_photo_url
     /* ── CUSTOMER DETAIL VIEW + DELIVERY HISTORY REPORT ── */
 var _cdCustomer = null;
 var _cdHistoryRows = [];
+var _cdOrderRows = [];
+var _cdHistoryMode = 'orders'; // orders | deliveries
+var _cdOrderStatusFilter = 'all';
 
 function openCustDetailModal(c){
   _cdCustomer = c;
@@ -4720,8 +4731,11 @@ function openCustDetailModal(c){
 
   document.getElementById('cd-info-body').innerHTML = html;
   document.getElementById('cd-hist-section').style.display = 'none';
-  document.getElementById('cd-hist-toggle-btn').textContent = '📅 Delivery History';
+  document.getElementById('cd-hist-toggle-btn').textContent = '📋 Order / Delivery History';
   _cdHistoryRows = [];
+  _cdOrderRows = [];
+  _cdHistoryMode = 'orders';
+  _cdOrderStatusFilter = 'all';
   document.getElementById('custDetailModal').style.display = 'flex';
 }
 
@@ -4734,23 +4748,99 @@ function toggleCdHistory(){
   var btn = document.getElementById('cd-hist-toggle-btn');
   var open = sec.style.display === 'none';
   sec.style.display = open ? 'block' : 'none';
-  btn.textContent = open ? '📅 Hide History' : '📅 Delivery History';
-  if(open && !_cdHistoryRows.length) loadCdHistory();
+  btn.textContent = open ? '📋 Hide History' : '📋 Order / Delivery History';
+  if(open){
+    setCdHistoryMode(_cdHistoryMode || 'orders');
+    loadCdHistory();
+  }
+}
+
+function setCdHistoryMode(mode){
+  _cdHistoryMode = mode === 'deliveries' ? 'deliveries' : 'orders';
+  var ob = document.getElementById('cd-hist-tab-orders');
+  var db = document.getElementById('cd-hist-tab-deliveries');
+  if(ob){
+    ob.style.background = _cdHistoryMode==='orders' ? '#e8f5e9' : '#f5ede0';
+    ob.style.color = _cdHistoryMode==='orders' ? '#1b5e20' : '#8a7a6a';
+    ob.style.borderColor = _cdHistoryMode==='orders' ? '#a5d6a7' : '#e8dfd2';
+  }
+  if(db){
+    db.style.background = _cdHistoryMode==='deliveries' ? '#e3f2fd' : '#f5ede0';
+    db.style.color = _cdHistoryMode==='deliveries' ? '#1565c0' : '#8a7a6a';
+    db.style.borderColor = _cdHistoryMode==='deliveries' ? '#90caf9' : '#e8dfd2';
+  }
+  var exp = document.getElementById('cd-hist-export-wrap');
+  if(exp) exp.style.display = _cdHistoryMode==='deliveries' ? 'block' : 'none';
+  renderCdHistoryFilters();
+  renderCdHistory();
+}
+window.setCdHistoryMode = setCdHistoryMode;
+
+function setCdOrderStatusFilter(v){
+  _cdOrderStatusFilter = v || 'all';
+  renderCdHistoryFilters();
+  renderCdHistory();
+}
+window.setCdOrderStatusFilter = setCdOrderStatusFilter;
+
+function renderCdHistoryFilters(){
+  var box = document.getElementById('cd-hist-filters');
+  if(!box) return;
+  if(_cdHistoryMode !== 'orders'){
+    box.innerHTML = '<div style="font-size:11px;color:#8a7a6a;font-weight:700">Delivery list uses the period below.</div>';
+    return;
+  }
+  var statuses = [
+    ['all','All'],['pending','Pending'],['approved','Approved'],['rejected','Rejected'],
+    ['delivered','Delivered'],['no_order','No order'],['kitchen','Kitchen'],['packaging','Packaging'],['dispatched','Dispatched']
+  ];
+  box.innerHTML =
+    '<div style="font-size:10px;font-weight:800;color:#8a7a6a;letter-spacing:.5px;margin-bottom:6px">ORDER STATUS</div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:6px">'+
+    statuses.map(function(s){
+      var on = _cdOrderStatusFilter === s[0];
+      return '<button type="button" onclick="setCdOrderStatusFilter(\''+s[0]+'\')" style="border:1.5px solid '+(on?'#a5d6a7':'#e8dfd2')+';background:'+(on?'#e8f5e9':'#fff')+';color:'+(on?'#1b5e20':'#546e7a')+';border-radius:20px;padding:6px 11px;font-size:11px;font-weight:800;cursor:pointer">'+s[1]+'</button>';
+    }).join('')+
+    '</div>';
 }
 
 function loadCdHistory(){
   if(!_cdCustomer) return;
-  var shopId = _cdCustomer.shop_id || _cdCustomer.customer_id;
-  var days = parseInt(document.getElementById('cd-hist-range').value) || 30;
+  var shopId = _cdCustomer.customer_id || _cdCustomer.shop_id;
+  var rangeEl = document.getElementById('cd-hist-range');
+  var daysVal = rangeEl ? rangeEl.value : '30';
+  var days = daysVal === 'all' ? 3650 : (parseInt(daysVal,10) || 30);
   var listEl = document.getElementById('cd-hist-list');
   var statsEl = document.getElementById('cd-hist-stats');
-  listEl.innerHTML = '<div style="padding:16px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
-  statsEl.innerHTML = '';
-  api({action:'getShopDeliveryHistory', shop_id:shopId, days:days}).then(function(rows){
-    _cdHistoryRows = Array.isArray(rows) ? rows : [];
+  if(listEl) listEl.innerHTML = '<div style="padding:16px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
+  if(statsEl) statsEl.innerHTML = '';
+
+  Promise.all([
+    api({ action:'getCustomerOrders', shop_id: shopId, limit: 200 }).catch(function(){ return []; }),
+    api({ action:'getShopDeliveryHistory', shop_id: shopId, days: days }).catch(function(){ return []; })
+  ]).then(function(res){
+    var orders = Array.isArray(res[0]) ? res[0] : [];
+    var dels = Array.isArray(res[1]) ? res[1] : [];
+    // filter orders by period
+    var cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+    function inRange(dateStr, created){
+      if(daysVal === 'all') return true;
+      var ref = dateStr || (created ? String(created).slice(0,10) : '');
+      if(!ref) return true;
+      var t = new Date(ref.length===10 ? ref+'T12:00:00' : ref).getTime();
+      if(isNaN(t)) return true;
+      return t >= cutoff;
+    }
+    _cdOrderRows = orders.filter(function(o){
+      return inRange(o.delivery_date, o.created_at);
+    }).sort(function(a,b){
+      return String(b.delivery_date||b.created_at||'').localeCompare(String(a.delivery_date||a.created_at||''));
+    });
+    _cdHistoryRows = dels;
+    renderCdHistoryFilters();
     renderCdHistory();
   }).catch(function(){
-    listEl.innerHTML = '<div style="padding:16px;text-align:center;font-size:12px;color:#c8382a;font-family:monospace">Failed to load history.</div>';
+    if(listEl) listEl.innerHTML = '<div style="padding:16px;text-align:center;font-size:12px;color:#c8382a;font-family:monospace">Failed to load history.</div>';
   });
 }
 
@@ -4763,18 +4853,89 @@ function _cdTimeToMins(t){
   return h*60+mn;
 }
 
+function _cdFmtDate(d){
+  if(!d) return '—';
+  try{
+    var x = new Date(String(d).length===10 ? d+'T12:00:00' : d);
+    if(isNaN(x.getTime())) return String(d);
+    return x.toLocaleDateString('en-IN',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+  }catch(e){ return String(d); }
+}
+function _cdFmtStamp(v){
+  if(!v) return '—';
+  try{ return new Date(v).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}); }
+  catch(e){ return String(v); }
+}
+function _cdItemLines(items, qty){
+  var iArr = String(items||'').split(',');
+  var qArr = String(qty||'').split(',');
+  var rows = [];
+  for(var i=0;i<iArr.length;i++){
+    var name = String(iArr[i]||'').trim();
+    var q = parseInt(qArr[i],10)||0;
+    if(!name || !q) continue;
+    rows.push('<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid #f0e8dc;font-size:12px"><span style="font-weight:600;color:#1e1611;flex:1;min-width:0">'+esc(name)+'</span><span style="font-weight:800;color:#2d7a4f;font-family:monospace;flex-shrink:0">× '+q+'</span></div>');
+  }
+  return rows.length ? ('<div style="margin-top:6px">'+rows.join('')+'</div>') : '';
+}
+function _cdQtyTotal(o){
+  return String(o.qty||'').split(',').reduce(function(s,q){ return s+(parseInt(q,10)||0); },0);
+}
+
+var _CD_STATUS_LABEL = {
+  pending:'⏳ Pending', approved:'✅ Approved', rejected:'❌ Rejected',
+  kitchen:'👨‍🍳 Kitchen', packaging:'📦 Packaging', dispatched:'🚚 Dispatched',
+  delivered:'✅ Delivered', no_order:'🚫 No order'
+};
+
 function renderCdHistory(){
-  var rows = _cdHistoryRows;
   var listEl = document.getElementById('cd-hist-list');
   var statsEl = document.getElementById('cd-hist-stats');
+  if(!listEl) return;
 
-  if(!rows.length){
-    listEl.innerHTML = '<div style="padding:16px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">No deliveries in this period.</div>';
-    statsEl.innerHTML = '<div class="stat"><div class="stat-n">0</div><div class="stat-l">Deliveries</div></div>';
+  if(_cdHistoryMode === 'orders'){
+    var rows = (_cdOrderRows||[]).filter(function(o){
+      if(_cdOrderStatusFilter === 'all') return true;
+      return String(o.status||'').toLowerCase() === _cdOrderStatusFilter;
+    });
+    if(statsEl){
+      statsEl.innerHTML =
+        '<div class="stat"><div class="stat-n">'+rows.length+'</div><div class="stat-l">Orders</div></div>'+
+        '<div class="stat"><div class="stat-n" style="color:#2d7a4f">'+rows.filter(function(o){return String(o.status).toLowerCase()==='approved'||String(o.status).toLowerCase()==='delivered';}).length+'</div><div class="stat-l">OK</div></div>'+
+        '<div class="stat"><div class="stat-n" style="color:#c8382a">'+rows.filter(function(o){return String(o.status).toLowerCase()==='rejected';}).length+'</div><div class="stat-l">Rejected</div></div>';
+    }
+    if(!rows.length){
+      listEl.innerHTML = '<div style="padding:16px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">No orders match this filter.</div>';
+      return;
+    }
+    listEl.innerHTML = rows.map(function(o){
+      var st = String(o.status||'pending').toLowerCase();
+      var tot = _cdQtyTotal(o);
+      var badgeBg = st==='rejected'||st==='no_order' ? '#fde8e8' : (st==='pending' ? '#fff8e1' : '#e8f5e9');
+      var badgeFg = st==='rejected'||st==='no_order' ? '#c8382a' : (st==='pending' ? '#7a4800' : '#1a5a38');
+      return '<div style="background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:12px;margin-bottom:8px">'+
+        '<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">'+
+          '<div style="font-size:13px;font-weight:900;color:#4a2f14">'+esc(_cdFmtDate(o.delivery_date||String(o.created_at||'').slice(0,10)))+'</div>'+
+          '<span style="background:'+badgeBg+';color:'+badgeFg+';border-radius:8px;padding:3px 8px;font-size:10px;font-weight:800;flex-shrink:0">'+esc(_CD_STATUS_LABEL[st]||st)+'</span>'+
+        '</div>'+
+        '<div style="font-size:11px;color:#8a7a6a;margin-top:4px">Placed '+esc(_cdFmtStamp(o.created_at))+(tot?(' · '+tot+' pcs'):'')+'</div>'+
+        _cdItemLines(o.items, o.qty)+
+        (o.note ? '<div style="font-size:11px;color:#8a7a6a;margin-top:6px">📝 '+esc(o.note)+'</div>' : '')+
+        (o.zoho_invoice_number ? '<div style="font-size:11px;color:#8a7a6a;margin-top:4px">📄 '+esc(o.zoho_invoice_number)+(o.payment_status?(' · '+esc(o.payment_status)):'')+'</div>' : '')+
+      '</div>';
+    }).join('');
     return;
   }
 
-  var mins = rows.filter(function(r){return r.time;}).map(function(r){return _cdTimeToMins(r.time);}).filter(function(v){return v!==null;});
+  // deliveries mode
+  var drows = _cdHistoryRows || [];
+  if(!drows.length){
+    listEl.innerHTML = '<div style="padding:16px;text-align:center;font-size:12px;color:#8a7a6a;font-family:monospace">No deliveries in this period.</div>';
+    if(statsEl) statsEl.innerHTML = '<div class="stat"><div class="stat-n">0</div><div class="stat-l">Deliveries</div></div>';
+    return;
+  }
+
+  var mins = drows.filter(function(r){return r.time;}).map(function(r){return _cdTimeToMins(r.time);}).filter(function(v){return v!==null;});
   var avgStr = '—';
   if(mins.length){
     var avg = Math.round(mins.reduce(function(s,v){return s+v;},0)/mins.length);
@@ -4783,16 +4944,20 @@ function renderCdHistory(){
   }
   var lateCount = mins.filter(function(m){ return m > 10*60; }).length;
 
-  statsEl.innerHTML =
-    '<div class="stat"><div class="stat-n">'+rows.length+'</div><div class="stat-l">Deliveries</div></div>'+
-    '<div class="stat"><div class="stat-n" style="color:#2d7a4f;font-size:16px">'+avgStr+'</div><div class="stat-l">Avg Time</div></div>'+
-    '<div class="stat"><div class="stat-n" style="color:'+(lateCount>0?'#c8382a':'#2d7a4f')+'">'+lateCount+'</div><div class="stat-l">After 10AM</div></div>';
+  if(statsEl){
+    statsEl.innerHTML =
+      '<div class="stat"><div class="stat-n">'+drows.length+'</div><div class="stat-l">Deliveries</div></div>'+
+      '<div class="stat"><div class="stat-n" style="color:#2d7a4f;font-size:16px">'+avgStr+'</div><div class="stat-l">Avg Time</div></div>'+
+      '<div class="stat"><div class="stat-n" style="color:'+(lateCount>0?'#c8382a':'#2d7a4f')+'">'+lateCount+'</div><div class="stat-l">After 10AM</div></div>';
+  }
 
-  listEl.innerHTML = rows.map(function(r){
-    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-bottom:1px solid #e8dfd2;font-size:12px;font-family:monospace">'+
-      '<span>📅 '+esc(r.date)+'</span>'+
-      '<span style="color:#2d7a4f;font-weight:700">🕐 '+esc(r.time||'—')+'</span>'+
-      '<span style="color:#8a7a6a">'+esc(r.driver||'')+'</span>'+
+  listEl.innerHTML = drows.map(function(r){
+    return '<div style="background:#fff;border:1.5px solid #e8dfd2;border-radius:12px;padding:12px;margin-bottom:8px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">'+
+        '<div style="font-size:13px;font-weight:900;color:#4a2f14">'+esc(_cdFmtDate(r.date))+'</div>'+
+        '<div style="font-size:13px;font-weight:900;color:#2d7a4f;font-family:monospace">'+esc(r.time||'—')+'</div>'+
+      '</div>'+
+      '<div style="font-size:11px;color:#8a7a6a;margin-top:4px">Driver: '+esc(r.driver||'—')+'</div>'+
     '</div>';
   }).join('');
 }

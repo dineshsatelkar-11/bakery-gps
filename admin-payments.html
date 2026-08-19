@@ -207,9 +207,9 @@
         <span id="pay-desk-selcount" style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-left:4px"></span>
     </div>
     <div id="pay-desk-msg" style="display:none;margin-bottom:8px;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:700"></div>
-    <div class="card" id="pay-upi-owner-card" style="margin-bottom:10px;padding:12px;background:#e8f5e9;border:1.5px solid #a5d6a7">
+    <div class="card" id="pay-upi-owner-card" style="display:none;margin-bottom:10px;padding:12px;background:#e8f5e9;border:1.5px solid #a5d6a7">
         <div style="font-size:12px;font-weight:900;color:#1a5a38;margin-bottom:6px">📱 UPI QR for customers (PhonePe / GPay / Paytm)</div>
-        <div style="font-size:11px;color:#8a7a6a;line-height:1.45;margin-bottom:8px">Customers see a QR and “Pay with UPI” on the Pay tab for their weekly overdue total.</div>
+        <div style="font-size:11px;color:#8a7a6a;line-height:1.45;margin-bottom:8px">Owner only — not visible to regular admin. Customers see QR / Pay with UPI on their Pay tab.</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
             <div>
                 <div class="lbl">UPI ID (VPA)</div>
@@ -342,10 +342,28 @@
       }
       window._staffName = name || 'Admin';
       window._staffRole = role || 'admin';
-      setTimeout(function(){
+      window._isSuperAdmin = (function(r){
+        r = String(r || '').toLowerCase().trim().replace(/\s+/g, '_');
+        return r === 'super_admin' || r === 'superadmin' || r === 'owner';
+      })(window._staffRole);
+      function applyOwnerOnlyBankUi(){
         var card = document.getElementById('pay-upi-owner-card');
-        if (card) card.style.display = (window._staffRole === 'super_admin') ? '' : 'none';
-      }, 50);
+        if (!card) return;
+        if (window._isSuperAdmin) {
+          card.style.display = '';
+          try { payDeskLoadUpi(); } catch (e) {}
+        } else {
+          card.style.display = 'none';
+          // Clear any cached values from DOM so non-owners cannot inspect easily
+          var v = document.getElementById('pay-upi-vpa');
+          var n = document.getElementById('pay-upi-name');
+          if (v) v.value = '';
+          if (n) n.value = '';
+        }
+      }
+      applyOwnerOnlyBankUi();
+      setTimeout(applyOwnerOnlyBankUi, 100);
+      setTimeout(applyOwnerOnlyBankUi, 500);
       var who = document.getElementById('who');
       if (who) who.textContent = name + (role ? ' · ' + role : '');
 
@@ -1978,8 +1996,12 @@
       next();
     }
 
-    
+
     function payDeskSaveUpi() {
+      if (!window._isSuperAdmin && window._staffRole !== 'super_admin') {
+        _payDeskMsg('Only super admin can change bank / UPI settings', false);
+        return;
+      }
       var vpa = ((document.getElementById('pay-upi-vpa')||{}).value||'').trim();
       var name = ((document.getElementById('pay-upi-name')||{}).value||'').trim() || 'IBCAB';
       var st = document.getElementById('pay-upi-status');
@@ -2000,7 +2022,7 @@
       });
     }
     function payDeskLoadUpi() {
-      if (window._staffRole && window._staffRole !== 'super_admin') return;
+      if (!(window._isSuperAdmin || window._staffRole === 'super_admin')) return;
       Promise.all([
         api({action:'getSetting', key:'upi_vpa'}).catch(function(){return null;}),
         api({action:'getSetting', key:'upi_payee_name'}).catch(function(){return null;})

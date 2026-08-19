@@ -145,6 +145,66 @@
         }
 
 
+
+
+        /* Shop history panel */
+        .history-filter-bar{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+        .history-chip{
+          border:1.5px solid #e0e7f1;background:#fff;color:#546e7a;border-radius:20px;
+          padding:7px 12px;font-size:11px;font-weight:800;cursor:pointer;
+          font-family:-apple-system,sans-serif;touch-action:manipulation;
+        }
+        .history-chip.on{border-color:#a5d6a7;background:#e8f5e9;color:#1b5e20}
+        .history-summary{font-size:11px;color:#607d8b;font-weight:700;margin-bottom:10px;font-family:monospace}
+        .history-card{
+          background:#fafcff;border:1.5px solid #e8eaf6;border-radius:14px;
+          padding:12px 12px 10px;margin-bottom:10px;
+        }
+        .history-card .history-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px}
+        .history-card .history-date{font-size:13px;font-weight:900;color:#1b5e20}
+        .history-card .history-meta{font-size:11px;color:#78909c;margin-top:4px;line-height:1.45}
+        .history-card .item-row{padding:4px 0;border-bottom-color:#edf2f7}
+        .history-tabs{gap:8px}
+        .history-tab{min-height:42px;font-size:12px;border-radius:12px}
+
+        /* ── Shop list mobile UX ── */
+        .shop-toolbar{position:sticky;top:0;z-index:5;background:#f0f4ff;padding:8px 0 6px;margin-bottom:4px}
+        .shop-search-wrap{border-radius:12px;padding:0 12px;min-height:48px;border-color:#a5d6a7}
+        .shop-search-wrap input{font-size:15px;padding:12px 0}
+        .shop-count{font-size:11px;font-weight:700;color:#546e7a;margin-bottom:10px}
+        .shop-card{
+          background:#fff;border:1.5px solid #e0e7f1;border-radius:16px;
+          padding:14px 14px 12px;margin-bottom:10px;
+          box-shadow:0 2px 8px rgba(27,94,32,.04);
+        }
+        .shop-row-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+        .shop-name{font-size:15px;font-weight:900;color:#1b5e20;line-height:1.35;word-break:break-word}
+        .shop-meta{font-size:12px;color:#607d8b;font-family:-apple-system,sans-serif;margin-top:4px;line-height:1.4}
+        .shop-meta.mono{font-family:monospace;font-size:11px;color:#90a4ae}
+        .shop-actions{display:flex;gap:8px;margin-top:12px}
+        .shop-action{
+          flex:1;min-height:46px;border:1.5px solid #c8e6c9;background:#e8f5e9;color:#1b5e20;
+          border-radius:12px;padding:10px 8px;font-size:13px;font-weight:800;cursor:pointer;
+          font-family:-apple-system,sans-serif;touch-action:manipulation;
+        }
+        .shop-action.secondary{border-color:#bbdefb;background:#e3f2fd;color:#0d47a1}
+        .shop-action:active{opacity:.85;transform:scale(.98)}
+        .status-badge.shop-brand{
+          flex-shrink:0;font-size:10px;padding:4px 8px;border-radius:8px;
+          background:#e8f5e9;color:#2e7d32;font-weight:800;max-width:40%;
+          overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+        }
+        @media (max-width:767px){
+          body.brand-app #shop-content{
+            display:block !important;
+            grid-template-columns:none !important;
+          }
+          body.brand-app #shop-content .shop-card{margin-bottom:10px}
+          body.brand-app .page#pg-shop,
+          body.brand-app #pg-shop{padding-left:12px;padding-right:12px}
+          .shop-toolbar{background:#f0f4ff}
+        }
+
         /* ── Brand bottom nav (mobile) ── */
         .brand-bottom-nav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:200;background:#fff;border-top:1.5px solid #e8f5e9;padding:6px 4px max(6px,env(safe-area-inset-bottom));max-width:480px;margin:0 auto;box-shadow:0 -4px 16px rgba(27,94,32,.08)}
         .brand-bottom-nav-inner{display:flex;justify-content:space-around;align-items:stretch}
@@ -311,7 +371,7 @@
     <div class="shop-toolbar">
         <div class="shop-search-wrap">
             <span>🔎</span>
-            <input id="shop-search" type="search" placeholder="Search shop, mobile or ID…" oninput="renderShopList()">
+            <input id="shop-search" type="search" placeholder="Search shop name or mobile…" oninput="renderShopList()">
         </div>
         <button class="refresh-btn" onclick="refreshShopList()">🔄</button>
     </div>
@@ -514,8 +574,8 @@
     }
     function fmtTime(t){ if(!t) return '—'; return t; }
 
-    var statusLabel = {pending:'⏳ Pending',approved:'✅ Approved',rejected:'❌ Rejected',kitchen:'👨‍🍳 Kitchen',packaging:'📦 Packaging',dispatched:'🚚 Dispatched',delivered:'✅ Delivered'};
-    var statusClass = {pending:'s-pending',approved:'s-approved',rejected:'s-rejected',kitchen:'s-kitchen',packaging:'s-dispatched',dispatched:'s-dispatched',delivered:'s-delivered'};
+    var statusLabel = {pending:'⏳ Pending',approved:'✅ Approved',rejected:'❌ Rejected',kitchen:'👨‍🍳 Kitchen',packaging:'📦 Packaging',dispatched:'🚚 Dispatched',delivered:'✅ Delivered',no_order:'🚫 No order'};
+    var statusClass = {pending:'s-pending',approved:'s-approved',rejected:'s-rejected',kitchen:'s-kitchen',packaging:'s-dispatched',dispatched:'s-dispatched',delivered:'s-delivered',no_order:'s-rejected'};
 
 
     // ══════════════════════════════════════════════
@@ -556,7 +616,7 @@
         return [s.name,s.mobile,s.shop_id,s.customer_id,s.area,s.address]
           .some(function(v){ return String(v||'').toLowerCase().indexOf(q) >= 0; });
       });
-      if(countEl) countEl.textContent = shown.length + ' shop' + (shown.length===1?'':'s') + ' in ' + (myBrand || 'your brand');
+      if(countEl) countEl.textContent = shown.length + ' shop' + (shown.length===1?'':'s') + (q ? ' found' : '') + ' · ' + (myBrand || 'brand');
       if(!shown.length){
         el.innerHTML = '<div class="card"><div class="empty-msg">'+
           (q ? 'No shops match your search.' : 'No shops found for this brand.')+'</div></div>';
@@ -564,17 +624,25 @@
       }
 
       var html = '';
+      shown = shown.slice().sort(function(a,b){
+        return String(a.name||'').localeCompare(String(b.name||''), undefined, { sensitivity:'base' });
+      });
       shown.forEach(function(s){
         var id = sid(s);
+        var mobile = String(s.mobile||'').trim();
+        var place = String(s.area || s.address || '').trim();
         html += '<div class="shop-card">';
-        html += '<div class="shop-row-top"><div style="flex:1;min-width:0">';
+        html += '<div class="shop-row-top">';
+        html += '<div style="flex:1;min-width:0">';
         html += '<div class="shop-name">'+esc(s.name||'Unnamed Shop')+'</div>';
-        html += '<div class="shop-meta">ID: '+esc(id)+' · '+esc(s.mobile||'No mobile')+'</div>';
-        if(s.area || s.address) html += '<div class="shop-meta">📍 '+esc(s.area || s.address)+'</div>';
-        html += '</div><span class="status-badge s-approved">'+esc(s.brand||myBrand)+'</span></div>';
+        if(mobile) html += '<div class="shop-meta">📞 '+esc(mobile)+'</div>';
+        if(place) html += '<div class="shop-meta">📍 '+esc(place)+'</div>';
+        html += '</div>';
+        html += '<span class="status-badge shop-brand">'+esc(s.brand||myBrand||'Brand')+'</span>';
+        html += '</div>';
         html += '<div class="shop-actions">';
-        html += '<button class="shop-action" onclick="openShopEdit(\''+escAttr(id)+'\')">✏️ Edit Customer</button>';
-        html += '<button class="shop-action secondary" onclick="openShopHistory(\''+escAttr(id)+'\')">🕘 History</button>';
+        html += '<button type="button" class="shop-action" onclick="openShopEdit(\''+escAttr(id)+'\')">✏️ Edit</button>';
+        html += '<button type="button" class="shop-action secondary" onclick="openShopHistory(\''+escAttr(id)+'\')">🕘 History</button>';
         html += '</div></div>';
       });
       el.innerHTML = html;
@@ -641,25 +709,36 @@
       });
     }
 
+    var _historyStatusFilter = 'all'; // all | pending | approved | rejected | delivered | no_order
+    var _historyRangeFilter = '90'; // 7 | 30 | 90 | all (days)
+
     function openShopHistory(id){
       var s = findShop(id);
       if(!s) return;
+      _historyStatusFilter = 'all';
+      _historyRangeFilter = '90';
       document.getElementById('shopModalTitle').textContent = 'Shop History';
-      document.getElementById('shopModalSub').textContent = (s.name||'Shop')+' · '+sid(s);
+      document.getElementById('shopModalSub').textContent = (s.name||'Shop');
       document.getElementById('shopModalBody').innerHTML =
         '<div class="history-tabs">'+
-        '<button id="historyOrdersBtn" class="history-tab on" onclick="switchHistory(\'orders\')">📋 Order History</button>'+
-        '<button id="historyDeliveryBtn" class="history-tab" onclick="switchHistory(\'deliveries\')">🚚 Delivery History</button>'+
-        '</div><div id="historyBody"><div class="empty-msg">Loading…</div></div>';
+        '<button type="button" id="historyOrdersBtn" class="history-tab on" onclick="switchHistory(\'orders\')">📋 Orders</button>'+
+        '<button type="button" id="historyDeliveryBtn" class="history-tab" onclick="switchHistory(\'deliveries\')">🚚 Deliveries</button>'+
+        '</div>'+
+        '<div id="historyFilters"></div>'+
+        '<div id="historyBody"><div class="empty-msg">Loading…</div></div>';
       document.getElementById('shopOverlay').style.display='flex';
       _historyMode='orders';
       _shopHistory={orders:[],deliveries:[]};
       Promise.all([
-        api({action:'getCustomerOrders', shop_id:id, limit:100}),
+        api({action:'getCustomerOrders', shop_id:id, limit:150}),
         api({action:'getShopDeliveryHistory', shop_id:id, days:90})
       ]).then(function(res){
         _shopHistory.orders = Array.isArray(res[0]) ? res[0] : [];
         _shopHistory.deliveries = Array.isArray(res[1]) ? res[1] : [];
+        // newest first
+        _shopHistory.orders.sort(function(a,b){
+          return String(b.delivery_date||b.created_at||'').localeCompare(String(a.delivery_date||a.created_at||''));
+        });
         renderHistory();
       }).catch(function(){
         document.getElementById('historyBody').innerHTML='<div class="msg er">Failed to load history.</div>';
@@ -668,10 +747,23 @@
 
     function switchHistory(mode){
       _historyMode=mode;
-      document.getElementById('historyOrdersBtn').classList.toggle('on',mode==='orders');
-      document.getElementById('historyDeliveryBtn').classList.toggle('on',mode==='deliveries');
+      var ob=document.getElementById('historyOrdersBtn');
+      var db=document.getElementById('historyDeliveryBtn');
+      if(ob) ob.classList.toggle('on',mode==='orders');
+      if(db) db.classList.toggle('on',mode==='deliveries');
       renderHistory();
     }
+
+    function setHistoryStatusFilter(v){
+      _historyStatusFilter = v || 'all';
+      renderHistory();
+    }
+    function setHistoryRangeFilter(v){
+      _historyRangeFilter = v || '90';
+      renderHistory();
+    }
+    window.setHistoryStatusFilter = setHistoryStatusFilter;
+    window.setHistoryRangeFilter = setHistoryRangeFilter;
 
     function formatStamp(v){
       if(!v) return '—';
@@ -679,40 +771,111 @@
       catch(e){ return String(v); }
     }
 
+    function _historyInRange(dateStr, createdAt){
+      var days = parseInt(_historyRangeFilter, 10);
+      if (!days || _historyRangeFilter === 'all') return true;
+      var ref = dateStr || (createdAt ? String(createdAt).slice(0,10) : '');
+      if (!ref) return true;
+      var t = new Date(ref + (ref.length === 10 ? 'T12:00:00' : '')).getTime();
+      if (isNaN(t)) return true;
+      var cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+      return t >= cutoff;
+    }
+
+    function _orderQtyTotal(o){
+      var qArr = String(o.qty||'').split(',');
+      var n = 0;
+      qArr.forEach(function(q){ n += parseInt(q,10)||0; });
+      return n;
+    }
+
+    function renderHistoryFilters(){
+      var box = document.getElementById('historyFilters');
+      if (!box) return;
+      if (_historyMode !== 'orders') {
+        // Deliveries: only range filter
+        var ranges = [['7','7 days'],['30','30 days'],['90','90 days'],['all','All']];
+        box.innerHTML =
+          '<div class="history-filter-bar">'+
+          ranges.map(function(r){
+            return '<button type="button" class="history-chip'+(_historyRangeFilter===r[0]?' on':'')+'" onclick="setHistoryRangeFilter(\''+r[0]+'\')">'+r[1]+'</button>';
+          }).join('')+
+          '</div>';
+        return;
+      }
+      var statuses = [
+        ['all','All'],
+        ['pending','Pending'],
+        ['approved','Approved'],
+        ['rejected','Rejected'],
+        ['delivered','Delivered'],
+        ['no_order','No order']
+      ];
+      var ranges = [['7','7 days'],['30','30 days'],['90','90 days'],['all','All']];
+      box.innerHTML =
+        '<div style="font-size:10px;font-weight:800;color:#90a4ae;letter-spacing:1px;margin-bottom:6px">STATUS</div>'+
+        '<div class="history-filter-bar">'+
+        statuses.map(function(s){
+          return '<button type="button" class="history-chip'+(_historyStatusFilter===s[0]?' on':'')+'" onclick="setHistoryStatusFilter(\''+s[0]+'\')">'+s[1]+'</button>';
+        }).join('')+
+        '</div>'+
+        '<div style="font-size:10px;font-weight:800;color:#90a4ae;letter-spacing:1px;margin:4px 0 6px">PERIOD</div>'+
+        '<div class="history-filter-bar">'+
+        ranges.map(function(r){
+          return '<button type="button" class="history-chip'+(_historyRangeFilter===r[0]?' on':'')+'" onclick="setHistoryRangeFilter(\''+r[0]+'\')">'+r[1]+'</button>';
+        }).join('')+
+        '</div>';
+    }
+
     function renderHistory(){
       var el=document.getElementById('historyBody');
       if(!el) return;
+      renderHistoryFilters();
       if(_historyMode==='orders'){
-        var rows=_shopHistory.orders||[];
-        if(!rows.length){ el.innerHTML='<div class="empty-msg">No customer orders found.</div>'; return; }
-        var html='';
+        var rows=(_shopHistory.orders||[]).filter(function(o){
+          var st = String(o.status||'').toLowerCase();
+          if (_historyStatusFilter !== 'all' && st !== _historyStatusFilter) return false;
+          return _historyInRange(o.delivery_date, o.created_at);
+        });
+        if(!rows.length){
+          el.innerHTML='<div class="empty-msg">No orders match this filter.</div>';
+          return;
+        }
+        var html='<div class="history-summary">'+rows.length+' order(s)</div>';
         rows.forEach(function(o){
-          var items=String(o.items||'').replace(/,/g,', ');
-          html+='<div class="history-row">';
-          html+='<div class="history-top"><div class="history-date">📋 '+esc(fmtDate(o.delivery_date||String(o.created_at||'').slice(0,10)))+'</div>';
-          html+='<span class="status-badge '+esc(statusClass[o.status]||'s-pending')+'">'+esc(statusLabel[o.status]||o.status||'Order')+'</span></div>';
-          html+='<div class="history-meta">Delivery date: '+esc(o.delivery_date||'—')+' · Created: '+esc(formatStamp(o.created_at))+'</div>';
-          if(items) html+='<div class="history-items">'+esc(items)+'</div>';
+          var st = String(o.status||'pending').toLowerCase();
+          var tot = _orderQtyTotal(o);
+          html+='<div class="history-card">';
+          html+='<div class="history-top">';
+          html+='<div class="history-date">'+esc(fmtDate(o.delivery_date||String(o.created_at||'').slice(0,10)))+'</div>';
+          html+='<span class="status-badge '+esc(statusClass[st]||'s-pending')+'">'+esc(statusLabel[st]||st||'Order')+'</span>';
+          html+='</div>';
+          html+='<div class="history-meta">Placed '+esc(formatStamp(o.created_at))+(tot?(' · '+tot+' pcs'):'')+'</div>';
+          if (typeof brandItemLines === 'function') {
+            html += brandItemLines(o.items, o.qty);
+          } else if (o.items) {
+            html += '<div class="history-meta" style="margin-top:6px">'+esc(String(o.items).replace(/,/g, ', '))+'</div>';
+          }
           if(o.note) html+='<div class="history-meta">📝 '+esc(o.note)+'</div>';
-          var timeline=[];
-          if(o.created_at) timeline.push('Placed '+formatStamp(o.created_at));
-          if(o.approved_at) timeline.push('Approved '+formatStamp(o.approved_at));
-          if(o.kitchen_done_at) timeline.push('Kitchen '+formatStamp(o.kitchen_done_at));
-          if(o.packaged_at) timeline.push('Packed '+formatStamp(o.packaged_at));
-          if(timeline.length){
-            html+='<div class="timeline">'+timeline.map(function(t){return '<span class="timeline-chip">'+esc(t)+'</span>';}).join('')+'</div>';
+          if (o.zoho_invoice_number) {
+            html+='<div class="history-meta">📄 '+esc(o.zoho_invoice_number)+(o.payment_status?(' · '+esc(o.payment_status)):'')+'</div>';
           }
           html+='</div>';
         });
         el.innerHTML=html;
       }else{
-        var ds=_shopHistory.deliveries||[];
-        if(!ds.length){ el.innerHTML='<div class="empty-msg">No delivery history found for the last 90 days.</div>'; return; }
-        var dh='';
+        var ds=(_shopHistory.deliveries||[]).filter(function(d){
+          return _historyInRange(d.date, null);
+        });
+        if(!ds.length){
+          el.innerHTML='<div class="empty-msg">No deliveries match this period.</div>';
+          return;
+        }
+        var dh='<div class="history-summary">'+ds.length+' delivery(ies)</div>';
         ds.forEach(function(d){
-          dh+='<div class="history-row">';
-          dh+='<div class="history-top"><div class="history-date">🚚 '+esc(fmtDate(d.date))+'</div>';
-          dh+='<div style="font-size:12px;font-weight:900;color:#2e7d32">🕐 '+esc(fmtTime(d.time))+'</div></div>';
+          dh+='<div class="history-card">';
+          dh+='<div class="history-top"><div class="history-date">'+esc(fmtDate(d.date))+'</div>';
+          dh+='<div style="font-size:13px;font-weight:900;color:#2e7d32">'+esc(fmtTime(d.time)||'—')+'</div></div>';
           dh+='<div class="history-meta">Driver: '+esc(d.driver||'—')+'</div>';
           dh+='</div>';
         });
