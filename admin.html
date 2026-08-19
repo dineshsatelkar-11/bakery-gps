@@ -178,31 +178,31 @@
 
 <!-- Mobile bottom navigation (hidden on desktop via CSS) -->
 <nav class="bottom-nav" id="bottomNav" aria-label="Main">
-  <div class="bottom-nav-inner">
-    <button type="button" class="bnav-item on" id="bnav-home" onclick="mobileNav('home')">
-      <span class="bnav-ico">🏠</span><span class="bnav-lbl">Home</span>
-    </button>
-    <button type="button" class="bnav-item" id="bnav-orders" onclick="mobileNav('orders')">
-      <span class="bnav-ico">📋</span><span class="bnav-lbl">Orders</span>
-    </button>
-    <button type="button" class="bnav-item" id="bnav-delivery" onclick="mobileNav('delivery')">
-      <span class="bnav-ico">🚚</span><span class="bnav-lbl">Delivery</span>
-    </button>
-    <button type="button" class="bnav-item" id="bnav-payments" onclick="mobileNav('payments')">
-      <span class="bnav-ico">💰</span><span class="bnav-lbl">Payments</span>
-    </button>
-    <button type="button" class="bnav-item" id="bnav-more" onclick="mobileNav('more')">
-      <span class="bnav-ico">☰</span><span class="bnav-lbl">More</span>
-    </button>
-  </div>
+    <div class="bottom-nav-inner">
+        <button type="button" class="bnav-item on" id="bnav-home" onclick="mobileNav('home')">
+            <span class="bnav-ico">🏠</span><span class="bnav-lbl">Home</span>
+        </button>
+        <button type="button" class="bnav-item" id="bnav-orders" onclick="mobileNav('orders')">
+            <span class="bnav-ico">📋</span><span class="bnav-lbl">Orders</span>
+        </button>
+        <button type="button" class="bnav-item" id="bnav-delivery" onclick="mobileNav('delivery')">
+            <span class="bnav-ico">🚚</span><span class="bnav-lbl">Delivery</span>
+        </button>
+        <button type="button" class="bnav-item" id="bnav-payments" onclick="mobileNav('payments')">
+            <span class="bnav-ico">💰</span><span class="bnav-lbl">Payments</span>
+        </button>
+        <button type="button" class="bnav-item" id="bnav-more" onclick="mobileNav('more')">
+            <span class="bnav-ico">☰</span><span class="bnav-lbl">More</span>
+        </button>
+    </div>
 </nav>
 <div class="more-sheet" id="moreSheet" onclick="if(event.target===this)closeMoreSheet()">
-  <div class="more-panel">
-    <h3>More</h3>
-    <div class="more-grid" id="moreGrid"></div>
-    <p class="more-hint">Zoho, bulk tools &amp; settings work best on a computer. Daily ops: Orders, Delivery &amp; Payments.</p>
-    <button type="button" class="btn-sm btn-grey" style="width:100%;margin-top:10px;padding:10px" onclick="closeMoreSheet()">Close</button>
-  </div>
+    <div class="more-panel">
+        <h3>More</h3>
+        <div class="more-grid" id="moreGrid"></div>
+        <p class="more-hint">Zoho, bulk tools &amp; settings work best on a computer. Daily ops: Orders, Delivery &amp; Payments.</p>
+        <button type="button" class="btn-sm btn-grey" style="width:100%;margin-top:10px;padding:10px" onclick="closeMoreSheet()">Close</button>
+    </div>
 </div>
 
 
@@ -212,15 +212,15 @@
         <div style="font-size:13px;font-weight:900;color:#4a2f14">🏠 Dashboard</div>
         <button class="btn-sm btn-grey" onclick="loadDashboard()">🔄 Refresh</button>
     </div>
-    <div id="adminPushCard" class="card" style="margin-bottom:10px;padding:12px 14px">
+    <div id="adminPushCard" class="card" style="display:none;margin-bottom:10px;padding:12px 14px">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
             <div style="flex:1;min-width:160px">
                 <div style="font-size:12px;font-weight:800;color:#4a2f14">🔔 New-order alerts</div>
-                <div id="adminPushStatus" style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-top:3px;line-height:1.5">Checking…</div>
+                <div id="adminPushStatus" style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-top:3px;line-height:1.5"></div>
             </div>
-            <button class="btn-sm" style="background:#4a2f14;color:#fff;flex-shrink:0" onclick="enableAdminPush()">Enable Push</button>
+            <button type="button" class="btn-sm" id="adminPushBtn" style="background:#4a2f14;color:#fff;flex-shrink:0" onclick="enableAdminPush()">Enable Push</button>
         </div>
-        <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:8px;line-height:1.5">Works in background when this phone has the app installed (Add to Home Screen) and notifications allowed. Admin role only.</div>
+        <div style="font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:8px;line-height:1.5">One-time setup: allow notifications on this device. Card hides after push is ON.</div>
     </div>
 
     <!-- Today delivery stats -->
@@ -948,8 +948,8 @@
 <!-- PAYMENTS DESK (same admin app) -->
 <!-- Payments — same admin UI; module loaded in embed frame (no second app chrome) -->
 <div class="page" id="pg-pay-challan" style="padding:0;margin:0">
-  <iframe id="payEmbedFrame" title="Payments" src="admin-payments.html?embed=1&tab=pay-challan"
-    style="width:100%;border:0;display:block;min-height:calc(100dvh - 130px);height:calc(100dvh - 130px);background:#f9f6f1"></iframe>
+    <iframe id="payEmbedFrame" title="Payments" src="admin-payments.html?embed=1&tab=pay-challan"
+            style="width:100%;border:0;display:block;min-height:calc(100dvh - 130px);height:calc(100dvh - 130px);background:#f9f6f1"></iframe>
 </div>
 <div class="page" id="pg-pay-open" style="padding:0;margin:0"></div>
 <div class="page" id="pg-pay-requests" style="padding:0;margin:0"></div>
@@ -958,89 +958,89 @@
 
 
 <div class="page" id="pg-zoho">
-  <div class="card" style="margin-bottom:12px;border-color:#ffe082;background:#fffaf0">
-    <div style="font-size:15px;font-weight:900;color:#7a4800;margin-bottom:4px">🔗 Zoho Books Integration</div>
-    <div style="font-size:12px;color:#8a7a6a;font-family:monospace;line-height:1.6;margin-bottom:10px">
-      Pull customers &amp; products from Zoho → review changes → confirm to update this app.<br>
-      <span style="color:#c8864a">Nothing is written to the app until you confirm.</span>
+    <div class="card" style="margin-bottom:12px;border-color:#ffe082;background:#fffaf0">
+        <div style="font-size:15px;font-weight:900;color:#7a4800;margin-bottom:4px">🔗 Zoho Books Integration</div>
+        <div style="font-size:12px;color:#8a7a6a;font-family:monospace;line-height:1.6;margin-bottom:10px">
+            Pull customers &amp; products from Zoho → review changes → confirm to update this app.<br>
+            <span style="color:#c8864a">Nothing is written to the app until you confirm.</span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <span id="zoho-page-status" style="font-size:11px;font-family:monospace;font-weight:700;color:#8a7a6a">…</span>
+            <button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082;padding:8px 14px" onclick="openZohoSettingsModal()">⚙️ Configure</button>
+            <button class="btn-sm" style="background:#e8dfd2;color:#4a2f14;border:1.5px solid #d0c0aa;padding:8px 14px" onclick="toggleZohoIntegration()">Toggle ON/OFF</button>
+        </div>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      <span id="zoho-page-status" style="font-size:11px;font-family:monospace;font-weight:700;color:#8a7a6a">…</span>
-      <button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082;padding:8px 14px" onclick="openZohoSettingsModal()">⚙️ Configure</button>
-      <button class="btn-sm" style="background:#e8dfd2;color:#4a2f14;border:1.5px solid #d0c0aa;padding:8px 14px" onclick="toggleZohoIntegration()">Toggle ON/OFF</button>
-    </div>
-  </div>
 
-  <div class="card" style="margin-bottom:12px">
-    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">👥 Pull Customers / Shops from Zoho</div>
-    <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:10px;line-height:1.6">Fetches contacts from Zoho Books. Search, pick only what you need, then confirm. Nothing is written until you apply.</div>
-    <button class="btn btn-brown" style="margin-bottom:8px" onclick="zohoPullCustomers()">⬇ Sync from Zoho (Customers)</button>
-    <div id="zoho-pull-cust-msg" style="display:none;margin-bottom:8px;font-size:11px;font-family:monospace;padding:8px 10px;border-radius:8px"></div>
-    <div id="zoho-pull-cust-summary" style="display:none;margin-bottom:8px"></div>
-    <div id="zoho-pull-cust-tools" style="display:none;margin-bottom:8px">
-      <input type="search" id="zoho-pull-cust-search" placeholder="Search name, mobile, ID…" oninput="renderZohoCustPullList()" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;margin-bottom:8px">
-      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px">
-        <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullCustSelect('visible')">Select visible</button>
-        <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullCustSelect('none')">Clear all</button>
-        <button type="button" class="btn-sm" style="background:#e8f5e9;color:#2d7a4f;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullCustSelect('new')">New only</button>
-        <button type="button" class="btn-sm" style="background:#fff8e1;color:#7a4800;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullCustSelect('changed')">Changed only</button>
-        <span id="zoho-pull-cust-selcount" style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-left:4px"></span>
-      </div>
-      <label style="font-size:11px;color:#8a7a6a;font-family:monospace;display:flex;align-items:center;gap:6px">
-        <input type="checkbox" id="zoho-pull-cust-show-same" onchange="renderZohoCustPullList()" style="accent-color:#c8864a"> Show unchanged too
-      </label>
+    <div class="card" style="margin-bottom:12px">
+        <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">👥 Pull Customers / Shops from Zoho</div>
+        <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:10px;line-height:1.6">Fetches contacts from Zoho Books. Search, pick only what you need, then confirm. Nothing is written until you apply.</div>
+        <button class="btn btn-brown" style="margin-bottom:8px" onclick="zohoPullCustomers()">⬇ Sync from Zoho (Customers)</button>
+        <div id="zoho-pull-cust-msg" style="display:none;margin-bottom:8px;font-size:11px;font-family:monospace;padding:8px 10px;border-radius:8px"></div>
+        <div id="zoho-pull-cust-summary" style="display:none;margin-bottom:8px"></div>
+        <div id="zoho-pull-cust-tools" style="display:none;margin-bottom:8px">
+            <input type="search" id="zoho-pull-cust-search" placeholder="Search name, mobile, ID…" oninput="renderZohoCustPullList()" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;margin-bottom:8px">
+            <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px">
+                <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullCustSelect('visible')">Select visible</button>
+                <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullCustSelect('none')">Clear all</button>
+                <button type="button" class="btn-sm" style="background:#e8f5e9;color:#2d7a4f;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullCustSelect('new')">New only</button>
+                <button type="button" class="btn-sm" style="background:#fff8e1;color:#7a4800;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullCustSelect('changed')">Changed only</button>
+                <span id="zoho-pull-cust-selcount" style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-left:4px"></span>
+            </div>
+            <label style="font-size:11px;color:#8a7a6a;font-family:monospace;display:flex;align-items:center;gap:6px">
+                <input type="checkbox" id="zoho-pull-cust-show-same" onchange="renderZohoCustPullList()" style="accent-color:#c8864a"> Show unchanged too
+            </label>
+        </div>
+        <div id="zoho-pull-cust-list" style="display:none;max-height:360px;overflow-y:auto;border:1.5px solid #e8dfd2;border-radius:10px;background:#f9f6f1;margin-bottom:8px"></div>
+        <button id="zoho-apply-cust-btn" class="btn" style="display:none;margin-bottom:0;background:#2d7a4f;color:#fff" onclick="zohoApplyCustomerPull()">✅ Confirm — Update selected customers</button>
     </div>
-    <div id="zoho-pull-cust-list" style="display:none;max-height:360px;overflow-y:auto;border:1.5px solid #e8dfd2;border-radius:10px;background:#f9f6f1;margin-bottom:8px"></div>
-    <button id="zoho-apply-cust-btn" class="btn" style="display:none;margin-bottom:0;background:#2d7a4f;color:#fff" onclick="zohoApplyCustomerPull()">✅ Confirm — Update selected customers</button>
-  </div>
 
-  <div class="card" style="margin-bottom:12px">
-    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">📦 Pull Products from Zoho</div>
-    <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:10px;line-height:1.6">Fetches items from Zoho Books. Search and select only the products you want to update.</div>
-    <button class="btn btn-brown" style="margin-bottom:8px" onclick="zohoPullProducts()">⬇ Sync from Zoho (Products)</button>
-    <div id="zoho-pull-prod-msg" style="display:none;margin-bottom:8px;font-size:11px;font-family:monospace;padding:8px 10px;border-radius:8px"></div>
-    <div id="zoho-pull-prod-summary" style="display:none;margin-bottom:8px"></div>
-    <div id="zoho-pull-prod-tools" style="display:none;margin-bottom:8px">
-      <input type="search" id="zoho-pull-prod-search" placeholder="Search name, SKU, ID…" oninput="renderZohoProdPullList()" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;margin-bottom:8px">
-      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px">
-        <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullProdSelect('visible')">Select visible</button>
-        <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullProdSelect('none')">Clear all</button>
-        <button type="button" class="btn-sm" style="background:#e8f5e9;color:#2d7a4f;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullProdSelect('new')">New only</button>
-        <button type="button" class="btn-sm" style="background:#fff8e1;color:#7a4800;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullProdSelect('changed')">Changed only</button>
-        <span id="zoho-pull-prod-selcount" style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-left:4px"></span>
-      </div>
-      <label style="font-size:11px;color:#8a7a6a;font-family:monospace;display:flex;align-items:center;gap:6px">
-        <input type="checkbox" id="zoho-pull-prod-show-same" onchange="renderZohoProdPullList()" style="accent-color:#c8864a"> Show unchanged too
-      </label>
+    <div class="card" style="margin-bottom:12px">
+        <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">📦 Pull Products from Zoho</div>
+        <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:10px;line-height:1.6">Fetches items from Zoho Books. Search and select only the products you want to update.</div>
+        <button class="btn btn-brown" style="margin-bottom:8px" onclick="zohoPullProducts()">⬇ Sync from Zoho (Products)</button>
+        <div id="zoho-pull-prod-msg" style="display:none;margin-bottom:8px;font-size:11px;font-family:monospace;padding:8px 10px;border-radius:8px"></div>
+        <div id="zoho-pull-prod-summary" style="display:none;margin-bottom:8px"></div>
+        <div id="zoho-pull-prod-tools" style="display:none;margin-bottom:8px">
+            <input type="search" id="zoho-pull-prod-search" placeholder="Search name, SKU, ID…" oninput="renderZohoProdPullList()" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;margin-bottom:8px">
+            <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px">
+                <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullProdSelect('visible')">Select visible</button>
+                <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullProdSelect('none')">Clear all</button>
+                <button type="button" class="btn-sm" style="background:#e8f5e9;color:#2d7a4f;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullProdSelect('new')">New only</button>
+                <button type="button" class="btn-sm" style="background:#fff8e1;color:#7a4800;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullProdSelect('changed')">Changed only</button>
+                <span id="zoho-pull-prod-selcount" style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-left:4px"></span>
+            </div>
+            <label style="font-size:11px;color:#8a7a6a;font-family:monospace;display:flex;align-items:center;gap:6px">
+                <input type="checkbox" id="zoho-pull-prod-show-same" onchange="renderZohoProdPullList()" style="accent-color:#c8864a"> Show unchanged too
+            </label>
+        </div>
+        <div id="zoho-pull-prod-list" style="display:none;max-height:360px;overflow-y:auto;border:1.5px solid #e8dfd2;border-radius:10px;background:#f9f6f1;margin-bottom:8px"></div>
+        <button id="zoho-apply-prod-btn" class="btn" style="display:none;margin-bottom:0;background:#2d7a4f;color:#fff" onclick="zohoApplyProductPull()">✅ Confirm — Update selected products</button>
     </div>
-    <div id="zoho-pull-prod-list" style="display:none;max-height:360px;overflow-y:auto;border:1.5px solid #e8dfd2;border-radius:10px;background:#f9f6f1;margin-bottom:8px"></div>
-    <button id="zoho-apply-prod-btn" class="btn" style="display:none;margin-bottom:0;background:#2d7a4f;color:#fff" onclick="zohoApplyProductPull()">✅ Confirm — Update selected products</button>
-  </div>
 
-  <div class="card" style="margin-bottom:12px">
-    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">🚚 Default shipping (fallback only)</div>
-    <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:10px;line-height:1.6">
-      Used only when a customer has <b>no</b> shipping set.<br>
-      Set each shop’s charge under <b>Customers → Edit → Shipping charge</b> (different per customer).
+    <div class="card" style="margin-bottom:12px">
+        <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">🚚 Default shipping (fallback only)</div>
+        <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:10px;line-height:1.6">
+            Used only when a customer has <b>no</b> shipping set.<br>
+            Set each shop’s charge under <b>Customers → Edit → Shipping charge</b> (different per customer).
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <span style="font-size:13px;font-weight:700">₹</span>
+            <input type="number" id="zoho-shipping-input" min="0" step="1" value="20" style="width:100px;margin-bottom:0;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;font-weight:700">
+            <button class="btn-sm" style="background:#c8864a;color:#fff;border:none;padding:10px 16px" onclick="saveZohoShippingUI()">Save default</button>
+            <span id="zoho-shipping-msg" style="font-size:11px;font-family:monospace;color:#2d7a4f;display:none"></span>
+        </div>
     </div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-      <span style="font-size:13px;font-weight:700">₹</span>
-      <input type="number" id="zoho-shipping-input" min="0" step="1" value="20" style="width:100px;margin-bottom:0;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;font-weight:700">
-      <button class="btn-sm" style="background:#c8864a;color:#fff;border:none;padding:10px 16px" onclick="saveZohoShippingUI()">Save default</button>
-      <span id="zoho-shipping-msg" style="font-size:11px;font-family:monospace;color:#2d7a4f;display:none"></span>
-    </div>
-  </div>
 
-  <div class="card" style="margin-bottom:12px">
-    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">📄 Invoice / Challan data checklist</div>
-    <div style="font-size:11px;font-family:monospace;color:#4a2f14;line-height:1.7;background:#f9f6f1;border-radius:10px;padding:10px 12px">
-      <div><b>Sent now:</b> customer_id, date, reference, line <b>name + qty + rate</b>, item_id (if Zoho id), <b>shipping_charge</b>, notes, invoice vs delivery_challan</div>
-      <div style="margin-top:6px;color:#2d7a4f"><b>Tax:</b> set <b>Zoho Tax ID</b> on each product (Products → Edit). Blank = no tax on that line.</div>
-      <div style="margin-top:6px;color:#c8382a"><b>Still from Zoho templates:</b></div>
-      <div>• Place of supply / GSTIN / billing address block</div>
-      <div>• Bank details on tax invoice</div>
+    <div class="card" style="margin-bottom:12px">
+        <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">📄 Invoice / Challan data checklist</div>
+        <div style="font-size:11px;font-family:monospace;color:#4a2f14;line-height:1.7;background:#f9f6f1;border-radius:10px;padding:10px 12px">
+            <div><b>Sent now:</b> customer_id, date, reference, line <b>name + qty + rate</b>, item_id (if Zoho id), <b>shipping_charge</b>, notes, invoice vs delivery_challan</div>
+            <div style="margin-top:6px;color:#2d7a4f"><b>Tax:</b> set <b>Zoho Tax ID</b> on each product (Products → Edit). Blank = no tax on that line.</div>
+            <div style="margin-top:6px;color:#c8382a"><b>Still from Zoho templates:</b></div>
+            <div>• Place of supply / GSTIN / billing address block</div>
+            <div>• Bank details on tax invoice</div>
+        </div>
     </div>
-  </div>
 </div>
 
 <!-- CLEANUP (super_admin only) -->
@@ -1461,11 +1461,11 @@
             <div class="stats-grid" id="cd-hist-stats" style="margin-bottom:10px"></div>
             <div id="cd-hist-list" style="max-height:360px;overflow-y:auto;border:1.5px solid #e8dfd2;border-radius:12px;background:#faf8f5;margin-bottom:10px;padding:8px"></div>
             <div id="cd-hist-export-wrap" style="display:none">
-              <div style="display:flex;gap:8px">
-                  <button class="btn" style="flex:1;margin-bottom:0;background:#2d7a4f;color:#fff;padding:11px" onclick="exportCdHistoryCSV()">⬇ Export CSV</button>
-                  <button class="btn" style="flex:1;margin-bottom:0;background:#25d366;color:#fff;padding:11px" onclick="shareCdHistoryReport()">📤 Share Report</button>
-              </div>
-              <button class="btn btn-brown" style="margin-top:8px;margin-bottom:0" onclick="printCdHistoryReport()">🖨️ Print / PDF Report</button>
+                <div style="display:flex;gap:8px">
+                    <button class="btn" style="flex:1;margin-bottom:0;background:#2d7a4f;color:#fff;padding:11px" onclick="exportCdHistoryCSV()">⬇ Export CSV</button>
+                    <button class="btn" style="flex:1;margin-bottom:0;background:#25d366;color:#fff;padding:11px" onclick="shareCdHistoryReport()">📤 Share Report</button>
+                </div>
+                <button class="btn btn-brown" style="margin-top:8px;margin-bottom:0" onclick="printCdHistoryReport()">🖨️ Print / PDF Report</button>
             </div>
         </div>
     </div>
@@ -1473,18 +1473,18 @@
 
 <!-- ZOHO INVOICE PREVIEW (approve → confirm send) -->
 <div class="modal-bg" id="zohoInvPreviewModal" style="display:none;z-index:300" onclick="if(event.target===this)closeZohoInvPreview(false)">
-  <div class="modal" style="max-width:440px;max-height:92vh;overflow-y:auto;padding:0">
-    <div style="padding:14px 16px 10px;border-bottom:1.5px solid #e8dfd2;position:sticky;top:0;background:#fff;z-index:2">
-      <div style="font-size:14px;font-weight:900;color:#7a4800">📄 Zoho Document Preview</div>
-      <div id="zoho-inv-preview-sub" style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:4px;line-height:1.5"></div>
+    <div class="modal" style="max-width:440px;max-height:92vh;overflow-y:auto;padding:0">
+        <div style="padding:14px 16px 10px;border-bottom:1.5px solid #e8dfd2;position:sticky;top:0;background:#fff;z-index:2">
+            <div style="font-size:14px;font-weight:900;color:#7a4800">📄 Zoho Document Preview</div>
+            <div id="zoho-inv-preview-sub" style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:4px;line-height:1.5"></div>
+        </div>
+        <div id="zoho-inv-preview-body" style="padding:14px 16px;font-size:12px;color:#1e1611"></div>
+        <div style="padding:12px 16px 16px;border-top:1.5px solid #e8dfd2;position:sticky;bottom:0;background:#fff">
+            <div id="zoho-inv-preview-msg" style="display:none;margin-bottom:8px" class="msg ok"></div>
+            <button class="btn" style="background:#c8864a;color:#fff;margin-bottom:8px" id="zoho-inv-send-btn" onclick="confirmZohoInvPreviewSend()">✅ Send to Zoho</button>
+            <button class="btn btn-grey" style="margin-bottom:0" onclick="closeZohoInvPreview(false)">⏭ Keep in app only (no Zoho)</button>
+        </div>
     </div>
-    <div id="zoho-inv-preview-body" style="padding:14px 16px;font-size:12px;color:#1e1611"></div>
-    <div style="padding:12px 16px 16px;border-top:1.5px solid #e8dfd2;position:sticky;bottom:0;background:#fff">
-      <div id="zoho-inv-preview-msg" style="display:none;margin-bottom:8px" class="msg ok"></div>
-      <button class="btn" style="background:#c8864a;color:#fff;margin-bottom:8px" id="zoho-inv-send-btn" onclick="confirmZohoInvPreviewSend()">✅ Send to Zoho</button>
-      <button class="btn btn-grey" style="margin-bottom:0" onclick="closeZohoInvPreview(false)">⏭ Keep in app only (no Zoho)</button>
-    </div>
-  </div>
 </div>
 
 <!-- PRODUCT MODAL -->
@@ -1803,7 +1803,7 @@ allTabKeys.forEach(function(t){
     }
     // Delivery date = challan date + 1 day
     function nextDay(dateStr){var d=new Date(dateStr);d.setDate(d.getDate()+1);return d.getFullYear()+'-'+zp(d.getMonth()+1)+'-'+zp(d.getDate());}
-    
+
 function fmtQtyPack(name, qty) {
   if (window.ProductsShared && typeof ProductsShared.formatQtyWithPackets === 'function') {
     return ProductsShared.formatQtyWithPackets(name, qty);
@@ -9530,16 +9530,43 @@ onStaffRoleChange();
 
     function updateAdminPushUI(){
       var card = document.getElementById('adminPushCard');
-      if(card) card.style.display = (_staffRole === 'admin') ? 'block' : 'none';
       var el = document.getElementById('adminPushStatus');
+      var btn = document.getElementById('adminPushBtn');
+      // Only for admin role; hide completely when already enabled
+      if(_staffRole !== 'admin'){
+        if(card) card.style.display = 'none';
+        return;
+      }
       if(!el) return;
-      if(_staffRole !== 'admin'){ el.textContent = ''; return; }
       var perm = ('Notification' in window) ? Notification.permission : 'unsupported';
-      if(perm === 'unsupported'){ el.textContent = 'Push not supported on this browser'; el.style.color = '#c8382a'; return; }
-      if(perm === 'denied'){ el.textContent = 'Blocked — allow notifications in browser settings'; el.style.color = '#c8382a'; return; }
-      if(perm === 'granted' && _adminPushReady){ el.textContent = '✅ Background push ON for '+adminPushShopId(); el.style.color = '#2d7a4f'; return; }
-      if(perm === 'granted'){ el.textContent = 'Permission OK — registering device…'; el.style.color = '#1565c0'; return; }
-      el.textContent = 'Tap Enable to get alerts when app is closed'; el.style.color = '#7a4800';
+      // Already ON → hide card (no need to show every visit)
+      if(perm === 'granted' && _adminPushReady){
+        if(card) card.style.display = 'none';
+        return;
+      }
+      // Needs setup or problem → show card
+      if(card) card.style.display = 'block';
+      if(perm === 'unsupported'){
+        el.textContent = 'Push not supported on this browser';
+        el.style.color = '#c8382a';
+        if(btn) btn.style.display = 'none';
+        return;
+      }
+      if(perm === 'denied'){
+        el.textContent = 'Blocked — allow notifications in browser / phone settings';
+        el.style.color = '#c8382a';
+        if(btn) btn.style.display = 'none';
+        return;
+      }
+      if(perm === 'granted'){
+        el.textContent = 'Permission OK — finishing device setup…';
+        el.style.color = '#1565c0';
+        if(btn) btn.style.display = 'none';
+        return;
+      }
+      el.textContent = 'Tap Enable once to get new-order alerts when the app is closed';
+      el.style.color = '#7a4800';
+      if(btn){ btn.style.display = ''; btn.textContent = 'Enable Push'; }
     }
 
     function _pushMsg(s, max){
