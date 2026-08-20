@@ -102,19 +102,19 @@
         .pay-seg{display:flex;gap:6px;width:100%}
         .pay-seg button{flex:1;min-width:0;padding:10px 4px;border:1.5px solid #e2e8f0;border-radius:12px;background:#f1f5f9;font-size:11px;font-weight:800;color:#64748b;font-family:-apple-system,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent}
         .pay-seg button.on{background:#0f766e;color:#fff;border-color:#0f766e}
-        .del-mobile-seg-wrap,.ord-mobile-seg-wrap{display:none;padding:10px 12px 8px;background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;margin:0 0 10px;position:sticky;top:calc(56px + var(--sat) + 8px);z-index:297;box-shadow:0 1px 0 rgba(15,23,42,.04)}
-        .del-mobile-seg,.ord-mobile-seg{display:flex;gap:6px;width:100%}
-        .del-mobile-seg button,.ord-mobile-seg button{flex:1;min-width:0;padding:10px 4px;border:1.5px solid #e2e8f0;border-radius:12px;background:#f1f5f9;font-size:11px;font-weight:800;color:#64748b;font-family:-apple-system,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent}
-        .del-mobile-seg button.on,.ord-mobile-seg button.on{background:#0f766e;color:#fff;border-color:#0f766e}
+        .del-mobile-seg-wrap,.ord-mobile-seg-wrap,.mng-mobile-seg-wrap{display:none;padding:10px 12px 8px;background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;margin:0 0 10px;position:sticky;top:calc(56px + var(--sat) + 8px);z-index:297;box-shadow:0 1px 0 rgba(15,23,42,.04)}
+        .del-mobile-seg,.ord-mobile-seg,.mng-mobile-seg{display:flex;gap:6px;width:100%}
+        .del-mobile-seg button,.ord-mobile-seg button,.mng-mobile-seg button{flex:1;min-width:0;padding:10px 4px;border:1.5px solid #e2e8f0;border-radius:12px;background:#f1f5f9;font-size:11px;font-weight:800;color:#64748b;font-family:-apple-system,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent}
+        .del-mobile-seg button.on,.ord-mobile-seg button.on,.mng-mobile-seg button.on{background:#0f766e;color:#fff;border-color:#0f766e}
         .del-back-bar,.rt-back-deliv{display:none !important}
         @media (max-width:700px){
           .pay-mobile-tools{display:block}
-          .del-mobile-seg-wrap,.ord-mobile-seg-wrap{display:block}
+          .del-mobile-seg-wrap,.ord-mobile-seg-wrap,.mng-mobile-seg-wrap{display:block}
           .del-back-bar,.rt-back-deliv{display:none !important}
-          #subTabs.pay-mode,#subTabs.ord-mode,#subTabs.del-mode{display:none !important}
+          #subTabs.pay-mode,#subTabs.ord-mode,#subTabs.del-mode,#subTabs.mng-mode{display:none !important}
         }
         @media (min-width:701px){
-          #deliveryToolsSheet,#ordersToolsSheet{display:none !important}
+          #deliveryToolsSheet,#ordersToolsSheet,#manageToolsSheet{display:none !important}
         }
 
         @media (max-width:700px){
@@ -253,7 +253,7 @@
         </button>
         <div class="topbar-actions">
             <button type="button" class="topbar-icon-btn" onclick="openGlobalSearch()" title="Search" aria-label="Search">🔍</button>
-            <button type="button" class="topbar-icon-btn" onclick="showGroup('notify')" title="Notify" aria-label="Notifications">🔔</button>
+            <button type="button" class="topbar-icon-btn" onclick="showTab('notify')" title="Notify" aria-label="Notifications">🔔</button>
             <button type="button" class="topbar-icon-btn" id="logoutBtn" title="Logout" aria-label="Logout">⏻</button>
         </div>
     </div>
@@ -290,31 +290,31 @@
 
 <!-- Mobile bottom navigation (hidden on desktop via CSS) -->
 <nav class="bottom-nav" id="bottomNav" aria-label="Main">
-    <div class="bottom-nav-inner">
-        <button type="button" class="bnav-item on" id="bnav-home" onclick="mobileNav('home')">
-            <span class="bnav-ico">🏠</span><span class="bnav-lbl">Home</span>
-        </button>
-        <button type="button" class="bnav-item" id="bnav-orders" onclick="mobileNav('orders')">
-            <span class="bnav-ico">📋</span><span class="bnav-lbl">Orders</span>
-        </button>
-        <button type="button" class="bnav-item" id="bnav-delivery" onclick="mobileNav('delivery')">
-            <span class="bnav-ico">🚚</span><span class="bnav-lbl">Delivery</span>
-        </button>
-        <button type="button" class="bnav-item" id="bnav-payments" onclick="mobileNav('payments')">
-            <span class="bnav-ico">💰</span><span class="bnav-lbl">Payments</span>
-        </button>
-        <button type="button" class="bnav-item" id="bnav-more" onclick="mobileNav('more')">
-            <span class="bnav-ico">☰</span><span class="bnav-lbl">More</span>
-        </button>
-    </div>
+  <div class="bottom-nav-inner">
+    <button type="button" class="bnav-item on" id="bnav-home" onclick="mobileNav('home')">
+      <span class="bnav-ico">🏠</span><span class="bnav-lbl">Home</span>
+    </button>
+    <button type="button" class="bnav-item" id="bnav-orders" onclick="mobileNav('orders')">
+      <span class="bnav-ico">📋</span><span class="bnav-lbl">Orders</span>
+    </button>
+    <button type="button" class="bnav-item" id="bnav-delivery" onclick="mobileNav('delivery')">
+      <span class="bnav-ico">🚚</span><span class="bnav-lbl">Delivery</span>
+    </button>
+    <button type="button" class="bnav-item" id="bnav-payments" onclick="mobileNav('payments')">
+      <span class="bnav-ico">💰</span><span class="bnav-lbl">Payments</span>
+    </button>
+    <button type="button" class="bnav-item" id="bnav-more" onclick="mobileNav('more')">
+      <span class="bnav-ico">☰</span><span class="bnav-lbl">More</span>
+    </button>
+  </div>
 </nav>
 <div class="more-sheet" id="moreSheet" onclick="if(event.target===this)closeMoreSheet()">
-    <div class="more-panel">
-        <h3>More</h3>
-        <div class="more-grid" id="moreGrid"></div>
-        <p class="more-hint">Zoho, bulk tools &amp; settings work best on a computer. Daily ops: Orders, Delivery &amp; Payments.</p>
-        <button type="button" class="btn-sm btn-grey" style="width:100%;margin-top:10px;padding:10px" onclick="closeMoreSheet()">Close</button>
-    </div>
+  <div class="more-panel">
+    <h3>More</h3>
+    <div class="more-grid" id="moreGrid"></div>
+    <p class="more-hint">Zoho, bulk tools &amp; settings work best on a computer. Daily ops: Orders, Delivery &amp; Payments.</p>
+    <button type="button" class="btn-sm btn-grey" style="width:100%;margin-top:10px;padding:10px" onclick="closeMoreSheet()">Close</button>
+  </div>
 </div>
 
 
@@ -399,12 +399,12 @@
 <!-- ORDERS -->
 <div class="page" id="pg-orders">
     <div class="ord-mobile-seg-wrap">
-        <div class="ord-mobile-seg" role="tablist">
-            <button type="button" data-ord-seg="cust-orders" onclick="showTab('cust-orders')">🛒 Orders</button>
-            <button type="button" data-ord-seg="approve" onclick="showTab('approve')">⏳ Pending</button>
-            <button type="button" data-ord-seg="summary" onclick="showTab('summary')">📊 Summary</button>
-            <button type="button" class="on" data-ord-seg="more" onclick="openOrdersTools()">⋯ More</button>
-        </div>
+      <div class="ord-mobile-seg" role="tablist">
+        <button type="button" data-ord-seg="cust-orders" onclick="showTab('cust-orders')">🛒 Orders</button>
+        <button type="button" data-ord-seg="notify" onclick="showTab('notify')">🔔 Notify</button>
+        <button type="button" data-ord-seg="summary" onclick="showTab('summary')">📊 Summary</button>
+        <button type="button" class="on" data-ord-seg="more" onclick="openOrdersTools()">⋯ More</button>
+      </div>
     </div>
     <div class="card">
         <div class="lbl">Import Delivery Challan</div>
@@ -487,12 +487,12 @@
 <!-- MANUAL ORDER -->
 <div class="page" id="pg-manual-order">
     <div class="ord-mobile-seg-wrap">
-        <div class="ord-mobile-seg" role="tablist">
-            <button type="button" data-ord-seg="cust-orders" onclick="showTab('cust-orders')">🛒 Orders</button>
-            <button type="button" data-ord-seg="approve" onclick="showTab('approve')">⏳ Pending</button>
-            <button type="button" data-ord-seg="summary" onclick="showTab('summary')">📊 Summary</button>
-            <button type="button" class="on" data-ord-seg="more" onclick="openOrdersTools()">⋯ More</button>
-        </div>
+      <div class="ord-mobile-seg" role="tablist">
+        <button type="button" data-ord-seg="cust-orders" onclick="showTab('cust-orders')">🛒 Orders</button>
+        <button type="button" data-ord-seg="notify" onclick="showTab('notify')">🔔 Notify</button>
+        <button type="button" data-ord-seg="summary" onclick="showTab('summary')">📊 Summary</button>
+        <button type="button" class="on" data-ord-seg="more" onclick="openOrdersTools()">⋯ More</button>
+      </div>
     </div>
     <div style="font-size:13px;font-weight:900;color:#1e293b;margin-bottom:10px">📝 Place Order on Behalf of Customer</div>
 
@@ -560,12 +560,12 @@
 <!-- APPROVE -->
 <div class="page" id="pg-approve">
     <div class="ord-mobile-seg-wrap" id="ordSegWrapApprove">
-        <div class="ord-mobile-seg" role="tablist">
-            <button type="button" id="ordSeg2-co" onclick="showTab('cust-orders')">🛒 Orders</button>
-            <button type="button" class="on" id="ordSeg2-pending" onclick="showTab('approve')">⏳ Pending</button>
-            <button type="button" id="ordSeg2-summary" onclick="showTab('summary')">📊 Summary</button>
-            <button type="button" id="ordSeg2-more" onclick="openOrdersTools()">⋯ More</button>
-        </div>
+      <div class="ord-mobile-seg" role="tablist">
+        <button type="button" id="ordSeg2-co" onclick="showTab('cust-orders')">🛒 Orders</button>
+        <button type="button" id="ordSeg2-notify" onclick="showTab('notify')">🔔 Notify</button>
+        <button type="button" id="ordSeg2-summary" onclick="showTab('summary')">📊 Summary</button>
+        <button type="button" class="on" id="ordSeg2-more" onclick="openOrdersTools()">⋯ More</button>
+      </div>
     </div>
     <div class="queue-banner">🆕 New customers found in challan not in your customer list.<br>Review and approve each one — assign a driver to activate them.</div>
 
@@ -581,12 +581,12 @@
 <!-- QUEUE -->
 <div class="page" id="pg-queue">
     <div class="ord-mobile-seg-wrap">
-        <div class="ord-mobile-seg" role="tablist">
-            <button type="button" data-ord-seg="cust-orders" onclick="showTab('cust-orders')">🛒 Orders</button>
-            <button type="button" data-ord-seg="approve" onclick="showTab('approve')">⏳ Pending</button>
-            <button type="button" data-ord-seg="summary" onclick="showTab('summary')">📊 Summary</button>
-            <button type="button" class="on" data-ord-seg="more" onclick="openOrdersTools()">⋯ More</button>
-        </div>
+      <div class="ord-mobile-seg" role="tablist">
+        <button type="button" data-ord-seg="cust-orders" onclick="showTab('cust-orders')">🛒 Orders</button>
+        <button type="button" data-ord-seg="notify" onclick="showTab('notify')">🔔 Notify</button>
+        <button type="button" data-ord-seg="summary" onclick="showTab('summary')">📊 Summary</button>
+        <button type="button" class="on" data-ord-seg="more" onclick="openOrdersTools()">⋯ More</button>
+      </div>
     </div>
     <div class="queue-banner">⚠️ Orders saved but no driver assigned yet.<br>Assign a driver to each before delivery.</div>
     <div class="stats-grid" id="queueStats"></div>
@@ -612,12 +612,12 @@
 <!-- SUMMARY -->
 <div class="page" id="pg-summary">
     <div class="ord-mobile-seg-wrap" id="ordSegWrapSummary">
-        <div class="ord-mobile-seg" role="tablist">
-            <button type="button" id="ordSeg3-co" onclick="showTab('cust-orders')">🛒 Orders</button>
-            <button type="button" id="ordSeg3-pending" onclick="showTab('approve')">⏳ Pending</button>
-            <button type="button" class="on" id="ordSeg3-summary" onclick="showTab('summary')">📊 Summary</button>
-            <button type="button" id="ordSeg3-more" onclick="openOrdersTools()">⋯ More</button>
-        </div>
+      <div class="ord-mobile-seg" role="tablist">
+        <button type="button" id="ordSeg3-co" onclick="showTab('cust-orders')">🛒 Orders</button>
+        <button type="button" id="ordSeg3-notify" onclick="showTab('notify')">🔔 Notify</button>
+        <button type="button" class="on" id="ordSeg3-summary" onclick="showTab('summary')">📊 Summary</button>
+        <button type="button" id="ordSeg3-more" onclick="openOrdersTools()">⋯ More</button>
+      </div>
     </div>
     <div class="filter-row">
         <input type="date" id="f-sum-date" onchange="loadSummary()" style="margin-bottom:0">
@@ -639,13 +639,13 @@
 <!-- DELIVERY -->
 <div class="page" id="pg-delivery">
     <div class="del-mobile-seg-wrap" id="delSegWrapDelivery">
-        <div class="del-mobile-seg" role="tablist">
-            <button type="button" class="on" id="delSeg-delivery" data-del-seg="delivery" onclick="showTab('delivery')">🚚 Deliveries</button>
-            <button type="button" id="delSeg-routes" data-del-seg="routes" onclick="showTab('routes')">🗺 Routes</button>
-            <button type="button" id="delSeg-gps" data-del-seg="gps" onclick="showTab('gps')">📍 GPS</button>
-            <button type="button" id="delSeg-audit" data-del-seg="audit" onclick="showTab('audit')">🔍 Audit</button>
-            <button type="button" id="delSeg-attendance" class="del-seg-att" data-del-seg="attendance" onclick="showTab('attendance')" style="display:none">📊 Att.</button>
-        </div>
+      <div class="del-mobile-seg" role="tablist">
+        <button type="button" class="on" id="delSeg-delivery" data-del-seg="delivery" onclick="showTab('delivery')">🚚 Deliveries</button>
+        <button type="button" id="delSeg-routes" data-del-seg="routes" onclick="showTab('routes')">🗺 Routes</button>
+        <button type="button" id="delSeg-gps" data-del-seg="gps" onclick="showTab('gps')">📍 GPS</button>
+        <button type="button" id="delSeg-audit" data-del-seg="audit" onclick="showTab('audit')">🔍 Audit</button>
+        <button type="button" id="delSeg-attendance" class="del-seg-att" data-del-seg="attendance" onclick="showTab('attendance')" style="display:none">📊 Att.</button>
+      </div>
     </div>
     <div class="stats-grid" id="delivStats"></div>
     <div class="filter-row">
@@ -660,45 +660,56 @@
 
 <!-- Delivery tools sheet (mobile Option A) -->
 <div class="more-sheet" id="deliveryToolsSheet" onclick="if(event.target===this)closeDeliveryTools()">
-    <div class="more-panel" onclick="event.stopPropagation()">
-        <h3>Delivery tools</h3>
-        <div class="more-hint" style="margin-top:0;margin-bottom:10px">
-            <b>Daily morning:</b> delivery list · routes.<br>
-            <b>Shop GPS:</b> customer drop location (not driver live track).<br>
-            <b>Prior day / occasional:</b> substitute · shop reassign.
-        </div>
-        <div class="more-grid" id="deliveryToolsGrid"></div>
-        <div class="more-hint">
-            🔄 Substitute (today only) → Routes<br>
-            🔀 Shop reassign (permanent) → More → Customers<br>
-            📍 Shop GPS → customer lat/lng on map
-        </div>
-        <button type="button" class="btn btn-grey" style="margin-top:12px;margin-bottom:0" onclick="closeDeliveryTools()">Close</button>
+  <div class="more-panel" onclick="event.stopPropagation()">
+    <h3>Delivery tools</h3>
+    <div class="more-hint" style="margin-top:0;margin-bottom:10px">
+      <b>Daily morning:</b> delivery list · routes.<br>
+      <b>Shop GPS:</b> customer drop location (not driver live track).<br>
+      <b>Prior day / occasional:</b> substitute · shop reassign.
     </div>
+    <div class="more-grid" id="deliveryToolsGrid"></div>
+    <div class="more-hint">
+      🔄 Substitute (today only) → Routes<br>
+      🔀 Shop reassign (permanent) → More → Customers<br>
+      📍 Shop GPS → customer lat/lng on map
+    </div>
+    <button type="button" class="btn btn-grey" style="margin-top:12px;margin-bottom:0" onclick="closeDeliveryTools()">Close</button>
+  </div>
 </div>
 
 <!-- Orders tools sheet (mobile) -->
 <div class="more-sheet" id="ordersToolsSheet" onclick="if(event.target===this)closeOrdersTools()">
-    <div class="more-panel" onclick="event.stopPropagation()">
-        <h3>Orders tools</h3>
-        <div class="more-hint" style="margin-top:0;margin-bottom:10px">
-            Extra order screens. Daily work: Shop orders · Pending · Summary.
-        </div>
-        <div class="more-grid" id="ordersToolsGrid"></div>
-        <button type="button" class="btn btn-grey" style="margin-top:12px;margin-bottom:0" onclick="closeOrdersTools()">Close</button>
+  <div class="more-panel" onclick="event.stopPropagation()">
+    <h3>Orders tools</h3>
+    <div class="more-hint" style="margin-top:0;margin-bottom:10px">
+      Daily: Orders · Notify · Summary. More: Place order · Pending · Production · Dispatch · Queue.
     </div>
+    <div class="more-grid" id="ordersToolsGrid"></div>
+    <button type="button" class="btn btn-grey" style="margin-top:12px;margin-bottom:0" onclick="closeOrdersTools()">Close</button>
+  </div>
+</div>
+
+
+<!-- Manage tools sheet (mobile) -->
+<div class="more-sheet" id="manageToolsSheet" onclick="if(event.target===this)closeManageTools()">
+  <div class="more-panel" onclick="event.stopPropagation()">
+    <h3>Manage tools</h3>
+    <div class="more-hint" style="margin-top:0;margin-bottom:10px">Products · Drivers · Groups on the bar. Extra screens here.</div>
+    <div class="more-grid" id="manageToolsGrid"></div>
+    <button type="button" class="btn btn-grey" style="margin-top:12px;margin-bottom:0" onclick="closeManageTools()">Close</button>
+  </div>
 </div>
 
 <!-- ROUTES -->
 <div class="page" id="pg-routes">
     <div class="del-mobile-seg-wrap" id="delSegWrapRoutes">
-        <div class="del-mobile-seg" role="tablist">
-            <button type="button" id="delSeg2-delivery" data-del-seg="delivery" onclick="showTab('delivery')">🚚 Deliveries</button>
-            <button type="button" class="on" id="delSeg2-routes" data-del-seg="routes" onclick="showTab('routes')">🗺 Routes</button>
-            <button type="button" id="delSeg2-gps" data-del-seg="gps" onclick="showTab('gps')">📍 GPS</button>
-            <button type="button" id="delSeg2-audit" data-del-seg="audit" onclick="showTab('audit')">🔍 Audit</button>
-            <button type="button" id="delSeg2-attendance" class="del-seg-att" data-del-seg="attendance" onclick="showTab('attendance')" style="display:none">📊 Att.</button>
-        </div>
+      <div class="del-mobile-seg" role="tablist">
+        <button type="button" id="delSeg2-delivery" data-del-seg="delivery" onclick="showTab('delivery')">🚚 Deliveries</button>
+        <button type="button" class="on" id="delSeg2-routes" data-del-seg="routes" onclick="showTab('routes')">🗺 Routes</button>
+        <button type="button" id="delSeg2-gps" data-del-seg="gps" onclick="showTab('gps')">📍 GPS</button>
+        <button type="button" id="delSeg2-audit" data-del-seg="audit" onclick="showTab('audit')">🔍 Audit</button>
+        <button type="button" id="delSeg2-attendance" class="del-seg-att" data-del-seg="attendance" onclick="showTab('attendance')" style="display:none">📊 Att.</button>
+      </div>
     </div>
     <div class="rt-page-head" style="margin-bottom:12px">
         <div style="margin-bottom:6px">
@@ -787,13 +798,13 @@
 <!-- ATTENDANCE / MONTHLY REPORT -->
 <div class="page" id="pg-attendance">
     <div class="del-mobile-seg-wrap">
-        <div class="del-mobile-seg" role="tablist">
-            <button type="button" data-del-seg="delivery" onclick="showTab('delivery')">🚚 Deliveries</button>
-            <button type="button" data-del-seg="routes" onclick="showTab('routes')">🗺 Routes</button>
-            <button type="button" data-del-seg="gps" onclick="showTab('gps')">📍 GPS</button>
-            <button type="button" data-del-seg="audit" onclick="showTab('audit')">🔍 Audit</button>
-            <button type="button" class="on del-seg-att" data-del-seg="attendance" onclick="showTab('attendance')" style="display:none">📊 Att.</button>
-        </div>
+      <div class="del-mobile-seg" role="tablist">
+        <button type="button" data-del-seg="delivery" onclick="showTab('delivery')">🚚 Deliveries</button>
+        <button type="button" data-del-seg="routes" onclick="showTab('routes')">🗺 Routes</button>
+        <button type="button" data-del-seg="gps" onclick="showTab('gps')">📍 GPS</button>
+        <button type="button" data-del-seg="audit" onclick="showTab('audit')">🔍 Audit</button>
+        <button type="button" class="on del-seg-att" data-del-seg="attendance" onclick="showTab('attendance')" style="display:none">📊 Att.</button>
+      </div>
     </div>
     <div class="card" style="margin-bottom:10px">
         <div class="lbl">Month</div>
@@ -870,6 +881,15 @@
 
 <!-- PRODUCTS -->
 <div class="page" id="pg-products">
+    <div class="mng-mobile-seg-wrap">
+      <div class="mng-mobile-seg" role="tablist">
+        <button type="button" class="on" data-mng-seg="products" onclick="showTab('products')">📦 Products</button>
+        <button type="button" data-mng-seg="drivers" onclick="showTab('drivers')">🚗 Drivers</button>
+        <button type="button" data-mng-seg="groups" onclick="showTab('groups')">🏷 Groups</button>
+        <button type="button" data-mng-seg="more" onclick="openManageTools()">⋯ More</button>
+      </div>
+    </div>
+
     <div class="stats-grid" id="productStats"></div>
     <button class="btn btn-brown" onclick="openAddProduct()">➕ Add Product</button>
     <div class="filter-row">
@@ -894,6 +914,15 @@
 
 <!-- DRIVERS -->
 <div class="page" id="pg-drivers">
+    <div class="mng-mobile-seg-wrap">
+      <div class="mng-mobile-seg" role="tablist">
+        <button type="button" data-mng-seg="products" onclick="showTab('products')">📦 Products</button>
+        <button type="button" class="on" data-mng-seg="drivers" onclick="showTab('drivers')">🚗 Drivers</button>
+        <button type="button" data-mng-seg="groups" onclick="showTab('groups')">🏷 Groups</button>
+        <button type="button" data-mng-seg="more" onclick="openManageTools()">⋯ More</button>
+      </div>
+    </div>
+
     <div class="stats-grid" id="driverStats"></div>
     <button class="btn btn-brown" onclick="openAddDriver()">➕ Add Driver</button>
     <div id="driversList"></div>
@@ -901,6 +930,15 @@
 
 <!-- USERS (super_admin only) -->
 <div class="page" id="pg-users">
+    <div class="mng-mobile-seg-wrap">
+      <div class="mng-mobile-seg" role="tablist">
+        <button type="button" data-mng-seg="products" onclick="showTab('products')">📦 Products</button>
+        <button type="button" data-mng-seg="drivers" onclick="showTab('drivers')">🚗 Drivers</button>
+        <button type="button" data-mng-seg="groups" onclick="showTab('groups')">🏷 Groups</button>
+        <button type="button" data-mng-seg="more" onclick="openManageTools()">⋯ More</button>
+      </div>
+    </div>
+
     <!-- Feature Settings -->
     <div class="card" style="margin-bottom:14px;border-color:#c8a020">
         <div style="font-size:13px;font-weight:900;color:#1e293b;margin-bottom:10px;letter-spacing:.5px">⚙️ FEATURE SETTINGS</div>
@@ -949,13 +987,13 @@
 <!-- GPS -->
 <div class="page" id="pg-gps">
     <div class="del-mobile-seg-wrap" id="delSegWrapGps">
-        <div class="del-mobile-seg" role="tablist">
-            <button type="button" id="delSeg3-delivery" data-del-seg="delivery" onclick="showTab('delivery')">🚚 Deliveries</button>
-            <button type="button" id="delSeg3-routes" data-del-seg="routes" onclick="showTab('routes')">🗺 Routes</button>
-            <button type="button" id="delSeg3-gps" data-del-seg="gps" onclick="showTab('gps')">📍 GPS</button>
-            <button type="button" id="delSeg3-audit" data-del-seg="audit" onclick="showTab('audit')">🔍 Audit</button>
-            <button type="button" id="delSeg3-attendance" class="del-seg-att" data-del-seg="attendance" onclick="showTab('attendance')" style="display:none">📊 Att.</button>
-        </div>
+      <div class="del-mobile-seg" role="tablist">
+        <button type="button" id="delSeg3-delivery" data-del-seg="delivery" onclick="showTab('delivery')">🚚 Deliveries</button>
+        <button type="button" id="delSeg3-routes" data-del-seg="routes" onclick="showTab('routes')">🗺 Routes</button>
+        <button type="button" id="delSeg3-gps" data-del-seg="gps" onclick="showTab('gps')">📍 GPS</button>
+        <button type="button" id="delSeg3-audit" data-del-seg="audit" onclick="showTab('audit')">🔍 Audit</button>
+        <button type="button" id="delSeg3-attendance" class="del-seg-att" data-del-seg="attendance" onclick="showTab('attendance')" style="display:none">📊 Att.</button>
+      </div>
     </div>
     <div class="stats-grid" id="gpsStats"></div>
     <div class="filter-row">
@@ -974,6 +1012,14 @@
 
 <!-- NOTIFY (super_admin only) -->
 <div class="page" id="pg-notify">
+    <div class="ord-mobile-seg-wrap">
+      <div class="ord-mobile-seg" role="tablist">
+        <button type="button" data-ord-seg="cust-orders" onclick="showTab('cust-orders')">🛒 Orders</button>
+        <button type="button" class="on" data-ord-seg="notify" onclick="showTab('notify')">🔔 Notify</button>
+        <button type="button" data-ord-seg="summary" onclick="showTab('summary')">📊 Summary</button>
+        <button type="button" data-ord-seg="more" onclick="openOrdersTools()">⋯ More</button>
+      </div>
+    </div>
 
     <!-- ORDER WINDOW TOGGLE — always visible -->
     <div class="card" style="margin-bottom:12px">
@@ -996,29 +1042,6 @@
 
     <!-- ═══ CUSTOMER SECTION ═══ -->
     <div id="nsec-customer">
-
-        <!-- Route delay → notify all customers on that driver's route -->
-        <div class="card" style="margin-bottom:12px;border-color:#f5c87a">
-            <div style="font-size:13px;font-weight:900;color:#7a4800;margin-bottom:4px">⏰ Route Delay Alert</div>
-            <div style="font-size:11px;color:#64748b;font-family:monospace;margin-bottom:12px;line-height:1.6">When a driver starts late, notify <b>all customers on that route</b> (from today's/selected date orders).</div>
-            <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
-                <select id="routeDelayDriver" onchange="previewRouteDelayCustomers()" style="flex:1;min-width:140px;margin-bottom:0;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;background:#f8fafc;color:#1e293b">
-                    <option value="">Select driver / route…</option>
-                </select>
-                <input type="date" id="routeDelayDate" onchange="previewRouteDelayCustomers()" style="margin-bottom:0;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;background:#f8fafc">
-            </div>
-            <div id="routeDelayPreview" style="display:none;background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;font-weight:700;color:#7a4800;font-family:monospace;line-height:1.6"></div>
-            <div id="routeDelayShopList" style="display:none;max-height:140px;overflow-y:auto;border:1.5px solid #e2e8f0;border-radius:10px;margin-bottom:10px;background:#f8fafc;padding:6px 0"></div>
-            <div class="lbl" style="margin-bottom:6px">Quick Templates</div>
-            <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
-                <button type="button" class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082;text-align:left;padding:9px 12px" onclick="routeDelayTemplate('⏰ Delivery is running late today. Our driver will reach you soon. Thank you for your patience.')">⏰ Delivery is running late today. Our driver will reach you soon…</button>
-                <button type="button" class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082;text-align:left;padding:9px 12px" onclick="routeDelayTemplate('🚚 Your route is delayed. Expected delivery later than usual today. Sorry for the inconvenience.')">🚚 Your route is delayed. Expected delivery later than usual…</button>
-                <button type="button" class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1.5px solid #f0b0b0;text-align:left;padding:9px 12px" onclick="routeDelayTemplate('⚠️ Significant delay on your route today. We will update you. Call us if urgent.')">⚠️ Significant delay on your route today…</button>
-            </div>
-            <textarea id="routeDelayMsg" rows="2" placeholder="Delay message for all customers on this route…" style="resize:vertical;margin-bottom:8px"></textarea>
-            <button class="btn" style="margin-bottom:0;background:#0f766e;color:#fff" onclick="sendRouteDelayNotif()">📢 Notify Route Customers</button>
-            <div id="routeDelay-result" style="display:none;margin-top:8px" class="msg ok"></div>
-        </div>
 
         <!-- Send to Specific Customers -->
         <div class="card" style="margin-bottom:12px">
@@ -1083,6 +1106,31 @@
                 <button id="broadcastToggleBtn" class="btn" style="margin-bottom:0;background:#e2e8f0;color:#1e293b" onclick="toggleBroadcast()">⏳ Loading…</button>
             </div>
             <div id="broadcast-msg" style="display:none;margin-top:8px" class="msg ok"></div>
+        </div>
+
+
+        <!-- Route delay (rarely used — kept at bottom) -->
+<!-- Route delay → notify all customers on that driver's route -->
+        <div class="card" style="margin-bottom:12px;border-color:#f5c87a">
+            <div style="font-size:13px;font-weight:900;color:#7a4800;margin-bottom:4px">⏰ Route Delay Alert</div>
+            <div style="font-size:11px;color:#64748b;font-family:monospace;margin-bottom:12px;line-height:1.6">When a driver starts late, notify <b>all customers on that route</b> (from today's/selected date orders).</div>
+            <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+                <select id="routeDelayDriver" onchange="previewRouteDelayCustomers()" style="flex:1;min-width:140px;margin-bottom:0;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;background:#f8fafc;color:#1e293b">
+                    <option value="">Select driver / route…</option>
+                </select>
+                <input type="date" id="routeDelayDate" onchange="previewRouteDelayCustomers()" style="margin-bottom:0;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;background:#f8fafc">
+            </div>
+            <div id="routeDelayPreview" style="display:none;background:#fff8e1;border:1.5px solid #ffe082;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12px;font-weight:700;color:#7a4800;font-family:monospace;line-height:1.6"></div>
+            <div id="routeDelayShopList" style="display:none;max-height:140px;overflow-y:auto;border:1.5px solid #e2e8f0;border-radius:10px;margin-bottom:10px;background:#f8fafc;padding:6px 0"></div>
+            <div class="lbl" style="margin-bottom:6px">Quick Templates</div>
+            <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+                <button type="button" class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082;text-align:left;padding:9px 12px" onclick="routeDelayTemplate('⏰ Delivery is running late today. Our driver will reach you soon. Thank you for your patience.')">⏰ Delivery is running late today. Our driver will reach you soon…</button>
+                <button type="button" class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082;text-align:left;padding:9px 12px" onclick="routeDelayTemplate('🚚 Your route is delayed. Expected delivery later than usual today. Sorry for the inconvenience.')">🚚 Your route is delayed. Expected delivery later than usual…</button>
+                <button type="button" class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1.5px solid #f0b0b0;text-align:left;padding:9px 12px" onclick="routeDelayTemplate('⚠️ Significant delay on your route today. We will update you. Call us if urgent.')">⚠️ Significant delay on your route today…</button>
+            </div>
+            <textarea id="routeDelayMsg" rows="2" placeholder="Delay message for all customers on this route…" style="resize:vertical;margin-bottom:8px"></textarea>
+            <button class="btn" style="margin-bottom:0;background:#0f766e;color:#fff" onclick="sendRouteDelayNotif()">📢 Notify Route Customers</button>
+            <div id="routeDelay-result" style="display:none;margin-top:8px" class="msg ok"></div>
         </div>
 
     </div><!-- end customer section -->
@@ -1176,16 +1224,16 @@
 <!-- PAYMENTS DESK (same admin app) -->
 <!-- Payments — same admin UI; module loaded in embed frame (no second app chrome) -->
 <div class="page" id="pg-pay-challan">
-    <div class="pay-mobile-tools" id="payMobileTools">
-        <div class="pay-seg" role="tablist">
-            <button type="button" class="on" id="paySeg-challan" onclick="showTab('pay-challan')">📋 Challans</button>
-            <button type="button" id="paySeg-open" onclick="showTab('pay-open')">💸 Unpaid</button>
-            <button type="button" id="paySeg-requests" onclick="showTab('pay-requests')">📨 Requests</button>
-            <button type="button" id="paySeg-paid" onclick="showTab('pay-paid')">✅ Paid</button>
-        </div>
+  <div class="pay-mobile-tools" id="payMobileTools">
+    <div class="pay-seg" role="tablist">
+      <button type="button" class="on" id="paySeg-challan" onclick="showTab('pay-challan')">📋 Challans</button>
+      <button type="button" id="paySeg-open" onclick="showTab('pay-open')">💸 Unpaid</button>
+      <button type="button" id="paySeg-requests" onclick="showTab('pay-requests')">📨 Requests</button>
+      <button type="button" id="paySeg-paid" onclick="showTab('pay-paid')">✅ Paid</button>
     </div>
-    <iframe id="payEmbedFrame" title="Payments" src="admin-payments.html?embed=1&tab=pay-challan"
-            style="width:100%;border:0;display:block;min-height:calc(100dvh - 160px);height:calc(100dvh - 160px);background:#f8fafc;border-radius:14px"></iframe>
+  </div>
+  <iframe id="payEmbedFrame" title="Payments" src="admin-payments.html?embed=1&tab=pay-challan"
+    style="width:100%;border:0;display:block;min-height:calc(100dvh - 160px);height:calc(100dvh - 160px);background:#f8fafc;border-radius:14px"></iframe>
 </div>
 <div class="page" id="pg-pay-open"></div>
 <div class="page" id="pg-pay-requests"></div>
@@ -1194,93 +1242,102 @@
 
 
 <div class="page" id="pg-zoho">
-    <div class="card" style="margin-bottom:12px;border-color:#ffe082;background:#fffaf0">
-        <div style="font-size:15px;font-weight:900;color:#7a4800;margin-bottom:4px">🔗 Zoho Books Integration</div>
-        <div style="font-size:12px;color:#64748b;font-family:monospace;line-height:1.6;margin-bottom:10px">
-            Pull customers &amp; products from Zoho → review changes → confirm to update this app.<br>
-            <span style="color:#0f766e">Nothing is written to the app until you confirm.</span>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-            <span id="zoho-page-status" style="font-size:11px;font-family:monospace;font-weight:700;color:#64748b">…</span>
-            <button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082;padding:8px 14px" onclick="openZohoSettingsModal()">⚙️ Configure</button>
-            <button class="btn-sm" style="background:#e2e8f0;color:#1e293b;border:1.5px solid #d0c0aa;padding:8px 14px" onclick="toggleZohoIntegration()">Toggle ON/OFF</button>
-        </div>
+  <div class="card" id="zoho-cfg-card" style="margin-bottom:12px;border-color:#ffe082;background:#fffaf0">
+    <div style="font-size:15px;font-weight:900;color:#7a4800;margin-bottom:4px">🔗 Zoho Books Integration</div>
+    <div style="font-size:12px;color:#64748b;font-family:monospace;line-height:1.6;margin-bottom:10px">
+      Pull customers &amp; products from Zoho → review changes → confirm to update this app.<br>
+      <span style="color:#0f766e">Nothing is written to the app until you confirm.</span>
     </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <span id="zoho-page-status" style="font-size:11px;font-family:monospace;font-weight:700;color:#64748b">…</span>
+      <button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082;padding:8px 14px" onclick="openZohoSettingsModal()">⚙️ Configure</button>
+      <button class="btn-sm" style="background:#e2e8f0;color:#1e293b;border:1.5px solid #d0c0aa;padding:8px 14px" onclick="toggleZohoIntegration()">Toggle ON/OFF</button>
+    </div>
+  </div>
 
-    <div class="card" style="margin-bottom:12px">
-        <div style="font-size:13px;font-weight:900;color:#1e293b;margin-bottom:4px">👥 Pull Customers / Shops from Zoho</div>
-        <div style="font-size:11px;color:#64748b;font-family:monospace;margin-bottom:10px;line-height:1.6">Fetches contacts from Zoho Books. Search, pick only what you need, then confirm. Nothing is written until you apply.</div>
-        <button class="btn btn-brown" style="margin-bottom:8px" onclick="zohoPullCustomers()">⬇ Sync from Zoho (Customers)</button>
-        <div id="zoho-pull-cust-msg" style="display:none;margin-bottom:8px;font-size:11px;font-family:monospace;padding:8px 10px;border-radius:8px"></div>
-        <div id="zoho-pull-cust-summary" style="display:none;margin-bottom:8px"></div>
-        <div id="zoho-pull-cust-tools" style="display:none;margin-bottom:8px">
-            <input type="search" id="zoho-pull-cust-search" placeholder="Search name, mobile, ID…" oninput="renderZohoCustPullList()" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;margin-bottom:8px">
-            <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px">
-                <button type="button" class="btn-sm" style="background:#f0e8dc;color:#1e293b;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullCustSelect('visible')">Select visible</button>
-                <button type="button" class="btn-sm" style="background:#f0e8dc;color:#1e293b;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullCustSelect('none')">Clear all</button>
-                <button type="button" class="btn-sm" style="background:#e8f5e9;color:#2d7a4f;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullCustSelect('new')">New only</button>
-                <button type="button" class="btn-sm" style="background:#fff8e1;color:#7a4800;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullCustSelect('changed')">Changed only</button>
-                <span id="zoho-pull-cust-selcount" style="font-size:11px;font-family:monospace;color:#64748b;margin-left:4px"></span>
-            </div>
-            <label style="font-size:11px;color:#64748b;font-family:monospace;display:flex;align-items:center;gap:6px">
-                <input type="checkbox" id="zoho-pull-cust-show-same" onchange="renderZohoCustPullList()" style="accent-color:#0f766e"> Show unchanged too
-            </label>
-        </div>
-        <div id="zoho-pull-cust-list" style="display:none;max-height:360px;overflow-y:auto;border:1.5px solid #e2e8f0;border-radius:10px;background:#f8fafc;margin-bottom:8px"></div>
-        <button id="zoho-apply-cust-btn" class="btn" style="display:none;margin-bottom:0;background:#2d7a4f;color:#fff" onclick="zohoApplyCustomerPull()">✅ Confirm — Update selected customers</button>
+  <div class="card" style="margin-bottom:12px">
+    <div style="font-size:13px;font-weight:900;color:#1e293b;margin-bottom:4px">👥 Pull Customers / Shops from Zoho</div>
+    <div style="font-size:11px;color:#64748b;font-family:monospace;margin-bottom:10px;line-height:1.6">Fetches contacts from Zoho Books. Search, pick only what you need, then confirm. Nothing is written until you apply.</div>
+    <button class="btn btn-brown" style="margin-bottom:8px" onclick="zohoPullCustomers()">⬇ Sync from Zoho (Customers)</button>
+    <div id="zoho-pull-cust-msg" style="display:none;margin-bottom:8px;font-size:11px;font-family:monospace;padding:8px 10px;border-radius:8px"></div>
+    <div id="zoho-pull-cust-summary" style="display:none;margin-bottom:8px"></div>
+    <div id="zoho-pull-cust-tools" style="display:none;margin-bottom:8px">
+      <input type="search" id="zoho-pull-cust-search" placeholder="Search name, mobile, ID…" oninput="renderZohoCustPullList()" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;margin-bottom:8px">
+      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px">
+        <button type="button" class="btn-sm" style="background:#f0e8dc;color:#1e293b;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullCustSelect('visible')">Select visible</button>
+        <button type="button" class="btn-sm" style="background:#f0e8dc;color:#1e293b;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullCustSelect('none')">Clear all</button>
+        <button type="button" class="btn-sm" style="background:#e8f5e9;color:#2d7a4f;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullCustSelect('new')">New only</button>
+        <button type="button" class="btn-sm" style="background:#fff8e1;color:#7a4800;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullCustSelect('changed')">Changed only</button>
+        <span id="zoho-pull-cust-selcount" style="font-size:11px;font-family:monospace;color:#64748b;margin-left:4px"></span>
+      </div>
+      <label style="font-size:11px;color:#64748b;font-family:monospace;display:flex;align-items:center;gap:6px">
+        <input type="checkbox" id="zoho-pull-cust-show-same" onchange="renderZohoCustPullList()" style="accent-color:#0f766e"> Show unchanged too
+      </label>
     </div>
+    <div id="zoho-pull-cust-list" style="display:none;max-height:360px;overflow-y:auto;border:1.5px solid #e2e8f0;border-radius:10px;background:#f8fafc;margin-bottom:8px"></div>
+    <button id="zoho-apply-cust-btn" class="btn" style="display:none;margin-bottom:0;background:#2d7a4f;color:#fff" onclick="zohoApplyCustomerPull()">✅ Confirm — Update selected customers</button>
+  </div>
 
-    <div class="card" style="margin-bottom:12px">
-        <div style="font-size:13px;font-weight:900;color:#1e293b;margin-bottom:4px">📦 Pull Products from Zoho</div>
-        <div style="font-size:11px;color:#64748b;font-family:monospace;margin-bottom:10px;line-height:1.6">Fetches items from Zoho Books. Search and select only the products you want to update.</div>
-        <button class="btn btn-brown" style="margin-bottom:8px" onclick="zohoPullProducts()">⬇ Sync from Zoho (Products)</button>
-        <div id="zoho-pull-prod-msg" style="display:none;margin-bottom:8px;font-size:11px;font-family:monospace;padding:8px 10px;border-radius:8px"></div>
-        <div id="zoho-pull-prod-summary" style="display:none;margin-bottom:8px"></div>
-        <div id="zoho-pull-prod-tools" style="display:none;margin-bottom:8px">
-            <input type="search" id="zoho-pull-prod-search" placeholder="Search name, SKU, ID…" oninput="renderZohoProdPullList()" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;margin-bottom:8px">
-            <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px">
-                <button type="button" class="btn-sm" style="background:#f0e8dc;color:#1e293b;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullProdSelect('visible')">Select visible</button>
-                <button type="button" class="btn-sm" style="background:#f0e8dc;color:#1e293b;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullProdSelect('none')">Clear all</button>
-                <button type="button" class="btn-sm" style="background:#e8f5e9;color:#2d7a4f;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullProdSelect('new')">New only</button>
-                <button type="button" class="btn-sm" style="background:#fff8e1;color:#7a4800;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullProdSelect('changed')">Changed only</button>
-                <span id="zoho-pull-prod-selcount" style="font-size:11px;font-family:monospace;color:#64748b;margin-left:4px"></span>
-            </div>
-            <label style="font-size:11px;color:#64748b;font-family:monospace;display:flex;align-items:center;gap:6px">
-                <input type="checkbox" id="zoho-pull-prod-show-same" onchange="renderZohoProdPullList()" style="accent-color:#0f766e"> Show unchanged too
-            </label>
-        </div>
-        <div id="zoho-pull-prod-list" style="display:none;max-height:360px;overflow-y:auto;border:1.5px solid #e2e8f0;border-radius:10px;background:#f8fafc;margin-bottom:8px"></div>
-        <button id="zoho-apply-prod-btn" class="btn" style="display:none;margin-bottom:0;background:#2d7a4f;color:#fff" onclick="zohoApplyProductPull()">✅ Confirm — Update selected products</button>
+  <div class="card" style="margin-bottom:12px">
+    <div style="font-size:13px;font-weight:900;color:#1e293b;margin-bottom:4px">📦 Pull Products from Zoho</div>
+    <div style="font-size:11px;color:#64748b;font-family:monospace;margin-bottom:10px;line-height:1.6">Fetches items from Zoho Books. Search and select only the products you want to update.</div>
+    <button class="btn btn-brown" style="margin-bottom:8px" onclick="zohoPullProducts()">⬇ Sync from Zoho (Products)</button>
+    <div id="zoho-pull-prod-msg" style="display:none;margin-bottom:8px;font-size:11px;font-family:monospace;padding:8px 10px;border-radius:8px"></div>
+    <div id="zoho-pull-prod-summary" style="display:none;margin-bottom:8px"></div>
+    <div id="zoho-pull-prod-tools" style="display:none;margin-bottom:8px">
+      <input type="search" id="zoho-pull-prod-search" placeholder="Search name, SKU, ID…" oninput="renderZohoProdPullList()" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;margin-bottom:8px">
+      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px">
+        <button type="button" class="btn-sm" style="background:#f0e8dc;color:#1e293b;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullProdSelect('visible')">Select visible</button>
+        <button type="button" class="btn-sm" style="background:#f0e8dc;color:#1e293b;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullProdSelect('none')">Clear all</button>
+        <button type="button" class="btn-sm" style="background:#e8f5e9;color:#2d7a4f;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullProdSelect('new')">New only</button>
+        <button type="button" class="btn-sm" style="background:#fff8e1;color:#7a4800;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullProdSelect('changed')">Changed only</button>
+        <span id="zoho-pull-prod-selcount" style="font-size:11px;font-family:monospace;color:#64748b;margin-left:4px"></span>
+      </div>
+      <label style="font-size:11px;color:#64748b;font-family:monospace;display:flex;align-items:center;gap:6px">
+        <input type="checkbox" id="zoho-pull-prod-show-same" onchange="renderZohoProdPullList()" style="accent-color:#0f766e"> Show unchanged too
+      </label>
     </div>
+    <div id="zoho-pull-prod-list" style="display:none;max-height:360px;overflow-y:auto;border:1.5px solid #e2e8f0;border-radius:10px;background:#f8fafc;margin-bottom:8px"></div>
+    <button id="zoho-apply-prod-btn" class="btn" style="display:none;margin-bottom:0;background:#2d7a4f;color:#fff" onclick="zohoApplyProductPull()">✅ Confirm — Update selected products</button>
+  </div>
 
-    <div class="card" style="margin-bottom:12px">
-        <div style="font-size:13px;font-weight:900;color:#1e293b;margin-bottom:4px">🚚 Default shipping (fallback only)</div>
-        <div style="font-size:11px;color:#64748b;font-family:monospace;margin-bottom:10px;line-height:1.6">
-            Used only when a customer has <b>no</b> shipping set.<br>
-            Set each shop’s charge under <b>Customers → Edit → Shipping charge</b> (different per customer).
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <span style="font-size:13px;font-weight:700">₹</span>
-            <input type="number" id="zoho-shipping-input" min="0" step="1" value="20" style="width:100px;margin-bottom:0;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-weight:700">
-            <button class="btn-sm" style="background:#0f766e;color:#fff;border:none;padding:10px 16px" onclick="saveZohoShippingUI()">Save default</button>
-            <span id="zoho-shipping-msg" style="font-size:11px;font-family:monospace;color:#2d7a4f;display:none"></span>
-        </div>
+  <div class="card" id="zoho-shipping-card" style="margin-bottom:12px">
+    <div style="font-size:13px;font-weight:900;color:#1e293b;margin-bottom:4px">🚚 Default shipping (fallback only)</div>
+    <div style="font-size:11px;color:#64748b;font-family:monospace;margin-bottom:10px;line-height:1.6">
+      Used only when a customer has <b>no</b> shipping set.<br>
+      Set each shop’s charge under <b>Customers → Edit → Shipping charge</b> (different per customer).
     </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <span style="font-size:13px;font-weight:700">₹</span>
+      <input type="number" id="zoho-shipping-input" min="0" step="1" value="20" style="width:100px;margin-bottom:0;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-weight:700">
+      <button class="btn-sm" style="background:#0f766e;color:#fff;border:none;padding:10px 16px" onclick="saveZohoShippingUI()">Save default</button>
+      <span id="zoho-shipping-msg" style="font-size:11px;font-family:monospace;color:#2d7a4f;display:none"></span>
+    </div>
+  </div>
 
-    <div class="card" style="margin-bottom:12px">
-        <div style="font-size:13px;font-weight:900;color:#1e293b;margin-bottom:6px">📄 Invoice / Challan data checklist</div>
-        <div style="font-size:11px;font-family:monospace;color:#1e293b;line-height:1.7;background:#f8fafc;border-radius:10px;padding:10px 12px">
-            <div><b>Sent now:</b> customer_id, date, reference, line <b>name + qty + rate</b>, item_id (if Zoho id), <b>shipping_charge</b>, notes, invoice vs delivery_challan</div>
-            <div style="margin-top:6px;color:#2d7a4f"><b>Tax:</b> set <b>Zoho Tax ID</b> on each product (Products → Edit). Blank = no tax on that line.</div>
-            <div style="margin-top:6px;color:#c8382a"><b>Still from Zoho templates:</b></div>
-            <div>• Place of supply / GSTIN / billing address block</div>
-            <div>• Bank details on tax invoice</div>
-        </div>
+  <div class="card" id="zoho-checklist-card" style="margin-bottom:12px">
+    <div style="font-size:13px;font-weight:900;color:#1e293b;margin-bottom:6px">📄 Invoice / Challan data checklist</div>
+    <div style="font-size:11px;font-family:monospace;color:#1e293b;line-height:1.7;background:#f8fafc;border-radius:10px;padding:10px 12px">
+      <div><b>Sent now:</b> customer_id, date, reference, line <b>name + qty + rate</b>, item_id (if Zoho id), <b>shipping_charge</b>, notes, invoice vs delivery_challan</div>
+      <div style="margin-top:6px;color:#2d7a4f"><b>Tax:</b> set <b>Zoho Tax ID</b> on each product (Products → Edit). Blank = no tax on that line.</div>
+      <div style="margin-top:6px;color:#c8382a"><b>Still from Zoho templates:</b></div>
+      <div>• Place of supply / GSTIN / billing address block</div>
+      <div>• Bank details on tax invoice</div>
     </div>
+  </div>
 </div>
 
 <!-- CLEANUP (super_admin only) -->
 <div class="page" id="pg-cleanup">
+    <div class="mng-mobile-seg-wrap">
+      <div class="mng-mobile-seg" role="tablist">
+        <button type="button" data-mng-seg="products" onclick="showTab('products')">📦 Products</button>
+        <button type="button" data-mng-seg="drivers" onclick="showTab('drivers')">🚗 Drivers</button>
+        <button type="button" data-mng-seg="groups" onclick="showTab('groups')">🏷 Groups</button>
+        <button type="button" data-mng-seg="more" onclick="openManageTools()">⋯ More</button>
+      </div>
+    </div>
+
     <div class="card" style="border-color:#f5c6c6;margin-bottom:12px">
         <div style="font-size:15px;font-weight:900;color:#c8382a;margin-bottom:4px">🗑 Data Cleanup</div>
         <div style="font-size:12px;font-family:monospace;color:#64748b;line-height:1.7">
@@ -1319,13 +1376,13 @@
 <!-- TRIP AUDIT (super_admin only) -->
 <div class="page" id="pg-audit">
     <div class="del-mobile-seg-wrap">
-        <div class="del-mobile-seg" role="tablist">
-            <button type="button" data-del-seg="delivery" onclick="showTab('delivery')">🚚 Deliveries</button>
-            <button type="button" data-del-seg="routes" onclick="showTab('routes')">🗺 Routes</button>
-            <button type="button" data-del-seg="gps" onclick="showTab('gps')">📍 GPS</button>
-            <button type="button" class="on" data-del-seg="audit" onclick="showTab('audit')">🔍 Audit</button>
-            <button type="button" class="del-seg-att" data-del-seg="attendance" onclick="showTab('attendance')" style="display:none">📊 Att.</button>
-        </div>
+      <div class="del-mobile-seg" role="tablist">
+        <button type="button" data-del-seg="delivery" onclick="showTab('delivery')">🚚 Deliveries</button>
+        <button type="button" data-del-seg="routes" onclick="showTab('routes')">🗺 Routes</button>
+        <button type="button" data-del-seg="gps" onclick="showTab('gps')">📍 GPS</button>
+        <button type="button" class="on" data-del-seg="audit" onclick="showTab('audit')">🔍 Audit</button>
+        <button type="button" class="del-seg-att" data-del-seg="attendance" onclick="showTab('attendance')" style="display:none">📊 Att.</button>
+      </div>
     </div>
     <div class="card" style="margin-bottom:10px">
         <div style="font-size:15px;font-weight:900;color:#1e293b;margin-bottom:10px">🔍 Driver Trip Audit</div>
@@ -1343,12 +1400,12 @@
 <!-- CUSTOMER ORDERS (approval pipeline) -->
 <div class="page" id="pg-cust-orders">
     <div class="ord-mobile-seg-wrap" id="ordSegWrapCo">
-        <div class="ord-mobile-seg" role="tablist">
-            <button type="button" class="on" id="ordSeg-co" onclick="showTab('cust-orders')">🛒 Orders</button>
-            <button type="button" id="ordSeg-pending" onclick="showTab('approve')">⏳ Pending</button>
-            <button type="button" id="ordSeg-summary" onclick="showTab('summary')">📊 Summary</button>
-            <button type="button" id="ordSeg-more" onclick="openOrdersTools()">⋯ More</button>
-        </div>
+      <div class="ord-mobile-seg" role="tablist">
+        <button type="button" class="on" id="ordSeg-co" onclick="showTab('cust-orders')">🛒 Orders</button>
+        <button type="button" id="ordSeg-notify" onclick="showTab('notify')">🔔 Notify</button>
+        <button type="button" id="ordSeg-summary" onclick="showTab('summary')">📊 Summary</button>
+        <button type="button" id="ordSeg-more" onclick="openOrdersTools()">⋯ More</button>
+      </div>
     </div>
     <!-- Pending orders alert banner -->
     <div id="pendingOrdersBanner" style="display:none;background:#fff8e1;border:1.5px solid #ffe082;border-radius:12px;padding:11px 14px;margin-bottom:10px;font-size:13px;font-weight:800;color:#7a4800;text-align:center;cursor:pointer" onclick="setCoStatusFilter('pending')">
@@ -1378,6 +1435,15 @@
 
 <!-- PRODUCT GROUPS -->
 <div class="page" id="pg-groups">
+    <div class="mng-mobile-seg-wrap">
+      <div class="mng-mobile-seg" role="tablist">
+        <button type="button" data-mng-seg="products" onclick="showTab('products')">📦 Products</button>
+        <button type="button" data-mng-seg="drivers" onclick="showTab('drivers')">🚗 Drivers</button>
+        <button type="button" class="on" data-mng-seg="groups" onclick="showTab('groups')">🏷 Groups</button>
+        <button type="button" data-mng-seg="more" onclick="openManageTools()">⋯ More</button>
+      </div>
+    </div>
+
     <div class="stats-grid" id="groupStats"></div>
     <button class="btn btn-brown" onclick="openAddGroup()">➕ Add Product Group</button>
     <div id="groupsList"></div>
@@ -1385,6 +1451,15 @@
 
 <!-- INGREDIENTS -->
 <div class="page" id="pg-ingredients">
+    <div class="mng-mobile-seg-wrap">
+      <div class="mng-mobile-seg" role="tablist">
+        <button type="button" data-mng-seg="products" onclick="showTab('products')">📦 Products</button>
+        <button type="button" data-mng-seg="drivers" onclick="showTab('drivers')">🚗 Drivers</button>
+        <button type="button" data-mng-seg="groups" onclick="showTab('groups')">🏷 Groups</button>
+        <button type="button" data-mng-seg="more" onclick="openManageTools()">⋯ More</button>
+      </div>
+    </div>
+
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div style="font-size:13px;font-weight:900;color:#1e293b">🧂 Ingredients Master</div>
         <button class="btn-sm" style="background:#1e293b;color:#fff" onclick="openAddIngredient()">➕ Add</button>
@@ -1396,6 +1471,15 @@
 
 <!-- RECIPES -->
 <div class="page" id="pg-recipes">
+    <div class="mng-mobile-seg-wrap">
+      <div class="mng-mobile-seg" role="tablist">
+        <button type="button" data-mng-seg="products" onclick="showTab('products')">📦 Products</button>
+        <button type="button" data-mng-seg="drivers" onclick="showTab('drivers')">🚗 Drivers</button>
+        <button type="button" data-mng-seg="groups" onclick="showTab('groups')">🏷 Groups</button>
+        <button type="button" data-mng-seg="more" onclick="openManageTools()">⋯ More</button>
+      </div>
+    </div>
+
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div style="font-size:13px;font-weight:900;color:#1e293b">📋 Product Recipes</div>
         <button class="btn-sm btn-grey" onclick="loadRecipes()">🔄 Refresh</button>
@@ -1409,12 +1493,12 @@
 <!-- PRODUCTION SHEET -->
 <div class="page" id="pg-production">
     <div class="ord-mobile-seg-wrap">
-        <div class="ord-mobile-seg" role="tablist">
-            <button type="button" data-ord-seg="cust-orders" onclick="showTab('cust-orders')">🛒 Orders</button>
-            <button type="button" data-ord-seg="approve" onclick="showTab('approve')">⏳ Pending</button>
-            <button type="button" data-ord-seg="summary" onclick="showTab('summary')">📊 Summary</button>
-            <button type="button" class="on" data-ord-seg="more" onclick="openOrdersTools()">⋯ More</button>
-        </div>
+      <div class="ord-mobile-seg" role="tablist">
+        <button type="button" data-ord-seg="cust-orders" onclick="showTab('cust-orders')">🛒 Orders</button>
+        <button type="button" data-ord-seg="notify" onclick="showTab('notify')">🔔 Notify</button>
+        <button type="button" data-ord-seg="summary" onclick="showTab('summary')">📊 Summary</button>
+        <button type="button" class="on" data-ord-seg="more" onclick="openOrdersTools()">⋯ More</button>
+      </div>
     </div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div style="font-size:13px;font-weight:900;color:#1e293b">🏭 Production Sheet</div>
@@ -1722,11 +1806,11 @@
             <div class="stats-grid" id="cd-hist-stats" style="margin-bottom:10px"></div>
             <div id="cd-hist-list" style="max-height:360px;overflow-y:auto;border:1.5px solid #e2e8f0;border-radius:12px;background:#faf8f5;margin-bottom:10px;padding:8px"></div>
             <div id="cd-hist-export-wrap" style="display:none">
-                <div style="display:flex;gap:8px">
-                    <button class="btn" style="flex:1;margin-bottom:0;background:#2d7a4f;color:#fff;padding:11px" onclick="exportCdHistoryCSV()">⬇ Export CSV</button>
-                    <button class="btn" style="flex:1;margin-bottom:0;background:#25d366;color:#fff;padding:11px" onclick="shareCdHistoryReport()">📤 Share Report</button>
-                </div>
-                <button class="btn btn-brown" style="margin-top:8px;margin-bottom:0" onclick="printCdHistoryReport()">🖨️ Print / PDF Report</button>
+              <div style="display:flex;gap:8px">
+                  <button class="btn" style="flex:1;margin-bottom:0;background:#2d7a4f;color:#fff;padding:11px" onclick="exportCdHistoryCSV()">⬇ Export CSV</button>
+                  <button class="btn" style="flex:1;margin-bottom:0;background:#25d366;color:#fff;padding:11px" onclick="shareCdHistoryReport()">📤 Share Report</button>
+              </div>
+              <button class="btn btn-brown" style="margin-top:8px;margin-bottom:0" onclick="printCdHistoryReport()">🖨️ Print / PDF Report</button>
             </div>
         </div>
     </div>
@@ -1734,18 +1818,18 @@
 
 <!-- ZOHO INVOICE PREVIEW (approve → confirm send) -->
 <div class="modal-bg" id="zohoInvPreviewModal" style="display:none;z-index:300" onclick="if(event.target===this)closeZohoInvPreview(false)">
-    <div class="modal" style="max-width:440px;max-height:92vh;overflow-y:auto;padding:0">
-        <div style="padding:14px 16px 10px;border-bottom:1.5px solid #e2e8f0;position:sticky;top:0;background:#fff;z-index:2">
-            <div style="font-size:14px;font-weight:900;color:#7a4800">📄 Zoho Document Preview</div>
-            <div id="zoho-inv-preview-sub" style="font-size:11px;color:#64748b;font-family:monospace;margin-top:4px;line-height:1.5"></div>
-        </div>
-        <div id="zoho-inv-preview-body" style="padding:14px 16px;font-size:12px;color:#0f172a"></div>
-        <div style="padding:12px 16px 16px;border-top:1.5px solid #e2e8f0;position:sticky;bottom:0;background:#fff">
-            <div id="zoho-inv-preview-msg" style="display:none;margin-bottom:8px" class="msg ok"></div>
-            <button class="btn" style="background:#0f766e;color:#fff;margin-bottom:8px" id="zoho-inv-send-btn" onclick="confirmZohoInvPreviewSend()">✅ Send to Zoho</button>
-            <button class="btn btn-grey" style="margin-bottom:0" onclick="closeZohoInvPreview(false)">⏭ Keep in app only (no Zoho)</button>
-        </div>
+  <div class="modal" style="max-width:440px;max-height:92vh;overflow-y:auto;padding:0">
+    <div style="padding:14px 16px 10px;border-bottom:1.5px solid #e2e8f0;position:sticky;top:0;background:#fff;z-index:2">
+      <div style="font-size:14px;font-weight:900;color:#7a4800">📄 Zoho Document Preview</div>
+      <div id="zoho-inv-preview-sub" style="font-size:11px;color:#64748b;font-family:monospace;margin-top:4px;line-height:1.5"></div>
     </div>
+    <div id="zoho-inv-preview-body" style="padding:14px 16px;font-size:12px;color:#0f172a"></div>
+    <div style="padding:12px 16px 16px;border-top:1.5px solid #e2e8f0;position:sticky;bottom:0;background:#fff">
+      <div id="zoho-inv-preview-msg" style="display:none;margin-bottom:8px" class="msg ok"></div>
+      <button class="btn" style="background:#0f766e;color:#fff;margin-bottom:8px" id="zoho-inv-send-btn" onclick="confirmZohoInvPreviewSend()">✅ Send to Zoho</button>
+      <button class="btn btn-grey" style="margin-bottom:0" onclick="closeZohoInvPreview(false)">⏭ Keep in app only (no Zoho)</button>
+    </div>
+  </div>
 </div>
 
 <!-- PRODUCT MODAL -->
@@ -2000,9 +2084,11 @@
 'users','notify','zoho','cleanup','audit','attendance','my-brand','pay-challan','pay-open','pay-requests','pay-paid'];
 allTabKeys.forEach(function(t){
         var show;
-        if(t === 'users' || t === 'cleanup' || t === 'audit' || t === 'attendance') {
+        if(t === 'users' || t === 'cleanup' || t === 'audit' || t === 'attendance' || t === 'drivers') {
           show = (_staffRole === 'super_admin');
-        } else if(t === 'notify' || t === 'zoho' || t === 'manual-order' || t === 'pay-challan' || t === 'pay-open' || t === 'pay-requests' || t === 'pay-paid') {
+        } else if(t === 'zoho') {
+          show = (_staffRole === 'super_admin');
+        } else if(t === 'notify' || t === 'manual-order' || t === 'pay-challan' || t === 'pay-open' || t === 'pay-requests' || t === 'pay-paid') {
           show = (_staffRole === 'super_admin' || _staffRole === 'admin');
         } else if(t === 'dashboard') {
           show = (_staffRole === 'super_admin' || _staffRole === 'admin' || _staffRole === 'assistant');
@@ -2031,6 +2117,21 @@ allTabKeys.forEach(function(t){
         var b = document.getElementById('bnav-'+g);
         if(b) b.style.display = anyVisible ? '' : 'none';
       });
+      // Audit + Drivers: super_admin only — hide segment buttons for others
+      try {
+        var isSA = (_staffRole === 'super_admin');
+        document.querySelectorAll('[data-del-seg="audit"], #delSeg-audit, #delSeg2-audit, #delSeg3-audit').forEach(function(btn){
+          btn.style.display = isSA ? '' : 'none';
+        });
+        document.querySelectorAll('[data-mng-seg="drivers"]').forEach(function(btn){
+          btn.style.display = isSA ? '' : 'none';
+        });
+        // Zoho config + checklist: super_admin only (page already gated)
+        ['zoho-cfg-card','zoho-checklist-card','zoho-shipping-card'].forEach(function(id){
+          var el = document.getElementById(id);
+          if (el) el.style.display = isSA ? '' : 'none';
+        });
+      } catch(e) {}
       // Show topbar name
       try {
         var nmEl = document.getElementById('topStaffName');
@@ -2073,7 +2174,7 @@ allTabKeys.forEach(function(t){
     }
     // Delivery date = challan date + 1 day
     function nextDay(dateStr){var d=new Date(dateStr);d.setDate(d.getDate()+1);return d.getFullYear()+'-'+zp(d.getMonth()+1)+'-'+zp(d.getDate());}
-
+    
 function fmtQtyPack(name, qty) {
   if (window.ProductsShared && typeof ProductsShared.formatQtyWithPackets === 'function') {
     return ProductsShared.formatQtyWithPackets(name, qty);
@@ -2163,8 +2264,7 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
     var MOBILE_PRIMARY = { home:1, orders:1, delivery:1, payments:1 };
     var MORE_GROUPS = [
       { group:'customers', ico:'🏪', label:'Customers' },
-      { group:'notify',    ico:'🔔', label:'Notify' },
-      { group:'zoho',      ico:'🔗', label:'Zoho' },
+            { group:'zoho',      ico:'🔗', label:'Zoho' },
       { group:'manage',    ico:'⚙️', label:'Manage' },
       { group:'myBrand',   ico:'🏷', label:'Franchise' }
     ];
@@ -2198,13 +2298,42 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
       var s = document.getElementById('ordersToolsSheet');
       if(s) s.classList.remove('open');
     }
+    
+    function closeManageTools(){
+      var s = document.getElementById('manageToolsSheet');
+      if(s) s.classList.remove('open');
+    }
+    function openManageTools(){
+      var grid = document.getElementById('manageToolsGrid');
+      if(grid){
+        var tools = [
+          {key:'ingredients', ico:'🧂', label:'Ingredients'},
+          {key:'recipes', ico:'📋', label:'Recipes'},
+          {key:'users', ico:'👥', label:'Users'},
+          {key:'cleanup', ico:'🗑', label:'Cleanup'}
+        ];
+        grid.innerHTML = tools.filter(function(m){
+          return _visibleTabs[m.key] !== false;
+        }).map(function(m){
+          return '<button type="button" class="more-item" onclick="manageToolsGo(\''+m.key+'\')"><span class="mi">'+m.ico+'</span>'+m.label+'</button>';
+        }).join('');
+      }
+      var sh = document.getElementById('manageToolsSheet');
+      if(sh) sh.classList.add('open');
+    }
+    function manageToolsGo(tabKey){
+      closeManageTools();
+      showTab(tabKey);
+    }
+
     function openOrdersTools(){
       var grid = document.getElementById('ordersToolsGrid');
       if(grid){
         var tools = [
+          {key:'approve', ico:'⏳', label:'Pending'},
+          {key:'manual-order', ico:'📝', label:'Place order'},
           {key:'production', ico:'🏭', label:'Production'},
           {key:'orders', ico:'📋', label:'Dispatch'},
-          {key:'manual-order', ico:'📝', label:'Place for shop'},
           {key:'queue', ico:'⚠️', label:'Queue'}
         ];
         grid.innerHTML = tools.filter(function(m){
@@ -2516,11 +2645,12 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
       home:      [{key:'dashboard',   label:'🏠 Dashboard'}],
       /* Daily order work first; default open = Shop orders (cust-orders) */
       orders:    [{key:'cust-orders', label:'🛒 Shop orders'},
-                  {key:'approve',     label:'⏳ Pending'},
+                  {key:'notify',      label:'🔔 Notify'},
                   {key:'summary',     label:'📊 Summary'},
+                  {key:'manual-order',label:'📝 Place order'},
+                  {key:'approve',     label:'⏳ Pending'},
                   {key:'production',  label:'🏭 Production'},
                   {key:'orders',      label:'📋 Dispatch'},
-                  {key:'manual-order',label:'📝 Place for shop'},
                   {key:'queue',       label:'⚠️ Queue'}],
       delivery:  [{key:'delivery',    label:'🚚 Delivery'},
                   {key:'routes',      label:'🗺 Routes'},
@@ -2532,7 +2662,8 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
                   {key:'pay-requests', label:'📨 Pay requests'},
                   {key:'pay-paid',     label:'✅ Paid'}],
       customers: [{key:'customers',   label:'🏪 Customers'}],
-      notify:    [{key:'notify',      label:'🔔 Notify'}],
+      /* notify lives under Orders group */
+      notify:    [],
       zoho:      [{key:'zoho',        label:'🔗 Zoho'}],
       manage:    [{key:'products',    label:'📦 Products'},
                   {key:'ingredients', label:'🧂 Ingredients'},
@@ -2547,6 +2678,8 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
     Object.keys(GROUP_MAP).forEach(function(g){
       GROUP_MAP[g].forEach(function(item){ TAB_TO_GROUP[item.key] = g; });
     });
+    TAB_TO_GROUP['notify'] = 'orders';
+
 
     function showGroup(group){
       var items = GROUP_MAP[group] || GROUP_MAP.home;
@@ -2564,7 +2697,12 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
     function showTab(t){
       // Attendance is owner-only (super_admin)
       if(t === 'attendance' && _staffRole !== 'super_admin') return;
+      if(t === 'drivers' && _staffRole !== 'super_admin') return;
       if(_visibleTabs[t] === false) return;
+      try {
+        localStorage.setItem('adminLastTab', t);
+        localStorage.setItem('adminLastTabRole', _staffRole || '');
+      } catch(e){}
       ['dashboard','orders','approve','queue','summary','delivery','routes','customers','cust-orders','manual-order','products','groups','ingredients','recipes','production','drivers','gps','users','notify','zoho','cleanup','audit', 'attendance', 'my-brand','pay-challan','pay-open','pay-requests','pay-paid'].forEach(function(x){
         var pg=document.getElementById('pg-'+x); if(!pg) return;
         var on = (x===t);
@@ -2594,12 +2732,13 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
       // Delivery + Payments + Orders: in-page segment bars on mobile
       if (subEl) {
         subEl.classList.remove('pay-mode','ord-mode','del-mode');
-        if(isMobileNav && (group === 'delivery' || group === 'payments' || group === 'orders')){
+        if(isMobileNav && (group === 'delivery' || group === 'payments' || group === 'orders' || group === 'manage')){
           subEl.style.display = 'none';
           subEl.innerHTML = '';
           if (group === 'payments') subEl.classList.add('pay-mode');
           if (group === 'orders') subEl.classList.add('ord-mode');
           if (group === 'delivery') subEl.classList.add('del-mode');
+          if (group === 'manage') subEl.classList.add('mng-mode');
         } else if(items.length > 1){
           subEl.style.display = 'flex';
           subEl.innerHTML = items.map(function(item){
@@ -2637,12 +2776,12 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
       } catch(e){}
       // Highlight orders mobile segments (primary tabs or ⋯ More when on secondary)
       try {
-        var ordPrimary = {'cust-orders':1, approve:1, summary:1};
+        var ordPrimary = {'cust-orders':1, notify:1, summary:1};
         var ordActive = ordPrimary[t] ? t : (TAB_TO_GROUP[t]==='orders' ? 'more' : null);
         var oMaps = [
-          {'cust-orders':'ordSeg-co','approve':'ordSeg-pending','summary':'ordSeg-summary',more:'ordSeg-more'},
-          {'cust-orders':'ordSeg2-co','approve':'ordSeg2-pending','summary':'ordSeg2-summary',more:'ordSeg2-more'},
-          {'cust-orders':'ordSeg3-co','approve':'ordSeg3-pending','summary':'ordSeg3-summary',more:'ordSeg3-more'}
+          {'cust-orders':'ordSeg-co','notify':'ordSeg-notify','summary':'ordSeg-summary',more:'ordSeg-more'},
+          {'cust-orders':'ordSeg2-co','notify':'ordSeg2-notify','summary':'ordSeg2-summary',more:'ordSeg2-more'},
+          {'cust-orders':'ordSeg3-co','notify':'ordSeg3-notify','summary':'ordSeg3-summary',more:'ordSeg3-more'}
         ];
         oMaps.forEach(function(map){
           Object.keys(map).forEach(function(k){
@@ -2655,6 +2794,17 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
           b.classList.toggle('on', !!ordActive && k === ordActive);
         });
       } catch(e){}
+
+      // Highlight manage mobile segments
+      try {
+        var mngPrimary = {products:1, drivers:1, groups:1};
+        var mngActive = mngPrimary[t] ? t : (TAB_TO_GROUP[t]==='manage' ? 'more' : null);
+        document.querySelectorAll('[data-mng-seg]').forEach(function(b){
+          var k = b.getAttribute('data-mng-seg');
+          b.classList.toggle('on', !!mngActive && k === mngActive);
+        });
+      } catch(e){}
+
       if(t==='dashboard')    loadDashboard();
       if(t==='summary')      { document.getElementById('f-sum-date').value=tomorrowStr(); loadSummary(); }
       if(t==='delivery')     setLatestDate('f-del-date','deliveries',document.getElementById('f-del-driver').value,loadDeliveries);
@@ -7283,21 +7433,24 @@ apiPost({
       applyZohoUiGates();
     }
 
-    /** Show/hide ALL Zoho UI based on integration toggle */
+    /** Show/hide ALL Zoho UI based on integration toggle + role */
     function applyZohoUiGates(){
       var on = !!_zohoEnabled;
-      var isAdmin = (_staffRole === 'admin' || _staffRole === 'super_admin');
-      var show = on && isAdmin;
+      var isSA = (_staffRole === 'super_admin');
+      var isAdmin = (_staffRole === 'admin' || isSA);
+      // Config / Zoho page: super_admin only. Order/customer sync bars: admin + super_admin when enabled.
+      var showPage = on && isSA;
+      var showOps  = on && isAdmin;
 
-      // Main 🔗 Zoho tab
+      // Main 🔗 Zoho tab (configuration) — super_admin only
       var mtb = document.getElementById('mtb-zoho');
-      if(mtb) mtb.style.display = show ? '' : 'none';
-      _visibleTabs['zoho'] = show;
+      if(mtb) mtb.style.display = showPage ? '' : 'none';
+      _visibleTabs['zoho'] = showPage;
 
-      // Sync bars on Customers / Products / Orders
+      // Sync bars on Customers / Products / Orders — operational for admin too
       ['zoho-cust-bar','zoho-prod-bar','zoho-orders-bar'].forEach(function(id){
         var el = document.getElementById(id);
-        if(el) el.style.display = show ? '' : 'none';
+        if(el) el.style.display = showOps ? '' : 'none';
       });
 
       // Fields that only matter for Zoho
@@ -7320,14 +7473,18 @@ apiPost({
         el.style.display = on ? '' : 'none';
       });
 
-      // Zoho page body sections (keep toggle/status visible)
+      // Zoho page body sections — super_admin only for config/checklist
       var pg = document.getElementById('pg-zoho');
       if(pg){
         var cards = pg.querySelectorAll('.card');
-        cards.forEach(function(card, idx){
-          // first card = status/toggle — always show for admins
-          if(idx === 0){ card.style.display = isAdmin ? '' : 'none'; return; }
-          card.style.display = show ? '' : 'none';
+        cards.forEach(function(card){
+          var id = card.id || '';
+          if (id === 'zoho-cfg-card' || id === 'zoho-checklist-card' || id === 'zoho-shipping-card') {
+            card.style.display = showPage ? '' : 'none';
+            return;
+          }
+          // Pull customers/products: super_admin page only (tab itself is SA-only)
+          card.style.display = showPage ? '' : 'none';
         });
         if(!on){
           var offNote = document.getElementById('zoho-off-banner');
@@ -8064,8 +8221,9 @@ apiPost({
       city: customer.area || '',
       country: 'India'
     },
-    contact_persons: customer.mobile ? [{
-      phone: customer.mobile,
+    contact_persons: (customer.mobile || customer.email) ? [{
+      phone: customer.mobile || '',
+      email: customer.email || '',
       is_primary_contact: true
     }] : [],
     currency_code: 'INR'
@@ -11799,11 +11957,24 @@ function openAttDayDetail(driverName, date){
     loadProductMaster(); // cache products for XLS preview
     loadGroups();        // cache product groups for selects
     loadFeatureSettings();
-    // Navigate to the first tab this role can see
+    // Restore last tab for this role (fallback: dashboard / first allowed)
     (function(){
-      var first;
-      if(_allowedTabs === null){ first='dashboard'; }
-      else { first = _allowedTabs.length ? _allowedTabs[0] : 'summary'; }
+      var first = null;
+      try {
+        var saved = localStorage.getItem('adminLastTab') || '';
+        var savedRole = localStorage.getItem('adminLastTabRole') || '';
+        if (saved && savedRole === (_staffRole || '') && _visibleTabs[saved] !== false) {
+          first = saved;
+        }
+      } catch(e){}
+      if (!first) {
+        if (_allowedTabs === null) first = 'dashboard';
+        else if (_visibleTabs['cust-orders'] !== false) first = 'cust-orders';
+        else if (_visibleTabs['dashboard'] !== false) first = 'dashboard';
+        else first = _allowedTabs.length ? _allowedTabs[0] : 'summary';
+      }
+      // Never land on Dispatch (pg-orders) by accident as default
+      if (!localStorage.getItem('adminLastTab') && first === 'orders') first = 'cust-orders';
       showTab(first);
     })();
     /* ── ZOHO CREDENTIALS ─────────────────────────────────────────── */
@@ -12275,6 +12446,7 @@ async function zohoCreateInvoiceReal(order) {
         || order.shop_id || '';
 
       // ── build payload — rate on lines + shipping (default ₹20) ──
+      var shopEmail = (shop && (shop.email || shop.customer_email)) || order.email || order.customer_email || '';
       var payload = {
         customer_id:      String(zohoCustomerId),
         customer_name:    order.shop_name,
@@ -12283,6 +12455,21 @@ async function zohoCreateInvoiceReal(order) {
         line_items:       lineItems,
         notes:            'Auto-generated by IBCAB'
       };
+      // Attach shop email so Zoho contact / docs can notify the customer
+      if (shopEmail) {
+        payload.contact_persons = [{
+          email: String(shopEmail).trim(),
+          phone: (shop && shop.mobile) || order.mobile || '',
+          is_primary_contact: true
+        }];
+        // Some Zoho orgs map custom field / attention from this
+        payload.billing_address = payload.billing_address || {};
+        if (shop && (shop.address || shop.area)) {
+          payload.billing_address.address = shop.address || '';
+          payload.billing_address.city = shop.area || '';
+          payload.billing_address.country = 'India';
+        }
+      }
       // Per-customer shipping: order → shop → default (always resolve)
       var shipAmt = resolveShippingAmt(order, shop);
       order.shipping_charge = shipAmt; // keep on order for local save
@@ -12363,6 +12550,7 @@ async function zohoUpdateInvoiceReal(invoiceId, order) {
       // Full payload so Zoho actually applies changes (shipping + lines)
       var zohoCustomerId = (shop && (shop.zoho_contact_id || shop.customer_id || shop.shop_id))
         || order.shop_id || '';
+      var shopEmail = (shop && (shop.email || shop.customer_email)) || order.email || order.customer_email || '';
       var payload = {
         customer_id:      String(zohoCustomerId),
         date:             order.delivery_date || todayStr(),
@@ -12370,6 +12558,13 @@ async function zohoUpdateInvoiceReal(invoiceId, order) {
         reference_number: 'IBCAB-' + (order.id || ''),
         notes:            'Updated by IBCAB admin'
       };
+      if (shopEmail) {
+        payload.contact_persons = [{
+          email: String(shopEmail).trim(),
+          phone: (shop && shop.mobile) || order.mobile || '',
+          is_primary_contact: true
+        }];
+      }
       var shipAmt = resolveShippingAmt(order, shop);
       order.shipping_charge = shipAmt;
       applyZohoShipping(payload, shipAmt, isDeliveryChallan);

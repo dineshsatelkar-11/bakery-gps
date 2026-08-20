@@ -177,8 +177,8 @@
         }
 
 
-
-
+        
+        
         /* Shop history panel */
         .history-filter-bar{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
         .history-chip{
@@ -237,17 +237,65 @@
           .shop-toolbar{background:#f0f4ff}
         }
 
-        /* ── Brand bottom nav (mobile) ── */
-        .brand-bottom-nav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:300;transform:translateZ(0);background:#fff;border-top:1.5px solid #e8f5e9;padding:8px 4px max(10px,env(safe-area-inset-bottom));max-width:480px;margin:0 auto;box-shadow:0 -6px 24px rgba(27,94,32,.12);min-height:calc(64px + env(safe-area-inset-bottom))}
-        .brand-bottom-nav-inner{display:flex;justify-content:space-around;align-items:stretch;min-height:56px}
-        .bbnav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 2px;border:none;background:transparent;cursor:pointer;color:#9e9e9e;font-family:-apple-system,sans-serif;-webkit-tap-highlight-color:transparent;min-height:56px}
-        .bbnav-item.on{color:#0f766e;background:#f0fdfa;border-radius:12px}
+        /* ── Brand bottom nav (mobile) — full-bleed edge to edge ── */
+        .brand-bottom-nav{
+          display:none;
+          position:fixed;
+          left:0;right:0;bottom:0;
+          width:100%;
+          max-width:none;
+          margin:0;
+          z-index:300;
+          transform:translateZ(0);
+          -webkit-transform:translateZ(0);
+          background:#fff;
+          border-top:1px solid var(--border,#e2e8f0);
+          padding:6px 0 max(8px,env(safe-area-inset-bottom,0px));
+          padding-left:env(safe-area-inset-left,0px);
+          padding-right:env(safe-area-inset-right,0px);
+          box-shadow:0 -4px 20px rgba(15,23,42,.08);
+          min-height:calc(64px + env(safe-area-inset-bottom,0px));
+          box-sizing:border-box;
+        }
+        .brand-bottom-nav-inner{
+          display:flex;
+          justify-content:space-between;
+          align-items:stretch;
+          width:100%;
+          min-height:56px;
+          gap:0;
+        }
+        .bbnav-item{
+          flex:1 1 0;
+          min-width:0;
+          display:flex;
+          flex-direction:column;
+          align-items:center;
+          justify-content:center;
+          gap:3px;
+          padding:6px 2px;
+          border:none;
+          background:transparent;
+          cursor:pointer;
+          color:#64748b;
+          font-family:inherit;
+          -webkit-tap-highlight-color:transparent;
+          min-height:56px;
+          border-radius:12px;
+          margin:0 1px;
+        }
+        .bbnav-item.on{color:#0f766e;background:#f0fdfa}
         .bbnav-ico{font-size:24px;line-height:1}
-        .bbnav-lbl{font-size:11px;font-weight:800}
-        body.brand-app{padding-bottom:calc(62px + env(safe-area-inset-bottom))}
+        .bbnav-lbl{font-size:11px;font-weight:800;white-space:nowrap}
+        body.brand-app{padding-bottom:calc(72px + env(safe-area-inset-bottom,0px))}
         @media (max-width:767px){
+          body.brand-app{
+            max-width:100% !important;
+            width:100%;
+          }
           body.brand-app .tabs.brand-top-tabs{display:none !important}
-          body.brand-app .brand-bottom-nav{display:block !important}
+          body.brand-app .brand-bottom-nav{display:flex !important;flex-direction:column}
+          body.brand-app .topbar{max-width:100%;left:0;right:0}
         }
         @media (min-width:768px){
           body{
@@ -338,34 +386,34 @@
 </div>
 
 <div id="brandNotifPanel" onclick="if(event.target===this)toggleBrandNotif()">
-    <div class="bnp-drawer" onclick="event.stopPropagation()">
-        <div class="bnp-head">
-            <button type="button" onclick="toggleBrandNotif()" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:18px;cursor:pointer">‹</button>
-            <div style="flex:1">
-                <div style="font-size:15px;font-weight:900">Notifications</div>
-                <div style="font-size:11px;color:#c4b5a0;margin-top:2px">Brand updates</div>
-            </div>
-        </div>
-        <div class="bnp-body" id="brandNotifBody">
-            <div style="text-align:center;padding:28px 16px;color:#8a7a6a;font-size:13px;line-height:1.5">No new notifications for this brand portal.</div>
-        </div>
+  <div class="bnp-drawer" onclick="event.stopPropagation()">
+    <div class="bnp-head">
+      <button type="button" onclick="toggleBrandNotif()" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:18px;cursor:pointer">‹</button>
+      <div style="flex:1">
+        <div style="font-size:15px;font-weight:900">Notifications</div>
+        <div style="font-size:11px;color:#c4b5a0;margin-top:2px">Brand updates</div>
+      </div>
     </div>
+    <div class="bnp-body" id="brandNotifBody">
+      <div style="text-align:center;padding:28px 16px;color:#8a7a6a;font-size:13px;line-height:1.5">No new notifications for this brand portal.</div>
+    </div>
+  </div>
 </div>
 
 <div id="brandInvPreview" onclick="if(event.target===this)closeBrandInvPreview()">
-    <div class="bip-card" onclick="event.stopPropagation()">
-        <div style="padding:14px 16px;border-bottom:1px solid #e8dfd2;display:flex;align-items:center;justify-content:space-between;gap:10px">
-            <div>
-                <div style="font-size:15px;font-weight:900;color:#4a2f14" id="bipTitle">Invoice</div>
-                <div style="font-size:11px;color:#8a7a6a;margin-top:2px" id="bipSub"></div>
-            </div>
-            <button type="button" onclick="closeBrandInvPreview()" style="border:none;background:#f5ede0;color:#4a2f14;width:36px;height:36px;border-radius:50%;font-size:18px;cursor:pointer;font-weight:700">×</button>
-        </div>
-        <div id="bipBody" style="padding:14px 16px;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch"></div>
-        <div style="padding:12px 16px max(14px,env(safe-area-inset-bottom));border-top:1px solid #e8dfd2">
-            <button type="button" onclick="closeBrandInvPreview()" style="width:100%;padding:12px;border:none;border-radius:12px;background:#f5ede0;color:#4a2f14;font-weight:800;font-size:13px;cursor:pointer">Close</button>
-        </div>
+  <div class="bip-card" onclick="event.stopPropagation()">
+    <div style="padding:14px 16px;border-bottom:1px solid #e8dfd2;display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <div>
+        <div style="font-size:15px;font-weight:900;color:#4a2f14" id="bipTitle">Invoice</div>
+        <div style="font-size:11px;color:#8a7a6a;margin-top:2px" id="bipSub"></div>
+      </div>
+      <button type="button" onclick="closeBrandInvPreview()" style="border:none;background:#f5ede0;color:#4a2f14;width:36px;height:36px;border-radius:50%;font-size:18px;cursor:pointer;font-weight:700">×</button>
     </div>
+    <div id="bipBody" style="padding:14px 16px;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch"></div>
+    <div style="padding:12px 16px max(14px,env(safe-area-inset-bottom));border-top:1px solid #e8dfd2">
+      <button type="button" onclick="closeBrandInvPreview()" style="width:100%;padding:12px;border:none;border-radius:12px;background:#f5ede0;color:#4a2f14;font-weight:800;font-size:13px;cursor:pointer">Close</button>
+    </div>
+  </div>
 </div>
 
 <div class="tabs brand-top-tabs">
@@ -378,14 +426,14 @@
 </div>
 
 <nav class="brand-bottom-nav" id="brandBottomNav" aria-label="Main">
-    <div class="brand-bottom-nav-inner">
-        <button type="button" class="bbnav-item on" id="bbnav-today" onclick="showTab('today')"><span class="bbnav-ico">📊</span><span class="bbnav-lbl">Today</span></button>
-        <button type="button" class="bbnav-item" id="bbnav-orders" onclick="showTab('orders')"><span class="bbnav-ico">📋</span><span class="bbnav-lbl">Orders</span></button>
-        <button type="button" class="bbnav-item" id="bbnav-invoices" onclick="showTab('invoices')"><span class="bbnav-ico">💰</span><span class="bbnav-lbl">Invoices</span></button>
-        <button type="button" class="bbnav-item" id="bbnav-track" onclick="showTab('track')"><span class="bbnav-ico">📍</span><span class="bbnav-lbl">Track</span></button>
-        <button type="button" class="bbnav-item" id="bbnav-shop" onclick="showTab('shop')"><span class="bbnav-ico">🏪</span><span class="bbnav-lbl">Shops</span></button>
-        <button type="button" class="bbnav-item" id="bbnav-settings" onclick="showTab('settings')"><span class="bbnav-ico">⚙️</span><span class="bbnav-lbl">More</span></button>
-    </div>
+  <div class="brand-bottom-nav-inner">
+    <button type="button" class="bbnav-item on" id="bbnav-today" onclick="showTab('today')"><span class="bbnav-ico">📊</span><span class="bbnav-lbl">Today</span></button>
+    <button type="button" class="bbnav-item" id="bbnav-orders" onclick="showTab('orders')"><span class="bbnav-ico">📋</span><span class="bbnav-lbl">Orders</span></button>
+    <button type="button" class="bbnav-item" id="bbnav-invoices" onclick="showTab('invoices')"><span class="bbnav-ico">💰</span><span class="bbnav-lbl">Invoices</span></button>
+    <button type="button" class="bbnav-item" id="bbnav-track" onclick="showTab('track')"><span class="bbnav-ico">📍</span><span class="bbnav-lbl">Track</span></button>
+    <button type="button" class="bbnav-item" id="bbnav-shop" onclick="showTab('shop')"><span class="bbnav-ico">🏪</span><span class="bbnav-lbl">Shops</span></button>
+    <button type="button" class="bbnav-item" id="bbnav-settings" onclick="showTab('settings')"><span class="bbnav-ico">⚙️</span><span class="bbnav-lbl">More</span></button>
+  </div>
 </nav>
 
 <!-- ══════════════════ TODAY TAB ══════════════════ -->
@@ -426,24 +474,24 @@
 <!-- ══════════════════ INVOICES TAB ══════════════════ -->
 <div class="page" id="pg-invoices">
     <div class="card" style="margin-bottom:12px;border-color:#e8dfd2">
-        <div style="font-size:15px;font-weight:900;color:#4a2f14;margin-bottom:4px">Shop invoices</div>
-        <div style="font-size:12px;color:#8a7a6a;line-height:1.45;margin-bottom:12px">Balances for shops under your brand. Tap <b>Preview</b> for line items &amp; totals.</div>
-        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
-            <div style="flex:1;min-width:120px">
-                <div class="lbl">Search</div>
-                <input id="inv-search" type="search" placeholder="Shop name / mobile…" oninput="renderInvoiceList()" style="width:100%;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:13px;background:#faf8f5">
-            </div>
-            <div>
-                <div class="lbl">Filter</div>
-                <select id="inv-filter" onchange="renderInvoiceList()" style="padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:12px;font-weight:700;background:#fff">
-                    <option value="unpaid">Unpaid</option>
-                    <option value="all">All with invoice</option>
-                    <option value="paid">Paid (7 days)</option>
-                </select>
-            </div>
-            <button class="refresh-btn" onclick="loadInvoices()">🔄</button>
+      <div style="font-size:15px;font-weight:900;color:#4a2f14;margin-bottom:4px">Shop invoices</div>
+      <div style="font-size:12px;color:#8a7a6a;line-height:1.45;margin-bottom:12px">Balances for shops under your brand. Tap <b>Preview</b> for line items &amp; totals.</div>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
+        <div style="flex:1;min-width:120px">
+          <div class="lbl">Search</div>
+          <input id="inv-search" type="search" placeholder="Shop name / mobile…" oninput="renderInvoiceList()" style="width:100%;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:13px;background:#faf8f5">
         </div>
-        <div id="inv-summary" style="margin-top:12px;font-size:13px;font-weight:800;color:#4a2f14"></div>
+        <div>
+          <div class="lbl">Filter</div>
+          <select id="inv-filter" onchange="renderInvoiceList()" style="padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:12px;font-weight:700;background:#fff">
+            <option value="unpaid">Unpaid</option>
+            <option value="all">All with invoice</option>
+            <option value="paid">Paid (7 days)</option>
+          </select>
+        </div>
+        <button class="refresh-btn" onclick="loadInvoices()">🔄</button>
+      </div>
+      <div id="inv-summary" style="margin-top:12px;font-size:13px;font-weight:800;color:#4a2f14"></div>
     </div>
     <div id="inv-list"><div class="card"><div class="empty-msg">Open this tab to load invoices…</div></div></div>
 </div>
@@ -1384,7 +1432,7 @@
       renderToday();
     }
 
-
+    
     function brandItemLines(items, qty){
       var iArr = String(items||'').split(',');
       var qArr = String(qty||'').split(',');
@@ -1787,112 +1835,112 @@
 </script>
 
 <script>
-    /* Dynamic iOS notch / safe-area handling */
-    (function () {
-      if (window.__safeAreaDyn) return;
-      window.__safeAreaDyn = true;
+/* Dynamic iOS notch / safe-area handling */
+(function () {
+  if (window.__safeAreaDyn) return;
+  window.__safeAreaDyn = true;
 
-      var root = document.documentElement;
-      var probe = null;
+  var root = document.documentElement;
+  var probe = null;
 
-      function ensureProbe() {
-        if (probe && probe.parentNode) return probe;
-        probe = document.createElement('div');
-        probe.setAttribute('aria-hidden', 'true');
-        probe.style.cssText = [
-          'position:fixed', 'left:0', 'top:0', 'width:0', 'height:0',
-          'visibility:hidden', 'pointer-events:none', 'padding:0',
-          'padding-top:env(safe-area-inset-top,0px)',
-          'padding-right:env(safe-area-inset-right,0px)',
-          'padding-bottom:env(safe-area-inset-bottom,0px)',
-          'padding-left:env(safe-area-inset-left,0px)'
-        ].join(';');
-        (document.body || root).appendChild(probe);
-        return probe;
+  function ensureProbe() {
+    if (probe && probe.parentNode) return probe;
+    probe = document.createElement('div');
+    probe.setAttribute('aria-hidden', 'true');
+    probe.style.cssText = [
+      'position:fixed', 'left:0', 'top:0', 'width:0', 'height:0',
+      'visibility:hidden', 'pointer-events:none', 'padding:0',
+      'padding-top:env(safe-area-inset-top,0px)',
+      'padding-right:env(safe-area-inset-right,0px)',
+      'padding-bottom:env(safe-area-inset-bottom,0px)',
+      'padding-left:env(safe-area-inset-left,0px)'
+    ].join(';');
+    (document.body || root).appendChild(probe);
+    return probe;
+  }
+
+  function px(n) {
+    n = parseFloat(n);
+    return (isFinite(n) ? n : 0) + 'px';
+  }
+
+  function readEnvInsets() {
+    var el = ensureProbe();
+    var cs = window.getComputedStyle(el);
+    return {
+      top: parseFloat(cs.paddingTop) || 0,
+      right: parseFloat(cs.paddingRight) || 0,
+      bottom: parseFloat(cs.paddingBottom) || 0,
+      left: parseFloat(cs.paddingLeft) || 0
+    };
+  }
+
+  function apply() {
+    var env = readEnvInsets();
+    var sat = env.top;
+    var sab = env.bottom;
+    var sal = env.left;
+    var sar = env.right;
+
+    // When mobile browser chrome collapses, keep a sensible bottom inset
+    // using visualViewport (does not replace home-indicator inset when larger).
+    try {
+      var vv = window.visualViewport;
+      if (vv && window.innerHeight) {
+        var gap = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
+        // Only boost bottom when browser UI leaves a gap larger than env bottom
+        // and gap is small (typical toolbar), not full keyboard.
+        if (gap > sab && gap < 120) sab = gap;
       }
+    } catch (e) {}
 
-      function px(n) {
-        n = parseFloat(n);
-        return (isFinite(n) ? n : 0) + 'px';
-      }
+    root.style.setProperty('--sat', px(sat));
+    root.style.setProperty('--sab', px(sab));
+    root.style.setProperty('--sal', px(sal));
+    root.style.setProperty('--sar', px(sar));
 
-      function readEnvInsets() {
-        var el = ensureProbe();
-        var cs = window.getComputedStyle(el);
-        return {
-          top: parseFloat(cs.paddingTop) || 0,
-          right: parseFloat(cs.paddingRight) || 0,
-          bottom: parseFloat(cs.paddingBottom) || 0,
-          left: parseFloat(cs.paddingLeft) || 0
-        };
-      }
+    root.classList.toggle('has-notch', sat >= 20);
+    root.classList.toggle('has-home-bar', sab >= 10);
+    root.setAttribute('data-safe-top', String(Math.round(sat)));
+    root.setAttribute('data-safe-bottom', String(Math.round(sab)));
+  }
 
-      function apply() {
-        var env = readEnvInsets();
-        var sat = env.top;
-        var sab = env.bottom;
-        var sal = env.left;
-        var sar = env.right;
+  var scheduled = false;
+  function schedule() {
+    if (scheduled) return;
+    scheduled = true;
+    requestAnimationFrame(function () {
+      scheduled = false;
+      apply();
+    });
+  }
 
-        // When mobile browser chrome collapses, keep a sensible bottom inset
-        // using visualViewport (does not replace home-indicator inset when larger).
-        try {
-          var vv = window.visualViewport;
-          if (vv && window.innerHeight) {
-            var gap = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
-            // Only boost bottom when browser UI leaves a gap larger than env bottom
-            // and gap is small (typical toolbar), not full keyboard.
-            if (gap > sab && gap < 120) sab = gap;
-          }
-        } catch (e) {}
+  function boot() {
+    ensureProbe();
+    apply();
+    window.addEventListener('resize', schedule, { passive: true });
+    window.addEventListener('orientationchange', function () {
+      // iOS often updates env() one frame after orientation settles
+      schedule();
+      setTimeout(apply, 50);
+      setTimeout(apply, 300);
+    }, { passive: true });
+    window.addEventListener('pageshow', schedule, { passive: true });
+    if (window.visualViewport) {
+      visualViewport.addEventListener('resize', schedule, { passive: true });
+      visualViewport.addEventListener('scroll', schedule, { passive: true });
+    }
+    // Late paint (PWA / standalone)
+    setTimeout(apply, 100);
+    setTimeout(apply, 500);
+  }
 
-        root.style.setProperty('--sat', px(sat));
-        root.style.setProperty('--sab', px(sab));
-        root.style.setProperty('--sal', px(sal));
-        root.style.setProperty('--sar', px(sar));
-
-        root.classList.toggle('has-notch', sat >= 20);
-        root.classList.toggle('has-home-bar', sab >= 10);
-        root.setAttribute('data-safe-top', String(Math.round(sat)));
-        root.setAttribute('data-safe-bottom', String(Math.round(sab)));
-      }
-
-      var scheduled = false;
-      function schedule() {
-        if (scheduled) return;
-        scheduled = true;
-        requestAnimationFrame(function () {
-          scheduled = false;
-          apply();
-        });
-      }
-
-      function boot() {
-        ensureProbe();
-        apply();
-        window.addEventListener('resize', schedule, { passive: true });
-        window.addEventListener('orientationchange', function () {
-          // iOS often updates env() one frame after orientation settles
-          schedule();
-          setTimeout(apply, 50);
-          setTimeout(apply, 300);
-        }, { passive: true });
-        window.addEventListener('pageshow', schedule, { passive: true });
-        if (window.visualViewport) {
-          visualViewport.addEventListener('resize', schedule, { passive: true });
-          visualViewport.addEventListener('scroll', schedule, { passive: true });
-        }
-        // Late paint (PWA / standalone)
-        setTimeout(apply, 100);
-        setTimeout(apply, 500);
-      }
-
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', boot);
-      } else {
-        boot();
-      }
-    })();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})();
 </script>
 
 </body>
