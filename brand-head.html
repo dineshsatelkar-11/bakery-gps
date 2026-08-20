@@ -8,18 +8,23 @@
     <script src="api.js"></script>
     <style>
         *{box-sizing:border-box;margin:0;padding:0}
-        html{overscroll-behavior-y:none}body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f0f4ff;color:#1e1611;max-width:520px;margin:0 auto;min-height:100vh;min-height:100dvh;overflow-x:hidden;-webkit-text-size-adjust:100%;padding-top:calc(56px + env(safe-area-inset-top));overscroll-behavior-y:none}
+        html{overscroll-behavior-y:none}body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5f2ed;color:#1e1611;max-width:520px;margin:0 auto;min-height:100vh;min-height:100dvh;overflow-x:hidden;-webkit-text-size-adjust:100%;padding-top:calc(62px + env(safe-area-inset-top));overscroll-behavior-y:none}
         html{overflow-x:hidden}
-        /* ── Top bar ── */
-        .topbar{background:linear-gradient(135deg,#1b5e20,#2e7d32);padding:13px 14px;padding-top:max(13px,env(safe-area-inset-top));display:flex;align-items:center;justify-content:space-between;gap:10px;position:fixed;top:0;left:0;right:0;width:100%;z-index:300;transform:translateZ(0)}
-        .topbar-title{color:#fff;font-size:15px;font-weight:800;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70vw}
-        .topbar-sub{color:#a5d6a7;font-size:11px;font-family:monospace;margin-top:1px}
-        .logout-btn{background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 11px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif;flex-shrink:0}
+        /* ── Top bar (decent brand chrome) ── */
+        .topbar{background:#3d3429;padding:12px 14px;padding-top:max(12px,env(safe-area-inset-top));display:flex;align-items:center;justify-content:space-between;gap:10px;position:fixed;top:0;left:0;right:0;width:100%;z-index:300;transform:translateZ(0);box-shadow:0 2px 12px rgba(0,0,0,.12)}
+        .topbar-left{min-width:0;flex:1}
+        .topbar-kicker{color:#c4b5a0;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;margin-bottom:2px}
+        .topbar-title{color:#fff;font-size:16px;font-weight:800;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+        .topbar-sub{color:#b8a99a;font-size:11px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .topbar-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
+        .topbar-icon-btn{position:relative;width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.1);border:none;color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}
+        .topbar-icon-btn:active{background:rgba(255,255,255,.2)}
+        .logout-btn{background:rgba(255,255,255,.12);border:none;color:#fff;padding:8px 12px;border-radius:10px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif;flex-shrink:0}
         /* ── Tabs ── */
-        .tabs{display:flex;background:#fff;border-bottom:2px solid #e8f5e9;position:sticky;top:calc(56px + env(safe-area-inset-top));z-index:98;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+        .tabs{display:flex;background:#fff;border-bottom:2px solid #e8dfd2;position:sticky;top:calc(62px + env(safe-area-inset-top));z-index:98;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
         .tabs::-webkit-scrollbar{display:none}
-        .tab{flex:1;min-width:0;padding:12px 4px;border:none;background:none;font-size:11px;font-weight:700;cursor:pointer;color:#9fa8da;font-family:-apple-system,sans-serif;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;touch-action:manipulation}
-        .tab.on{color:#2e7d32;border-bottom-color:#2e7d32}
+        .tab{flex:1;min-width:0;padding:12px 4px;border:none;background:none;font-size:11px;font-weight:700;cursor:pointer;color:#8a7a6a;font-family:-apple-system,sans-serif;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;touch-action:manipulation}
+        .tab.on{color:#4a2f14;border-bottom-color:#4a2f14}
         /* ── Pages ── */
         .page{display:none;padding:14px 14px calc(100px + env(safe-area-inset-bottom))}.page.on{display:block}
         /* ── Cards ── */
@@ -40,8 +45,8 @@
         .stat-box{background:#fff;border:1.5px solid #e8eaf6;border-radius:12px;padding:10px 6px;text-align:center;cursor:pointer;transition:border-color .15s}
         .stat-box.active{border-color:#2e7d32;box-shadow:0 0 0 2px rgba(46,125,50,.15)}
         .filter-chip{display:inline-flex;align-items:center;gap:6px;background:#e8f5e9;color:#2d7a4f;border:1px solid #a5d6a7;border-radius:20px;padding:5px 10px;font-size:11px;font-weight:700;font-family:monospace;margin-bottom:10px;cursor:pointer}
-        .stat-num{font-size:20px;font-weight:900;color:#2e7d32}
-        .stat-lbl{font-size:9px;color:#9fa8da;font-family:monospace;letter-spacing:1px;text-transform:uppercase;margin-top:2px}
+        .stat-num{font-size:20px;font-weight:900;color:#4a2f14}
+        .stat-lbl{font-size:9px;color:#8a7a6a;font-family:monospace;letter-spacing:1px;text-transform:uppercase;margin-top:2px}
         /* ── Shop row ── */
         .shop-row{border-bottom:1px solid #f0f4ff;padding:10px 0}
         .shop-row:last-child{border-bottom:none}
@@ -145,8 +150,8 @@
         }
 
 
-        
-        
+
+
         /* Shop history panel */
         .history-filter-bar{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
         .history-chip{
@@ -209,7 +214,7 @@
         .brand-bottom-nav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:300;transform:translateZ(0);background:#fff;border-top:1.5px solid #e8f5e9;padding:8px 4px max(10px,env(safe-area-inset-bottom));max-width:480px;margin:0 auto;box-shadow:0 -6px 24px rgba(27,94,32,.12);min-height:calc(64px + env(safe-area-inset-bottom))}
         .brand-bottom-nav-inner{display:flex;justify-content:space-around;align-items:stretch;min-height:56px}
         .bbnav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 2px;border:none;background:transparent;cursor:pointer;color:#9e9e9e;font-family:-apple-system,sans-serif;-webkit-tap-highlight-color:transparent;min-height:56px}
-        .bbnav-item.on{color:#2e7d32}
+        .bbnav-item.on{color:#4a2f14;background:#f5ede0;border-radius:12px}
         .bbnav-ico{font-size:24px;line-height:1}
         .bbnav-lbl{font-size:11px;font-weight:800}
         body.brand-app{padding-bottom:calc(62px + env(safe-area-inset-bottom))}
@@ -263,28 +268,74 @@
           body.brand-app .page,
           body.brand-app .tabs.brand-top-tabs{max-width:1200px}
         }
-        .inv-card{background:#fff;border:1.5px solid #e8eaf6;border-radius:14px;padding:12px 14px;margin-bottom:10px}
-        .inv-card .inv-name{font-size:13px;font-weight:900;color:#1b5e20}
-        .inv-card .inv-meta{font-size:10px;color:#78909c;font-family:monospace;margin-top:3px}
-        .inv-due{font-size:16px;font-weight:900;color:#c8382a}
-        .inv-due.zero{color:#2e7d32}
-        .inv-badge{display:inline-block;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px;margin-top:4px}
+        .inv-card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:14px;margin-bottom:10px;box-shadow:0 2px 10px rgba(74,47,20,.04)}
+        .inv-card .inv-name{font-size:14px;font-weight:900;color:#4a2f14}
+        .inv-card .inv-meta{font-size:11px;color:#8a7a6a;margin-top:3px}
+        .inv-due{font-size:18px;font-weight:900;color:#c8382a;letter-spacing:-.3px}
+        .inv-due.zero{color:#2d7a4f}
+        .inv-badge{display:inline-block;border-radius:8px;padding:3px 9px;font-size:10px;font-weight:800;margin-right:4px;margin-top:4px}
         .inv-badge.unpaid{background:#fde8e8;color:#c8382a}
         .inv-badge.paid{background:#e8f5e9;color:#1a5a38}
         .inv-badge.partial{background:#fff8e1;color:#7a4800}
-        .inv-badge.zoho{background:#e3f2fd;color:#1565c0}
-        .inv-line{font-size:11px;color:#546e7a;margin-top:6px;padding-top:6px;border-top:1px solid #f0f4ff;line-height:1.45}
+        .inv-badge.zoho{background:#eef3ff;color:#3d5a80}
+        .inv-badge.doc{background:#f5ede0;color:#4a2f14}
+        .inv-line{font-size:12px;color:#546e7a;margin-top:10px;padding-top:10px;border-top:1px solid #f0e8dc;line-height:1.5}
+        .inv-doc-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid #f5f0ea}
+        .inv-doc-row:last-child{border-bottom:none}
+        .inv-preview-btn{border:none;background:#4a2f14;color:#fff;border-radius:10px;padding:8px 12px;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0}
+        .inv-preview-btn:active{opacity:.9}
+        #brandInvPreview{display:none;position:fixed;inset:0;z-index:420;background:rgba(30,22,17,.5);align-items:flex-end;justify-content:center}
+        #brandInvPreview .bip-card{background:#fff;width:100%;max-width:520px;max-height:88vh;border-radius:18px 18px 0 0;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 -8px 32px rgba(0,0,0,.2)}
+        #brandNotifPanel{display:none;position:fixed;inset:0;z-index:410;background:rgba(30,22,17,.45)}
+        #brandNotifPanel .bnp-drawer{position:absolute;top:0;right:0;bottom:0;width:min(360px,88%);background:#f5f2ed;display:flex;flex-direction:column;box-shadow:-8px 0 32px rgba(0,0,0,.15)}
+        #brandNotifPanel .bnp-head{background:#3d3429;padding:16px;color:#fff;display:flex;align-items:center;gap:12px}
+        #brandNotifPanel .bnp-body{flex:1;overflow-y:auto;padding:12px}
 
     </style>
 </head>
 <body>
 
 <div class="topbar">
-    <div>
-        <div class="topbar-title" id="topBrandTitle">🏪 Brand Dashboard</div>
+    <div class="topbar-left">
+        <div class="topbar-kicker" id="topBrandKicker">Brand owner</div>
+        <div class="topbar-title" id="topBrandTitle">Brand portal</div>
         <div class="topbar-sub" id="topName">Loading…</div>
     </div>
-    <button class="logout-btn" onclick="doLogout()">Logout</button>
+    <div class="topbar-actions">
+        <button type="button" class="topbar-icon-btn" onclick="toggleBrandNotif()" title="Notifications" aria-label="Notifications">🔔</button>
+        <button type="button" class="topbar-icon-btn" onclick="doLogout()" title="Logout" aria-label="Logout">⏻</button>
+    </div>
+</div>
+
+<div id="brandNotifPanel" onclick="if(event.target===this)toggleBrandNotif()">
+    <div class="bnp-drawer" onclick="event.stopPropagation()">
+        <div class="bnp-head">
+            <button type="button" onclick="toggleBrandNotif()" style="background:rgba(255,255,255,.15);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:18px;cursor:pointer">‹</button>
+            <div style="flex:1">
+                <div style="font-size:15px;font-weight:900">Notifications</div>
+                <div style="font-size:11px;color:#c4b5a0;margin-top:2px">Brand updates</div>
+            </div>
+        </div>
+        <div class="bnp-body" id="brandNotifBody">
+            <div style="text-align:center;padding:28px 16px;color:#8a7a6a;font-size:13px;line-height:1.5">No new notifications for this brand portal.</div>
+        </div>
+    </div>
+</div>
+
+<div id="brandInvPreview" onclick="if(event.target===this)closeBrandInvPreview()">
+    <div class="bip-card" onclick="event.stopPropagation()">
+        <div style="padding:14px 16px;border-bottom:1px solid #e8dfd2;display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <div>
+                <div style="font-size:15px;font-weight:900;color:#4a2f14" id="bipTitle">Invoice</div>
+                <div style="font-size:11px;color:#8a7a6a;margin-top:2px" id="bipSub"></div>
+            </div>
+            <button type="button" onclick="closeBrandInvPreview()" style="border:none;background:#f5ede0;color:#4a2f14;width:36px;height:36px;border-radius:50%;font-size:18px;cursor:pointer;font-weight:700">×</button>
+        </div>
+        <div id="bipBody" style="padding:14px 16px;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch"></div>
+        <div style="padding:12px 16px max(14px,env(safe-area-inset-bottom));border-top:1px solid #e8dfd2">
+            <button type="button" onclick="closeBrandInvPreview()" style="width:100%;padding:12px;border:none;border-radius:12px;background:#f5ede0;color:#4a2f14;font-weight:800;font-size:13px;cursor:pointer">Close</button>
+        </div>
+    </div>
 </div>
 
 <div class="tabs brand-top-tabs">
@@ -297,14 +348,14 @@
 </div>
 
 <nav class="brand-bottom-nav" id="brandBottomNav" aria-label="Main">
-  <div class="brand-bottom-nav-inner">
-    <button type="button" class="bbnav-item on" id="bbnav-today" onclick="showTab('today')"><span class="bbnav-ico">📊</span><span class="bbnav-lbl">Today</span></button>
-    <button type="button" class="bbnav-item" id="bbnav-orders" onclick="showTab('orders')"><span class="bbnav-ico">📋</span><span class="bbnav-lbl">Orders</span></button>
-    <button type="button" class="bbnav-item" id="bbnav-invoices" onclick="showTab('invoices')"><span class="bbnav-ico">💰</span><span class="bbnav-lbl">Invoices</span></button>
-    <button type="button" class="bbnav-item" id="bbnav-track" onclick="showTab('track')"><span class="bbnav-ico">📍</span><span class="bbnav-lbl">Track</span></button>
-    <button type="button" class="bbnav-item" id="bbnav-shop" onclick="showTab('shop')"><span class="bbnav-ico">🏪</span><span class="bbnav-lbl">Shops</span></button>
-    <button type="button" class="bbnav-item" id="bbnav-settings" onclick="showTab('settings')"><span class="bbnav-ico">⚙️</span><span class="bbnav-lbl">More</span></button>
-  </div>
+    <div class="brand-bottom-nav-inner">
+        <button type="button" class="bbnav-item on" id="bbnav-today" onclick="showTab('today')"><span class="bbnav-ico">📊</span><span class="bbnav-lbl">Today</span></button>
+        <button type="button" class="bbnav-item" id="bbnav-orders" onclick="showTab('orders')"><span class="bbnav-ico">📋</span><span class="bbnav-lbl">Orders</span></button>
+        <button type="button" class="bbnav-item" id="bbnav-invoices" onclick="showTab('invoices')"><span class="bbnav-ico">💰</span><span class="bbnav-lbl">Invoices</span></button>
+        <button type="button" class="bbnav-item" id="bbnav-track" onclick="showTab('track')"><span class="bbnav-ico">📍</span><span class="bbnav-lbl">Track</span></button>
+        <button type="button" class="bbnav-item" id="bbnav-shop" onclick="showTab('shop')"><span class="bbnav-ico">🏪</span><span class="bbnav-lbl">Shops</span></button>
+        <button type="button" class="bbnav-item" id="bbnav-settings" onclick="showTab('settings')"><span class="bbnav-ico">⚙️</span><span class="bbnav-lbl">More</span></button>
+    </div>
 </nav>
 
 <!-- ══════════════════ TODAY TAB ══════════════════ -->
@@ -344,24 +395,25 @@
 
 <!-- ══════════════════ INVOICES TAB ══════════════════ -->
 <div class="page" id="pg-invoices">
-    <div class="card" style="margin-bottom:12px">
-      <div class="card-title">Brand invoices</div>
-      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
-        <div style="flex:1;min-width:120px">
-          <div class="lbl">Search</div>
-          <input id="inv-search" type="search" placeholder="Shop name / mobile…" oninput="renderInvoiceList()" style="width:100%;padding:9px 12px;border:1.5px solid #e8eaf6;border-radius:10px;font-size:13px">
+    <div class="card" style="margin-bottom:12px;border-color:#e8dfd2">
+        <div style="font-size:15px;font-weight:900;color:#4a2f14;margin-bottom:4px">Shop invoices</div>
+        <div style="font-size:12px;color:#8a7a6a;line-height:1.45;margin-bottom:12px">Balances for shops under your brand. Tap <b>Preview</b> for line items &amp; totals.</div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
+            <div style="flex:1;min-width:120px">
+                <div class="lbl">Search</div>
+                <input id="inv-search" type="search" placeholder="Shop name / mobile…" oninput="renderInvoiceList()" style="width:100%;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:13px;background:#faf8f5">
+            </div>
+            <div>
+                <div class="lbl">Filter</div>
+                <select id="inv-filter" onchange="renderInvoiceList()" style="padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:12px;font-weight:700;background:#fff">
+                    <option value="unpaid">Unpaid</option>
+                    <option value="all">All with invoice</option>
+                    <option value="paid">Paid (7 days)</option>
+                </select>
+            </div>
+            <button class="refresh-btn" onclick="loadInvoices()">🔄</button>
         </div>
-        <div>
-          <div class="lbl">Filter</div>
-          <select id="inv-filter" onchange="renderInvoiceList()" style="padding:9px 10px;border:1.5px solid #e8eaf6;border-radius:10px;font-size:12px;font-weight:700">
-            <option value="unpaid">Unpaid</option>
-            <option value="all">All with invoice</option>
-            <option value="paid">Paid (7 days)</option>
-          </select>
-        </div>
-        <button class="refresh-btn" onclick="loadInvoices()">🔄</button>
-      </div>
-      <div id="inv-summary" style="margin-top:10px;font-size:12px;font-weight:700;color:#2e7d32;font-family:monospace"></div>
+        <div id="inv-summary" style="margin-top:12px;font-size:13px;font-weight:800;color:#4a2f14"></div>
     </div>
     <div id="inv-list"><div class="card"><div class="empty-msg">Open this tab to load invoices…</div></div></div>
 </div>
@@ -482,9 +534,12 @@
       staffName = sessionStorage.getItem('staffName') || localStorage.getItem('staffNamePersist') || 'Brand Admin';
       myBrand   = sessionStorage.getItem('staffBrand') || localStorage.getItem('staffBrandPersist') || '';
       try{document.body.classList.add('brand-app');}catch(e){}
-      document.getElementById('topName').textContent = staffName;
-      document.getElementById('topBrandTitle').textContent = '🏪 ' + (myBrand || 'Brand') + ' Dashboard';
-      document.getElementById('pageTitle').textContent = (myBrand || 'Brand') + ' — IBCAB';
+      document.getElementById('topName').textContent = staffName ? ('Signed in as ' + staffName) : '';
+      var brandLabel = (myBrand || 'Your brand').trim();
+      document.getElementById('topBrandTitle').textContent = brandLabel;
+      var kick = document.getElementById('topBrandKicker');
+      if (kick) kick.textContent = 'Brand owner portal';
+      document.getElementById('pageTitle').textContent = brandLabel + ' — Brand owner · IBCAB';
       init();
     })();
 
@@ -496,6 +551,95 @@
       localStorage.removeItem('staffBrandPersist');
       goto('');
     }
+
+    function toggleBrandNotif(){
+      var p = document.getElementById('brandNotifPanel');
+      if (!p) return;
+      var open = p.style.display === 'block';
+      p.style.display = open ? 'none' : 'block';
+      if (!open) {
+        var body = document.getElementById('brandNotifBody');
+        if (body) {
+          var unpaidN = (_brandInvRows || []).filter(function(r){ return (r.due||0) > 0.009; }).length;
+          var dueSum = (_brandInvRows || []).reduce(function(s,r){ return s + (r.due||0); }, 0);
+          body.innerHTML =
+            '<div style="background:#fff;border:1.5px solid #e8dfd2;border-radius:14px;padding:14px;margin-bottom:10px">'+
+              '<div style="font-size:12px;font-weight:800;color:#4a2f14;margin-bottom:4px">Invoice snapshot</div>'+
+              '<div style="font-size:13px;color:#1e1611;line-height:1.5">'+
+                (unpaidN ? (unpaidN + ' shop(s) with unpaid balance · <b style="color:#c8382a">' + _invMoney(dueSum) + '</b> due') : 'All clear — no unpaid balances in the current load.')+
+              '</div>'+
+              (unpaidN ? '<button type="button" onclick="toggleBrandNotif();showTab(\'invoices\')" style="margin-top:10px;width:100%;padding:10px;border:none;border-radius:10px;background:#4a2f14;color:#fff;font-weight:800;font-size:12px;cursor:pointer">Open invoices</button>' : '')+
+            '</div>'+
+            '<div style="text-align:center;padding:12px;color:#8a7a6a;font-size:12px;line-height:1.45">Push alerts for brand owners can be enabled later. Use Invoices for live balances.</div>';
+        }
+      }
+    }
+
+    function closeBrandInvPreview(){
+      var sh = document.getElementById('brandInvPreview');
+      if (sh) sh.style.display = 'none';
+    }
+    function _brandParseItems(o){
+      function toList(v){
+        if (v == null || v === '') return [];
+        if (Array.isArray(v)) return v;
+        var s = String(v).trim();
+        if (!s) return [];
+        if (s.charAt(0) === '[') { try { var j = JSON.parse(s); if (Array.isArray(j)) return j; } catch(e){} }
+        return s.split(',').map(function(x){ return x.trim(); }).filter(Boolean);
+      }
+      var names = toList(o.items);
+      var qtys = toList(o.qty).map(function(x){ return parseFloat(x) || 0; });
+      return names.map(function(n,i){
+        if (n && typeof n === 'object') return { name: n.name || n.item || 'Item', qty: parseFloat(n.qty != null ? n.qty : qtys[i]) || 0 };
+        return { name: String(n), qty: qtys[i] || 0 };
+      });
+    }
+    function openBrandInvPreview(orderId){
+      var o = (_brandInvOrders || []).find(function(x){ return String(x.id) === String(orderId); });
+      if (!o) return;
+      var sh = document.getElementById('brandInvPreview');
+      var body = document.getElementById('bipBody');
+      var title = document.getElementById('bipTitle');
+      var sub = document.getElementById('bipSub');
+      if (!sh || !body) return;
+      var st = String(o.payment_status || 'unpaid').toLowerCase();
+      var paid = st === 'paid';
+      var due = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
+      if (isNaN(due)) due = 0;
+      var total = o.invoice_total != null ? parseFloat(o.invoice_total) : due;
+      if (isNaN(total)) total = due;
+      var docNo = o.zoho_invoice_number || ('Order #' + o.id);
+      if (title) title.textContent = docNo;
+      if (sub) sub.textContent = (o.shop_name || '') + (o.delivery_date ? (' · ' + o.delivery_date) : '') + (paid ? ' · Paid' : ' · Unpaid');
+      var lines = _brandParseItems(o);
+      var linesHtml = lines.length
+        ? lines.map(function(r, idx){
+            return '<div style="display:flex;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid #f0e8dc;font-size:13px">'+
+              '<div style="flex:1;min-width:0"><span style="color:#8a7a6a;font-size:11px">'+(idx+1)+'.</span> '+esc(r.name)+'</div>'+
+              '<div style="font-weight:800;color:#4a2f14">× '+(r.qty||0)+'</div></div>';
+          }).join('')
+        : '<div style="font-size:12px;color:#8a7a6a;margin-bottom:10px">Line items not stored on this row. Totals below are from the invoice.</div>';
+      function money(n){ return _invMoney(n); }
+      var totals = '<div style="background:#f9f6f1;border-radius:12px;padding:12px;border:1px solid #e8dfd2;margin-top:12px">';
+      if (o.invoice_subtotal != null) totals += '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span>Taxable</span><b>'+money(o.invoice_subtotal)+'</b></div>';
+      if (o.tax_cgst != null) totals += '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span>CGST</span><b>'+money(o.tax_cgst)+'</b></div>';
+      if (o.tax_sgst != null) totals += '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span>SGST</span><b>'+money(o.tax_sgst)+'</b></div>';
+      if (o.shipping_amount != null) totals += '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span>Shipping</span><b>'+money(o.shipping_amount)+'</b></div>';
+      totals += '<div style="display:flex;justify-content:space-between;font-size:15px;font-weight:900;margin-top:8px;padding-top:8px;border-top:1.5px solid #e8dfd2;color:#4a2f14"><span>Total</span><span>'+money(total)+'</span></div>';
+      if (!paid) totals += '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:800;margin-top:6px;color:#c8382a"><span>Balance due</span><span>'+money(due)+'</span></div>';
+      else totals += '<div style="margin-top:6px;font-size:12px;font-weight:800;color:#1a5a38">Paid · Balance ₹0</div>';
+      totals += '</div>';
+      body.innerHTML =
+        '<div style="font-size:11px;color:#8a7a6a;margin-bottom:10px">Shop: <b style="color:#4a2f14">'+esc(o.shop_name||'')+'</b>'+
+        (o.zoho_invoice_status ? ' · Zoho: '+esc(String(o.zoho_invoice_status)) : '')+'</div>' +
+        linesHtml + totals +
+        '<div style="font-size:10px;color:#8a7a6a;margin-top:12px;line-height:1.45">Summary from app data. Official tax invoice is in Zoho Books.</div>';
+      sh.style.display = 'flex';
+    }
+    window.openBrandInvPreview = openBrandInvPreview;
+    window.closeBrandInvPreview = closeBrandInvPreview;
+    window.toggleBrandNotif = toggleBrandNotif;
 
     // ── SETTINGS ──
     function renderSettingsProfile(){
@@ -1047,27 +1191,35 @@
             return paid && created >= weekAgo;
           }
           return true;
-        }).slice(0, 6).map(function(o){
+        }).slice(0, 8).map(function(o){
           var st = String(o.payment_status||'unpaid').toLowerCase();
           var due = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
           if (isNaN(due)) due = 0;
           var doc = o.zoho_invoice_number || ('#'+o.id);
-          var z = o.zoho_invoice_status ? ' · '+o.zoho_invoice_status : '';
-          return '<div>'+esc(doc)+' · '+esc(o.delivery_date||'')+' · '+_invMoney(due)+' · '+esc(st)+esc(z)+'</div>';
+          var z = o.zoho_invoice_status ? String(o.zoho_invoice_status) : '';
+          var paid = st === 'paid' || due <= 0.009;
+          var oid = String(o.id).replace(/'/g,'');
+          return '<div class="inv-doc-row">'+
+            '<div style="min-width:0;flex:1">'+
+              '<div style="font-size:12px;font-weight:800;color:#4a2f14">'+esc(doc)+'</div>'+
+              '<div style="font-size:10px;color:#8a7a6a;margin-top:2px">'+esc(o.delivery_date||'—')+(z?' · Zoho: '+esc(z):'')+' · <b style="color:'+(paid?'#1a5a38':'#c8382a')+'">'+_invMoney(due)+'</b></div>'+
+            '</div>'+
+            '<button type="button" class="inv-preview-btn" onclick="openBrandInvPreview(\''+oid+'\')">📄 Preview</button>'+
+          '</div>';
         }).join('');
         return '<div class="inv-card">'+
           '<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">'+
             '<div style="min-width:0;flex:1">'+
               '<div class="inv-name">'+esc(r.shop_name)+'</div>'+
-              '<div class="inv-meta">'+esc(r.shop_id)+(r.mobile?' · '+esc(r.mobile):'')+'</div>'+
-              '<div style="margin-top:4px">'+statusBits+'</div>'+
+              '<div class="inv-meta">'+(r.mobile?esc(r.mobile):esc(r.shop_id||''))+'</div>'+
+              '<div style="margin-top:6px">'+statusBits+'</div>'+
             '</div>'+
             '<div style="text-align:right;flex-shrink:0">'+
               '<div class="inv-due'+(r.due>0.009?'':' zero')+'">'+_invMoney(r.due)+'</div>'+
-              '<div style="font-size:10px;color:#78909c">due</div>'+
+              '<div style="font-size:10px;color:#8a7a6a;font-weight:700">due</div>'+
             '</div>'+
           '</div>'+
-          (lines ? '<div class="inv-line">'+lines+'</div>' : '')+
+          (lines ? '<div class="inv-line">'+lines+'</div>' : '<div class="inv-line" style="color:#8a7a6a">No documents in this filter.</div>')+
         '</div>';
       }).join('');
     }
@@ -1594,112 +1746,112 @@
 </script>
 
 <script>
-/* Dynamic iOS notch / safe-area handling */
-(function () {
-  if (window.__safeAreaDyn) return;
-  window.__safeAreaDyn = true;
+    /* Dynamic iOS notch / safe-area handling */
+    (function () {
+      if (window.__safeAreaDyn) return;
+      window.__safeAreaDyn = true;
 
-  var root = document.documentElement;
-  var probe = null;
+      var root = document.documentElement;
+      var probe = null;
 
-  function ensureProbe() {
-    if (probe && probe.parentNode) return probe;
-    probe = document.createElement('div');
-    probe.setAttribute('aria-hidden', 'true');
-    probe.style.cssText = [
-      'position:fixed', 'left:0', 'top:0', 'width:0', 'height:0',
-      'visibility:hidden', 'pointer-events:none', 'padding:0',
-      'padding-top:env(safe-area-inset-top,0px)',
-      'padding-right:env(safe-area-inset-right,0px)',
-      'padding-bottom:env(safe-area-inset-bottom,0px)',
-      'padding-left:env(safe-area-inset-left,0px)'
-    ].join(';');
-    (document.body || root).appendChild(probe);
-    return probe;
-  }
-
-  function px(n) {
-    n = parseFloat(n);
-    return (isFinite(n) ? n : 0) + 'px';
-  }
-
-  function readEnvInsets() {
-    var el = ensureProbe();
-    var cs = window.getComputedStyle(el);
-    return {
-      top: parseFloat(cs.paddingTop) || 0,
-      right: parseFloat(cs.paddingRight) || 0,
-      bottom: parseFloat(cs.paddingBottom) || 0,
-      left: parseFloat(cs.paddingLeft) || 0
-    };
-  }
-
-  function apply() {
-    var env = readEnvInsets();
-    var sat = env.top;
-    var sab = env.bottom;
-    var sal = env.left;
-    var sar = env.right;
-
-    // When mobile browser chrome collapses, keep a sensible bottom inset
-    // using visualViewport (does not replace home-indicator inset when larger).
-    try {
-      var vv = window.visualViewport;
-      if (vv && window.innerHeight) {
-        var gap = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
-        // Only boost bottom when browser UI leaves a gap larger than env bottom
-        // and gap is small (typical toolbar), not full keyboard.
-        if (gap > sab && gap < 120) sab = gap;
+      function ensureProbe() {
+        if (probe && probe.parentNode) return probe;
+        probe = document.createElement('div');
+        probe.setAttribute('aria-hidden', 'true');
+        probe.style.cssText = [
+          'position:fixed', 'left:0', 'top:0', 'width:0', 'height:0',
+          'visibility:hidden', 'pointer-events:none', 'padding:0',
+          'padding-top:env(safe-area-inset-top,0px)',
+          'padding-right:env(safe-area-inset-right,0px)',
+          'padding-bottom:env(safe-area-inset-bottom,0px)',
+          'padding-left:env(safe-area-inset-left,0px)'
+        ].join(';');
+        (document.body || root).appendChild(probe);
+        return probe;
       }
-    } catch (e) {}
 
-    root.style.setProperty('--sat', px(sat));
-    root.style.setProperty('--sab', px(sab));
-    root.style.setProperty('--sal', px(sal));
-    root.style.setProperty('--sar', px(sar));
+      function px(n) {
+        n = parseFloat(n);
+        return (isFinite(n) ? n : 0) + 'px';
+      }
 
-    root.classList.toggle('has-notch', sat >= 20);
-    root.classList.toggle('has-home-bar', sab >= 10);
-    root.setAttribute('data-safe-top', String(Math.round(sat)));
-    root.setAttribute('data-safe-bottom', String(Math.round(sab)));
-  }
+      function readEnvInsets() {
+        var el = ensureProbe();
+        var cs = window.getComputedStyle(el);
+        return {
+          top: parseFloat(cs.paddingTop) || 0,
+          right: parseFloat(cs.paddingRight) || 0,
+          bottom: parseFloat(cs.paddingBottom) || 0,
+          left: parseFloat(cs.paddingLeft) || 0
+        };
+      }
 
-  var scheduled = false;
-  function schedule() {
-    if (scheduled) return;
-    scheduled = true;
-    requestAnimationFrame(function () {
-      scheduled = false;
-      apply();
-    });
-  }
+      function apply() {
+        var env = readEnvInsets();
+        var sat = env.top;
+        var sab = env.bottom;
+        var sal = env.left;
+        var sar = env.right;
 
-  function boot() {
-    ensureProbe();
-    apply();
-    window.addEventListener('resize', schedule, { passive: true });
-    window.addEventListener('orientationchange', function () {
-      // iOS often updates env() one frame after orientation settles
-      schedule();
-      setTimeout(apply, 50);
-      setTimeout(apply, 300);
-    }, { passive: true });
-    window.addEventListener('pageshow', schedule, { passive: true });
-    if (window.visualViewport) {
-      visualViewport.addEventListener('resize', schedule, { passive: true });
-      visualViewport.addEventListener('scroll', schedule, { passive: true });
-    }
-    // Late paint (PWA / standalone)
-    setTimeout(apply, 100);
-    setTimeout(apply, 500);
-  }
+        // When mobile browser chrome collapses, keep a sensible bottom inset
+        // using visualViewport (does not replace home-indicator inset when larger).
+        try {
+          var vv = window.visualViewport;
+          if (vv && window.innerHeight) {
+            var gap = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
+            // Only boost bottom when browser UI leaves a gap larger than env bottom
+            // and gap is small (typical toolbar), not full keyboard.
+            if (gap > sab && gap < 120) sab = gap;
+          }
+        } catch (e) {}
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot);
-  } else {
-    boot();
-  }
-})();
+        root.style.setProperty('--sat', px(sat));
+        root.style.setProperty('--sab', px(sab));
+        root.style.setProperty('--sal', px(sal));
+        root.style.setProperty('--sar', px(sar));
+
+        root.classList.toggle('has-notch', sat >= 20);
+        root.classList.toggle('has-home-bar', sab >= 10);
+        root.setAttribute('data-safe-top', String(Math.round(sat)));
+        root.setAttribute('data-safe-bottom', String(Math.round(sab)));
+      }
+
+      var scheduled = false;
+      function schedule() {
+        if (scheduled) return;
+        scheduled = true;
+        requestAnimationFrame(function () {
+          scheduled = false;
+          apply();
+        });
+      }
+
+      function boot() {
+        ensureProbe();
+        apply();
+        window.addEventListener('resize', schedule, { passive: true });
+        window.addEventListener('orientationchange', function () {
+          // iOS often updates env() one frame after orientation settles
+          schedule();
+          setTimeout(apply, 50);
+          setTimeout(apply, 300);
+        }, { passive: true });
+        window.addEventListener('pageshow', schedule, { passive: true });
+        if (window.visualViewport) {
+          visualViewport.addEventListener('resize', schedule, { passive: true });
+          visualViewport.addEventListener('scroll', schedule, { passive: true });
+        }
+        // Late paint (PWA / standalone)
+        setTimeout(apply, 100);
+        setTimeout(apply, 500);
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', boot);
+      } else {
+        boot();
+      }
+    })();
 </script>
 
 </body>
