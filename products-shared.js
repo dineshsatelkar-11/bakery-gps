@@ -316,7 +316,7 @@
     };
   }
 
-  /** Packet totals at the end — all puff types (veg + chicken + paneer). */
+  /** Packet totals — all puff types (veg + chicken + paneer). opts.prominent = large driver UI */
   function packPacketsHtml(itemsOrOrders, opts) {
     opts = opts || {};
     var s = sumPackPackets(itemsOrOrders);
@@ -333,12 +333,48 @@
       if (g.fifteen) kp.push(g.fifteen + '×15');
       if (g.ten) kp.push(g.ten + '×10');
       if (g.loose) kp.push(g.loose + ' loose');
-      kindHtml +=
-        '<div style="font-size:11px;font-family:monospace;color:#5a4a3a;margin-top:3px">' +
-        '<b style="color:#4a2f14">' + k + '</b> ' + g.pieces + ' pcs' +
-        (kp.length ? ' → ' + kp.join(' + ') : '') +
-        '</div>';
+      if (opts.prominent) {
+        kindHtml +=
+          '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;margin-top:6px;background:#fff;border:1.5px solid #e8dfd2;border-radius:10px">' +
+          '<span style="font-size:14px;font-weight:800;color:#4a2f14">' + k + '</span>' +
+          '<span style="font-size:13px;font-weight:800;font-family:monospace;color:#1e1611">' + g.pieces + ' pcs' +
+          (kp.length ? ' · ' + kp.join(' + ') : '') + '</span></div>';
+      } else {
+        kindHtml +=
+          '<div style="font-size:11px;font-family:monospace;color:#5a4a3a;margin-top:3px">' +
+          '<b style="color:#4a2f14">' + k + '</b> ' + g.pieces + ' pcs' +
+          (kp.length ? ' → ' + kp.join(' + ') : '') +
+          '</div>';
+      }
     });
+    if (opts.prominent) {
+      return (
+        '<div style="margin:0 0 12px;padding:12px;background:linear-gradient(180deg,#f0faf3 0%,#e8f5e9 100%);border:2px solid #2d7a4f;border-radius:14px;box-shadow:0 2px 8px rgba(45,122,79,.12)">' +
+        '<div style="font-size:13px;font-weight:900;color:#1a5a38;margin-bottom:10px;letter-spacing:.2px">📦 PUFF PACKETS</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">' +
+        (s.fifteen
+          ? '<div style="flex:1;min-width:90px;background:#fff;border:2px solid #2d7a4f;border-radius:12px;padding:10px 8px;text-align:center">' +
+            '<div style="font-size:26px;font-weight:900;color:#1a5a38;line-height:1;font-family:monospace">' + s.fifteen + '</div>' +
+            '<div style="font-size:12px;font-weight:800;color:#2d7a4f;margin-top:4px">×15 packs</div></div>'
+          : '') +
+        (s.ten
+          ? '<div style="flex:1;min-width:90px;background:#fff;border:2px solid #1565c0;border-radius:12px;padding:10px 8px;text-align:center">' +
+            '<div style="font-size:26px;font-weight:900;color:#1565c0;line-height:1;font-family:monospace">' + s.ten + '</div>' +
+            '<div style="font-size:12px;font-weight:800;color:#1565c0;margin-top:4px">×10 packs</div></div>'
+          : '') +
+        (s.loose
+          ? '<div style="flex:1;min-width:90px;background:#fff;border:2px solid #e8a020;border-radius:12px;padding:10px 8px;text-align:center">' +
+            '<div style="font-size:26px;font-weight:900;color:#7a4800;line-height:1;font-family:monospace">' + s.loose + '</div>' +
+            '<div style="font-size:12px;font-weight:800;color:#7a4800;margin-top:4px">loose</div></div>'
+          : '') +
+        '<div style="flex:1;min-width:90px;background:#fff;border:2px solid #c8a87a;border-radius:12px;padding:10px 8px;text-align:center">' +
+        '<div style="font-size:26px;font-weight:900;color:#4a2f14;line-height:1;font-family:monospace">' + s.pieces + '</div>' +
+        '<div style="font-size:12px;font-weight:800;color:#8a7a6a;margin-top:4px">total pcs</div></div>' +
+        '</div>' +
+        kindHtml +
+        '</div>'
+      );
+    }
     return '<div style="margin-top:10px;padding-top:8px;border-top:2px dashed #e8dfd2">' +
       '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">' +
       '<span style="font-size:10px;font-weight:800;color:#8a7a6a;font-family:monospace;text-transform:uppercase">Puff packets (all types · per shop)</span>' +

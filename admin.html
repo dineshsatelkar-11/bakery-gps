@@ -25,10 +25,40 @@
         }
         html{height:100%;background:#4a2f14}
         body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f5ede0;color:#1e1611;max-width:520px;margin:0 auto;min-height:100vh;min-height:100dvh;padding-left:var(--sal);padding-right:var(--sar);overflow-x:hidden;padding-top:calc(53px + var(--sat));overscroll-behavior-y:none}
-        .topbar{background:#4a2f14;padding:13px 14px;padding-top:max(13px,var(--sat));display:flex;align-items:center;justify-content:space-between;position:fixed;top:0;left:0;right:0;max-width:520px;margin:0 auto;z-index:300;-webkit-transform:translateZ(0);transform:translateZ(0);backface-visibility:hidden}
-        .topbar-title{color:#fff;font-size:15px;font-weight:800}
-        .topbar-sub{color:#c8a87a;font-size:11px;font-family:monospace}
+        .topbar{
+          background:#4a2f14;padding:10px 14px 10px;padding-top:max(10px,var(--sat));
+          display:flex;flex-direction:column;gap:8px;
+          position:fixed;top:0;left:0;right:0;width:100%;max-width:520px;margin:0 auto;z-index:300;
+          -webkit-transform:translateZ(0);transform:translateZ(0);backface-visibility:hidden;
+          box-shadow:0 2px 12px rgba(0,0,0,.14);
+        }
+        .topbar-row{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%}
+        .topbar-hello{display:flex;align-items:center;gap:10px;min-width:0;flex:1;background:none;border:none;padding:0;text-align:left;cursor:pointer}
+        .topbar-avatar{
+          width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.18);
+          color:#fff;font-size:13px;font-weight:900;display:flex;align-items:center;justify-content:center;
+          flex-shrink:0;border:1.5px solid rgba(255,255,255,.28);
+        }
+        .topbar-hello-text{min-width:0;flex:1}
+        .topbar-hello-label{color:#c8a87a;font-size:11px;font-weight:600;line-height:1.15}
+        .topbar-title{color:#fff;font-size:16px;font-weight:800;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .topbar-sub{color:#c8a87a;font-size:11px;font-family:monospace;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .topbar-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
+        .topbar-icon-btn{
+          position:relative;width:40px;height:40px;border-radius:50%;
+          background:rgba(255,255,255,.12);border:none;color:#fff;font-size:17px;cursor:pointer;
+          display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;
+        }
+        .topbar-icon-btn:active{background:rgba(255,255,255,.22)}
+        .topbar-chips{display:none;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px}
+        .topbar-chips::-webkit-scrollbar{display:none}
+        .topbar-chip{
+          flex-shrink:0;border:1.5px solid rgba(255,255,255,.35);background:rgba(255,255,255,.1);
+          color:#fff;font-size:12px;font-weight:700;padding:7px 14px;border-radius:20px;cursor:pointer;white-space:nowrap;
+        }
+        .topbar-chip.on,.topbar-chip:active{background:#fff;color:#4a2f14;border-color:#fff}
         .topbar-right{display:flex;gap:8px}
+        .tbtn{background:rgba(255,255,255,.15);border:none;color:#fff;padding:7px 12px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer}
         .tbtn{background:rgba(255,255,255,.2);border:none;color:#fff;padding:6px 11px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif;text-decoration:none;display:inline-block}
         .tabs{display:flex;background:#fff;border-bottom:2px solid #e8dfd2;position:fixed;top:calc(53px + var(--sat));left:0;right:0;max-width:520px;margin:0 auto;z-index:299;overflow-x:auto;scrollbar-width:none;-webkit-transform:translateZ(0);transform:translateZ(0)}
         /* Mobile bottom navigation */
@@ -48,18 +78,36 @@
         .more-item:active{background:#ebe0d0}
         .more-item .mi{font-size:20px}
         .more-hint{font-size:10px;color:#8a7a6a;font-family:monospace;margin-top:10px;line-height:1.4}
+        .del-mobile-tools{display:none}
+        .rt-back-deliv{display:none}
+        @media (max-width:700px){
+          .rt-back-deliv{display:inline-flex !important}
+        }
+
+        @media (max-width:700px){
+          .del-mobile-tools{display:block}
+        }
+        @media (min-width:701px){
+          .del-mobile-tools{display:none !important}
+          #deliveryToolsSheet{display:none !important}
+        }
+
         @media (max-width:700px){
           .tabs{display:none !important}
           .bottom-nav{display:block}
-          body{padding-top:calc(53px + var(--sat));padding-bottom:calc(76px + var(--sab))}
-          #subTabs{position:sticky;top:calc(53px + var(--sat)) !important;z-index:298}
+          .topbar-chips{display:flex !important}
+          body{padding-top:calc(108px + var(--sat));padding-bottom:calc(76px + var(--sab))}
+          #subTabs{position:sticky;top:calc(108px + var(--sat)) !important;z-index:298}
+          .topbar{max-width:100%}
         }
         @media (min-width:701px){
           .bottom-nav{display:none !important}
           .more-sheet{display:none !important}
+          .topbar-chips{display:none !important}
           body{padding-top:calc(96px + var(--sat))}
           .topbar,.tabs{max-width:520px}
           #subTabs{position:sticky;top:calc(96px + var(--sat)) !important;z-index:298}
+          .topbar{padding-bottom:12px}
         }
 
         .tabs::-webkit-scrollbar{display:none}
@@ -149,11 +197,28 @@
     </style>
 </head>
 <body>
-<div class="topbar">
-    <div><div class="topbar-title">🥖 IBCAB Admin</div><div class="topbar-sub" id="topDate"></div></div>
-    <div class="topbar-right">
-        <button class="tbtn" onclick="openGlobalSearch()">🔍</button>
-        <button class="tbtn" id="logoutBtn">Logout</button>
+<div class="topbar" id="adminTopbar">
+    <div class="topbar-row">
+        <button type="button" class="topbar-hello" onclick="mobileNav('more')" aria-label="Account menu">
+            <div class="topbar-avatar" id="topAvatar">A</div>
+            <div class="topbar-hello-text">
+                <div class="topbar-hello-label">Hello,</div>
+                <div class="topbar-title"><span id="topStaffName">Admin</span> ▾</div>
+                <div class="topbar-sub" id="topDate"></div>
+            </div>
+        </button>
+        <div class="topbar-actions">
+            <button type="button" class="topbar-icon-btn" onclick="openGlobalSearch()" title="Search" aria-label="Search">🔍</button>
+            <button type="button" class="topbar-icon-btn" onclick="showGroup('notify')" title="Notify" aria-label="Notifications">🔔</button>
+            <button type="button" class="topbar-icon-btn" id="logoutBtn" title="Logout" aria-label="Logout">⏻</button>
+        </div>
+    </div>
+    <div class="topbar-chips" id="adminTopChips" role="tablist">
+        <button type="button" class="topbar-chip on" id="achip-home" onclick="mobileNav('home')">Home</button>
+        <button type="button" class="topbar-chip" id="achip-orders" onclick="mobileNav('orders')">Orders</button>
+        <button type="button" class="topbar-chip" id="achip-delivery" onclick="mobileNav('delivery')">Delivery</button>
+        <button type="button" class="topbar-chip" id="achip-payments" onclick="mobileNav('payments')">Pay</button>
+        <button type="button" class="topbar-chip" id="achip-more" onclick="mobileNav('more')">More</button>
     </div>
 </div>
 <!-- Global Search Modal -->
@@ -181,31 +246,31 @@
 
 <!-- Mobile bottom navigation (hidden on desktop via CSS) -->
 <nav class="bottom-nav" id="bottomNav" aria-label="Main">
-    <div class="bottom-nav-inner">
-        <button type="button" class="bnav-item on" id="bnav-home" onclick="mobileNav('home')">
-            <span class="bnav-ico">🏠</span><span class="bnav-lbl">Home</span>
-        </button>
-        <button type="button" class="bnav-item" id="bnav-orders" onclick="mobileNav('orders')">
-            <span class="bnav-ico">📋</span><span class="bnav-lbl">Orders</span>
-        </button>
-        <button type="button" class="bnav-item" id="bnav-delivery" onclick="mobileNav('delivery')">
-            <span class="bnav-ico">🚚</span><span class="bnav-lbl">Delivery</span>
-        </button>
-        <button type="button" class="bnav-item" id="bnav-payments" onclick="mobileNav('payments')">
-            <span class="bnav-ico">💰</span><span class="bnav-lbl">Payments</span>
-        </button>
-        <button type="button" class="bnav-item" id="bnav-more" onclick="mobileNav('more')">
-            <span class="bnav-ico">☰</span><span class="bnav-lbl">More</span>
-        </button>
-    </div>
+  <div class="bottom-nav-inner">
+    <button type="button" class="bnav-item on" id="bnav-home" onclick="mobileNav('home')">
+      <span class="bnav-ico">🏠</span><span class="bnav-lbl">Home</span>
+    </button>
+    <button type="button" class="bnav-item" id="bnav-orders" onclick="mobileNav('orders')">
+      <span class="bnav-ico">📋</span><span class="bnav-lbl">Orders</span>
+    </button>
+    <button type="button" class="bnav-item" id="bnav-delivery" onclick="mobileNav('delivery')">
+      <span class="bnav-ico">🚚</span><span class="bnav-lbl">Delivery</span>
+    </button>
+    <button type="button" class="bnav-item" id="bnav-payments" onclick="mobileNav('payments')">
+      <span class="bnav-ico">💰</span><span class="bnav-lbl">Payments</span>
+    </button>
+    <button type="button" class="bnav-item" id="bnav-more" onclick="mobileNav('more')">
+      <span class="bnav-ico">☰</span><span class="bnav-lbl">More</span>
+    </button>
+  </div>
 </nav>
 <div class="more-sheet" id="moreSheet" onclick="if(event.target===this)closeMoreSheet()">
-    <div class="more-panel">
-        <h3>More</h3>
-        <div class="more-grid" id="moreGrid"></div>
-        <p class="more-hint">Zoho, bulk tools &amp; settings work best on a computer. Daily ops: Orders, Delivery &amp; Payments.</p>
-        <button type="button" class="btn-sm btn-grey" style="width:100%;margin-top:10px;padding:10px" onclick="closeMoreSheet()">Close</button>
-    </div>
+  <div class="more-panel">
+    <h3>More</h3>
+    <div class="more-grid" id="moreGrid"></div>
+    <p class="more-hint">Zoho, bulk tools &amp; settings work best on a computer. Daily ops: Orders, Delivery &amp; Payments.</p>
+    <button type="button" class="btn-sm btn-grey" style="width:100%;margin-top:10px;padding:10px" onclick="closeMoreSheet()">Close</button>
+  </div>
 </div>
 
 
@@ -489,6 +554,19 @@
 
 <!-- DELIVERY -->
 <div class="page" id="pg-delivery">
+    <div class="del-mobile-tools" id="delMobileTools">
+        <div style="font-size:15px;font-weight:900;color:#4a2f14;margin-bottom:4px">Morning delivery</div>
+        <div style="font-size:11px;color:#8a7a6a;line-height:1.45;margin-bottom:10px">
+            Daily check: delivered vs pending · routes for today.
+            <b>GPS</b> here is <b>shop location</b> (customer), not driver tracking.
+            Shop/driver reassign is prior-day / occasional (Customers / Routes).
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+            <button type="button" class="btn-sm" style="background:#4a2f14;color:#fff;padding:9px 12px" onclick="openDeliveryTools()">⋯ More tools</button>
+            <button type="button" class="btn-sm btn-grey" style="padding:9px 12px" onclick="showTab('routes')">🗺 Routes</button>
+            <button type="button" class="btn-sm btn-grey" style="padding:9px 12px" onclick="showTab('gps')">📍 Shop GPS</button>
+        </div>
+    </div>
     <div class="stats-grid" id="delivStats"></div>
     <div class="filter-row">
         <select id="f-del-driver" onchange="loadDeliveries()">
@@ -500,67 +578,113 @@
     <div id="deliveryList"></div>
 </div>
 
+<!-- Delivery tools sheet (mobile Option A) -->
+<div class="more-sheet" id="deliveryToolsSheet" onclick="if(event.target===this)closeDeliveryTools()">
+  <div class="more-panel" onclick="event.stopPropagation()">
+    <h3>Delivery tools</h3>
+    <div class="more-hint" style="margin-top:0;margin-bottom:10px">
+      <b>Daily morning:</b> delivery list · routes.<br>
+      <b>Shop GPS:</b> customer drop location (not driver live track).<br>
+      <b>Prior day / occasional:</b> substitute · shop reassign.
+    </div>
+    <div class="more-grid" id="deliveryToolsGrid"></div>
+    <div class="more-hint">
+      🔄 Substitute (today only) → Routes<br>
+      🔀 Shop reassign (permanent) → More → Customers<br>
+      📍 Shop GPS → customer lat/lng on map
+    </div>
+    <button type="button" class="btn btn-grey" style="margin-top:12px;margin-bottom:0" onclick="closeDeliveryTools()">Close</button>
+  </div>
+</div>
+
 <!-- ROUTES -->
 <div class="page" id="pg-routes">
-    <div class="stats-grid" id="routeStats"></div>
-    <div class="filter-row">
-        <select id="f-rt-driver" onchange="loadRoutes()">
-            <option value="">All</option>
-        </select>
-        <input type="date" id="f-rt-date" onchange="loadRoutes()" style="margin-bottom:0">
-    </div>
-    <button class="btn btn-grey" onclick="loadRoutes()">Refresh</button>
-    <button class="btn-csv" onclick="exportRouteCSV()">⬇ Export CSV</button>
-    <button class="btn" style="background:#25d366;color:#fff;margin-bottom:8px;width:100%" onclick="shareRouteSummary()">📤 Share Driver Summary</button>
-
-    <!-- Substitute Driver — driver absent for the day -->
-    <div class="card" style="margin-bottom:10px;border-color:#e8c87a">
-        <div class="lbl" style="margin-bottom:8px">🔄 Substitute Driver (Today Only)</div>
-        <div style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-bottom:10px;line-height:1.5">
-            Reassigns all orders for an absent driver to another driver — for today only.<br>
-            Permanent shop assignment is <strong>not</strong> changed.
+    <div class="rt-page-head" style="margin-bottom:12px">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px">
+            <div>
+                <div style="font-size:17px;font-weight:900;color:#4a2f14;letter-spacing:-.2px">Routes</div>
+                <div style="font-size:11px;color:#8a7a6a;line-height:1.4;margin-top:2px">Morning view: drivers · shops · done vs pending</div>
+            </div>
+            <button type="button" class="btn-sm btn-grey rt-back-deliv" style="padding:8px 10px;flex-shrink:0" onclick="showTab('delivery')">← Deliveries</button>
         </div>
         <div class="filter-row" style="margin-bottom:8px">
-            <select id="sub-from" style="margin-bottom:0;flex:1">
-                <option value="">Absent Driver…</option>
+            <select id="f-rt-driver" onchange="loadRoutes()" style="margin-bottom:0;flex:1">
+                <option value="">All drivers</option>
             </select>
-            <select id="sub-to" style="margin-bottom:0;flex:1">
-                <option value="">Substitute…</option>
-            </select>
+            <input type="date" id="f-rt-date" onchange="loadRoutes()" style="margin-bottom:0;flex:1">
         </div>
-        <input type="date" id="sub-date" style="margin-bottom:8px">
-        <button class="btn btn-grey" style="margin-bottom:6px" onclick="previewSubstitute()">🔍 Preview</button>
-        <div id="sub-preview" style="display:none;font-size:12px;font-family:monospace;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:8px 10px;margin-bottom:8px"></div>
-        <button class="btn" id="sub-btn" style="background:#c8864a;color:#fff;display:none" onclick="confirmSubstitute()">🔄 Reassign Orders</button>
-        <div id="sub-msg" style="display:none;margin-top:6px" class="msg ok"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+            <button type="button" class="btn-sm btn-grey" style="padding:9px 12px" onclick="loadRoutes()">↻ Refresh</button>
+            <button type="button" class="btn-sm" style="background:#25d366;color:#fff;padding:9px 12px;border:none" onclick="shareRouteSummary()">📤 Share</button>
+            <button type="button" class="btn-sm btn-grey" style="padding:9px 12px" onclick="exportRouteCSV()">⬇ CSV</button>
+        </div>
     </div>
 
-    <!-- Move Specific Orders -->
-    <div class="card" style="margin-bottom:10px;border-color:#b0c4f0">
-        <div class="lbl" style="margin-bottom:8px">📦 Move Specific Orders to Another Driver</div>
-        <div style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-bottom:10px;line-height:1.5">
-            Select undelivered orders from a driver and move them individually to someone else.
-        </div>
-        <div class="filter-row" style="margin-bottom:8px">
-            <select id="mov-from" style="margin-bottom:0;flex:1" onchange="loadMoveOrders()">
-                <option value="">From Driver…</option>
-            </select>
-            <select id="mov-to" style="margin-bottom:0;flex:1">
-                <option value="">To Driver…</option>
-            </select>
-        </div>
-        <input type="date" id="mov-date" style="margin-bottom:8px" onchange="loadMoveOrders()">
-        <div id="mov-order-list" style="display:none;max-height:240px;overflow-y:auto;border:1.5px solid #e8dfd2;border-radius:10px;margin-bottom:8px;background:#f9f6f1"></div>
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-            <button class="btn-sm" style="background:#e8f5e9;color:#1a5a38;border:1.5px solid #a5d6a7;padding:6px 12px;font-size:11px" onclick="movSelectAll()">✅ All</button>
-            <button class="btn-sm" style="background:#e8dfd2;color:#4a2f14;border:1.5px solid #d0c0aa;padding:6px 12px;font-size:11px" onclick="movDeselectAll()">✖ Clear</button>
-            <span id="mov-count" style="font-size:11px;font-family:monospace;color:#8a7a6a"></span>
-        </div>
-        <button class="btn" style="background:#1a5fa8;color:#fff;margin-bottom:0" onclick="confirmMoveOrders()">📦 Move Selected Orders</button>
-        <div id="mov-msg" style="display:none;margin-top:8px" class="msg ok"></div>
-    </div>
+    <div class="stats-grid" id="routeStats" style="margin-bottom:12px"></div>
 
+    <!-- Daily list first -->
+    <div style="font-size:12px;font-weight:800;color:#8a7a6a;text-transform:uppercase;letter-spacing:.6px;margin:4px 0 8px">Driver routes</div>
     <div id="routesList"></div>
+
+    <!-- Occasional adjustments (not morning primary) -->
+    <div class="card" style="margin-top:14px;margin-bottom:10px;padding:0;overflow:hidden">
+        <button type="button" id="rtAdjToggle" onclick="toggleRouteAdjustments()" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px;border:none;background:#f9f6f1;cursor:pointer;text-align:left;font-family:-apple-system,sans-serif">
+            <div>
+                <div style="font-size:13px;font-weight:800;color:#4a2f14">Route adjustments</div>
+                <div style="font-size:11px;color:#8a7a6a;margin-top:2px">Substitute · move orders — occasional / prior day</div>
+            </div>
+            <span id="rtAdjChevron" style="font-size:18px;color:#8a7a6a;flex-shrink:0">▸</span>
+        </button>
+        <div id="rtAdjBody" style="display:none;padding:12px 14px 14px;border-top:1.5px solid #e8dfd2">
+
+            <!-- Substitute Driver — driver absent for the day -->
+            <div class="card" style="margin-bottom:10px;border-color:#e8c87a;box-shadow:none">
+                <div class="lbl" style="margin-bottom:8px">🔄 Substitute Driver (Today Only)</div>
+                <div style="font-size:11px;color:#8a7a6a;margin-bottom:10px;line-height:1.5">
+                    Absent driver → all of today’s orders to another driver.<br>
+                    Does <strong>not</strong> change permanent shop assignment (that is Customers).
+                </div>
+                <div class="filter-row" style="margin-bottom:8px">
+                    <select id="sub-from" style="margin-bottom:0;flex:1">
+                        <option value="">Absent Driver…</option>
+                    </select>
+                    <select id="sub-to" style="margin-bottom:0;flex:1">
+                        <option value="">Substitute…</option>
+                    </select>
+                </div>
+                <input type="date" id="sub-date" style="margin-bottom:8px">
+                <button class="btn btn-grey" style="margin-bottom:6px" onclick="previewSubstitute()">🔍 Preview</button>
+                <div id="sub-preview" style="display:none;font-size:12px;font-family:monospace;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:8px 10px;margin-bottom:8px"></div>
+                <button class="btn" id="sub-btn" style="background:#c8864a;color:#fff;display:none" onclick="confirmSubstitute()">🔄 Reassign Orders</button>
+                <div id="sub-msg" style="display:none;margin-top:6px" class="msg ok"></div>
+            </div>
+
+            <!-- Move Specific Orders -->
+            <div class="card" style="margin-bottom:0;border-color:#b0c4f0;box-shadow:none">
+                <div class="lbl" style="margin-bottom:8px">📦 Move Specific Orders</div>
+                <div style="font-size:11px;color:#8a7a6a;margin-bottom:10px;line-height:1.5">
+                    Select undelivered orders from one driver and move them to another for the selected date.
+                </div>
+                <div class="filter-row" style="margin-bottom:8px">
+                    <select id="mov-from" style="margin-bottom:0;flex:1" onchange="loadMoveOrders()">
+                        <option value="">From Driver…</option>
+                    </select>
+                    <select id="mov-to" style="margin-bottom:0;flex:1">
+                        <option value="">To Driver…</option>
+                    </select>
+                </div>
+                <input type="date" id="mov-date" style="margin-bottom:8px" onchange="loadMoveOrders()">
+                <div id="mov-order-list" style="display:none;max-height:240px;overflow-y:auto;border:1.5px solid #e8dfd2;border-radius:10px;margin-bottom:8px;background:#f9f6f1"></div>
+                <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+                    <button class="btn-sm" style="background:#e8f5e9;color:#1a5a38;border:1.5px solid #a5d6a7;padding:6px 12px;font-size:11px" onclick="movSelectAll()">✅ All</button>
+                    <button class="btn-sm" style="background:#e8dfd2;color:#4a2f14;border:1.5px solid #d0c0aa;padding:6px 12px;font-size:11px" onclick="movDeselectAll()">✖ Clear</button>
+                    <span id="mov-count" style="font-size:11px;font-family:monospace;color:#8a7a6a"></span>
+                </div>
+                <button class="btn" style="background:#1a5fa8;color:#fff;margin-bottom:0" onclick="confirmMoveOrders()">📦 Move Selected Orders</button>
+                <div id="mov-msg" style="display:none;margin-top:8px" class="msg ok"></div>
+            </div>
+        </div>
+    </div>
 </div>
 <!-- ATTENDANCE / MONTHLY REPORT -->
 <div class="page" id="pg-attendance">
@@ -951,8 +1075,8 @@
 <!-- PAYMENTS DESK (same admin app) -->
 <!-- Payments — same admin UI; module loaded in embed frame (no second app chrome) -->
 <div class="page" id="pg-pay-challan" style="padding:0;margin:0">
-    <iframe id="payEmbedFrame" title="Payments" src="admin-payments.html?embed=1&tab=pay-challan"
-            style="width:100%;border:0;display:block;min-height:calc(100dvh - 130px);height:calc(100dvh - 130px);background:#f9f6f1"></iframe>
+  <iframe id="payEmbedFrame" title="Payments" src="admin-payments.html?embed=1&tab=pay-challan"
+    style="width:100%;border:0;display:block;min-height:calc(100dvh - 130px);height:calc(100dvh - 130px);background:#f9f6f1"></iframe>
 </div>
 <div class="page" id="pg-pay-open" style="padding:0;margin:0"></div>
 <div class="page" id="pg-pay-requests" style="padding:0;margin:0"></div>
@@ -961,89 +1085,89 @@
 
 
 <div class="page" id="pg-zoho">
-    <div class="card" style="margin-bottom:12px;border-color:#ffe082;background:#fffaf0">
-        <div style="font-size:15px;font-weight:900;color:#7a4800;margin-bottom:4px">🔗 Zoho Books Integration</div>
-        <div style="font-size:12px;color:#8a7a6a;font-family:monospace;line-height:1.6;margin-bottom:10px">
-            Pull customers &amp; products from Zoho → review changes → confirm to update this app.<br>
-            <span style="color:#c8864a">Nothing is written to the app until you confirm.</span>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-            <span id="zoho-page-status" style="font-size:11px;font-family:monospace;font-weight:700;color:#8a7a6a">…</span>
-            <button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082;padding:8px 14px" onclick="openZohoSettingsModal()">⚙️ Configure</button>
-            <button class="btn-sm" style="background:#e8dfd2;color:#4a2f14;border:1.5px solid #d0c0aa;padding:8px 14px" onclick="toggleZohoIntegration()">Toggle ON/OFF</button>
-        </div>
+  <div class="card" style="margin-bottom:12px;border-color:#ffe082;background:#fffaf0">
+    <div style="font-size:15px;font-weight:900;color:#7a4800;margin-bottom:4px">🔗 Zoho Books Integration</div>
+    <div style="font-size:12px;color:#8a7a6a;font-family:monospace;line-height:1.6;margin-bottom:10px">
+      Pull customers &amp; products from Zoho → review changes → confirm to update this app.<br>
+      <span style="color:#c8864a">Nothing is written to the app until you confirm.</span>
     </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <span id="zoho-page-status" style="font-size:11px;font-family:monospace;font-weight:700;color:#8a7a6a">…</span>
+      <button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082;padding:8px 14px" onclick="openZohoSettingsModal()">⚙️ Configure</button>
+      <button class="btn-sm" style="background:#e8dfd2;color:#4a2f14;border:1.5px solid #d0c0aa;padding:8px 14px" onclick="toggleZohoIntegration()">Toggle ON/OFF</button>
+    </div>
+  </div>
 
-    <div class="card" style="margin-bottom:12px">
-        <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">👥 Pull Customers / Shops from Zoho</div>
-        <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:10px;line-height:1.6">Fetches contacts from Zoho Books. Search, pick only what you need, then confirm. Nothing is written until you apply.</div>
-        <button class="btn btn-brown" style="margin-bottom:8px" onclick="zohoPullCustomers()">⬇ Sync from Zoho (Customers)</button>
-        <div id="zoho-pull-cust-msg" style="display:none;margin-bottom:8px;font-size:11px;font-family:monospace;padding:8px 10px;border-radius:8px"></div>
-        <div id="zoho-pull-cust-summary" style="display:none;margin-bottom:8px"></div>
-        <div id="zoho-pull-cust-tools" style="display:none;margin-bottom:8px">
-            <input type="search" id="zoho-pull-cust-search" placeholder="Search name, mobile, ID…" oninput="renderZohoCustPullList()" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;margin-bottom:8px">
-            <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px">
-                <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullCustSelect('visible')">Select visible</button>
-                <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullCustSelect('none')">Clear all</button>
-                <button type="button" class="btn-sm" style="background:#e8f5e9;color:#2d7a4f;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullCustSelect('new')">New only</button>
-                <button type="button" class="btn-sm" style="background:#fff8e1;color:#7a4800;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullCustSelect('changed')">Changed only</button>
-                <span id="zoho-pull-cust-selcount" style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-left:4px"></span>
-            </div>
-            <label style="font-size:11px;color:#8a7a6a;font-family:monospace;display:flex;align-items:center;gap:6px">
-                <input type="checkbox" id="zoho-pull-cust-show-same" onchange="renderZohoCustPullList()" style="accent-color:#c8864a"> Show unchanged too
-            </label>
-        </div>
-        <div id="zoho-pull-cust-list" style="display:none;max-height:360px;overflow-y:auto;border:1.5px solid #e8dfd2;border-radius:10px;background:#f9f6f1;margin-bottom:8px"></div>
-        <button id="zoho-apply-cust-btn" class="btn" style="display:none;margin-bottom:0;background:#2d7a4f;color:#fff" onclick="zohoApplyCustomerPull()">✅ Confirm — Update selected customers</button>
+  <div class="card" style="margin-bottom:12px">
+    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">👥 Pull Customers / Shops from Zoho</div>
+    <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:10px;line-height:1.6">Fetches contacts from Zoho Books. Search, pick only what you need, then confirm. Nothing is written until you apply.</div>
+    <button class="btn btn-brown" style="margin-bottom:8px" onclick="zohoPullCustomers()">⬇ Sync from Zoho (Customers)</button>
+    <div id="zoho-pull-cust-msg" style="display:none;margin-bottom:8px;font-size:11px;font-family:monospace;padding:8px 10px;border-radius:8px"></div>
+    <div id="zoho-pull-cust-summary" style="display:none;margin-bottom:8px"></div>
+    <div id="zoho-pull-cust-tools" style="display:none;margin-bottom:8px">
+      <input type="search" id="zoho-pull-cust-search" placeholder="Search name, mobile, ID…" oninput="renderZohoCustPullList()" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;margin-bottom:8px">
+      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px">
+        <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullCustSelect('visible')">Select visible</button>
+        <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullCustSelect('none')">Clear all</button>
+        <button type="button" class="btn-sm" style="background:#e8f5e9;color:#2d7a4f;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullCustSelect('new')">New only</button>
+        <button type="button" class="btn-sm" style="background:#fff8e1;color:#7a4800;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullCustSelect('changed')">Changed only</button>
+        <span id="zoho-pull-cust-selcount" style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-left:4px"></span>
+      </div>
+      <label style="font-size:11px;color:#8a7a6a;font-family:monospace;display:flex;align-items:center;gap:6px">
+        <input type="checkbox" id="zoho-pull-cust-show-same" onchange="renderZohoCustPullList()" style="accent-color:#c8864a"> Show unchanged too
+      </label>
     </div>
+    <div id="zoho-pull-cust-list" style="display:none;max-height:360px;overflow-y:auto;border:1.5px solid #e8dfd2;border-radius:10px;background:#f9f6f1;margin-bottom:8px"></div>
+    <button id="zoho-apply-cust-btn" class="btn" style="display:none;margin-bottom:0;background:#2d7a4f;color:#fff" onclick="zohoApplyCustomerPull()">✅ Confirm — Update selected customers</button>
+  </div>
 
-    <div class="card" style="margin-bottom:12px">
-        <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">📦 Pull Products from Zoho</div>
-        <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:10px;line-height:1.6">Fetches items from Zoho Books. Search and select only the products you want to update.</div>
-        <button class="btn btn-brown" style="margin-bottom:8px" onclick="zohoPullProducts()">⬇ Sync from Zoho (Products)</button>
-        <div id="zoho-pull-prod-msg" style="display:none;margin-bottom:8px;font-size:11px;font-family:monospace;padding:8px 10px;border-radius:8px"></div>
-        <div id="zoho-pull-prod-summary" style="display:none;margin-bottom:8px"></div>
-        <div id="zoho-pull-prod-tools" style="display:none;margin-bottom:8px">
-            <input type="search" id="zoho-pull-prod-search" placeholder="Search name, SKU, ID…" oninput="renderZohoProdPullList()" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;margin-bottom:8px">
-            <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px">
-                <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullProdSelect('visible')">Select visible</button>
-                <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullProdSelect('none')">Clear all</button>
-                <button type="button" class="btn-sm" style="background:#e8f5e9;color:#2d7a4f;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullProdSelect('new')">New only</button>
-                <button type="button" class="btn-sm" style="background:#fff8e1;color:#7a4800;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullProdSelect('changed')">Changed only</button>
-                <span id="zoho-pull-prod-selcount" style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-left:4px"></span>
-            </div>
-            <label style="font-size:11px;color:#8a7a6a;font-family:monospace;display:flex;align-items:center;gap:6px">
-                <input type="checkbox" id="zoho-pull-prod-show-same" onchange="renderZohoProdPullList()" style="accent-color:#c8864a"> Show unchanged too
-            </label>
-        </div>
-        <div id="zoho-pull-prod-list" style="display:none;max-height:360px;overflow-y:auto;border:1.5px solid #e8dfd2;border-radius:10px;background:#f9f6f1;margin-bottom:8px"></div>
-        <button id="zoho-apply-prod-btn" class="btn" style="display:none;margin-bottom:0;background:#2d7a4f;color:#fff" onclick="zohoApplyProductPull()">✅ Confirm — Update selected products</button>
+  <div class="card" style="margin-bottom:12px">
+    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">📦 Pull Products from Zoho</div>
+    <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:10px;line-height:1.6">Fetches items from Zoho Books. Search and select only the products you want to update.</div>
+    <button class="btn btn-brown" style="margin-bottom:8px" onclick="zohoPullProducts()">⬇ Sync from Zoho (Products)</button>
+    <div id="zoho-pull-prod-msg" style="display:none;margin-bottom:8px;font-size:11px;font-family:monospace;padding:8px 10px;border-radius:8px"></div>
+    <div id="zoho-pull-prod-summary" style="display:none;margin-bottom:8px"></div>
+    <div id="zoho-pull-prod-tools" style="display:none;margin-bottom:8px">
+      <input type="search" id="zoho-pull-prod-search" placeholder="Search name, SKU, ID…" oninput="renderZohoProdPullList()" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;margin-bottom:8px">
+      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px">
+        <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullProdSelect('visible')">Select visible</button>
+        <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullProdSelect('none')">Clear all</button>
+        <button type="button" class="btn-sm" style="background:#e8f5e9;color:#2d7a4f;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullProdSelect('new')">New only</button>
+        <button type="button" class="btn-sm" style="background:#fff8e1;color:#7a4800;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="zohoPullProdSelect('changed')">Changed only</button>
+        <span id="zoho-pull-prod-selcount" style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-left:4px"></span>
+      </div>
+      <label style="font-size:11px;color:#8a7a6a;font-family:monospace;display:flex;align-items:center;gap:6px">
+        <input type="checkbox" id="zoho-pull-prod-show-same" onchange="renderZohoProdPullList()" style="accent-color:#c8864a"> Show unchanged too
+      </label>
     </div>
+    <div id="zoho-pull-prod-list" style="display:none;max-height:360px;overflow-y:auto;border:1.5px solid #e8dfd2;border-radius:10px;background:#f9f6f1;margin-bottom:8px"></div>
+    <button id="zoho-apply-prod-btn" class="btn" style="display:none;margin-bottom:0;background:#2d7a4f;color:#fff" onclick="zohoApplyProductPull()">✅ Confirm — Update selected products</button>
+  </div>
 
-    <div class="card" style="margin-bottom:12px">
-        <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">🚚 Default shipping (fallback only)</div>
-        <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:10px;line-height:1.6">
-            Used only when a customer has <b>no</b> shipping set.<br>
-            Set each shop’s charge under <b>Customers → Edit → Shipping charge</b> (different per customer).
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <span style="font-size:13px;font-weight:700">₹</span>
-            <input type="number" id="zoho-shipping-input" min="0" step="1" value="20" style="width:100px;margin-bottom:0;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;font-weight:700">
-            <button class="btn-sm" style="background:#c8864a;color:#fff;border:none;padding:10px 16px" onclick="saveZohoShippingUI()">Save default</button>
-            <span id="zoho-shipping-msg" style="font-size:11px;font-family:monospace;color:#2d7a4f;display:none"></span>
-        </div>
+  <div class="card" style="margin-bottom:12px">
+    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:4px">🚚 Default shipping (fallback only)</div>
+    <div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-bottom:10px;line-height:1.6">
+      Used only when a customer has <b>no</b> shipping set.<br>
+      Set each shop’s charge under <b>Customers → Edit → Shipping charge</b> (different per customer).
     </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <span style="font-size:13px;font-weight:700">₹</span>
+      <input type="number" id="zoho-shipping-input" min="0" step="1" value="20" style="width:100px;margin-bottom:0;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:14px;font-weight:700">
+      <button class="btn-sm" style="background:#c8864a;color:#fff;border:none;padding:10px 16px" onclick="saveZohoShippingUI()">Save default</button>
+      <span id="zoho-shipping-msg" style="font-size:11px;font-family:monospace;color:#2d7a4f;display:none"></span>
+    </div>
+  </div>
 
-    <div class="card" style="margin-bottom:12px">
-        <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">📄 Invoice / Challan data checklist</div>
-        <div style="font-size:11px;font-family:monospace;color:#4a2f14;line-height:1.7;background:#f9f6f1;border-radius:10px;padding:10px 12px">
-            <div><b>Sent now:</b> customer_id, date, reference, line <b>name + qty + rate</b>, item_id (if Zoho id), <b>shipping_charge</b>, notes, invoice vs delivery_challan</div>
-            <div style="margin-top:6px;color:#2d7a4f"><b>Tax:</b> set <b>Zoho Tax ID</b> on each product (Products → Edit). Blank = no tax on that line.</div>
-            <div style="margin-top:6px;color:#c8382a"><b>Still from Zoho templates:</b></div>
-            <div>• Place of supply / GSTIN / billing address block</div>
-            <div>• Bank details on tax invoice</div>
-        </div>
+  <div class="card" style="margin-bottom:12px">
+    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">📄 Invoice / Challan data checklist</div>
+    <div style="font-size:11px;font-family:monospace;color:#4a2f14;line-height:1.7;background:#f9f6f1;border-radius:10px;padding:10px 12px">
+      <div><b>Sent now:</b> customer_id, date, reference, line <b>name + qty + rate</b>, item_id (if Zoho id), <b>shipping_charge</b>, notes, invoice vs delivery_challan</div>
+      <div style="margin-top:6px;color:#2d7a4f"><b>Tax:</b> set <b>Zoho Tax ID</b> on each product (Products → Edit). Blank = no tax on that line.</div>
+      <div style="margin-top:6px;color:#c8382a"><b>Still from Zoho templates:</b></div>
+      <div>• Place of supply / GSTIN / billing address block</div>
+      <div>• Bank details on tax invoice</div>
     </div>
+  </div>
 </div>
 
 <!-- CLEANUP (super_admin only) -->
@@ -1464,11 +1588,11 @@
             <div class="stats-grid" id="cd-hist-stats" style="margin-bottom:10px"></div>
             <div id="cd-hist-list" style="max-height:360px;overflow-y:auto;border:1.5px solid #e8dfd2;border-radius:12px;background:#faf8f5;margin-bottom:10px;padding:8px"></div>
             <div id="cd-hist-export-wrap" style="display:none">
-                <div style="display:flex;gap:8px">
-                    <button class="btn" style="flex:1;margin-bottom:0;background:#2d7a4f;color:#fff;padding:11px" onclick="exportCdHistoryCSV()">⬇ Export CSV</button>
-                    <button class="btn" style="flex:1;margin-bottom:0;background:#25d366;color:#fff;padding:11px" onclick="shareCdHistoryReport()">📤 Share Report</button>
-                </div>
-                <button class="btn btn-brown" style="margin-top:8px;margin-bottom:0" onclick="printCdHistoryReport()">🖨️ Print / PDF Report</button>
+              <div style="display:flex;gap:8px">
+                  <button class="btn" style="flex:1;margin-bottom:0;background:#2d7a4f;color:#fff;padding:11px" onclick="exportCdHistoryCSV()">⬇ Export CSV</button>
+                  <button class="btn" style="flex:1;margin-bottom:0;background:#25d366;color:#fff;padding:11px" onclick="shareCdHistoryReport()">📤 Share Report</button>
+              </div>
+              <button class="btn btn-brown" style="margin-top:8px;margin-bottom:0" onclick="printCdHistoryReport()">🖨️ Print / PDF Report</button>
             </div>
         </div>
     </div>
@@ -1476,18 +1600,18 @@
 
 <!-- ZOHO INVOICE PREVIEW (approve → confirm send) -->
 <div class="modal-bg" id="zohoInvPreviewModal" style="display:none;z-index:300" onclick="if(event.target===this)closeZohoInvPreview(false)">
-    <div class="modal" style="max-width:440px;max-height:92vh;overflow-y:auto;padding:0">
-        <div style="padding:14px 16px 10px;border-bottom:1.5px solid #e8dfd2;position:sticky;top:0;background:#fff;z-index:2">
-            <div style="font-size:14px;font-weight:900;color:#7a4800">📄 Zoho Document Preview</div>
-            <div id="zoho-inv-preview-sub" style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:4px;line-height:1.5"></div>
-        </div>
-        <div id="zoho-inv-preview-body" style="padding:14px 16px;font-size:12px;color:#1e1611"></div>
-        <div style="padding:12px 16px 16px;border-top:1.5px solid #e8dfd2;position:sticky;bottom:0;background:#fff">
-            <div id="zoho-inv-preview-msg" style="display:none;margin-bottom:8px" class="msg ok"></div>
-            <button class="btn" style="background:#c8864a;color:#fff;margin-bottom:8px" id="zoho-inv-send-btn" onclick="confirmZohoInvPreviewSend()">✅ Send to Zoho</button>
-            <button class="btn btn-grey" style="margin-bottom:0" onclick="closeZohoInvPreview(false)">⏭ Keep in app only (no Zoho)</button>
-        </div>
+  <div class="modal" style="max-width:440px;max-height:92vh;overflow-y:auto;padding:0">
+    <div style="padding:14px 16px 10px;border-bottom:1.5px solid #e8dfd2;position:sticky;top:0;background:#fff;z-index:2">
+      <div style="font-size:14px;font-weight:900;color:#7a4800">📄 Zoho Document Preview</div>
+      <div id="zoho-inv-preview-sub" style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:4px;line-height:1.5"></div>
     </div>
+    <div id="zoho-inv-preview-body" style="padding:14px 16px;font-size:12px;color:#1e1611"></div>
+    <div style="padding:12px 16px 16px;border-top:1.5px solid #e8dfd2;position:sticky;bottom:0;background:#fff">
+      <div id="zoho-inv-preview-msg" style="display:none;margin-bottom:8px" class="msg ok"></div>
+      <button class="btn" style="background:#c8864a;color:#fff;margin-bottom:8px" id="zoho-inv-send-btn" onclick="confirmZohoInvPreviewSend()">✅ Send to Zoho</button>
+      <button class="btn btn-grey" style="margin-bottom:0" onclick="closeZohoInvPreview(false)">⏭ Keep in app only (no Zoho)</button>
+    </div>
+  </div>
 </div>
 
 <!-- PRODUCT MODAL -->
@@ -1774,8 +1898,17 @@ allTabKeys.forEach(function(t){
         if(b) b.style.display = anyVisible ? '' : 'none';
       });
       // Show topbar name
-      var sub = document.getElementById('topDate');
-      if(sub) sub.textContent = _staffName + ' · ' + sub.textContent;
+      try {
+        var nmEl = document.getElementById('topStaffName');
+        if (nmEl) nmEl.textContent = _staffName || 'Admin';
+        var av = document.getElementById('topAvatar');
+        if (av) {
+          var nm = String(_staffName || 'Admin').trim();
+          var parts = nm.split(/\s+/).filter(Boolean);
+          var ini = parts.length >= 2 ? (parts[0][0] + parts[1][0]) : nm.slice(0, 2);
+          av.textContent = ini.toUpperCase();
+        }
+      } catch(e) {}
     }
 
     function todayStr(){var d=new Date();return d.getFullYear()+'-'+zp(d.getMonth()+1)+'-'+zp(d.getDate());}
@@ -1806,7 +1939,7 @@ allTabKeys.forEach(function(t){
     }
     // Delivery date = challan date + 1 day
     function nextDay(dateStr){var d=new Date(dateStr);d.setDate(d.getDate()+1);return d.getFullYear()+'-'+zp(d.getMonth()+1)+'-'+zp(d.getDate());}
-
+    
 function fmtQtyPack(name, qty) {
   if (window.ProductsShared && typeof ProductsShared.formatQtyWithPackets === 'function') {
     return ProductsShared.formatQtyWithPackets(name, qty);
@@ -1906,13 +2039,55 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
       ['home','orders','delivery','payments','more'].forEach(function(k){
         var el = document.getElementById('bnav-'+k);
         if(el) el.classList.toggle('on', k === key);
+        var chip = document.getElementById('achip-'+k);
+        if(chip) chip.classList.toggle('on', k === key);
       });
     }
     function closeMoreSheet(){
       var s = document.getElementById('moreSheet');
       if(s) s.classList.remove('open');
     }
+
+    function closeDeliveryTools(){
+      var s = document.getElementById('deliveryToolsSheet');
+      if(s) s.classList.remove('open');
+    }
+    function openDeliveryTools(){
+      var grid = document.getElementById('deliveryToolsGrid');
+      if(grid){
+        var tools = [
+          {key:'routes', ico:'🗺', label:'Routes'},
+          {key:'gps', ico:'📍', label:'Shop GPS'},
+          {key:'audit', ico:'🔍', label:'Audit'}
+        ];
+        if (_staffRole === 'super_admin') {
+          tools.push({key:'attendance', ico:'📊', label:'Attendance'});
+        }
+        grid.innerHTML = tools.filter(function(m){
+          return _visibleTabs[m.key] !== false;
+        }).map(function(m){
+          return '<button type="button" class="more-item" onclick="deliveryToolsGo(\''+m.key+'\')"><span class="mi">'+m.ico+'</span>'+m.label+'</button>';
+        }).join('');
+      }
+      var s = document.getElementById('deliveryToolsSheet');
+      if(s) s.classList.add('open');
+    }
+    function deliveryToolsGo(tabKey){
+      closeDeliveryTools();
+      showTab(tabKey);
+      if (tabKey === 'routes') {
+        try {
+          setTimeout(function(){
+            if (typeof toggleRouteAdjustments === 'function') toggleRouteAdjustments(true);
+            var body = document.getElementById('rtAdjBody');
+            if (body) body.scrollIntoView({behavior:'smooth', block:'nearest'});
+          }, 250);
+        } catch(e){}
+      }
+    }
+
     function openMoreSheet(){
+      if (typeof closeDeliveryTools === 'function') closeDeliveryTools();
       var grid = document.getElementById('moreGrid');
       if(grid){
         grid.innerHTML = MORE_GROUPS.filter(function(m){
@@ -2243,7 +2418,12 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
       var subEl   = document.getElementById('subTabs');
       var allItems = GROUP_MAP[group] || [];
       var items    = allItems.filter(function(item){ return _visibleTabs[item.key] !== false; });
-      if(items.length > 1){
+      var isMobileNav = window.matchMedia && window.matchMedia('(max-width:700px)').matches;
+      // Option A: Delivery sub-tasks via in-page tools sheet, not header sub-tabs on mobile
+      if(isMobileNav && group === 'delivery'){
+        subEl.style.display = 'none';
+        subEl.innerHTML = '';
+      } else if(items.length > 1){
         subEl.style.display = 'flex';
         subEl.innerHTML = items.map(function(item){
           return '<button class="sub-tab'+(item.key===t?' on':'')+'" onclick="showTab(\''+item.key+'\')">'+item.label+'</button>';
@@ -3946,6 +4126,17 @@ if(tbQueue) tbQueue.textContent = '⚠️ Queue ('+data.length+')';
     /* ── ROUTES ── */
     var routesData=[], _routeDelivMap={}, _routeOrdersByDriver={}, _routeLastDeliv={}, _routeFilter='all', _routeShopGPS={}, _crateLogMap={};
     function setRouteFilter(f){ _routeFilter=f; renderRoutes(); }
+    function toggleRouteAdjustments(forceOpen){
+      var body = document.getElementById('rtAdjBody');
+      var chev = document.getElementById('rtAdjChevron');
+      if (!body) return;
+      var open;
+      if (forceOpen === true) open = true;
+      else if (forceOpen === false) open = false;
+      else open = (body.style.display === 'none' || body.style.display === '');
+      body.style.display = open ? 'block' : 'none';
+      if (chev) chev.textContent = open ? '▾' : '▸';
+    }
     function loadRoutes(){
       var el=document.getElementById('routesList');
       el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#8a7a6a;font-family:monospace">Loading…</div>';
@@ -8492,6 +8683,25 @@ onStaffRoleChange();
 }
 
 
+
+    // Strict: payment notifies only if customer Pay tab enabled (match order.html)
+    var PAY_TAB_ALLOWED_USERNAMES = ['xyz111', 'xyx2323'];
+    function _adminPayTabEnabled(shopId){
+      if (!shopId) return false;
+      var list = PAY_TAB_ALLOWED_USERNAMES.map(function(u){ return String(u).toLowerCase(); });
+      var shops = (typeof allCustomers !== 'undefined' && allCustomers) ? allCustomers : [];
+      var sid = String(shopId);
+      for (var i=0;i<shops.length;i++){
+        var s = shops[i];
+        if (String(s.shop_id||'')===sid || String(s.customer_id||'')===sid){
+          var un = String(s.login_username||s.username||'').trim().toLowerCase();
+          if (un && list.indexOf(un)>=0) return true;
+          return false;
+        }
+      }
+      return false;
+    }
+
     function sendInvoicePaymentReminder(id){
       var o = allCustOrders.find(function(x){ return String(x.id) === String(id); });
       if(!o){ alert('Order not found'); return; }
@@ -8499,6 +8709,10 @@ onStaffRoleChange();
       var inv = o.zoho_invoice_number || o.zoho_invoice_id || '';
       var msg = 'Payment reminder: Invoice ' + inv + (bal != null ? (' · Amount due ₹' + bal) : '') + '. Please pay at the earliest.';
       if(!confirm('Send payment reminder to ' + (o.shop_name||'shop') + '?\n\n' + msg)) return;
+      if (!_adminPayTabEnabled(o.shop_id)) {
+        alert('Pay tab is disabled for this customer — payment reminder not sent.');
+        return;
+      }
       apiPost({ action:'sendCustomerNotification', shop_id: o.shop_id, shop_name: o.shop_name, message: msg })
         .then(function(){
           try {
@@ -8543,8 +8757,12 @@ onStaffRoleChange();
         var nmsg = status === 'paid'
           ? ('Payment of ₹' + amt + ' received. Invoice ' + (o.zoho_invoice_number||'') + ' is PAID. Balance ₹0.')
           : ('Payment of ₹' + amt + ' received for invoice ' + (o.zoho_invoice_number||'') + '. Balance due ₹' + newBal + '.');
-        apiPost({ action:'sendCustomerNotification', shop_id: o.shop_id, shop_name: o.shop_name, message: nmsg }).catch(function(){});
-        try { if (typeof sendCustomerPush === 'function') sendCustomerPush([o.shop_id], nmsg); } catch(e){}
+        if (_adminPayTabEnabled(o.shop_id)) {
+          apiPost({ action:'sendCustomerNotification', shop_id: o.shop_id, shop_name: o.shop_name, message: nmsg }).catch(function(){});
+          try { if (typeof sendCustomerPush === 'function') sendCustomerPush([o.shop_id], nmsg); } catch(e){}
+        } else {
+          console.log('[pay] skip notify — Pay tab disabled', o.shop_id);
+        }
         // Best-effort Zoho customer payment (requires edge function support)
         if (status === 'paid' && o.zoho_invoice_id && typeof zohoRecordCustomerPayment === 'function') {
           zohoRecordCustomerPayment(o, amt, mode, ref).then(function(payId){
