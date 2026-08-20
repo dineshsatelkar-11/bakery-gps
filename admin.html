@@ -12492,7 +12492,7 @@ function confirmZohoInvPreviewSend(){
 }
 
 
-/** Load Zoho contact + attach contact persons with Email communication checked (still Draft — no send). */
+/** Load Zoho contact persons so Email Communications checkbox is pre-selected (still Draft). */
 function zohoFetchContactDetail(token, contactId) {
   if (!token || !contactId) return Promise.resolve(null);
   return fetch(CONFIG.SUPABASE_URL + '/functions/v1/zoho-token', {
@@ -12510,7 +12510,7 @@ function zohoFetchContactDetail(token, contactId) {
     })
   }).then(function(r){ return r.json(); }).then(function(data){
     if (data && data.code !== undefined && data.code !== 0 && !data.contact) {
-      console.warn('[zoho] get_contact:', data.message || data);
+      console.warn('[zoho] get_contact:', data.message || data.error || data);
       return null;
     }
     return data.contact || data;
@@ -12520,38 +12520,71 @@ function zohoFetchContactDetail(token, contactId) {
   });
 }
 
+function zohoBuildEmailCommFields(contact) {
+  var persons = (contact && (contact.contact_persons || contact.contact_person)) || [];
+  if (!Array.isArray(persons)) persons = [];
+  var ids = [];
+  var withEmail = persons.filter(function(p){ return p && p.contact_person_id && String(p.email || '').trim(); });
+  var useList = withEmail.length ? withEmail : persons.filter(function(p){ return p && p.contact_person_id; });
+  useList.forEach(function(p){
+    var pid = String(p.contact_person_id);
+    if (ids.indexOf(pid) >= 0) return;
+    ids.push(pid);
+  });
+  return { ids: ids };
+}
+
 function zohoAttachEmailCommunication(payload, token, zohoCustomerId) {
   if (!payload || !zohoCustomerId) return Promise.resolve(payload);
   return zohoFetchContactDetail(token, zohoCustomerId).then(function(contact){
-    if (!contact) return payload;
-    var persons = contact.contact_persons || contact.contact_person || [];
-    if (!Array.isArray(persons)) persons = [];
-    var ids = [];
-    var associated = [];
-    // Prefer persons with email; if none, still attach all so Zoho shows the checkbox row
-    var withEmail = persons.filter(function(p){ return p && p.contact_person_id && String(p.email||'').trim(); });
-    var useList = withEmail.length ? withEmail : persons.filter(function(p){ return p && p.contact_person_id; });
-    useList.forEach(function(p){
-      var pid = String(p.contact_person_id);
-      if (ids.indexOf(pid) >= 0) return;
-      ids.push(pid);
-      associated.push({
-        contact_person_id: pid,
-        communication_preference: {
-          is_email_enabled: true,
-          is_sms_enabled: false,
-          is_whatsapp_enabled: false
-        }
-      });
-    });
-    if (ids.length) {
-      payload.contact_persons = ids;
-      payload.contact_persons_associated = associated;
-      console.log('[zoho] email communication persons:', ids.length, ids);
+    if (!contact) {
+      console.warn('[zoho] email checkbox: contact not loaded — deploy edge get_contact?');
+      return payload;
+    }
+    var fields = zohoBuildEmailCommFields(contact);
+    // Only contact_persons (array of IDs). Do NOT send contact_persons_associated —
+    // Zoho challan/invoice rejects it ("less than 100 characters").
+    if (fields.ids.length) {
+      payload.contact_persons = fields.ids;
+      payload._email_comm_ids = fields.ids;
+      try {
+        delete payload.contact_persons_associated;
+      } catch(e){}
+      console.log('[zoho] email communication persons:', fields.ids.length, fields.ids);
     } else {
-      console.warn('[zoho] no contact_person_id on contact — email checkbox may stay off in Zoho UI');
+      console.warn('[zoho] no contact_person_id on contact — Email Communications stays unchecked');
     }
     return payload;
+  });
+}
+
+/** Zoho often applies Email Communications only on update — patch after create (still Draft, no send). */
+function zohoPatchEmailCommunication(token, docType, docId, personIds) {
+  if (!token || !docId || !personIds || !personIds.length) return Promise.resolve({ skipped: true });
+  var action = (docType === 'delivery_challan') ? 'update_delivery_challan' : 'update_invoice';
+  // IDs only — matches Zoho Books / community guidance
+  var body = { contact_persons: personIds };
+  console.log('[zoho] patch email communication on', action, docId, personIds);
+  return fetch(CONFIG.SUPABASE_URL + '/functions/v1/zoho-token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + CONFIG.SUPABASE_ANON_KEY
+    },
+    body: JSON.stringify({
+      action: action,
+      access_token: token,
+      org_id: _zohoCreds.org_id,
+      dc: _zohoCreds.dc || 'in',
+      invoice_id: String(docId),
+      invoice_payload: body
+    })
+  }).then(function(r){ return r.json(); }).then(function(data){
+    console.log('[zoho] patch email communication result', data && (data.code !== undefined ? data.code : data));
+    return data;
+  }).catch(function(e){
+    console.warn('[zoho] patch email communication failed', e);
+    return { error: String(e) };
   });
 }
 
@@ -12646,6 +12679,11 @@ async function zohoCreateInvoiceReal(order) {
         // Pre-select Email communication on contact persons (Draft only — do not send)
         return zohoAttachEmailCommunication(payload, token, zohoCustomerId);
       }).then(function(finalPayload){
+        _createCtx.emailCommIds = finalPayload._email_comm_ids || finalPayload.contact_persons || [];
+        try {
+          delete finalPayload._email_comm_ids;
+          delete finalPayload.contact_persons_associated;
+        } catch(e){}
         return fetch(CONFIG.SUPABASE_URL + '/functions/v1/zoho-token', {
           method: 'POST',
           headers: {
@@ -12685,6 +12723,16 @@ async function zohoCreateInvoiceReal(order) {
         email_sent:     false,
         email_to:       _createCtx.shopEmail || ''
       };
+      // Force Email Communications checkbox (Zoho often ignores this on create alone)
+      var personIds = _createCtx.emailCommIds || [];
+      if (result.invoice_id && personIds.length) {
+        return zohoPatchEmailCommunication(
+          _createCtx.token,
+          result.doc_type,
+          result.invoice_id,
+          personIds
+        ).then(function(){ return result; });
+      }
       return result;
     });
 }
