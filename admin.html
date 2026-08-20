@@ -329,12 +329,12 @@
     <div id="adminPushCard" class="card" style="display:none;margin-bottom:10px;padding:12px 14px">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
             <div style="flex:1;min-width:160px">
-                <div style="font-size:12px;font-weight:800;color:#1e293b">🔔 New-order alerts</div>
+                <div style="font-size:12px;font-weight:800;color:#1e293b">🔔 Order & payment alerts</div>
                 <div id="adminPushStatus" style="font-size:11px;font-family:monospace;color:#64748b;margin-top:3px;line-height:1.5"></div>
             </div>
             <button type="button" class="btn-sm" id="adminPushBtn" style="background:#1e293b;color:#fff;flex-shrink:0" onclick="enableAdminPush()">Enable Push</button>
         </div>
-        <div style="font-size:10px;color:#64748b;font-family:monospace;margin-top:8px;line-height:1.5">One-time setup: allow notifications on this device. Card hides after push is ON.</div>
+        <div style="font-size:10px;color:#64748b;font-family:monospace;margin-top:8px;line-height:1.5">One-time setup: new orders + payment requests on this device. Card hides after push is ON.</div>
     </div>
 
     <!-- Today delivery stats -->
@@ -10155,7 +10155,7 @@ onStaffRoleChange();
       }
       Notification.requestPermission().then(function(perm){
         if(perm !== 'granted'){
-          alert('Please allow notifications to get new-order alerts when the app is closed.');
+          alert('Please allow notifications to get new-order and payment-request alerts when the app is closed.');
           try { updateAdminPushUI(); } catch(e){}
           return;
         }
@@ -10203,7 +10203,7 @@ onStaffRoleChange();
         if(btn) btn.style.display = 'none';
         return;
       }
-      el.textContent = 'Tap Enable once to get new-order alerts when the app is closed';
+      el.textContent = 'Tap Enable once for new-order & payment-request alerts when the app is closed';
       el.style.color = '#7a4800';
       if(btn){ btn.style.display = ''; btn.textContent = 'Enable Push'; }
     }
@@ -10348,16 +10348,48 @@ onStaffRoleChange();
         _lastPendingCount = count;
       }).catch(function(){});
     }
+
+    /** Same admin push devices — alert when payment request count increases (app open). */
+    var _lastPayReqCount = -1;
+    function pollPaymentRequests(){
+      if(_staffRole !== 'admin') return;
+      api({ action:'getCustomerOrders', limit: 400 }).then(function(data){
+        var list = (Array.isArray(data) ? data : []).filter(function(o){
+          if(!o || !o.customer_claimed_paid) return false;
+          var ps = String(o.payment_status || '').toLowerCase();
+          return ps !== 'paid' && ps !== 'void';
+        });
+        var count = list.length;
+        if(_lastPayReqCount >= 0 && count > _lastPayReqCount){
+          var newest = list[0] || {};
+          var extra = count - _lastPayReqCount;
+          var detail = (newest.shop_name || 'Customer')
+            + (extra > 1 ? (' +' + (extra - 1) + ' more') : '')
+            + ' — open Payments → Requests.';
+          try {
+            showBrowserNotif('💰 Payment request — IBCAB', detail);
+            playAdminAlertBeep();
+          } catch(e){}
+        }
+        _lastPayReqCount = count;
+      }).catch(function(){});
+    }
+
     // Faster while tab visible; still runs in background tab on many Android browsers
     setInterval(function(){
       if(document.visibilityState === 'hidden') return; // save battery when fully backgrounded
       pollNewOrders();
+      pollPaymentRequests();
     }, 20000);
     // Also one check when user returns to tab
     document.addEventListener('visibilitychange', function(){
-      if(document.visibilityState === 'visible') pollNewOrders();
+      if(document.visibilityState === 'visible'){
+        pollNewOrders();
+        pollPaymentRequests();
+      }
     });
     pollNewOrders();
+    pollPaymentRequests();
 
 
     /* ══════════════════════════════════════════════
@@ -12459,6 +12491,70 @@ function confirmZohoInvPreviewSend(){
   });
 }
 
+
+/** Load Zoho contact + attach contact persons with Email communication checked (still Draft — no send). */
+function zohoFetchContactDetail(token, contactId) {
+  if (!token || !contactId) return Promise.resolve(null);
+  return fetch(CONFIG.SUPABASE_URL + '/functions/v1/zoho-token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + CONFIG.SUPABASE_ANON_KEY
+    },
+    body: JSON.stringify({
+      action: 'get_contact',
+      access_token: token,
+      org_id: _zohoCreds.org_id,
+      dc: _zohoCreds.dc || 'in',
+      contact_id: String(contactId)
+    })
+  }).then(function(r){ return r.json(); }).then(function(data){
+    if (data && data.code !== undefined && data.code !== 0 && !data.contact) {
+      console.warn('[zoho] get_contact:', data.message || data);
+      return null;
+    }
+    return data.contact || data;
+  }).catch(function(e){
+    console.warn('[zoho] get_contact failed', e);
+    return null;
+  });
+}
+
+function zohoAttachEmailCommunication(payload, token, zohoCustomerId) {
+  if (!payload || !zohoCustomerId) return Promise.resolve(payload);
+  return zohoFetchContactDetail(token, zohoCustomerId).then(function(contact){
+    if (!contact) return payload;
+    var persons = contact.contact_persons || contact.contact_person || [];
+    if (!Array.isArray(persons)) persons = [];
+    var ids = [];
+    var associated = [];
+    // Prefer persons with email; if none, still attach all so Zoho shows the checkbox row
+    var withEmail = persons.filter(function(p){ return p && p.contact_person_id && String(p.email||'').trim(); });
+    var useList = withEmail.length ? withEmail : persons.filter(function(p){ return p && p.contact_person_id; });
+    useList.forEach(function(p){
+      var pid = String(p.contact_person_id);
+      if (ids.indexOf(pid) >= 0) return;
+      ids.push(pid);
+      associated.push({
+        contact_person_id: pid,
+        communication_preference: {
+          is_email_enabled: true,
+          is_sms_enabled: false,
+          is_whatsapp_enabled: false
+        }
+      });
+    });
+    if (ids.length) {
+      payload.contact_persons = ids;
+      payload.contact_persons_associated = associated;
+      console.log('[zoho] email communication persons:', ids.length, ids);
+    } else {
+      console.warn('[zoho] no contact_person_id on contact — email checkbox may stay off in Zoho UI');
+    }
+    return payload;
+  });
+}
+
 /** Intentionally no auto-email after create — docs stay Draft in Zoho until sent manually from Zoho. */
 
 async function zohoCreateInvoiceReal(order) {
@@ -12547,6 +12643,9 @@ async function zohoCreateInvoiceReal(order) {
       }
 
       return ensureContact.then(function(){
+        // Pre-select Email communication on contact persons (Draft only — do not send)
+        return zohoAttachEmailCommunication(payload, token, zohoCustomerId);
+      }).then(function(finalPayload){
         return fetch(CONFIG.SUPABASE_URL + '/functions/v1/zoho-token', {
           method: 'POST',
           headers: {
@@ -12558,7 +12657,7 @@ async function zohoCreateInvoiceReal(order) {
             access_token:    token,
             org_id:          _zohoCreds.org_id,
             dc:              _zohoCreds.dc || 'in',
-            invoice_payload: payload
+            invoice_payload: finalPayload
           })
         });
       });
@@ -12624,17 +12723,19 @@ async function zohoUpdateInvoiceReal(invoiceId, order) {
 
       console.log('✏️ Updating', docType, invoiceId, 'for', order.shop_name);
 
-      return fetch(CONFIG.SUPABASE_URL + '/functions/v1/zoho-token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + CONFIG.SUPABASE_ANON_KEY },
-        body: JSON.stringify({
-          action:          action,
-          access_token:    token,
-          org_id:          _zohoCreds.org_id,
-          dc:              _zohoCreds.dc || 'in',
-          invoice_id:      invoiceId,
-          invoice_payload: payload
-        })
+      return zohoAttachEmailCommunication(payload, token, zohoCustomerId).then(function(finalPayload){
+        return fetch(CONFIG.SUPABASE_URL + '/functions/v1/zoho-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + CONFIG.SUPABASE_ANON_KEY },
+          body: JSON.stringify({
+            action:          action,
+            access_token:    token,
+            org_id:          _zohoCreds.org_id,
+            dc:              _zohoCreds.dc || 'in',
+            invoice_id:      invoiceId,
+            invoice_payload: finalPayload
+          })
+        });
       });
     })
     .then(function(r) { return r.json(); })
