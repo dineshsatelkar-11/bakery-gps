@@ -12457,42 +12457,7 @@ function confirmZohoInvPreviewSend(){
   });
 }
 
-/** Email invoice / challan via Zoho after create (edge: email_invoice / email_delivery_challan). */
-function zohoEmailDocument(token, docType, docId, toEmail, shopName, docNumber) {
-  if (!token || !docId || !toEmail) return Promise.resolve({ skipped: true });
-  var isDC = docType === 'delivery_challan';
-  var action = isDC ? 'email_delivery_challan' : 'email_invoice';
-  var subject = (isDC ? 'Delivery Challan' : 'Invoice')
-    + (docNumber ? ' ' + docNumber : '')
-    + (shopName ? ' — ' + shopName : '');
-  return fetch(CONFIG.SUPABASE_URL + '/functions/v1/zoho-token', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + CONFIG.SUPABASE_ANON_KEY
-    },
-    body: JSON.stringify({
-      action: action,
-      access_token: token,
-      org_id: _zohoCreds.org_id,
-      dc: _zohoCreds.dc || 'in',
-      invoice_id: String(docId),
-      email_payload: {
-        to_mail_ids: [String(toEmail).trim()],
-        subject: subject,
-        body: 'Dear Customer,<br/><br/>Please find your '
-          + (isDC ? 'delivery challan' : 'invoice')
-          + ' attached.<br/><br/>Thank you.'
-      }
-    })
-  }).then(function(r){ return r.json(); }).then(function(data){
-    console.log('[zoho] email doc result', action, data);
-    return data;
-  }).catch(function(err){
-    console.warn('[zoho] email doc failed (doc still created):', err);
-    return { error: String(err) };
-  });
-}
+/** Intentionally no auto-email after create — docs stay Draft in Zoho until sent manually from Zoho. */
 
 async function zohoCreateInvoiceReal(order) {
   var _createCtx = { token: null, shopEmail: '', shopName: '', docType: 'invoice' };
@@ -12607,32 +12572,18 @@ async function zohoCreateInvoiceReal(order) {
         || data.delivery_challan || data.deliveryschedule || {};
       var isChallanResp = !!(data.deliverychallan || data.deliverychallans || data.delivery_challan
         || doc.deliverychallan_id || doc.deliverychallans_id || doc.challan_status);
+      // Draft only — do not email or mark sent. Staff sends from Zoho when ready.
       var result = {
         invoice_id:     doc.invoice_id || doc.deliverychallan_id || doc.deliverychallans_id
                           || doc.deliveryschedule_id || '',
         invoice_number: doc.invoice_number || doc.deliverychallan_number || doc.deliverychallans_number
                           || doc.deliveryschedule_number || '',
-        status:         doc.challan_status || doc.status || '',
+        status:         doc.challan_status || doc.status || 'draft',
         total:          doc.total  || 0,
         doc_type:       isChallanResp ? 'delivery_challan' : 'invoice',
         email_sent:     false,
         email_to:       _createCtx.shopEmail || ''
       };
-      // Email PDF to customer when shop has email
-      if (_createCtx.shopEmail && result.invoice_id) {
-        return zohoEmailDocument(
-          _createCtx.token,
-          result.doc_type,
-          result.invoice_id,
-          _createCtx.shopEmail,
-          _createCtx.shopName,
-          result.invoice_number
-        ).then(function(em){
-          result.email_sent = !!(em && em.code === 0);
-          result.email_result = em;
-          return result;
-        });
-      }
       return result;
     });
 }
