@@ -1,294 +1,335 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#4a2f14">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>IBCAB — Payments</title>
-  <style>
-    :root {
-      --sat: env(safe-area-inset-top, 0px);
-      --sab: env(safe-area-inset-bottom, 0px);
-      --brown: #4a2f14;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #f9f6f1;
-      color: #1e1611;
-      padding-left: env(safe-area-inset-left, 0px);
-      padding-right: env(safe-area-inset-right, 0px);
-      padding-bottom: calc(72px + var(--sab));
-      min-height: 100dvh;
-      max-width: 520px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-    .topbar {
-      position: sticky; top: 0; z-index: 50;
-      background: #4a2f14; color: #fff;
-      padding: max(12px, var(--sat)) 14px 12px;
-      display: flex; align-items: center; justify-content: space-between; gap: 10px;
-      box-shadow: 0 2px 12px rgba(74,47,20,.18);
-    }
-    .topbar .brand { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-    .topbar .brand-title { margin: 0; font-size: 16px; font-weight: 900; letter-spacing: .2px; }
-    .topbar .brand-sub { font-size: 11px; font-weight: 600; opacity: .85; font-family: monospace; }
-    .topbar .top-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-    .topbar a.back-link {
-      color: #ffe8c8; font-size: 12px; font-weight: 800; text-decoration: none;
-      background: rgba(255,255,255,.12); padding: 7px 10px; border-radius: 10px;
-    }
-    /* Same chip style as admin main tabs */
-    .subtabs {
-      display: flex; gap: 6px; overflow-x: auto; padding: 8px 10px;
-      background: #fff; border-bottom: 1.5px solid #e8dfd2;
-      position: sticky; top: 0; z-index: 40;
-      -webkit-overflow-scrolling: touch;
-    }
-    .subtabs button {
-      flex-shrink: 0; border: none; background: transparent;
-      border-radius: 12px; padding: 9px 12px; font-size: 12px; font-weight: 800;
-      color: #8a7a6a; cursor: pointer; font-family: inherit;
-    }
-    .subtabs button.active {
-      background: #4a2f14; color: #fff;
-    }
-    .page { display: none; padding: 12px 14px 20px; max-width: 520px; margin: 0 auto; }
-    .page.active { display: block; }
-    .card {
-      background: #fff; border: 1.5px solid #e8dfd2; border-radius: 14px;
-      padding: 12px 14px; margin-bottom: 10px;
-    }
-    .lbl { font-size: 11px; font-weight: 800; color: #8a7a6a; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .3px; }
-    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-    @media (max-width: 480px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
-    .stat-card { background: #fff; border: 1.5px solid #e8dfd2; border-radius: 12px; padding: 10px; text-align: center; }
-    .stat-n { font-size: 20px; font-weight: 900; font-family: monospace; color: var(--brown); }
-    .stat-l { font-size: 10px; color: #8a7a6a; font-weight: 700; margin-top: 2px; }
-    .btn-sm { border: none; border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; }
-    .btn-grey { background: #f0e8dc; color: #4a2f14; }
-    .filter-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-    .bottom-nav {
-      position: fixed; left: 0; right: 0; bottom: 0; z-index: 200;
-      background: #fff; border-top: 1.5px solid #e8dfd2;
-      padding: 6px 4px max(6px, var(--sab));
-      max-width: 520px; margin: 0 auto;
-      box-shadow: 0 -4px 16px rgba(74,47,20,.08);
-    }
-    .bottom-nav-inner { display: flex; justify-content: space-around; }
-    .bnav-item {
-      flex: 1; display: flex; flex-direction: column; align-items: center;
-      text-decoration: none; color: #8a7a6a; font-size: 10px; font-weight: 700;
-      padding: 4px; border: none; background: none; cursor: pointer;
-    }
-    .bnav-item.active { color: #4a2f14; }
-    .bnav-lbl { font-size: 10px; font-weight: 700; display: block; }
-    .bnav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 48px; justify-content: center; }
-    .bnav-item.active .bnav-ico { transform: scale(1.05); }
-    .bnav-ico { font-size: 18px; }
-    @media (min-width: 701px) {
-      .bottom-nav { display: none; }
-      body { padding-bottom: 24px; max-width: 900px; margin: 0 auto; }
-    }
-  
-    @media (min-width: 701px) {
-      .bottom-nav { display: none; }
-      body { padding-bottom: 20px; max-width: 720px; }
-      .page { max-width: 720px; }
-    }
-    @media (max-width: 700px) {
-      .bottom-nav { display: block; }
-    }
-    
-    /* Embed inside admin.html — hide second chrome */
-    html.embed-mode body,
-    body.embed-mode {
-      max-width: none !important;
-      margin: 0 !important;
-      padding-bottom: 8px !important;
-      padding-top: 0 !important;
-      background: #f9f6f1 !important;
-      min-height: 0 !important;
-    }
-    html.embed-mode .topbar,
-    html.embed-mode .bottom-nav,
-    html.embed-mode .subtabs,
-    html.embed-mode #bottomNav,
-    body.embed-mode .topbar,
-    body.embed-mode .bottom-nav,
-    body.embed-mode .subtabs,
-    body.embed-mode #bottomNav {
-      display: none !important;
-      height: 0 !important;
-      overflow: hidden !important;
-      visibility: hidden !important;
-      pointer-events: none !important;
-    }
-    html.embed-mode .page,
-    body.embed-mode .page {
-      padding: 8px 10px 12px !important;
-      max-width: none !important;
-    }
-    </style>
-  <script>
-    (function(){
-      try {
-        var q = location.search || '';
-        if (/[?&]embed=1\b/.test(q) || /[?&]embed=true\b/.test(q)) {
-          document.documentElement.className += (document.documentElement.className ? ' ' : '') + 'embed-mode';
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#4a2f14">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>IBCAB — Payments</title>
+    <style>
+        :root {
+          --sat: env(safe-area-inset-top, 0px);
+          --sab: env(safe-area-inset-bottom, 0px);
+          --brown: #4a2f14;
         }
-      } catch(e) {}
-    })();
-  </script>
+        * { box-sizing: border-box; }
+        body {
+          margin: 0;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          background: #f9f6f1;
+          color: #1e1611;
+          padding-left: env(safe-area-inset-left, 0px);
+          padding-right: env(safe-area-inset-right, 0px);
+          padding-bottom: calc(72px + var(--sab));
+          min-height: 100dvh;
+          max-width: 520px;
+          margin-left: auto;
+          margin-right: auto;
+        }
+        .topbar {
+          position: sticky; top: 0; z-index: 50;
+          background: #4a2f14; color: #fff;
+          padding: max(12px, var(--sat)) 14px 12px;
+          display: flex; align-items: center; justify-content: space-between; gap: 10px;
+          box-shadow: 0 2px 12px rgba(74,47,20,.18);
+        }
+        .topbar .brand { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .topbar .brand-title { margin: 0; font-size: 16px; font-weight: 900; letter-spacing: .2px; }
+        .topbar .brand-sub { font-size: 11px; font-weight: 600; opacity: .85; font-family: monospace; }
+        .topbar .top-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        .topbar a.back-link {
+          color: #ffe8c8; font-size: 12px; font-weight: 800; text-decoration: none;
+          background: rgba(255,255,255,.12); padding: 7px 10px; border-radius: 10px;
+        }
+        /* Same chip style as admin main tabs */
+        .subtabs {
+          display: flex; gap: 6px; overflow-x: auto; padding: 8px 10px;
+          background: #fff; border-bottom: 1.5px solid #e8dfd2;
+          position: sticky; top: 0; z-index: 40;
+          -webkit-overflow-scrolling: touch;
+        }
+        .subtabs button {
+          flex-shrink: 0; border: none; background: transparent;
+          border-radius: 12px; padding: 9px 12px; font-size: 12px; font-weight: 800;
+          color: #8a7a6a; cursor: pointer; font-family: inherit;
+        }
+        .subtabs button.active {
+          background: #4a2f14; color: #fff;
+        }
+        .page { display: none; padding: 12px 14px 20px; max-width: 520px; margin: 0 auto; }
+        .page.active { display: block; }
+        .card {
+          background: #fff; border: 1.5px solid #e8dfd2; border-radius: 14px;
+          padding: 12px 14px; margin-bottom: 10px;
+        }
+        .lbl { font-size: 11px; font-weight: 800; color: #8a7a6a; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .3px; }
+        .stats-grid {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 8px;
+          align-items: stretch;
+        }
+        @media (max-width: 480px) {
+          .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+        }
+        .stat,
+        .stat-card {
+          background: #fff;
+          border: 1.5px solid #e8dfd2;
+          border-radius: 14px;
+          padding: 12px 8px;
+          text-align: center;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-height: 72px;
+          box-sizing: border-box;
+          min-width: 0;
+        }
+        .stat-n {
+          font-size: 22px;
+          font-weight: 900;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+          color: var(--brown);
+          line-height: 1.15;
+          letter-spacing: -0.3px;
+          width: 100%;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .stat-l {
+          font-size: 10px;
+          color: #8a7a6a;
+          font-weight: 800;
+          margin-top: 6px;
+          line-height: 1.2;
+          letter-spacing: 0.2px;
+          text-transform: uppercase;
+          width: 100%;
+        }
+        .btn-sm { border: none; border-radius: 8px; padding: 6px 10px; font-size: 11px; font-weight: 700; cursor: pointer; font-family: inherit; }
+        .btn-grey { background: #f0e8dc; color: #4a2f14; }
+        .filter-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .bottom-nav {
+          position: fixed; left: 0; right: 0; bottom: 0; z-index: 200;
+          background: #fff; border-top: 1.5px solid #e8dfd2;
+          padding: 6px 4px max(6px, var(--sab));
+          max-width: 520px; margin: 0 auto;
+          box-shadow: 0 -4px 16px rgba(74,47,20,.08);
+        }
+        .bottom-nav-inner { display: flex; justify-content: space-around; }
+        .bnav-item {
+          flex: 1; display: flex; flex-direction: column; align-items: center;
+          text-decoration: none; color: #8a7a6a; font-size: 10px; font-weight: 700;
+          padding: 4px; border: none; background: none; cursor: pointer;
+        }
+        .bnav-item.active { color: #4a2f14; }
+        .bnav-lbl { font-size: 10px; font-weight: 700; display: block; }
+        .bnav-item { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 48px; justify-content: center; }
+        .bnav-item.active .bnav-ico { transform: scale(1.05); }
+        .bnav-ico { font-size: 18px; }
+        @media (min-width: 701px) {
+          .bottom-nav { display: none; }
+          body { padding-bottom: 24px; max-width: 900px; margin: 0 auto; }
+        }
+
+        @media (min-width: 701px) {
+          .bottom-nav { display: none; }
+          body { padding-bottom: 20px; max-width: 720px; }
+          .page { max-width: 720px; }
+        }
+        @media (max-width: 700px) {
+          .bottom-nav { display: block; }
+        }
+
+        /* Embed inside admin.html — hide second chrome */
+        html.embed-mode body,
+        body.embed-mode {
+          max-width: none !important;
+          margin: 0 !important;
+          padding-bottom: 8px !important;
+          padding-top: 0 !important;
+          background: #f9f6f1 !important;
+          min-height: 0 !important;
+        }
+        html.embed-mode .topbar,
+        html.embed-mode .bottom-nav,
+        html.embed-mode .subtabs,
+        html.embed-mode #bottomNav,
+        body.embed-mode .topbar,
+        body.embed-mode .bottom-nav,
+        body.embed-mode .subtabs,
+        body.embed-mode #bottomNav {
+          display: none !important;
+          height: 0 !important;
+          overflow: hidden !important;
+          visibility: hidden !important;
+          pointer-events: none !important;
+        }
+        html.embed-mode .page,
+        body.embed-mode .page {
+          padding: 8px 10px 12px !important;
+          max-width: none !important;
+        }
+    </style>
+    <script>
+        (function(){
+          try {
+            var q = location.search || '';
+            if (/[?&]embed=1\b/.test(q) || /[?&]embed=true\b/.test(q)) {
+              document.documentElement.className += (document.documentElement.className ? ' ' : '') + 'embed-mode';
+            }
+          } catch(e) {}
+        })();
+    </script>
 </head>
 <body>
-  <div class="topbar" id="pay-chrome-top">
+<div class="topbar" id="pay-chrome-top">
     <div class="brand">
-      <div class="brand-title">🍞 IBCAB · Payments</div>
-      <div class="brand-sub" id="who">Admin</div>
+        <div class="brand-title">🍞 IBCAB · Payments</div>
+        <div class="brand-sub" id="who">Admin</div>
     </div>
     <div class="top-actions">
-      <a class="back-link" href="admin.html">← Admin</a>
+        <a class="back-link" href="admin.html">← Admin</a>
     </div>
-  </div>
-    <div class="subtabs" id="paySubtabs" data-chrome="1" role="tablist">
+</div>
+<div class="subtabs" id="paySubtabs" data-chrome="1" role="tablist">
     <button type="button" class="active" data-tab="pay-challan" onclick="payShowTab('pay-challan')">📋 Challans</button>
     <button type="button" data-tab="pay-open" onclick="payShowTab('pay-open')">💸 Unpaid</button>
     <button type="button" data-tab="pay-requests" onclick="payShowTab('pay-requests')">📨 Pay requests</button>
     <button type="button" data-tab="pay-paid" onclick="payShowTab('pay-paid')">✅ Paid</button>
-  </div>
+</div>
 
 <div class="page active" id="pg-pay-challan">
-  <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">📋 Daily Challans</div>
-  <div style="font-size:11px;color:#8a7a6a;margin-bottom:10px;line-height:1.45">
-    Daily flow: <b>Edit</b> (damage/missing) → <b>Send/Update Zoho</b> → <b>Mark delivered</b> → <b>Convert to Invoice</b>.
-    Only shops with doc type Challan (or existing challan id).
-  </div>
-  <div class="card" style="margin-bottom:10px;padding:12px">
-    <div style="font-size:11px;font-weight:800;color:#8a7a6a;letter-spacing:.3px;margin-bottom:8px">DELIVERY DATE</div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">
-      <button type="button" class="btn-sm btn-grey" style="min-width:40px;padding:10px 12px;font-size:16px;font-weight:900" onclick="challanDeskShiftDate(-1)" title="Previous day">‹</button>
-      <input type="date" id="challan-desk-date" onchange="challanDeskOnDateChange()"
-        style="margin:0;flex:1;min-width:150px;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:15px;font-weight:700;color:#4a2f14;background:#fff;font-family:inherit">
-      <button type="button" class="btn-sm btn-grey" style="min-width:40px;padding:10px 12px;font-size:16px;font-weight:900" onclick="challanDeskShiftDate(1)" title="Next day">›</button>
-      <button type="button" class="btn-sm" style="background:#4a2f14;color:#fff;padding:10px 14px;border-radius:10px;font-weight:800" onclick="challanDeskSetToday()">Today</button>
+    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">📋 Daily Challans</div>
+    <div style="font-size:11px;color:#8a7a6a;margin-bottom:10px;line-height:1.45">
+        Daily flow: <b>Edit</b> (damage/missing) → <b>Send/Update Zoho</b> → <b>Mark delivered</b> → <b>Convert to Invoice</b>.
+        Only shops with doc type Challan (or existing challan id).
     </div>
-    <div id="challan-desk-date-label" style="font-size:13px;font-weight:800;color:#4a2f14;margin-bottom:10px"></div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
-      <input type="search" id="challan-desk-q" placeholder="Search shop…" oninput="renderChallanDesk()"
-        style="margin:0;flex:1;min-width:140px;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:13px;background:#fff">
-      <button type="button" class="btn-sm btn-grey" style="padding:10px 14px" onclick="loadChallanDesk()">↻ Refresh</button>
-      <button type="button" class="btn-sm" id="challan-sync-all-btn" style="padding:10px 14px;background:#4a2f14;color:#fff;font-weight:800" onclick="challanDeskSyncAll()">↻ Sync all challans</button>
-      <button type="button" class="btn-sm" id="challan-sync-stop-btn" style="display:none;padding:10px 12px;background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0;font-weight:700" onclick="challanDeskSyncStop()">⏹ Stop</button>
+    <div class="card" style="margin-bottom:10px;padding:12px">
+        <div style="font-size:11px;font-weight:800;color:#8a7a6a;letter-spacing:.3px;margin-bottom:8px">DELIVERY DATE</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">
+            <button type="button" class="btn-sm btn-grey" style="min-width:40px;padding:10px 12px;font-size:16px;font-weight:900" onclick="challanDeskShiftDate(-1)" title="Previous day">‹</button>
+            <input type="date" id="challan-desk-date" onchange="challanDeskOnDateChange()"
+                   style="margin:0;flex:1;min-width:150px;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:15px;font-weight:700;color:#4a2f14;background:#fff;font-family:inherit">
+            <button type="button" class="btn-sm btn-grey" style="min-width:40px;padding:10px 12px;font-size:16px;font-weight:900" onclick="challanDeskShiftDate(1)" title="Next day">›</button>
+            <button type="button" class="btn-sm" style="background:#4a2f14;color:#fff;padding:10px 14px;border-radius:10px;font-weight:800" onclick="challanDeskSetToday()">Today</button>
+        </div>
+        <div id="challan-desk-date-label" style="font-size:13px;font-weight:800;color:#4a2f14;margin-bottom:10px"></div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+            <input type="search" id="challan-desk-q" placeholder="Search shop…" oninput="renderChallanDesk()"
+                   style="margin:0;flex:1;min-width:140px;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:13px;background:#fff">
+            <button type="button" class="btn-sm btn-grey" style="padding:10px 14px" onclick="loadChallanDesk()">↻ Refresh</button>
+            <button type="button" class="btn-sm" id="challan-sync-all-btn" style="padding:10px 14px;background:#4a2f14;color:#fff;font-weight:800" onclick="challanDeskSyncAll()">↻ Sync all challans</button>
+            <button type="button" class="btn-sm" id="challan-sync-stop-btn" style="display:none;padding:10px 12px;background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0;font-weight:700" onclick="challanDeskSyncStop()">⏹ Stop</button>
+        </div>
     </div>
-  </div>
-  <div id="challan-desk-stats" class="stats-grid" style="margin-bottom:10px;grid-template-columns:repeat(4,1fr)"></div>
-  <div id="challan-desk-msg" style="display:none;margin-bottom:8px;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:700"></div>
-  <div id="challan-desk-list"><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Loading…</div></div>
+    <div id="challan-desk-stats" class="stats-grid" style="margin-bottom:10px"></div>
+    <div id="challan-desk-msg" style="display:none;margin-bottom:8px;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:700"></div>
+    <div id="challan-desk-list"><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Loading…</div></div>
 </div>
 <div class="page" id="pg-pay-open">
-  <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">💰 Payments — Unpaid</div>
-  <div style="font-size:11px;color:#8a7a6a;margin-bottom:10px;line-height:1.45">Weekly collections — <b>invoices only</b>. Delivery challans stay under the Challans tab until converted to invoice.</div>
-  <div id="pay-desk-stats" class="stats-grid" style="margin-bottom:10px"></div>
-  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
-    <input type="search" id="pay-desk-q" placeholder="Search shop / inv #…" oninput="renderPaymentsDesk()" style="flex:1;min-width:140px;padding:8px 10px;border:1.5px solid #e8dfd2;border-radius:8px;font-size:13px">
-    <button class="btn-sm btn-grey" onclick="loadPaymentsDesk()">↻ Refresh</button>
-    <button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082" onclick="payDeskSyncFromZoho('all')">🔗 Sync all statuses</button>
-  </div>
-  <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px">
-    <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSelect('visible')">Select visible</button>
-    <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSelect('none')">Clear</button>
-    <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSelect('unpaid')">Unpaid only</button>
-    <button type="button" class="btn-sm" style="background:#4a2f14;color:#fff;border:none;padding:6px 12px;border-radius:8px;font-size:11px;font-weight:800" onclick="payDeskSyncFromZoho('selected')">↻ Sync selected</button>
-    <button type="button" class="btn-sm" style="background:#fff3e0;color:#e65100;border:1px solid #ffcc80;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSyncFromZoho('unpaid')">↻ Sync all unpaid</button>
-    <button type="button" class="btn-sm" style="background:#e3f2fd;color:#1565c0;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSendReminders()">📨 Remind selected</button>
-    <button type="button" class="btn-sm" id="pay-desk-sync-stop" style="display:none;background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSyncStop()">⏹ Stop sync</button>
-    <span id="pay-desk-selcount" style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-left:4px"></span>
-  </div>
-  <div id="pay-desk-msg" style="display:none;margin-bottom:8px;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:700"></div>
-  <div class="card" id="pay-upi-owner-card" style="display:none;margin-bottom:10px;padding:12px;background:#e8f5e9;border:1.5px solid #a5d6a7">
-    <div style="font-size:12px;font-weight:900;color:#1a5a38;margin-bottom:6px">📱 UPI QR for customers (PhonePe / GPay / Paytm)</div>
-    <div style="font-size:11px;color:#8a7a6a;line-height:1.45;margin-bottom:8px">Owner only — not visible to regular admin. Customers see QR / Pay with UPI on their Pay tab.</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
-      <div>
-        <div class="lbl">UPI ID (VPA)</div>
-        <input type="text" id="pay-upi-vpa" placeholder="yourshop@ybl" style="width:100%;padding:8px 10px;border:1.5px solid #e8dfd2;border-radius:8px;font-size:13px;margin:0;box-sizing:border-box">
-      </div>
-      <div>
-        <div class="lbl">Payee name</div>
-        <input type="text" id="pay-upi-name" placeholder="IBCAB Bakery" style="width:100%;padding:8px 10px;border:1.5px solid #e8dfd2;border-radius:8px;font-size:13px;margin:0;box-sizing:border-box">
-      </div>
+    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">💰 Payments — Unpaid</div>
+    <div style="font-size:11px;color:#8a7a6a;margin-bottom:10px;line-height:1.45">Weekly collections — <b>invoices only</b>. Delivery challans stay under the Challans tab until converted to invoice.</div>
+    <div id="pay-desk-stats" class="stats-grid" style="margin-bottom:10px"></div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+        <input type="search" id="pay-desk-q" placeholder="Search shop / inv #…" oninput="renderPaymentsDesk()" style="flex:1;min-width:140px;padding:8px 10px;border:1.5px solid #e8dfd2;border-radius:8px;font-size:13px">
+        <button class="btn-sm btn-grey" onclick="loadPaymentsDesk()">↻ Refresh</button>
+        <button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082" onclick="payDeskSyncFromZoho('all')">🔗 Sync all statuses</button>
     </div>
-    <button type="button" class="btn-sm" style="background:#2d7a4f;color:#fff;border:none" onclick="payDeskSaveUpi()">💾 Save UPI</button>
-    <span id="pay-upi-status" style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-left:8px"></span>
-  </div>
-  <div class="card" style="margin-bottom:10px;padding:12px;background:#fff8f0;border:1.5px solid #ffe0b2">
-    <div style="font-size:12px;font-weight:900;color:#e65100;margin-bottom:6px">🔒 Block place-order (unpaid)</div>
-    <div style="font-size:11px;color:#8a7a6a;line-height:1.45;margin-bottom:8px">When on, customers with balance cannot place new orders. Or block only selected shops below.</div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px">
-      <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#4a2f14;cursor:pointer">
-        <input type="checkbox" id="pay-block-all-unpaid" onchange="payDeskSaveBlockAll(this.checked)" style="width:18px;height:18px;accent-color:#e65100">
-        Block <b>all</b> with unpaid balance
-      </label>
-      <button type="button" class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0" onclick="payDeskBlockSelected(true)">Block selected shops</button>
-      <button type="button" class="btn-sm btn-grey" onclick="payDeskBlockSelected(false)">Unblock selected</button>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px">
+        <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSelect('visible')">Select visible</button>
+        <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSelect('none')">Clear</button>
+        <button type="button" class="btn-sm" style="background:#f0e8dc;color:#4a2f14;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSelect('unpaid')">Unpaid only</button>
+        <button type="button" class="btn-sm" style="background:#4a2f14;color:#fff;border:none;padding:6px 12px;border-radius:8px;font-size:11px;font-weight:800" onclick="payDeskSyncFromZoho('selected')">↻ Sync selected</button>
+        <button type="button" class="btn-sm" style="background:#fff3e0;color:#e65100;border:1px solid #ffcc80;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSyncFromZoho('unpaid')">↻ Sync all unpaid</button>
+        <button type="button" class="btn-sm" style="background:#e3f2fd;color:#1565c0;border:none;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSendReminders()">📨 Remind selected</button>
+        <button type="button" class="btn-sm" id="pay-desk-sync-stop" style="display:none;background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0;padding:6px 10px;border-radius:8px;font-size:11px;font-weight:700" onclick="payDeskSyncStop()">⏹ Stop sync</button>
+        <span id="pay-desk-selcount" style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-left:4px"></span>
     </div>
-    <div id="pay-block-status" style="font-size:11px;font-family:monospace;color:#8a7a6a"></div>
-  </div>
-  <div id="pay-desk-list"><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Loading…</div></div>
+    <div id="pay-desk-msg" style="display:none;margin-bottom:8px;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:700"></div>
+    <div class="card" id="pay-upi-owner-card" style="display:none;margin-bottom:10px;padding:12px;background:#e8f5e9;border:1.5px solid #a5d6a7">
+        <div style="font-size:12px;font-weight:900;color:#1a5a38;margin-bottom:6px">📱 UPI QR for customers (PhonePe / GPay / Paytm)</div>
+        <div style="font-size:11px;color:#8a7a6a;line-height:1.45;margin-bottom:8px">Owner only — not visible to regular admin. Customers see QR / Pay with UPI on their Pay tab.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+            <div>
+                <div class="lbl">UPI ID (VPA)</div>
+                <input type="text" id="pay-upi-vpa" placeholder="yourshop@ybl" style="width:100%;padding:8px 10px;border:1.5px solid #e8dfd2;border-radius:8px;font-size:13px;margin:0;box-sizing:border-box">
+            </div>
+            <div>
+                <div class="lbl">Payee name</div>
+                <input type="text" id="pay-upi-name" placeholder="IBCAB Bakery" style="width:100%;padding:8px 10px;border:1.5px solid #e8dfd2;border-radius:8px;font-size:13px;margin:0;box-sizing:border-box">
+            </div>
+        </div>
+        <button type="button" class="btn-sm" style="background:#2d7a4f;color:#fff;border:none" onclick="payDeskSaveUpi()">💾 Save UPI</button>
+        <span id="pay-upi-status" style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-left:8px"></span>
+    </div>
+    <div class="card" style="margin-bottom:10px;padding:12px;background:#fff8f0;border:1.5px solid #ffe0b2">
+        <div style="font-size:12px;font-weight:900;color:#e65100;margin-bottom:6px">🔒 Block place-order (unpaid)</div>
+        <div style="font-size:11px;color:#8a7a6a;line-height:1.45;margin-bottom:8px">When on, customers with balance cannot place new orders. Or block only selected shops below.</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px">
+            <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:#4a2f14;cursor:pointer">
+                <input type="checkbox" id="pay-block-all-unpaid" onchange="payDeskSaveBlockAll(this.checked)" style="width:18px;height:18px;accent-color:#e65100">
+                Block <b>all</b> with unpaid balance
+            </label>
+            <button type="button" class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0" onclick="payDeskBlockSelected(true)">Block selected shops</button>
+            <button type="button" class="btn-sm btn-grey" onclick="payDeskBlockSelected(false)">Unblock selected</button>
+        </div>
+        <div id="pay-block-status" style="font-size:11px;font-family:monospace;color:#8a7a6a"></div>
+    </div>
+    <div id="pay-desk-list"><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Loading…</div></div>
 </div>
 <div class="page" id="pg-pay-requests">
-  <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">📨 Pay requests</div>
-  <div style="font-size:11px;color:#8a7a6a;margin-bottom:10px;line-height:1.45">Customer says they paid. Match in bank by <b>shop name / amount / time</b> → <b>Confirm received</b>. Customers expect up to <b>24 working hours</b>.</div>
-  <div class="card" style="margin-bottom:10px;padding:12px;background:#e8f5e9;border:1.5px solid #a5d6a7">
-    <div style="font-size:12px;font-weight:900;color:#1a5a38;margin-bottom:6px">🔄 Auto-reconcile helper</div>
-    <div style="font-size:11px;color:#8a7a6a;line-height:1.45;margin-bottom:8px">
-      No bank feed / no gateway. Suggests matches when a request amount is <b>unique</b> among open requests (safe to confirm after you see the credit in bank).
+    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">📨 Pay requests</div>
+    <div style="font-size:11px;color:#8a7a6a;margin-bottom:10px;line-height:1.45">Customer says they paid. Match in bank by <b>shop name / amount / time</b> → <b>Confirm received</b>. Customers expect up to <b>24 working hours</b>.</div>
+    <div class="card" style="margin-bottom:10px;padding:12px;background:#e8f5e9;border:1.5px solid #a5d6a7">
+        <div style="font-size:12px;font-weight:900;color:#1a5a38;margin-bottom:6px">🔄 Auto-reconcile helper</div>
+        <div style="font-size:11px;color:#8a7a6a;line-height:1.45;margin-bottom:8px">
+            No bank feed / no gateway. Suggests matches when a request amount is <b>unique</b> among open requests (safe to confirm after you see the credit in bank).
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+            <button type="button" class="btn-sm" style="background:#2d7a4f;color:#fff;border:none" onclick="payDeskRunReconcile()">↻ Build suggestions</button>
+            <button type="button" class="btn-sm" style="background:#e8f5e9;color:#1a5a38;border:1px solid #a5d6a7" onclick="payDeskConfirmReconcileHigh()">✓ Confirm all high-confidence</button>
+        </div>
+        <div style="font-size:11px;color:#8a7a6a;margin-bottom:6px">Paste bank credits (one per line: amount or amount + text). Optional.</div>
+        <textarea id="pay-reconcile-paste" rows="3" placeholder="4500&#10;1280 FRANKS&#10;3200" style="width:100%;padding:8px 10px;border:1.5px solid #e8dfd2;border-radius:8px;font-size:12px;font-family:monospace;box-sizing:border-box;margin-bottom:6px"></textarea>
+        <button type="button" class="btn-sm btn-grey" onclick="payDeskMatchBankPaste()">Match pasted amounts</button>
+        <div id="pay-reconcile-out" style="margin-top:10px;font-size:12px"></div>
     </div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
-      <button type="button" class="btn-sm" style="background:#2d7a4f;color:#fff;border:none" onclick="payDeskRunReconcile()">↻ Build suggestions</button>
-      <button type="button" class="btn-sm" style="background:#e8f5e9;color:#1a5a38;border:1px solid #a5d6a7" onclick="payDeskConfirmReconcileHigh()">✓ Confirm all high-confidence</button>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+        <button type="button" class="btn-sm" style="background:#e8f5e9;color:#1a5a38;border:1px solid #a5d6a7;font-weight:700" onclick="payDeskConfirmSelectedRequests()">✓ Confirm received (selected)</button>
+        <button type="button" class="btn-sm btn-grey" onclick="payDeskSelect('unpaid')">Select unpaid</button>
     </div>
-    <div style="font-size:11px;color:#8a7a6a;margin-bottom:6px">Paste bank credits (one per line: amount or amount + text). Optional.</div>
-    <textarea id="pay-reconcile-paste" rows="3" placeholder="4500&#10;1280 FRANKS&#10;3200" style="width:100%;padding:8px 10px;border:1.5px solid #e8dfd2;border-radius:8px;font-size:12px;font-family:monospace;box-sizing:border-box;margin-bottom:6px"></textarea>
-    <button type="button" class="btn-sm btn-grey" onclick="payDeskMatchBankPaste()">Match pasted amounts</button>
-    <div id="pay-reconcile-out" style="margin-top:10px;font-size:12px"></div>
-  </div>
-  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
-    <button type="button" class="btn-sm" style="background:#e8f5e9;color:#1a5a38;border:1px solid #a5d6a7;font-weight:700" onclick="payDeskConfirmSelectedRequests()">✓ Confirm received (selected)</button>
-    <button type="button" class="btn-sm btn-grey" onclick="payDeskSelect('unpaid')">Select unpaid</button>
-  </div>
-  <div id="pay-desk-list-req"><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Open tab to load…</div></div>
+    <div id="pay-desk-list-req"><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Open tab to load…</div></div>
 </div>
 <div class="page" id="pg-pay-paid">
-  <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">✅ Paid</div>
-  <div style="font-size:11px;color:#8a7a6a;margin-bottom:8px;line-height:1.45">By default: <b>last 7 days</b> only.</div>
-  <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">
-    <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#4a2f14;cursor:pointer">
-      <input type="checkbox" id="pay-paid-all" onchange="window._payPaidShowAll=this.checked;renderPaymentsDesk()" style="width:16px;height:16px;accent-color:#2d7a4f">
-      Show all paid
-    </label>
-    <span id="pay-paid-range-hint" style="font-size:11px;font-family:monospace;color:#8a7a6a"></span>
-  </div>
-  <div id="pay-desk-list-paid"><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Open tab to load…</div></div>
+    <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">✅ Paid</div>
+    <div style="font-size:11px;color:#8a7a6a;margin-bottom:8px;line-height:1.45">By default: <b>last 7 days</b> only.</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#4a2f14;cursor:pointer">
+            <input type="checkbox" id="pay-paid-all" onchange="window._payPaidShowAll=this.checked;renderPaymentsDesk()" style="width:16px;height:16px;accent-color:#2d7a4f">
+            Show all paid
+        </label>
+        <span id="pay-paid-range-hint" style="font-size:11px;font-family:monospace;color:#8a7a6a"></span>
+    </div>
+    <div id="pay-desk-list-paid"><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Open tab to load…</div></div>
 </div>
 
 
-  <nav class="bottom-nav" id="bottomNav" aria-label="Main">
+<nav class="bottom-nav" id="bottomNav" aria-label="Main">
     <div class="bottom-nav-inner">
-      <a class="bnav-item" href="admin.html"><span class="bnav-ico">🏠</span><span class="bnav-lbl">Home</span></a>
-      <a class="bnav-item" href="admin.html#orders"><span class="bnav-ico">📋</span><span class="bnav-lbl">Orders</span></a>
-      <a class="bnav-item" href="admin.html#delivery"><span class="bnav-ico">🚚</span><span class="bnav-lbl">Delivery</span></a>
-      <a class="bnav-item active" href="admin-payments.html"><span class="bnav-ico">💰</span><span class="bnav-lbl">Payments</span></a>
-      <a class="bnav-item" href="admin.html#more"><span class="bnav-ico">☰</span><span class="bnav-lbl">More</span></a>
+        <a class="bnav-item" href="admin.html"><span class="bnav-ico">🏠</span><span class="bnav-lbl">Home</span></a>
+        <a class="bnav-item" href="admin.html#orders"><span class="bnav-ico">📋</span><span class="bnav-lbl">Orders</span></a>
+        <a class="bnav-item" href="admin.html#delivery"><span class="bnav-ico">🚚</span><span class="bnav-lbl">Delivery</span></a>
+        <a class="bnav-item active" href="admin-payments.html"><span class="bnav-ico">💰</span><span class="bnav-lbl">Payments</span></a>
+        <a class="bnav-item" href="admin.html#more"><span class="bnav-ico">☰</span><span class="bnav-lbl">More</span></a>
     </div>
-  </nav>
+</nav>
 
-  
-    <script>
+
+<script>
     (function(){
       var params = new URLSearchParams(location.search || '');
       var embed = params.get('embed') === '1' || params.get('embed') === 'true';
@@ -312,10 +353,10 @@
         applyEmbed();
       }
     })();
-    </script>
+</script>
 <script src="config.js"></script>
-  <script src="api.js"></script>
-  <script>
+<script src="api.js"></script>
+<script>
     (function(){
       // Same session keys as admin.html / index.html (staff login)
       if (!sessionStorage.getItem('role') && localStorage.getItem('staffRole')) {
@@ -621,9 +662,9 @@
       if (st) {
         st.innerHTML =
           '<div class="stat"><div class="stat-n">'+rows.length+'</div><div class="stat-l">Challans</div></div>'+
-          '<div class="stat" style="background:#fff8e1"><div class="stat-n" style="color:#7a4800">'+nSent+'</div><div class="stat-l">In Zoho</div></div>'+
-          '<div class="stat" style="background:#e8f5e9"><div class="stat-n" style="color:#1a5a38">'+nDel+'</div><div class="stat-l">Delivered</div></div>'+
-          '<div class="stat" style="background:#e3f2fd"><div class="stat-n" style="color:#1565c0">'+nInv+'</div><div class="stat-l">Invoiced</div></div>';
+          '<div class="stat" style="background:#fff8e1;border-color:#ffe082"><div class="stat-n" style="color:#7a4800">'+nSent+'</div><div class="stat-l">In Zoho</div></div>'+
+          '<div class="stat" style="background:#e8f5e9;border-color:#a5d6a7"><div class="stat-n" style="color:#1a5a38">'+nDel+'</div><div class="stat-l">Delivered</div></div>'+
+          '<div class="stat" style="background:#e3f2fd;border-color:#90caf9"><div class="stat-n" style="color:#1565c0">'+nInv+'</div><div class="stat-l">Invoiced</div></div>';
       }
       var el = document.getElementById('challan-desk-list');
       if (!el) return;
@@ -779,7 +820,7 @@
         });
       };
     }
-    
+
     /** Zoho already converted this challan → invoice (UI or API status). */
     function _challanAlreadyInvoiced(o) {
       if (!o) return false;
@@ -1732,10 +1773,10 @@
       var st = document.getElementById('pay-desk-stats');
       if (st) {
         st.innerHTML =
-          '<div class="stat" style="background:#fde8e8"><div class="stat-n" style="color:#c8382a">'+unpaid.length+'</div><div class="stat-l">Unpaid</div></div>'+
-          '<div class="stat" style="background:#e3f2fd"><div class="stat-n" style="color:#1565c0">'+claims.length+'</div><div class="stat-l">Requests</div></div>'+
-          '<div class="stat" style="background:#fff8e1"><div class="stat-n" style="color:#7a4800">₹'+due.toLocaleString('en-IN',{maximumFractionDigits:0})+'</div><div class="stat-l">Total due</div></div>'+
-          '<div class="stat" style="background:#e8f5e9"><div class="stat-n" style="color:#1a5a38">'+paid.length+'</div><div class="stat-l">Paid</div></div>';
+          '<div class="stat" style="background:#fde8e8;border-color:#f0b0b0"><div class="stat-n" style="color:#c8382a">'+unpaid.length+'</div><div class="stat-l">Unpaid</div></div>'+
+          '<div class="stat" style="background:#e3f2fd;border-color:#90caf9"><div class="stat-n" style="color:#1565c0">'+claims.length+'</div><div class="stat-l">Requests</div></div>'+
+          '<div class="stat" style="background:#fff8e1;border-color:#ffe082"><div class="stat-n" style="color:#7a4800">₹'+due.toLocaleString('en-IN',{maximumFractionDigits:0})+'</div><div class="stat-l">Total due</div></div>'+
+          '<div class="stat" style="background:#e8f5e9;border-color:#a5d6a7"><div class="stat-n" style="color:#1a5a38">'+paid.length+'</div><div class="stat-l">Paid</div></div>';
       }
       function matchQ(o) {
         if (!q) return true;
@@ -1875,10 +1916,10 @@
       if (st) {
         var custCount = groupByCustomer(unpaid).length;
         st.innerHTML =
-          '<div class="stat" style="background:#fde8e8"><div class="stat-n" style="color:#c8382a">'+custCount+'</div><div class="stat-l">Customers</div></div>'+
-          '<div class="stat" style="background:#fde8e8"><div class="stat-n" style="color:#c8382a">'+unpaid.length+'</div><div class="stat-l">Invoices</div></div>'+
-          '<div class="stat" style="background:#e3f2fd"><div class="stat-n" style="color:#1565c0">'+claims.length+'</div><div class="stat-l">Requests</div></div>'+
-          '<div class="stat" style="background:#fff8e1"><div class="stat-n" style="color:#7a4800">₹'+due.toLocaleString('en-IN',{maximumFractionDigits:0})+'</div><div class="stat-l">Total due</div></div>';
+          '<div class="stat" style="background:#fde8e8;border-color:#f0b0b0"><div class="stat-n" style="color:#c8382a">'+custCount+'</div><div class="stat-l">Customers</div></div>'+
+          '<div class="stat" style="background:#fde8e8;border-color:#f0b0b0"><div class="stat-n" style="color:#c8382a">'+unpaid.length+'</div><div class="stat-l">Invoices</div></div>'+
+          '<div class="stat" style="background:#e3f2fd;border-color:#90caf9"><div class="stat-n" style="color:#1565c0">'+claims.length+'</div><div class="stat-l">Requests</div></div>'+
+          '<div class="stat" style="background:#fff8e1;border-color:#ffe082"><div class="stat-n" style="color:#7a4800">₹'+due.toLocaleString('en-IN',{maximumFractionDigits:0})+'</div><div class="stat-l">Total due</div></div>';
       }
 
       var elOpen = document.getElementById('pay-desk-list');
@@ -2827,6 +2868,6 @@ function payDeskLoadBlockSettings() {
       var startTab = params.get('tab') || start || 'pay-challan';
       payShowTab(startTab);
     })();
-  </script>
+</script>
 </body>
 </html>
