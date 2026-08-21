@@ -59,7 +59,8 @@ var STATIC = [
   '/packaging.html',
   // '/tracking.html',  // not needed now — role-based dashboards via index.html
   '/superadmin.html',
-  '/teapost-head.html',
+  '/brand-head.html',
+  '/finance.html',
   '/config.js',
   '/api.js',
   '/icon-192.png',
