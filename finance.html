@@ -269,6 +269,7 @@
         <button class="tab" onclick="showTab('loans')">📋 Loans</button>
         <button class="tab" onclick="showTab('payments')">💰 Payments</button>
         <button class="tab" onclick="showTab('report')">📊 Report</button>
+        <button class="tab" onclick="showTab('masters')">⚙ Masters</button>
     </div>
 
     <!-- ══ DASHBOARD ══ -->
@@ -518,15 +519,11 @@
     <div class="page" id="tab-drivers">
         <!-- Sub-tabs -->
         <div style="display:flex;gap:8px;margin-bottom:8px;overflow-x:auto;padding-bottom:4px">
-            <button class="btn-sm btn-blue" id="dstab-txns" onclick="showDriverTab('txns')">📋 All Txns</button>
+            <button class="btn-sm btn-blue" id="dstab-advance" onclick="showDriverTab('advance')">📱 Pay</button>
             <button class="btn-sm btn-grey" id="dstab-salary" onclick="showDriverTab('salary')">💰 Salary</button>
-            <button class="btn-sm btn-grey" id="dstab-parttime" onclick="showDriverTab('parttime')">🕐 Part-time</button>
-            <button class="btn-sm btn-grey" id="dstab-advance" onclick="showDriverTab('advance')">📤 Advance</button>
-            <button class="btn-sm btn-grey" id="dstab-deduct" onclick="showDriverTab('deduct')">⚠️ Deductions</button>
-            <button class="btn-sm btn-grey" id="dstab-leaves" onclick="showDriverTab('leaves')">🏖 Leaves</button>
-            <button class="btn-sm btn-grey" id="dstab-tempopay" onclick="showDriverTab('tempopay')">🚐 Tempo Rent</button>
-            <button class="btn-sm btn-grey" id="dstab-manage" onclick="showDriverTab('manage')">👤 Manage</button>
+            <button class="btn-sm btn-grey" id="dstab-txns" onclick="showDriverTab('txns')">📋 Statement</button>
         </div>
+        <div style="font-size:11px;color:#64748b;margin:-2px 0 8px;line-height:1.4">Pay driver anytime · Salary slip monthly · Statement = full history. Masters = add/edit drivers.</div>
         <div style="display:flex;justify-content:flex-end;margin-bottom:6px">
             <button class="btn-sm btn-grey" onclick="refreshDriverTab()" style="font-size:12px">🔄 Refresh</button>
         </div>
@@ -719,69 +716,53 @@
             <div id="parttimeList"><div class="empty">Select month</div></div>
         </div>
 
-        <!-- Advance -->
+        <!-- Pay driver -->
         <div id="dsec-advance" style="display:none">
             <div class="card">
-                <div class="card-title" id="adv-form-title">📤 Give Advance</div>
+                <div class="card-title">📱 Pay driver</div>
+                <div style="font-size:12px;color:#64748b;margin-bottom:10px;line-height:1.4">Select driver → amount → description → open UPI → after paying, tap <b>Done</b>. Updates driver record + bank together.</div>
                 <input type="hidden" id="adv-edit-id" value="0">
-                <label class="lbl">Driver</label>
+                <label class="lbl">1. Driver</label>
                 <select id="adv-driver" onchange="refreshAdvUpiBox()"></select>
                 <div class="row2">
-                    <div><label class="lbl">Date</label>
+                    <div><label class="lbl">2. Date</label>
                         <input type="date" id="adv-date"></div>
-                    <div><label class="lbl">Amount (₹)</label>
-                        <input type="number" id="adv-amount" placeholder="0"></div>
+                    <div><label class="lbl">3. Amount (₹)</label>
+                        <input type="number" id="adv-amount" placeholder="0" oninput="refreshAdvUpiBox()"></div>
                 </div>
-                <label class="lbl">Paid From Account</label>
+                <label class="lbl">4. Description</label>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+                    <button type="button" class="btn-sm btn-grey" onclick="setAdvDesc('Advance')">Advance</button>
+                    <button type="button" class="btn-sm btn-grey" onclick="setAdvDesc('Salary advance')">Salary advance</button>
+                    <button type="button" class="btn-sm btn-grey" onclick="setAdvDesc('Emergency / medical')">Emergency</button>
+                    <button type="button" class="btn-sm btn-grey" onclick="setAdvDesc('Fuel / expense')">Fuel / expense</button>
+                    <button type="button" class="btn-sm btn-grey" onclick="setAdvDesc('Other')">Other</button>
+                </div>
+                <input type="text" id="adv-reason" placeholder="Or type custom description…" oninput="refreshAdvUpiBox()">
+                <label class="lbl">Pay from account</label>
                 <select id="adv-bank-account">
-                    <option value="">— No bank entry —</option>
+                    <option value="">— Select bank / cash —</option>
                 </select>
-                <label class="lbl">Reason</label>
-                <input type="text" id="adv-reason" placeholder="Medical, personal…">
-                <div id="adv-upi-box" style="display:none;margin:8px 0;padding:10px;background:#f0fdfa;border:1px solid #99f6e4;border-radius:10px">
-                    <div style="font-size:12px;font-weight:700;color:#0f766e">📱 Pay this driver via UPI</div>
-                    <div id="adv-upi-info" style="font-size:11px;color:#475569;margin:4px 0 8px"></div>
-                    <button type="button" class="btn btn-blue" style="width:100%" onclick="payAdvanceViaUpi()">📱 Open UPI app → then record</button>
+                <div id="adv-upi-box" style="margin:10px 0;padding:12px;background:#f0fdfa;border:1px solid #99f6e4;border-radius:12px">
+                    <div style="font-size:12px;font-weight:700;color:#0f766e;margin-bottom:4px">5. Pay</div>
+                    <div id="adv-upi-info" style="font-size:11px;color:#475569;margin-bottom:8px">Select driver</div>
+                    <button type="button" class="btn btn-blue" style="width:100%;margin-bottom:8px;display:none" id="adv-upi-btn" onclick="payAdvanceViaUpi()">📱 Open PhonePe / GPay / UPI</button>
+                    <button type="button" class="btn" style="width:100%;background:#0f766e;color:#fff" id="adv-save-btn" onclick="saveAdvance()">✅ Done — save payment</button>
                 </div>
-                <div style="display:flex;gap:8px;flex-wrap:wrap">
-                    <button class="btn btn-yellow" id="adv-save-btn" style="flex:1" onclick="saveAdvance()">📤 Record Advance</button>
-                    <button class="btn btn-grey" id="adv-cancel-btn" style="display:none;flex:none" onclick="cancelEditAdvance()">✕ Cancel</button>
-                </div>
+                <button class="btn btn-grey" id="adv-cancel-btn" style="display:none;width:100%;margin-top:6px" onclick="cancelEditAdvance()">✕ Cancel edit</button>
                 <div id="adv-msg"></div>
             </div>
             <div class="card">
-                <div class="card-title">📋 Advance History</div>
-                <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
-                    <select id="adv-list-driver" onchange="loadAdvanceList()" style="flex:1"></select>
-                    <input type="month" id="adv-list-month" onchange="loadAdvanceList()" style="flex:1" placeholder="All months">
+                <div class="card-title">📋 Payment history</div>
+                <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;flex-wrap:wrap">
+                    <select id="adv-list-driver" onchange="loadAdvanceList()" style="flex:1;min-width:120px"></select>
+                    <input type="month" id="adv-list-month" onchange="loadAdvanceList()" style="flex:1;min-width:120px">
                     <button class="btn-sm btn-grey" onclick="loadAdvanceList()" style="flex:none">🔄</button>
                 </div>
-                <div style="font-size:10px;color:#7a8fa6;margin-bottom:6px;font-family:monospace">Leave month blank to see all. Latest first.</div>
                 <div id="advanceList"><div class="empty">Select driver</div></div>
             </div>
-            <!-- Balance Adjustment -->
-            <div class="card" style="border:1px solid #c7d2fe;background:#f8f7ff">
-                <div class="card-title" style="color:#4338ca">⚖️ Balance Adjustment</div>
-                <div style="font-size:11px;color:#6366f1;margin-bottom:10px">Use this when you can't enter all historical transactions. Sets an opening/adjustment balance for a driver.</div>
-                <label class="lbl">Driver</label>
-                <select id="adj-driver"></select>
-                <div class="row2">
-                    <div><label class="lbl">Date</label>
-                        <input type="date" id="adj-date"></div>
-                    <div><label class="lbl">Amount (₹)</label>
-                        <input type="number" id="adj-amount" placeholder="0"></div>
-                </div>
-                <label class="lbl">Adjustment Type</label>
-                <select id="adj-direction">
-                    <option value="balance_adj_credit">💸 Owner owes Driver (historical dues unpaid)</option>
-                    <option value="balance_adj_debit">⚠️ Driver owes Owner (advance / historical debt)</option>
-                </select>
-                <label class="lbl">Note / Reason</label>
-                <input type="text" id="adj-reason" placeholder="Opening balance, historical dues, etc.">
-                <button class="btn" style="background:#4338ca;color:#fff;width:100%;margin-top:8px" onclick="saveBalanceAdj()">⚖️ Save Adjustment</button>
-                <div id="adj-msg"></div>
-            </div>
         </div>
+
 
         <!-- Deductions -->
         <div id="dsec-deduct" style="display:none">
@@ -1024,6 +1005,25 @@
                     </label>
                     <div style="font-size:10px;color:#64748b;margin-top:4px">Defaults flow into salary slip; days/rate still editable when generating slip.</div>
                 </div>
+                <div style="margin-top:10px;padding:12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px">
+                    <div style="font-size:12px;font-weight:700;color:#c2410c;margin-bottom:4px">🏁 Opening balance (go-live)</div>
+                    <div style="font-size:11px;color:#9a3412;margin-bottom:8px;line-height:1.4">Do <b>not</b> re-enter old advances. Enter only what the driver still owes the company <b>today</b>. This creates one opening entry.</div>
+                    <div class="row2">
+                        <div><label class="lbl">Opening advance (driver owes company) ₹</label>
+                            <input type="number" id="drv-opening-adv" placeholder="0" min="0" step="0.01"></div>
+                        <div><label class="lbl">As of date</label>
+                            <input type="date" id="drv-opening-date"></div>
+                    </div>
+                    <div class="row2" style="margin-top:6px">
+                        <div><label class="lbl">Status</label>
+                            <select id="drv-status">
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                                <option value="deleted">Deleted (hide)</option>
+                            </select></div>
+                        <div></div>
+                    </div>
+                </div>
                 <label class="lbl">Note</label>
                 <input type="text" id="drv-note" placeholder="">
                 <div style="margin-top:10px;padding:10px;background:#f0fdfa;border:1px solid #99f6e4;border-radius:10px">
@@ -1050,8 +1050,6 @@
     <div class="page" id="tab-fleet">
         <div style="display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px">
             <button class="btn-sm btn-blue" id="fltab-tempos" onclick="showFleetTab('tempos')">🚛 Tempos</button>
-            <button class="btn-sm btn-grey" id="fltab-rentin" onclick="showFleetTab('rentin')">📥 Rent In</button>
-            <button class="btn-sm btn-grey" id="fltab-rentout" onclick="showFleetTab('rentout')">📤 Rent Out</button>
             <button class="btn-sm btn-grey" id="fltab-service" onclick="showFleetTab('service')">🔧 Service</button>
         </div>
 
@@ -1076,95 +1074,6 @@
             </div>
         </div>
 
-        <!-- Rent IN -->
-        <div id="flsec-rentin" style="display:none">
-            <div class="card">
-                <div class="card-title">📥 Tempo Rent IN (you pay)</div>
-                <div class="row2">
-                    <div><label class="lbl">Tempo</label>
-                        <select id="ri-tempo"></select></div>
-                    <div><label class="lbl">Month</label>
-                        <input type="month" id="ri-month"></div>
-                </div>
-                <div class="row2">
-                    <div><label class="lbl">Agreed Rent (₹)</label>
-                        <input type="number" id="ri-agreed" placeholder="0" oninput="calcRentIn()"></div>
-                    <div><label class="lbl">Breakdown Days</label>
-                        <input type="number" id="ri-breakdown" placeholder="0" oninput="calcRentIn()"></div>
-                </div>
-                <label class="lbl">Deduction per Breakdown Day (₹)</label>
-                <input type="number" id="ri-deduct-per-day" placeholder="0" oninput="calcRentIn()">
-                <div class="row2">
-                    <div><label class="lbl">Total Deduction</label>
-                        <input type="number" id="ri-deduct-total" placeholder="0" style="background:#fde8e8"></div>
-                    <div><label class="lbl">Final Rent (₹)</label>
-                        <input type="number" id="ri-final" placeholder="0" style="background:#e8f5e9;font-weight:800;color:#1e7a4f"></div>
-                </div>
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-                    <input type="checkbox" id="ri-paid" style="width:auto;margin:0">
-                    <label for="ri-paid" style="font-size:13px;font-weight:600">Paid</label>
-                </div>
-                <label class="lbl">Note</label>
-                <input type="text" id="ri-note" placeholder="">
-                <button class="btn btn-blue" onclick="saveRentIn()">💾 Save Rent</button>
-                <div id="ri-msg"></div>
-            </div>
-            <div class="card">
-                <div class="card-title">📋 Rent IN Records</div>
-                <div class="row2" style="margin-bottom:8px">
-                    <select id="ri-list-tempo" onchange="loadRentInList()"><option value="">All Tempos</option></select>
-                    <input type="month" id="ri-list-month" onchange="loadRentInList()">
-                </div>
-                <div id="rentInList"><div class="empty">Loading…</div></div>
-            </div>
-        </div>
-
-        <!-- Rent OUT -->
-        <div id="flsec-rentout" style="display:none">
-            <div class="card">
-                <div class="card-title">📤 Tempo Rent OUT (you receive)</div>
-                <div class="row2">
-                    <div><label class="lbl">Tempo</label>
-                        <select id="ro-tempo"></select></div>
-                    <div><label class="lbl">Month</label>
-                        <input type="month" id="ro-month"></div>
-                </div>
-                <div class="row2">
-                    <div><label class="lbl">Customer Name</label>
-                        <input type="text" id="ro-cust" placeholder="Name"></div>
-                    <div><label class="lbl">Mobile</label>
-                        <input type="tel" id="ro-mobile" placeholder="9XXXXXXXX"></div>
-                </div>
-                <div class="row2">
-                    <div><label class="lbl">Agreed Rent (₹)</label>
-                        <input type="number" id="ro-agreed" placeholder="0" oninput="calcRentOut()"></div>
-                    <div><label class="lbl">Breakdown Days</label>
-                        <input type="number" id="ro-breakdown" placeholder="0" oninput="calcRentOut()"></div>
-                </div>
-                <label class="lbl">Deduction per Breakdown Day (₹)</label>
-                <input type="number" id="ro-deduct-per-day" placeholder="0" oninput="calcRentOut()">
-                <div class="row2">
-                    <div><label class="lbl">Final Rent (₹)</label>
-                        <input type="number" id="ro-final" placeholder="0" style="background:#e8f5e9"></div>
-                    <div><label class="lbl">Received (₹)</label>
-                        <input type="number" id="ro-received" placeholder="0" oninput="calcRentOut()"></div>
-                </div>
-                <label class="lbl">Balance Due (₹)</label>
-                <input type="number" id="ro-balance" placeholder="0" style="background:#fde8e8;font-weight:800;color:#c8382a">
-                <label class="lbl">Note</label>
-                <input type="text" id="ro-note" placeholder="">
-                <button class="btn btn-green" onclick="saveRentOut()">💾 Save Rent Out</button>
-                <div id="ro-msg"></div>
-            </div>
-            <div class="card">
-                <div class="card-title">📋 Rent OUT Records</div>
-                <div class="row2" style="margin-bottom:8px">
-                    <select id="ro-list-tempo" onchange="loadRentOutList()"><option value="">All Tempos</option></select>
-                    <input type="month" id="ro-list-month" onchange="loadRentOutList()">
-                </div>
-                <div id="rentOutList"><div class="empty">Loading…</div></div>
-            </div>
-        </div>
 
         <!-- Service -->
         <div id="flsec-service" style="display:none">
@@ -1498,16 +1407,31 @@
         <div id="bksec-manage" style="display:none">
             <div class="card">
                 <div class="card-title">🏦 Add Account</div>
+                <div style="font-size:11px;color:#64748b;margin-bottom:8px;line-height:1.4">Set <b>opening balance as of go-live</b>. No need to enter old transactions — only the balance in hand today.</div>
                 <div class="row2">
                     <div><label class="lbl">Account Name</label>
-                        <input type="text" id="bk-acc-name" placeholder="e.g. HDFC Current"></div>
+                        <input type="text" id="bk-acc-name" placeholder="e.g. HDFC Current / Cash"></div>
+                    <div><label class="lbl">Type</label>
+                        <select id="bk-acc-type">
+                            <option value="bank">Bank</option>
+                            <option value="cash">Cash</option>
+                            <option value="partner">Partner account</option>
+                        </select></div>
+                </div>
+                <div class="row2">
                     <div><label class="lbl">Account No (last 4)</label>
                         <input type="text" id="bk-acc-no" placeholder="XXXX"></div>
+                    <div><label class="lbl">Status</label>
+                        <select id="bk-acc-status">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="deleted">Deleted (hide)</option>
+                        </select></div>
                 </div>
-                <label class="lbl">Opening Balance (₹)</label>
-                <input type="number" id="bk-acc-opening" placeholder="0">
+                <label class="lbl">Opening Balance (₹) — as of go-live</label>
+                <input type="number" id="bk-acc-opening" placeholder="0" step="0.01">
                 <label class="lbl">Note</label>
-                <input type="text" id="bk-acc-note" placeholder="">
+                <input type="text" id="bk-acc-note" placeholder="e.g. Opening as of 01-Apr-2026">
                 <button class="btn btn-blue" onclick="saveBankAccount()">➕ Add Account</button>
                 <div id="bk-acc-msg"></div>
             </div>
@@ -1585,7 +1509,7 @@
                             <input type="number" id="ln-down-payment" placeholder="0"></div>
                     </div>
                     <div class="row2">
-                        <div><label class="lbl">Principal (₹)</label>
+                        <div><label class="lbl">Original principal (₹)</label>
                             <input type="number" id="ln-principal" placeholder="0"></div>
                         <div><label class="lbl">Interest % p.a.</label>
                             <input type="number" id="ln-rate" placeholder="0"></div>
@@ -1593,8 +1517,17 @@
                     <div class="row2">
                         <div><label class="lbl">EMI Amount (₹)</label>
                             <input type="number" id="ln-emi" placeholder="0"></div>
-                        <div><label class="lbl">Total EMIs</label>
+                        <div><label class="lbl">Total EMIs (full tenure)</label>
                             <input type="number" id="ln-total-emis" placeholder="0"></div>
+                    </div>
+                    <div style="margin:8px 0;padding:10px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px">
+                        <div style="font-size:11px;font-weight:700;color:#c2410c;margin-bottom:6px">🏁 Opening (go-live) — no need to enter old EMIs</div>
+                        <div class="row2">
+                            <div><label class="lbl">Outstanding principal now (₹)</label>
+                                <input type="number" id="ln-outstanding" placeholder="Same as principal if new"></div>
+                            <div><label class="lbl">EMIs remaining</label>
+                                <input type="number" id="ln-emis-left" placeholder="e.g. 24"></div>
+                        </div>
                     </div>
                 </div>
                 <!-- OD only fields -->
@@ -1605,11 +1538,24 @@
                         <div><label class="lbl">Interest % p.a.</label>
                             <input type="number" id="ln-od-rate" placeholder="0"></div>
                     </div>
+                    <div class="row2">
+                        <div><label class="lbl">Current OD used / outstanding (₹)</label>
+                            <input type="number" id="ln-od-outstanding" placeholder="0"></div>
+                        <div></div>
+                    </div>
                 </div>
-                <label class="lbl">Start Date</label>
-                <input type="date" id="ln-start">
+                <div class="row2">
+                    <div><label class="lbl">Start / go-live date</label>
+                        <input type="date" id="ln-start"></div>
+                    <div><label class="lbl">Status</label>
+                        <select id="ln-status">
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive / Closed</option>
+                            <option value="deleted">Deleted (hide)</option>
+                        </select></div>
+                </div>
                 <label class="lbl">Note</label>
-                <input type="text" id="ln-note" placeholder="">
+                <input type="text" id="ln-note" placeholder="e.g. Opening as of Apr 2026">
                 <button class="btn btn-blue" onclick="saveLoan()">💾 Save</button>
                 <div id="ln-msg"></div>
             </div>
@@ -1681,6 +1627,151 @@
                 </div>
             </div>
             <div id="tempoReport"><div class="empty">Select month</div></div>
+        </div>
+    </div>
+
+
+    <!-- ══ MASTERS (single place for one-time setup) ══ -->
+    <div class="page" id="tab-masters">
+        <div class="card" style="margin-bottom:10px;padding:12px 14px;background:#f8fafc;border:1px solid #e2e8f0">
+            <div style="font-weight:800;font-size:15px;color:#1e293b;margin-bottom:4px">⚙ Master data</div>
+            <div style="font-size:12px;color:#64748b;line-height:1.45">Add once, edit anytime. Use this for drivers, bank/cash accounts, tempos, customers and vendors — then use daily tabs only for transactions.</div>
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px">
+            <button type="button" class="btn-sm btn-blue" id="msttab-drivers" onclick="showMasterType('drivers')">👷 Drivers</button>
+            <button type="button" class="btn-sm btn-grey" id="msttab-accounts" onclick="showMasterType('accounts')">🏦 Accounts</button>
+            <button type="button" class="btn-sm btn-grey" id="msttab-tempos" onclick="showMasterType('tempos')">🚛 Tempos</button>
+            <button type="button" class="btn-sm btn-grey" id="msttab-customers" onclick="showMasterType('customers')">👤 Customers</button>
+            <button type="button" class="btn-sm btn-grey" id="msttab-vendors" onclick="showMasterType('vendors')">🛒 Vendors</button>
+        </div>
+
+        <!-- Drivers form -->
+        <div id="mst-form-drivers" class="card" style="display:none">
+            <div class="card-title" id="mst-drv-title">➕ Add Driver</div>
+            <input type="hidden" id="mst-drv-id" value="">
+            <div class="row2">
+                <div><label class="lbl">Name *</label><input type="text" id="mst-drv-name" placeholder="Driver name"></div>
+                <div><label class="lbl">Mobile</label><input type="tel" id="mst-drv-mobile" placeholder="9XXXXXXXXX"></div>
+            </div>
+            <div class="row2">
+                <div><label class="lbl">Pay type</label>
+                    <select id="mst-drv-paytype" onchange="mstDrvPayType()">
+                        <option value="monthly">Monthly salary</option>
+                        <option value="daily">Per day</option>
+                        <option value="tempo_only">Tempo only</option>
+                    </select></div>
+                <div><label class="lbl">Status</label>
+                    <select id="mst-drv-status">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select></div>
+            </div>
+            <div class="row2" id="mst-drv-sal-row">
+                <div><label class="lbl">Monthly salary (₹)</label><input type="number" id="mst-drv-salary" placeholder="0"></div>
+                <div id="mst-drv-daily-wrap" style="display:none"><label class="lbl">Daily rate (₹)</label><input type="number" id="mst-drv-daily" placeholder="0"></div>
+            </div>
+            <div class="row2">
+                <div><label class="lbl">Opening advance (owes company) ₹</label><input type="number" id="mst-drv-open-adv" placeholder="0" min="0"></div>
+                <div><label class="lbl">Opening as of</label><input type="date" id="mst-drv-open-date"></div>
+            </div>
+            <div class="row2">
+                <div><label class="lbl">UPI ID</label><input type="text" id="mst-drv-upi" placeholder="name@ybl"></div>
+                <div><label class="lbl">UPI payee name</label><input type="text" id="mst-drv-upiname" placeholder=""></div>
+            </div>
+            <label class="lbl">Note</label><input type="text" id="mst-drv-note" placeholder="">
+            <div style="display:flex;gap:8px;margin-top:8px">
+                <button class="btn btn-blue" style="flex:1" onclick="mstSaveDriver()">💾 Save Driver</button>
+                <button class="btn btn-grey" style="flex:none" onclick="mstClearDriver()">Clear</button>
+            </div>
+            <div id="mst-drv-msg"></div>
+        </div>
+
+        <!-- Accounts form -->
+        <div id="mst-form-accounts" class="card" style="display:none">
+            <div class="card-title" id="mst-acc-title">➕ Add Account</div>
+            <input type="hidden" id="mst-acc-id" value="">
+            <div class="row2">
+                <div><label class="lbl">Name *</label><input type="text" id="mst-acc-name" placeholder="HDFC / Cash / Partner"></div>
+                <div><label class="lbl">Type</label>
+                    <select id="mst-acc-type">
+                        <option value="bank">Bank</option>
+                        <option value="cash">Cash</option>
+                        <option value="partner">Partner</option>
+                    </select></div>
+            </div>
+            <div class="row2">
+                <div><label class="lbl">A/c no (last 4)</label><input type="text" id="mst-acc-no" placeholder="XXXX"></div>
+                <div><label class="lbl">Status</label>
+                    <select id="mst-acc-status">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select></div>
+            </div>
+            <label class="lbl">Opening balance (₹) as of go-live</label>
+            <input type="number" id="mst-acc-opening" placeholder="0" step="0.01">
+            <label class="lbl">Note</label><input type="text" id="mst-acc-note" placeholder="">
+            <div style="display:flex;gap:8px;margin-top:8px">
+                <button class="btn btn-blue" style="flex:1" onclick="mstSaveAccount()">💾 Save Account</button>
+                <button class="btn btn-grey" style="flex:none" onclick="mstClearAccount()">Clear</button>
+            </div>
+            <div id="mst-acc-msg"></div>
+        </div>
+
+        <!-- Tempos form -->
+        <div id="mst-form-tempos" class="card" style="display:none">
+            <div class="card-title" id="mst-tmp-title">➕ Add Tempo</div>
+            <input type="hidden" id="mst-tmp-id" value="">
+            <div class="row2">
+                <div><label class="lbl">Vehicle / name *</label><input type="text" id="mst-tmp-name" placeholder="MH12 AB 1234"></div>
+                <div><label class="lbl">Type</label><input type="text" id="mst-tmp-type" placeholder="Tata Ace…"></div>
+            </div>
+            <div class="row2">
+                <div><label class="lbl">Owner</label><input type="text" id="mst-tmp-owner" placeholder="If rented"></div>
+                <div><label class="lbl">Status</label>
+                    <select id="mst-tmp-status">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select></div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:8px">
+                <button class="btn btn-blue" style="flex:1" onclick="mstSaveTempo()">💾 Save Tempo</button>
+                <button class="btn btn-grey" style="flex:none" onclick="mstClearTempo()">Clear</button>
+            </div>
+            <div id="mst-tmp-msg"></div>
+        </div>
+
+        <!-- Parties form (customer / vendor) -->
+        <div id="mst-form-parties" class="card" style="display:none">
+            <div class="card-title" id="mst-pty-title">➕ Add Customer</div>
+            <input type="hidden" id="mst-pty-id" value="">
+            <input type="hidden" id="mst-pty-type" value="client">
+            <div class="row2">
+                <div><label class="lbl">Name *</label><input type="text" id="mst-pty-name" placeholder="Name"></div>
+                <div><label class="lbl">Mobile</label><input type="tel" id="mst-pty-mobile" placeholder=""></div>
+            </div>
+            <div class="row2">
+                <div><label class="lbl">Opening balance (₹)</label><input type="number" id="mst-pty-open" placeholder="0" step="0.01">
+                    <div style="font-size:10px;color:#64748b;margin-top:2px">+ = they owe you · − = you owe them</div></div>
+                <div><label class="lbl">Status</label>
+                    <select id="mst-pty-status">
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select></div>
+            </div>
+            <label class="lbl">Note</label><input type="text" id="mst-pty-note" placeholder="">
+            <div style="display:flex;gap:8px;margin-top:8px">
+                <button class="btn btn-blue" style="flex:1" onclick="mstSaveParty()">💾 Save</button>
+                <button class="btn btn-grey" style="flex:none" onclick="mstClearParty()">Clear</button>
+            </div>
+            <div id="mst-pty-msg"></div>
+        </div>
+
+        <div class="card" style="margin-top:10px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;flex-wrap:wrap">
+                <div class="card-title" style="margin:0" id="mst-list-title">Existing drivers</div>
+                <input type="search" id="mst-search" placeholder="Search…" oninput="mstFilterList()" style="max-width:180px;font-size:13px">
+            </div>
+            <div id="mst-list"><div class="empty">Loading…</div></div>
         </div>
     </div>
 
@@ -1902,11 +1993,17 @@
       if(tab==='bank'){ _currentBankAccount=''; loadBankAccounts(); showBankTab('accounts'); }
       if(tab==='expenses'){ populateExpCatSelects(); setExpenseFilter('month'); showExpenseTab('all'); }
       if(tab==='payments') loadPaymentList();
-      if(tab==='drivers') { showDriverTab('txns'); }
+      if(tab==='drivers') { showDriverTab('advance'); }
       if(tab==='ledger') { showLedgerTab(_currentLedgerTab||'all'); }
       if(tab==='report') { showReportTab('pl'); }
+      if(tab==='masters') { showMasterType(_mstType||'drivers'); }
     }
     function showDriverTab(t){
+      // Legacy tabs redirected to simpler set
+      if(t==='manage'){ try{ showTab('masters'); showMasterType('drivers'); }catch(e){} return; }
+      if(t==='parttime') t='salary';
+      if(t==='deduct'||t==='leaves'||t==='tempopay') t='txns';
+      if(['txns','salary','advance'].indexOf(t)<0) t='advance';
       ['txns','salary','parttime','advance','deduct','leaves','tempopay','manage'].forEach(function(s){
         var el=document.getElementById('dsec-'+s); if(el) el.style.display=s===t?'block':'none';
         var btn=document.getElementById('dstab-'+s);
@@ -2147,39 +2244,58 @@
             var driverOwesTotal  =+(outstandingExcess+pendingAdvances+outstandingCredit).toFixed(2);
             var ownerOwesTotal   =+(trulyUnpaid+outstandingDebit).toFixed(2);
             var unpaidMonths =dSals.filter(function(r){return !r.paid_date;}).length;
-            function srow(lbl,val,color,small){
-              return'<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #edf2f7">'+
-                '<span style="font-size:'+(small?'10':'12')+'px;color:#555">'+lbl+'</span>'+
-                '<span style="font-size:'+(small?'11':'13')+'px;font-weight:800;color:'+(color||'#1a3a5c')+'">'+fmt(val)+'</span></div>';
-            }
-            return'<div class="card" style="margin-bottom:6px;padding:14px;border-left:4px solid '+balColor+'">'+
-              '<div style="font-weight:800;font-size:14px;margin-bottom:10px;color:#1a3a5c;display:flex;align-items:center;gap:8px">👤 '+d+
-                (unpaidMonths>0?'<span style="font-size:10px;background:#fff8e1;color:#c07000;font-weight:700;padding:2px 7px;border-radius:10px">'+unpaidMonths+' month'+(unpaidMonths>1?'s':'')+' pending</span>':'')+
-                (!hasSalaries?'<button class="btn-sm" style="font-size:10px;padding:2px 8px;background:#fee2e2;color:#c8382a;border:1px solid #fca5a5;border-radius:6px;cursor:pointer" onclick="cleanOrphanedCF(\''+d+'\')">🗑 Clean CF entries</button>':'')+
+            // Simple story for owner:
+            // moneyGiven = advance + cash on salary day
+            // moneyEarned = salary after tempo rent (trueGross)
+            // if given > earned → driver still has company money (advance / owes company)
+            // if earned > given → company still must pay driver
+            var moneyGiven = +(totalAdvGiven + cashPaid).toFixed(2);
+            var moneyEarned = trueGross;
+            var statusTitle = driverOwes ? 'Driver owes company (advance)' : (ownerOwes ? 'Company must pay driver' : 'Fully settled');
+            var statusHint = driverOwes
+              ? 'He already took more (advance / cash) than salary left after tempo rent'
+              : (ownerOwes ? 'Salary still pending / not fully paid in cash' : 'No pending balance either way');
+            var statusBg = driverOwes ? '#fef2f2' : '#f0fdf4';
+            var statusFg = driverOwes ? '#b91c1c' : '#166534';
+            return'<div class="card" style="margin-bottom:10px;padding:14px;border-left:4px solid '+statusFg+'">'+
+              '<div style="font-weight:800;font-size:15px;margin-bottom:10px;color:#1e293b;display:flex;align-items:center;gap:8px;flex-wrap:wrap">👤 '+d+
+                (unpaidMonths>0?'<span style="font-size:10px;background:#fff8e1;color:#c07000;font-weight:700;padding:2px 8px;border-radius:10px">'+unpaidMonths+' salary month pending</span>':'')+
+                (!hasSalaries?'<button class="btn-sm" style="font-size:10px;padding:2px 8px;background:#fee2e2;color:#c8382a;border:1px solid #fca5a5;border-radius:6px;cursor:pointer" onclick="cleanOrphanedCF(\''+d+'\')">🗑 Clean CF</button>':'')+
               '</div>'+
-              // Salary summary
-              '<div style="margin-bottom:8px">'+
-                srow('Total Salary (gross earned)',trueGross,'#1a3a5c')+
-                (tempoRentTotal>0?
-                  '<div style="display:flex;gap:6px;margin:2px 0 4px 0">'+
-                    '<div style="flex:1;background:#f0f4ff;border-radius:6px;padding:4px 8px;font-size:10px;display:flex;justify-content:space-between;align-items:center">'+
-                      '<span style="color:#555">🧑 Driver Salary</span><b style="color:#1a3a5c">'+fmt(pureDriverSalary)+'</b></div>'+
-                    '<div style="flex:1;background:#fff8e1;border-radius:6px;padding:4px 8px;font-size:10px;display:flex;justify-content:space-between;align-items:center">'+
-                      '<span style="color:#555">🚛 Tempo Rent</span><b style="color:#c07000">'+fmt(tempoRentTotal)+'</b></div>'+
-                  '</div>'
-                :'')+
-                srow('  ↳ Advance deducted in salary',totalAdvGiven,'#c07000',true)+
-                srow('  ↳ Cash paid on salary day',cashPaid,'#1e7a4f',true)+
-                (rentPaidByDriver>0?srow('  ↳ Rent paid by driver',rentPaidByDriver,'#1e7a4f',true):'')+
-              '</div>'+
-              // Final balance — single clear answer
-              '<div style="background:'+(driverOwes?'#fef2f2':ownerOwes?'#f0fdf4':'#f0fdf4')+';border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center">'+
-                '<div>'+
-                  '<div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px">Balance</div>'+
-                  '<div style="font-size:14px;font-weight:800;color:'+(driverOwes?'#c8382a':ownerOwes?'#1e7a4f':'#1e7a4f')+'">'+(driverOwes?'⚠️ Driver owes owner':ownerOwes?'💸 Owner owes driver':'✅ Fully Settled')+'</div>'+
+              // BIG answer first
+              '<div style="background:'+statusBg+';border:1px solid '+statusFg+'22;border-radius:12px;padding:14px 16px;margin-bottom:12px">'+
+                '<div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:4px">Who owes whom?</div>'+
+                '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">'+
+                  '<div style="font-size:16px;font-weight:800;color:'+statusFg+'">'+statusTitle+'</div>'+
+                  (Math.abs(balance)>0.01?'<div style="font-size:28px;font-weight:900;color:'+statusFg+'">'+fmt(Math.abs(balance))+'</div>':'<div style="font-size:18px;font-weight:800;color:'+statusFg+'">₹0</div>')+
                 '</div>'+
-                (Math.abs(balance)>0.01?'<div style="font-size:26px;font-weight:900;color:'+(driverOwes?'#c8382a':'#1e7a4f')+'">'+fmt(Math.abs(balance))+'</div>':'')+
+                '<div style="font-size:11px;color:#64748b;margin-top:6px;line-height:1.4">'+statusHint+'</div>'+
               '</div>'+
+              // Two simple numbers
+              '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">'+
+                '<div style="background:#f8fafc;border-radius:10px;padding:10px 12px;border:1px solid #e2e8f0">'+
+                  '<div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:4px">What company already gave</div>'+
+                  '<div style="font-size:18px;font-weight:900;color:#1e293b">'+fmt(moneyGiven)+'</div>'+
+                  '<div style="font-size:10px;color:#94a3b8;margin-top:4px">Advance '+fmt(totalAdvGiven)+' + Cash '+fmt(cashPaid)+'</div>'+
+                '</div>'+
+                '<div style="background:#f8fafc;border-radius:10px;padding:10px 12px;border:1px solid #e2e8f0">'+
+                  '<div style="font-size:10px;font-weight:700;color:#64748b;margin-bottom:4px">What driver earned (net)</div>'+
+                  '<div style="font-size:18px;font-weight:900;color:#1e293b">'+fmt(moneyEarned)+'</div>'+
+                  '<div style="font-size:10px;color:#94a3b8;margin-top:4px">Salary after tempo rent</div>'+
+                '</div>'+
+              '</div>'+
+              // Optional small detail
+              '<details style="margin-top:4px">'+
+                '<summary style="font-size:11px;color:#64748b;cursor:pointer;font-weight:600">More detail</summary>'+
+                '<div style="margin-top:8px;font-size:12px;color:#475569;line-height:1.6">'+
+                  '<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f1f5f9"><span>Driver salary (before tempo)</span><b>'+fmt(pureDriverSalary)+'</b></div>'+
+                  (tempoRentTotal>0?'<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f1f5f9"><span>Tempo rent charged</span><b style="color:#c07000">− '+fmt(tempoRentTotal)+'</b></div>':'')+
+                  '<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f1f5f9"><span>Net earned</span><b>'+fmt(moneyEarned)+'</b></div>'+
+                  '<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f1f5f9"><span>Advances given</span><b style="color:#c07000">'+fmt(totalAdvGiven)+'</b></div>'+
+                  '<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f1f5f9"><span>Cash on salary day</span><b style="color:#166534">'+fmt(cashPaid)+'</b></div>'+
+                  (rentPaidByDriver>0?'<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f1f5f9"><span>Tempo rent paid by driver</span><b style="color:#166534">'+fmt(rentPaidByDriver)+'</b></div>':'')+
+                '</div>'+
+              '</details>'+
             '</div>';
           }).join('');
         } else {sumEl.style.display='none';}
@@ -2290,13 +2406,13 @@
       });
     }
     function showFleetTab(t){
-      ['tempos','rentin','rentout','service'].forEach(function(s){
-        document.getElementById('flsec-'+s).style.display=s===t?'block':'none';
+      if(t!=='tempos'&&t!=='service') t='tempos';
+      ['tempos','service'].forEach(function(s){
+        var sec=document.getElementById('flsec-'+s);
+        if(sec) sec.style.display=s===t?'block':'none';
         var btn=document.getElementById('fltab-'+s);
         if(btn){btn.className='btn-sm '+(s===t?'btn-blue':'btn-grey');}
       });
-      if(t==='rentin') loadRentInList();
-      if(t==='rentout') loadRentOutList();
       if(t==='service'){ showServiceTab('log'); _svItems=[]; renderServiceItems(); }
     }
     function showLoanTab(t){
@@ -3846,15 +3962,28 @@
     function refreshAdvUpiBox(){
       var box=document.getElementById('adv-upi-box');
       var info=document.getElementById('adv-upi-info');
+      var btn=document.getElementById('adv-upi-btn');
       if(!box) return;
+      box.style.display='block';
       var drv=v('adv-driver');
+      var amt=parseFloat(v('adv-amount'))||0;
+      var reason=String(v('adv-reason')||'').trim();
       var d=drv?getDriverUpi(drv):null;
       if(d&&d.upi_vpa){
-        box.style.display='block';
-        if(info) info.textContent='Pay '+drv+' · '+(d.upi_vpa)+(d.upi_payee_name?' · '+d.upi_payee_name:'');
+        if(btn) btn.style.display='block';
+        if(info) info.textContent='Pay '+(drv||'')+(amt?' · ₹'+amt:'')+(reason?' · '+reason:'')+' → '+(d.upi_vpa)+(d.upi_payee_name?' ('+d.upi_payee_name+')':'');
       } else {
-        box.style.display='none';
+        if(btn) btn.style.display='none';
+        if(info) info.textContent=drv?'No UPI on this driver — save UPI in Masters, or pay cash and tap Done':'Select a driver first';
       }
+    }
+    function setAdvDesc(text){
+      setV('adv-reason', text === 'Other' ? '' : text);
+      if(text === 'Other'){
+        var el = document.getElementById('adv-reason');
+        if(el){ el.focus(); el.placeholder = 'Type custom description…'; }
+      }
+      refreshAdvUpiBox();
     }
     function payAdvanceViaUpi(){
       var drv=v('adv-driver'); var amt=parseFloat(v('adv-amount'));
@@ -3864,26 +3993,29 @@
       var reason=v('adv-reason')||'Advance';
       var note='Advance '+drv+(reason?' '+reason:'');
       if(openFinUpiPay(d.upi_vpa, d.upi_payee_name||drv, amt, note)){
-        showMsg('adv-msg','UPI app opened. After payment, tap Record Advance to save in books.','ok');
+        showMsg('adv-msg','UPI opened. After payment succeeds, tap Done — save payment.','ok');
       }
     }
     function saveAdvance(){
       var drv=v('adv-driver'); var amt=parseFloat(v('adv-amount'));
       var date=v('adv-date'); var reason=v('adv-reason'); var bankAcct=v('adv-bank-account');
-      if(!drv||!amt){showMsg('adv-msg','Fill driver and amount','er');return;}
-      var body={driver_name:drv,date:date,amount:amt,type:'advance',reason:reason,bank_account:bankAcct||''};
+      if(!drv||!amt){showMsg('adv-msg','Select driver and amount','er');return;}
+      if(!reason||!String(reason).trim()){showMsg('adv-msg','Select or type a description','er');return;}
+      var body={driver_name:drv,date:date||new Date().toISOString().slice(0,10),amount:amt,type:'advance',reason:String(reason).trim(),bank_account:bankAcct||''};
       var editId=parseInt(v('adv-edit-id'))||0;
+      var bankDesc = 'Driver pay — '+drv+(reason?' · '+String(reason).trim():'');
       var promise=editId>0 ? sbPatch('driver_advances','id=eq.'+editId,body) : sbPost('driver_advances',body);
       promise.then(function(r){
-        if(!r.ok){showMsg('adv-msg','Error saving','er');return;}
-        // also create bank transaction if account selected
+        if(!r.ok){showMsg('adv-msg','Error saving driver entry','er');return;}
+        // Bank entry linked to same payment
         if(bankAcct&&!editId){
-          sbPost('bank_transactions',{account_name:bankAcct,date:date,type:'debit',amount:amt,
-            description:finBankDesc('Advance', drv, reason||'UPI/cash'),reference:drv});
+          sbPost('bank_transactions',{account_name:bankAcct,date:body.date,type:'debit',amount:amt,
+            description:bankDesc,reference:drv,category:'Advance',note:String(reason).trim()});
         }
-        showMsg('adv-msg',(editId>0?'Updated':'Advance recorded'+(bankAcct?' + bank entry':''))+' ✓','ok');
-        setV('adv-amount','');setV('adv-reason','');setV('adv-bank-account','');
+        showMsg('adv-msg','Saved in driver +'+(bankAcct?' bank':'')+' ✓','ok');
+        setV('adv-amount','');setV('adv-reason','');
         cancelEditAdvance();loadAdvanceList();
+        try{ loadDriverTxns(); }catch(e){}
       });
     }
     function loadAdvanceList(){
@@ -3898,9 +4030,9 @@
         q+='&date=gte.'+y+'-'+m+'-01&date=lte.'+y+'-'+m+'-'+days;
       }
       sbGetQ('driver_advances',q).then(function(rows){
-        if(!rows.length){el.innerHTML='<div class="empty">No advances found'+(mon?' for '+mon:'')+'</div>';return;}
+        if(!rows.length){el.innerHTML='<div class="empty">No payments found'+(mon?' for '+mon:'')+'</div>';return;}
         var total=rows.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
-        el.innerHTML='<div class="msg in" style="margin-bottom:8px">Total Advances: '+fmt(total)+(mon?' for '+mon:' (all time)')+'</div>'+
+        el.innerHTML='<div class="msg in" style="margin-bottom:8px">Total paid: '+fmt(total)+(mon?' for '+mon:' (all time)')+'</div>'+
           rows.map(function(a){
             var bankInfo=a.bank_account?'<span class="badge b-blue" style="font-size:9px;margin-top:2px">🏦 '+a.bank_account+'</span>':'<span class="badge b-grey" style="font-size:9px;margin-top:2px">💵 Cash</span>';
             return'<div class="item-card" id="adv-item-'+a.id+'"><div style="display:flex;justify-content:space-between;align-items:center">'+
@@ -6679,7 +6811,7 @@
       ]).then(function(res){
         var drivers=res[0]||[]; var expenses=res[1]||[]; var payments=res[2]||[];
         var items=[];
-        drivers.forEach(function(d){items.push({icon:'👷',label:d.name,sub:'Driver',action:"showTab('drivers');showDriverTab('manage')"});});
+        drivers.forEach(function(d){items.push({icon:'👷',label:d.name,sub:'Driver',action:"showTab('masters');showMasterType('drivers')"});});
         expenses.forEach(function(e){items.push({icon:'💸',label:fmt(e.amount)+' — '+e.note,sub:e.date+' · '+e.category,action:"showTab('expenses')"});});
         payments.forEach(function(p){items.push({icon:'💰',label:p.customer_name+' — '+fmt(p.amount),sub:p.date+' · '+p.mode,action:"showTab('payments')"});});
         if(!items.length){dd.innerHTML='<div class="search-item" style="color:#7a8fa6">No results found</div>';dd.style.display='block';return;}
@@ -7108,6 +7240,397 @@
       for(var k in map){if(r.includes(k)) return map[k];}
       return 'other';
     }
+
+    // ══════════════════════════════════════════════
+    //  MASTERS — single place for setup data
+    // ══════════════════════════════════════════════
+    var _mstType = 'drivers';
+    var _mstCache = [];
+
+    function showMasterType(type){
+      _mstType = type || 'drivers';
+      ['drivers','accounts','tempos','customers','vendors'].forEach(function(s){
+        var btn = document.getElementById('msttab-'+s);
+        if(btn) btn.className = 'btn-sm '+(s===_mstType?'btn-blue':'btn-grey');
+      });
+      var isParty = (_mstType==='customers'||_mstType==='vendors');
+      document.getElementById('mst-form-drivers').style.display = _mstType==='drivers'?'block':'none';
+      document.getElementById('mst-form-accounts').style.display = _mstType==='accounts'?'block':'none';
+      document.getElementById('mst-form-tempos').style.display = _mstType==='tempos'?'block':'none';
+      document.getElementById('mst-form-parties').style.display = isParty?'block':'none';
+      if(isParty){
+        setV('mst-pty-type', _mstType==='vendors'?'vendor':'client');
+        document.getElementById('mst-pty-title').textContent = _mstType==='vendors'?'➕ Add Vendor':'➕ Add Customer';
+      }
+      var titles = {drivers:'Existing drivers',accounts:'Existing accounts',tempos:'Existing tempos',customers:'Existing customers',vendors:'Existing vendors'};
+      document.getElementById('mst-list-title').textContent = titles[_mstType]||'List';
+      setV('mst-search','');
+      if(_mstType==='drivers'){ mstClearDriver(); loadMasterDrivers(); }
+      if(_mstType==='accounts'){ mstClearAccount(); loadMasterAccounts(); }
+      if(_mstType==='tempos'){ mstClearTempo(); loadMasterTempos(); }
+      if(isParty){ mstClearParty(); loadMasterParties(_mstType==='vendors'?'vendor':'client'); }
+    }
+
+    function mstFilterList(){
+      var q = String(v('mst-search')||'').toLowerCase().trim();
+      var el = document.getElementById('mst-list');
+      if(!el) return;
+      var cards = el.querySelectorAll('[data-mst-search]');
+      cards.forEach(function(c){
+        var hay = (c.getAttribute('data-mst-search')||'').toLowerCase();
+        c.style.display = (!q || hay.indexOf(q)>=0) ? '' : 'none';
+      });
+    }
+
+    function mstStatusBadge(active){
+      return active
+        ? '<span class="badge b-green">Active</span>'
+        : '<span class="badge b-red">Inactive</span>';
+    }
+
+    function mstDrvPayType(){
+      var t = v('mst-drv-paytype');
+      document.getElementById('mst-drv-sal-row').style.display = t==='tempo_only'?'none':'flex';
+      document.getElementById('mst-drv-daily-wrap').style.display = t==='daily'?'block':'none';
+    }
+
+    function mstClearDriver(){
+      setV('mst-drv-id',''); setV('mst-drv-name',''); setV('mst-drv-mobile','');
+      setV('mst-drv-paytype','monthly'); setV('mst-drv-status','active');
+      setV('mst-drv-salary',''); setV('mst-drv-daily','');
+      setV('mst-drv-open-adv',''); setV('mst-drv-open-date','');
+      setV('mst-drv-upi',''); setV('mst-drv-upiname',''); setV('mst-drv-note','');
+      document.getElementById('mst-drv-title').textContent = '➕ Add Driver';
+      mstDrvPayType();
+    }
+    function loadMasterDrivers(){
+      sbGetQ('fin_drivers','order=name.asc').then(function(rows){
+        _mstCache = rows||[];
+        var el = document.getElementById('mst-list');
+        if(!rows.length){ el.innerHTML='<div class="empty">No drivers yet — add above</div>'; return; }
+        el.innerHTML = rows.map(function(d){
+          var pay = d.tempo_only ? 'Tempo only' : (d.is_parttime ? ('Per day ₹'+(d.daily_rate||0)) : ('Monthly '+fmt(d.base_salary||0)));
+          var search = (d.name||'')+' '+(d.mobile||'')+' '+(d.note||'');
+          return '<div class="item-card" data-mst-search="'+esc(search)+'">'+
+            '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center">'+
+            '<div><div style="font-weight:800">'+esc(d.name)+'</div>'+
+            '<div style="font-size:11px;color:#64748b;margin-top:3px">'+esc(pay)+
+            (d.mobile?' · '+esc(d.mobile):'')+
+            (d.upi_vpa?' · UPI':'')+
+            ' · '+mstStatusBadge(d.active!==false)+
+            '</div></div>'+
+            '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
+            '<button class="btn-sm btn-blue" onclick="mstEditDriver('+d.id+')">Edit</button>'+
+            '<button class="btn-sm btn-grey" onclick="mstToggleDriver('+d.id+','+(d.active===false?'true':'false')+')">'+(d.active===false?'Activate':'Deactivate')+'</button>'+
+            '<button class="btn-sm btn-del" onclick="delGuard(this,function(){mstDeleteDriver('+d.id+');})">Del</button>'+
+            '</div></div></div>';
+        }).join('');
+      });
+    }
+    function mstEditDriver(id){
+      var d = _mstCache.find(function(x){ return +x.id===+id; });
+      if(!d) return;
+      setV('mst-drv-id', d.id);
+      setV('mst-drv-name', d.name||'');
+      setV('mst-drv-mobile', d.mobile||'');
+      setV('mst-drv-status', d.active===false?'inactive':'active');
+      setV('mst-drv-paytype', d.tempo_only?'tempo_only':(d.is_parttime?'daily':'monthly'));
+      setV('mst-drv-salary', d.base_salary||'');
+      setV('mst-drv-daily', d.daily_rate||'');
+      setV('mst-drv-upi', d.upi_vpa||'');
+      setV('mst-drv-upiname', d.upi_payee_name||'');
+      setV('mst-drv-note', d.note||'');
+      setV('mst-drv-open-adv',''); // only for new
+      document.getElementById('mst-drv-title').textContent = '✏️ Edit Driver';
+      mstDrvPayType();
+      try{ document.getElementById('mst-form-drivers').scrollIntoView({behavior:'smooth',block:'nearest'}); }catch(e){}
+    }
+    function mstSaveDriver(){
+      var id = v('mst-drv-id');
+      var name = String(v('mst-drv-name')||'').trim();
+      if(!name){ showMsg('mst-drv-msg','Name required','er'); return; }
+      var pay = v('mst-drv-paytype');
+      var upi = String(v('mst-drv-upi')||'').trim();
+      if(upi && upi.indexOf('@')<0){ showMsg('mst-drv-msg','UPI must include @','er'); return; }
+      var active = v('mst-drv-status')!=='inactive';
+      var body = {
+        name: name,
+        mobile: v('mst-drv-mobile')||'',
+        is_parttime: pay==='daily',
+        tempo_only: pay==='tempo_only',
+        base_salary: (pay==='monthly') ? (parseFloat(v('mst-drv-salary'))||0) : 0,
+        daily_rate: (pay==='daily') ? (parseFloat(v('mst-drv-daily'))||0) : 0,
+        note: v('mst-drv-note')||'',
+        active: active,
+        upi_vpa: upi||null,
+        upi_payee_name: String(v('mst-drv-upiname')||'').trim()||null
+      };
+      var promise = id
+        ? fetch(BASE+'/fin_drivers?id=eq.'+id,{method:'PATCH',headers:hdrs({'Prefer':'return=minimal'}),body:JSON.stringify(body)}).then(function(r){return{ok:r.ok};})
+        : sbPost('fin_drivers', body);
+      promise.then(function(r){
+        if(!r.ok){ showMsg('mst-drv-msg','Save failed','er'); return; }
+        var openAdv = parseFloat(v('mst-drv-open-adv'))||0;
+        var openDate = v('mst-drv-open-date') || new Date().toISOString().slice(0,10);
+        if(!id && openAdv > 0){
+          return sbPost('driver_advances', {
+            driver_name: name,
+            date: openDate,
+            amount: openAdv,
+            type: 'balance_adj_debit',
+            reason: 'Opening balance — driver owes company as of '+openDate,
+            note: 'Opening advance'
+          }).then(function(){ return {ok:true}; });
+        }
+        return {ok:true};
+      }).then(function(r){
+        if(r && r.ok){
+          showMsg('mst-drv-msg','Saved ✓','ok');
+          mstClearDriver();
+          loadMasterDrivers();
+          try{ loadDriversFromDB(function(){}); }catch(e){}
+        }
+      });
+    }
+    function mstToggleDriver(id, active){
+      fetch(BASE+'/fin_drivers?id=eq.'+id,{method:'PATCH',headers:hdrs({'Prefer':'return=minimal'}),body:JSON.stringify({active: active===true||active==='true'})})
+        .then(function(){ loadMasterDrivers(); try{ loadDriversFromDB(function(){}); }catch(e){} });
+    }
+    function mstDeleteDriver(id){
+      // soft delete preferred
+      fetch(BASE+'/fin_drivers?id=eq.'+id,{method:'PATCH',headers:hdrs({'Prefer':'return=minimal'}),body:JSON.stringify({active:false, note:'deleted'})})
+        .then(function(){ loadMasterDrivers(); });
+    }
+
+    function mstClearAccount(){
+      setV('mst-acc-id',''); setV('mst-acc-name',''); setV('mst-acc-type','bank');
+      setV('mst-acc-no',''); setV('mst-acc-status','active');
+      setV('mst-acc-opening',''); setV('mst-acc-note','');
+      document.getElementById('mst-acc-title').textContent = '➕ Add Account';
+    }
+    function loadMasterAccounts(){
+      sbGetQ('bank_accounts','order=name.asc').then(function(rows){
+        _mstCache = rows||[];
+        var el = document.getElementById('mst-list');
+        if(!rows.length){ el.innerHTML='<div class="empty">No accounts yet — add Cash + Bank above</div>'; return; }
+        el.innerHTML = rows.map(function(a){
+          var typ = a.account_type || a.type || 'bank';
+          var search = (a.name||'')+' '+(a.account_no||'')+' '+typ;
+          return '<div class="item-card" data-mst-search="'+esc(search)+'">'+
+            '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center">'+
+            '<div><div style="font-weight:800">'+esc(a.name)+'</div>'+
+            '<div style="font-size:11px;color:#64748b;margin-top:3px">'+esc(typ)+
+            (a.account_no?' · '+esc(a.account_no):'')+
+            ' · Open '+fmt(a.opening_balance||0)+
+            ' · '+mstStatusBadge(a.active!==false)+
+            '</div></div>'+
+            '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
+            '<button class="btn-sm btn-blue" onclick="mstEditAccount('+a.id+')">Edit</button>'+
+            '<button class="btn-sm btn-grey" onclick="mstToggleAccount('+a.id+','+(a.active===false?'true':'false')+')">'+(a.active===false?'Activate':'Deactivate')+'</button>'+
+            '<button class="btn-sm btn-del" onclick="delGuard(this,function(){mstDeleteAccount('+a.id+');})">Del</button>'+
+            '</div></div></div>';
+        }).join('');
+      });
+    }
+    function mstEditAccount(id){
+      var a = _mstCache.find(function(x){ return +x.id===+id; });
+      if(!a) return;
+      setV('mst-acc-id', a.id);
+      setV('mst-acc-name', a.name||'');
+      setV('mst-acc-type', a.account_type||a.type||'bank');
+      setV('mst-acc-no', a.account_no||'');
+      setV('mst-acc-status', a.active===false?'inactive':'active');
+      setV('mst-acc-opening', a.opening_balance!=null?a.opening_balance:'');
+      setV('mst-acc-note', a.note||'');
+      document.getElementById('mst-acc-title').textContent = '✏️ Edit Account';
+    }
+    function mstSaveAccount(){
+      var id = v('mst-acc-id');
+      var name = String(v('mst-acc-name')||'').trim();
+      if(!name){ showMsg('mst-acc-msg','Name required','er'); return; }
+      var body = {
+        name: name,
+        account_no: v('mst-acc-no')||'',
+        account_type: v('mst-acc-type')||'bank',
+        opening_balance: parseFloat(v('mst-acc-opening'))||0,
+        note: v('mst-acc-note')||'',
+        active: v('mst-acc-status')!=='inactive'
+      };
+      var promise = id
+        ? fetch(BASE+'/bank_accounts?id=eq.'+id,{method:'PATCH',headers:hdrs({'Prefer':'return=minimal'}),body:JSON.stringify(body)}).then(function(r){return{ok:r.ok};})
+        : sbPost('bank_accounts', body);
+      promise.then(function(r){
+        if(r.ok){ showMsg('mst-acc-msg','Saved ✓','ok'); mstClearAccount(); loadMasterAccounts(); try{loadBankAccounts();}catch(e){} }
+        else showMsg('mst-acc-msg','Save failed (check account_type column SQL)','er');
+      });
+    }
+    function mstToggleAccount(id, active){
+      fetch(BASE+'/bank_accounts?id=eq.'+id,{method:'PATCH',headers:hdrs({'Prefer':'return=minimal'}),body:JSON.stringify({active: active===true||active==='true'})})
+        .then(function(){ loadMasterAccounts(); });
+    }
+    function mstDeleteAccount(id){
+      fetch(BASE+'/bank_accounts?id=eq.'+id,{method:'PATCH',headers:hdrs({'Prefer':'return=minimal'}),body:JSON.stringify({active:false})})
+        .then(function(){ loadMasterAccounts(); });
+    }
+
+    function mstClearTempo(){
+      setV('mst-tmp-id',''); setV('mst-tmp-name',''); setV('mst-tmp-type','');
+      setV('mst-tmp-owner',''); setV('mst-tmp-status','active');
+      document.getElementById('mst-tmp-title').textContent = '➕ Add Tempo';
+    }
+    function loadMasterTempos(){
+      sbGetQ('tempos','order=name.asc').then(function(rows){
+        _mstCache = rows||[];
+        var el = document.getElementById('mst-list');
+        if(!rows.length){ el.innerHTML='<div class="empty">No tempos yet</div>'; return; }
+        el.innerHTML = rows.map(function(tp){
+          var search = (tp.name||'')+' '+(tp.type||'')+' '+(tp.owner_name||'');
+          return '<div class="item-card" data-mst-search="'+esc(search)+'">'+
+            '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center">'+
+            '<div><div style="font-weight:800">'+esc(tp.name)+'</div>'+
+            '<div style="font-size:11px;color:#64748b;margin-top:3px">'+esc(tp.type||'—')+
+            (tp.owner_name?' · '+esc(tp.owner_name):'')+
+            ' · '+mstStatusBadge(tp.active!==false)+
+            '</div></div>'+
+            '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
+            '<button class="btn-sm btn-blue" onclick="mstEditTempo('+tp.id+')">Edit</button>'+
+            '<button class="btn-sm btn-grey" onclick="mstToggleTempo('+tp.id+','+(tp.active===false?'true':'false')+')">'+(tp.active===false?'Activate':'Deactivate')+'</button>'+
+            '<button class="btn-sm btn-del" onclick="delGuard(this,function(){mstDeleteTempo('+tp.id+');})">Del</button>'+
+            '</div></div></div>';
+        }).join('');
+      });
+    }
+    function mstEditTempo(id){
+      var tp = _mstCache.find(function(x){ return +x.id===+id; });
+      if(!tp) return;
+      setV('mst-tmp-id', tp.id);
+      setV('mst-tmp-name', tp.name||'');
+      setV('mst-tmp-type', tp.type||'');
+      setV('mst-tmp-owner', tp.owner_name||'');
+      setV('mst-tmp-status', tp.active===false?'inactive':'active');
+      document.getElementById('mst-tmp-title').textContent = '✏️ Edit Tempo';
+    }
+    function mstSaveTempo(){
+      var id = v('mst-tmp-id');
+      var name = String(v('mst-tmp-name')||'').trim();
+      if(!name){ showMsg('mst-tmp-msg','Name required','er'); return; }
+      var body = {
+        name: name,
+        type: v('mst-tmp-type')||'',
+        owner_name: v('mst-tmp-owner')||'',
+        active: v('mst-tmp-status')!=='inactive'
+      };
+      var promise = id
+        ? fetch(BASE+'/tempos?id=eq.'+id,{method:'PATCH',headers:hdrs({'Prefer':'return=minimal'}),body:JSON.stringify(body)}).then(function(r){return{ok:r.ok};})
+        : sbPost('tempos', body);
+      promise.then(function(r){
+        if(r.ok){ showMsg('mst-tmp-msg','Saved ✓','ok'); mstClearTempo(); loadMasterTempos(); try{loadTempos();}catch(e){} }
+        else showMsg('mst-tmp-msg','Save failed','er');
+      });
+    }
+    function mstToggleTempo(id, active){
+      fetch(BASE+'/tempos?id=eq.'+id,{method:'PATCH',headers:hdrs({'Prefer':'return=minimal'}),body:JSON.stringify({active: active===true||active==='true'})})
+        .then(function(){ loadMasterTempos(); });
+    }
+    function mstDeleteTempo(id){
+      fetch(BASE+'/tempos?id=eq.'+id,{method:'PATCH',headers:hdrs({'Prefer':'return=minimal'}),body:JSON.stringify({active:false})})
+        .then(function(){ loadMasterTempos(); });
+    }
+
+    function mstClearParty(){
+      setV('mst-pty-id',''); setV('mst-pty-name',''); setV('mst-pty-mobile','');
+      setV('mst-pty-open',''); setV('mst-pty-note',''); setV('mst-pty-status','active');
+      var typ = _mstType==='vendors'?'vendor':'client';
+      setV('mst-pty-type', typ);
+      document.getElementById('mst-pty-title').textContent = typ==='vendor'?'➕ Add Vendor':'➕ Add Customer';
+    }
+    function loadMasterParties(type){
+      type = type || 'client';
+      sbGetQ('fin_parties','type=eq.'+encodeURIComponent(type)+'&order=name.asc').then(function(rows){
+        // fallback: all parties filter client-side if type filter fails
+        if(!rows) rows = [];
+        _mstCache = rows;
+        var el = document.getElementById('mst-list');
+        if(!rows.length){
+          // try without type filter
+          return sbGetQ('fin_parties','order=name.asc').then(function(all){
+            rows = (all||[]).filter(function(p){
+              var t = (p.type||'').toLowerCase();
+              if(type==='vendor') return t==='vendor'||t==='supplier';
+              return t==='client'||t==='customer'||t==='rent_out'||!t;
+            });
+            _mstCache = rows;
+            renderMasterParties(rows, type);
+          });
+        }
+        renderMasterParties(rows, type);
+      });
+    }
+    function renderMasterParties(rows, type){
+      var el = document.getElementById('mst-list');
+      if(!rows.length){ el.innerHTML='<div class="empty">No '+(type==='vendor'?'vendors':'customers')+' yet</div>'; return; }
+      el.innerHTML = rows.map(function(p){
+        var search = (p.name||'')+' '+(p.mobile||'')+' '+(p.note||'');
+        var open = p.opening_balance!=null ? p.opening_balance : (p.open_balance||0);
+        return '<div class="item-card" data-mst-search="'+esc(search)+'">'+
+          '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center">'+
+          '<div><div style="font-weight:800">'+esc(p.name)+'</div>'+
+          '<div style="font-size:11px;color:#64748b;margin-top:3px">'+esc(p.type||type)+
+          (p.mobile?' · '+esc(p.mobile):'')+
+          (open?(' · Open '+fmt(open)):'')+
+          ' · '+mstStatusBadge(p.active!==false)+
+          '</div></div>'+
+          '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
+          '<button class="btn-sm btn-blue" onclick="mstEditParty('+p.id+')">Edit</button>'+
+          '<button class="btn-sm btn-grey" onclick="mstToggleParty('+p.id+','+(p.active===false?'true':'false')+')">'+(p.active===false?'Activate':'Deactivate')+'</button>'+
+          '<button class="btn-sm btn-del" onclick="delGuard(this,function(){mstDeleteParty('+p.id+');})">Del</button>'+
+          '</div></div></div>';
+      }).join('');
+    }
+    function mstEditParty(id){
+      var p = _mstCache.find(function(x){ return +x.id===+id; });
+      if(!p) return;
+      setV('mst-pty-id', p.id);
+      setV('mst-pty-name', p.name||'');
+      setV('mst-pty-mobile', p.mobile||'');
+      setV('mst-pty-open', p.opening_balance!=null?p.opening_balance:(p.open_balance||''));
+      setV('mst-pty-note', p.note||'');
+      setV('mst-pty-status', p.active===false?'inactive':'active');
+      setV('mst-pty-type', p.type||(_mstType==='vendors'?'vendor':'client'));
+      document.getElementById('mst-pty-title').textContent = '✏️ Edit';
+    }
+    function mstSaveParty(){
+      var id = v('mst-pty-id');
+      var name = String(v('mst-pty-name')||'').trim();
+      if(!name){ showMsg('mst-pty-msg','Name required','er'); return; }
+      var body = {
+        name: name,
+        type: v('mst-pty-type')||'client',
+        mobile: v('mst-pty-mobile')||'',
+        opening_balance: parseFloat(v('mst-pty-open'))||0,
+        note: v('mst-pty-note')||'',
+        active: v('mst-pty-status')!=='inactive'
+      };
+      var promise = id
+        ? fetch(BASE+'/fin_parties?id=eq.'+id,{method:'PATCH',headers:hdrs({'Prefer':'return=minimal'}),body:JSON.stringify(body)}).then(function(r){return{ok:r.ok};})
+        : sbPost('fin_parties', body);
+      promise.then(function(r){
+        if(r.ok){
+          showMsg('mst-pty-msg','Saved ✓','ok');
+          mstClearParty();
+          loadMasterParties(body.type==='vendor'?'vendor':'client');
+        } else showMsg('mst-pty-msg','Save failed','er');
+      });
+    }
+    function mstToggleParty(id, active){
+      fetch(BASE+'/fin_parties?id=eq.'+id,{method:'PATCH',headers:hdrs({'Prefer':'return=minimal'}),body:JSON.stringify({active: active===true||active==='true'})})
+        .then(function(){ loadMasterParties(_mstType==='vendors'?'vendor':'client'); });
+    }
+    function mstDeleteParty(id){
+      fetch(BASE+'/fin_parties?id=eq.'+id,{method:'PATCH',headers:hdrs({'Prefer':'return=minimal'}),body:JSON.stringify({active:false})})
+        .then(function(){ loadMasterParties(_mstType==='vendors'?'vendor':'client'); });
+    }
+
 </script>
 
 
@@ -7130,6 +7653,7 @@
             <button type="button" class="fin-more-item" onclick="finMoreGo('loans')"><span class="mi">📋</span>Loans</button>
             <button type="button" class="fin-more-item" onclick="finMoreGo('payments')"><span class="mi">💰</span>Payments</button>
             <button type="button" class="fin-more-item" onclick="finMoreGo('report')"><span class="mi">📊</span>Report</button>
+            <button type="button" class="fin-more-item" onclick="finMoreGo('masters')"><span class="mi">⚙</span>Masters</button>
         </div>
     </div>
 </div>
