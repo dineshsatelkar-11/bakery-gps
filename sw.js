@@ -100,9 +100,7 @@ function openShareDb() {
     var req = indexedDB.open('ibcab-share', 1);
     req.onupgradeneeded = function() {
       var db = req.result;
-      if (!db.objectStoreNames.contains('payload')) {
-        db.createObjectStore('payload', { keyPath: 'id' });
-      }
+      if (!db.objectStoreNames.contains('incoming')) db.createObjectStore('incoming');
     };
     req.onsuccess = function() { resolve(req.result); };
     req.onerror = function() { reject(req.error); };
@@ -112,10 +110,8 @@ function openShareDb() {
 function saveSharePayload(payload) {
   return openShareDb().then(function(db) {
     return new Promise(function(resolve, reject) {
-      var tx = db.transaction('payload', 'readwrite');
-      var store = tx.objectStore('payload');
-      payload.id = 'latest';
-      store.put(payload);
+      var tx = db.transaction('incoming', 'readwrite');
+      tx.objectStore('incoming').put(payload, 'latest');
       tx.oncomplete = function() { resolve(); };
       tx.onerror = function() { reject(tx.error); };
     });
@@ -123,21 +119,12 @@ function saveSharePayload(payload) {
 }
 
 function fileToDataUrl(file) {
-  return new Promise(function(resolve, reject) {
-    if (!file || typeof file.arrayBuffer !== 'function') {
-      resolve('');
-      return;
-    }
-    file.arrayBuffer().then(function(buf) {
-      var bytes = new Uint8Array(buf);
-      var binary = '';
-      var chunk = 0x8000;
-      for (var i = 0; i < bytes.length; i += chunk) {
-        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
-      }
-      var mime = file.type || 'application/octet-stream';
-      resolve('data:' + mime + ';base64,' + btoa(binary));
-    }).catch(function() { resolve(''); });
+  return new Promise(function(resolve) {
+    if (!file) return resolve('');
+    var reader = new FileReader();
+    reader.onload = function() { resolve(reader.result || ''); };
+    reader.onerror = function() { resolve(''); };
+    try { reader.readAsDataURL(file); } catch (e) { resolve(''); }
   });
 }
 
@@ -156,7 +143,6 @@ self.addEventListener('fetch', function(e) {
         var shareUrl = form.get('url') || form.get('link') || '';
         var file = form.get('images') || form.get('image') || form.get('file') || form.get('media');
         if (!file) {
-          // Some apps use different field names
           var keys = [];
           try {
             var it = form.keys();
@@ -170,11 +156,10 @@ self.addEventListener('fetch', function(e) {
             var v = form.get(keys[i]);
             if (v && typeof v === 'object' && v.name) { file = v; break; }
           }
-          // Also try entries
           if (!file) {
             try {
               var ent = form.entries();
-              var step = ent.next();
+              step = ent.next();
               while (!step.done) {
                 var pair = step.value;
                 if (pair && pair[1] && typeof pair[1] === 'object' && pair[1].name) {
@@ -195,7 +180,6 @@ self.addEventListener('fetch', function(e) {
         }
 
         var combined = [title, text, shareUrl].filter(Boolean).join('\n');
-        // UTR / UPI ref patterns used by PhonePe, GPay, Paytm, BHIM, banks
         var utr = '';
         var patterns = [
           /(?:UTR|UPI\s*Ref(?:erence)?|Ref(?:erence)?\s*(?:No|ID|#)?|Txn(?:\s*ID)?|Transaction\s*(?:ID|No)|RRN|Apt\s*No)[:\s#\-]*([A-Za-z0-9]{8,22})/i,
@@ -230,7 +214,6 @@ self.addEventListener('fetch', function(e) {
           });
         } catch (e2) {}
       }
-      // Always redirect to GET so page loads normally (no 405 / blank error)
       return Response.redirect('/order.html?share=1', 303);
     })());
     return;
