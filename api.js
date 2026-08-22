@@ -482,7 +482,7 @@ function normalizeProducts(list) {
           zoho_contact_id: b.zoho_contact_id || null,
           shipping_charge: b.shipping_charge !== undefined && b.shipping_charge !== '' && b.shipping_charge != null
             ? parseFloat(b.shipping_charge) : null,
-          assigned_driver: b.assigned_driver || '', mobile: b.mobile || '', email: b.email || '', flag: b.flag || '',
+          assigned_driver: b.assigned_driver || '', mobile: b.mobile || '', email: b.email || '', email_cc: b.email_cc || '', flag: b.flag || '',
           lat: b.lat !== '' && b.lat != null ? parseFloat(b.lat) : null,
           lng: b.lng !== '' && b.lng != null ? parseFloat(b.lng) : null,
           drop_photo_url:        b.drop_photo_url,
@@ -502,6 +502,7 @@ function normalizeProducts(list) {
            brand: b.brand !== undefined ? (b.brand || null) : undefined,
           assigned_driver: b.assigned_driver || '', mobile: b.mobile || '',
           email: b.email !== undefined ? (b.email || '') : undefined,
+          email_cc: b.email_cc !== undefined ? (b.email_cc || '') : undefined,
           flag: b.flag || '',
           lat: b.lat !== '' && b.lat != null ? parseFloat(b.lat) : null,
           lng: b.lng !== '' && b.lng != null ? parseFloat(b.lng) : null,
@@ -1004,6 +1005,8 @@ function normalizeProducts(list) {
         if (b.customer_claimed_at !== undefined)   upd.customer_claimed_at   = b.customer_claimed_at;
         if (b.customer_claim_note !== undefined)   upd.customer_claim_note   = b.customer_claim_note;
         if (b.payment_reminder_sent_at !== undefined) upd.payment_reminder_sent_at = b.payment_reminder_sent_at;
+        if (b.sticker_printed !== undefined) upd.sticker_printed = b.sticker_printed;
+        if (b.sticker_printed_at !== undefined) upd.sticker_printed_at = b.sticker_printed_at;
         return sbPatch('customer_orders', { id: b.id }, upd).then(function(res){
           if (!res || !res.ok) return res;
           // When approved (or items updated while approved), sync to driver `orders` table
@@ -1390,11 +1393,16 @@ function normalizeProducts(list) {
       }
 
       case 'customerClaimPaid': {
-        return sbPatch('customer_orders', { id: b.id }, {
+        var claimPatch = {
           customer_claimed_paid: true,
           customer_claimed_at: new Date().toISOString(),
           customer_claim_note: b.note || b.customer_claim_note || ''
-        });
+        };
+        if (b.payment_proof_url !== undefined) claimPatch.payment_proof_url = b.payment_proof_url || null;
+        if (b.payment_proof_file_id !== undefined) claimPatch.payment_proof_file_id = b.payment_proof_file_id || null;
+        if (b.payment_proof_at !== undefined) claimPatch.payment_proof_at = b.payment_proof_at || null;
+        if (b.payment_ref !== undefined) claimPatch.payment_ref = b.payment_ref || null;
+        return sbPatch('customer_orders', { id: b.id }, claimPatch);
       }
 
       // Customer weekly payment request for one or more invoice orders
@@ -1404,12 +1412,19 @@ function normalizeProducts(list) {
         var shopId = b.shop_id != null ? String(b.shop_id) : '';
         if (!ids.length) return Promise.resolve({ ok: false, error: 'No invoice ids' });
         var claimedAt = new Date().toISOString();
+        var patch = {
+          customer_claimed_paid: true,
+          customer_claimed_at: claimedAt,
+          customer_claim_note: note
+        };
+        if (b.payment_proof_url) {
+          patch.payment_proof_url = b.payment_proof_url;
+          patch.payment_proof_file_id = b.payment_proof_file_id || null;
+          patch.payment_proof_at = claimedAt;
+        }
+        if (b.payment_ref) patch.payment_ref = b.payment_ref;
         return Promise.all(ids.map(function(id) {
-          return sbPatch('customer_orders', { id: id }, {
-            customer_claimed_paid: true,
-            customer_claimed_at: claimedAt,
-            customer_claim_note: note
-          });
+          return sbPatch('customer_orders', { id: id }, patch);
         })).then(function() {
           return { ok: true, count: ids.length, shop_id: shopId };
         });

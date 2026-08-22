@@ -6,12 +6,21 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Satelkar Logistics — Finance</title>
 <script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <meta name="theme-color" content="#1e293b">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
-*{box-sizing:border-box;margin:0;padding:0}:root{--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);--sal:env(safe-area-inset-left,0px);--sar:env(safe-area-inset-right,0px)}
+*{box-sizing:border-box;margin:0;padding:0}:root{
+  --sat:env(safe-area-inset-top,0px);
+  --sab:env(safe-area-inset-bottom,0px);
+  --sal:env(safe-area-inset-left,0px);
+  --sar:env(safe-area-inset-right,0px);
+  --fin-topbar-h:56px;
+  --fin-search-h:52px;
+  --fin-chrome: calc(var(--fin-topbar-h) + var(--fin-search-h) + var(--sat));
+}
 body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#eef2f7;color:#1a2535;margin:0;min-height:100vh;-webkit-text-size-adjust:100%}
 
 /* ── LOGIN ── */
@@ -111,18 +120,42 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
   body:not(.fin-app) #chatPanel{display:none !important}
   .topbar{
     position:fixed;left:0;right:0;width:100%;max-width:none;
-    transform:none;
+    transform:none;z-index:300;
   }
+  /* Search fixed under topbar — does not scroll away or cover titles */
   #searchBar{
-    position:sticky;top:calc(56px + var(--sat));z-index:250;
-    padding-left:12px;padding-right:12px;
-    background:#fff;border-bottom:1px solid #e2e8f0;
+    position:fixed;left:0;right:0;width:100%;
+    top:calc(var(--fin-topbar-h) + var(--sat));
+    z-index:290;
+    padding:8px 12px;
+    padding-left:max(12px, var(--sal));
+    padding-right:max(12px, var(--sar));
+    background:#f1f5f9;
+    border-bottom:1px solid #e2e8f0;
+    box-sizing:border-box;
+  }
+  #searchBar input{
+    margin-bottom:0 !important;
+    background:#fff;
   }
   body.fin-app #app{
-    padding-top:calc(56px + var(--sat));
+    padding-top:calc(var(--fin-topbar-h) + var(--fin-search-h) + var(--sat) + 4px);
     padding-bottom:calc(78px + var(--sab));
   }
   .page{padding:12px 12px calc(28px + var(--sab)) !important}
+  /* In-page sub tabs (Bank / Loans / Drivers…) stick under fixed chrome */
+  .fin-seg-bar{
+    position:sticky;
+    /* Sit just under fixed topbar + search — not under title */
+    top:calc(var(--fin-topbar-h) + var(--fin-search-h) + var(--sat));
+    z-index:80;
+    background:#f1f5f9;
+    margin:0 -12px 12px;
+    padding:8px 12px 10px;
+    border-bottom:1px solid #e2e8f0;
+    display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;
+  }
+  .fin-seg-bar .btn-sm{flex:0 0 auto;white-space:nowrap}
   .row2{grid-template-columns:1fr 1fr;gap:8px}
   .stats-grid{grid-template-columns:repeat(2,1fr) !important}
   #chatBtn{bottom:calc(84px + var(--sab)) !important;right:14px}
@@ -174,6 +207,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
     padding-bottom:48px;
   }
   .page{padding:18px 22px 48px !important;max-width:100%}
+  .fin-seg-bar{
+    position:relative;top:auto;
+    margin:0 0 12px;padding:0;
+    background:transparent;border:none;
+    display:flex;gap:8px;overflow-x:auto;
+  }
+
   .stats-grid{grid-template-columns:repeat(4,1fr) !important;gap:12px}
   .card{max-width:100%}
   .row2{grid-template-columns:1fr 1fr;gap:12px}
@@ -188,6 +228,35 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
   .tab{min-width:88px;padding:14px 12px;font-size:12px}
   .btn{max-width:420px}
   .btn.btn-full,.card .btn{max-width:none}
+}
+
+
+/* Pay popup — mobile bottom sheet / desktop centered card */
+#payPopupOverlay{
+  display:none;position:fixed;inset:0;background:rgba(15,23,42,0.45);
+  z-index:9998;align-items:flex-end;justify-content:center;padding:0;
+}
+#payPopupOverlay.open{display:flex !important;}
+#payPopupBox{
+  background:#fff;width:100%;max-width:480px;
+  border-radius:16px 16px 0 0;padding:18px 16px 28px;
+  max-height:90vh;overflow-y:auto;box-shadow:0 -8px 30px rgba(0,0,0,0.15);
+}
+@media (min-width:768px){
+  #payPopupOverlay{
+    align-items:center !important;justify-content:center !important;
+    padding:24px !important;
+  }
+  #payPopupBox{
+    border-radius:16px !important;
+    max-width:440px !important;
+    max-height:min(88vh,720px) !important;
+    box-shadow:0 20px 50px rgba(15,23,42,.25) !important;
+    padding:22px 22px 24px !important;
+  }
+  #finQrOverlay{
+    align-items:center !important;justify-content:center !important;
+  }
 }
 
 .page{display:none;padding:12px 14px 90px}.page.on{display:block}
@@ -375,7 +444,7 @@ body.dark .search-item:hover{background:#3d4a5c}
   <!-- ══ LEDGER ══ -->
   <div class="page" id="tab-ledger">
     <!-- Sub-tabs -->
-    <div style="display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px">
+    <div class="fin-seg-bar">
       <button class="btn-sm btn-blue" id="ltab-all"      onclick="showLedgerTab('all')">📋 All Txn</button>
       <button class="btn-sm btn-grey" id="ltab-rent_out" onclick="showLedgerTab('rent_out')">👤 Client</button>
       <button class="btn-sm btn-grey" id="ltab-rent_in"  onclick="showLedgerTab('rent_in')">📥 Rent In</button>
@@ -575,7 +644,7 @@ body.dark .search-item:hover{background:#3d4a5c}
   <!-- ══ DRIVERS ══ -->
   <div class="page" id="tab-drivers">
     <!-- Sub-tabs -->
-    <div style="display:flex;gap:8px;margin-bottom:8px;overflow-x:auto;padding-bottom:4px">
+    <div class="fin-seg-bar">
       <button class="btn-sm btn-blue" id="dstab-advance" onclick="showDriverTab('advance')">📱 Pay</button>
       <button class="btn-sm btn-grey" id="dstab-salary" onclick="showDriverTab('salary')">💰 Salary</button>
       <button class="btn-sm btn-grey" id="dstab-leaves" onclick="showDriverTab('leaves')">🏖 Leave</button>
@@ -788,9 +857,39 @@ body.dark .search-item:hover{background:#3d4a5c}
       </div>
       <div id="payDriverList"><div class="empty">Loading…</div></div>
 
+      
+<!-- Shared UPI QR scanner -->
+<div id="finQrOverlay" onclick="if(event.target===this)closeFinQrScan()" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:10050;align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;width:100%;max-width:420px;border-radius:16px;padding:16px;max-height:92vh;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,.25)" onclick="event.stopPropagation()">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-weight:900;font-size:16px;color:#1e293b">📷 Shared UPI QR</div>
+      <button type="button" class="btn-sm btn-grey" onclick="closeFinQrScan()">✕</button>
+    </div>
+    <div style="font-size:12px;color:#64748b;line-height:1.45;margin-bottom:12px">
+      Scan a QR someone shared, or upload the QR image / screenshot. Works with standard UPI QR (<code>upi://pay?…</code>).
+    </div>
+    <div style="position:relative;background:#0f172a;border-radius:12px;overflow:hidden;min-height:200px;margin-bottom:10px">
+      <video id="finQrVideo" playsinline muted style="width:100%;display:block;max-height:280px;object-fit:cover"></video>
+      <canvas id="finQrCanvas" style="display:none"></canvas>
+      <div id="finQrCamMsg" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:13px;padding:16px;text-align:center">Camera starting…</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <button type="button" class="btn btn-blue" style="flex:1" onclick="startFinQrCamera()">📷 Use camera</button>
+      <label class="btn btn-grey" style="flex:1;text-align:center;cursor:pointer;margin:0">
+        🖼 Upload QR image
+        <input type="file" id="finQrFile" accept="image/*" capture="environment" style="display:none" onchange="finQrFromFile(this)">
+      </label>
+    </div>
+    <label class="lbl">Or paste UPI link / VPA</label>
+    <input type="text" id="finQrPaste" placeholder="upi://pay?pa=… or name@ybl" style="margin-bottom:8px">
+    <button type="button" class="btn" style="width:100%;background:#0f766e;color:#fff" onclick="finQrFromPaste()">Use pasted text</button>
+    <div id="finQrMsg" style="margin-top:10px;font-size:12px"></div>
+  </div>
+</div>
+
       <!-- Pay popup -->
-      <div id="payPopupOverlay" onclick="if(event.target===this)closePayPopup()" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.45);z-index:9998;align-items:flex-end;justify-content:center;padding:0">
-        <div style="background:#fff;width:100%;max-width:480px;border-radius:16px 16px 0 0;padding:18px 16px 28px;max-height:90vh;overflow-y:auto;box-shadow:0 -8px 30px rgba(0,0,0,0.15)" onclick="event.stopPropagation()">
+      <div id="payPopupOverlay" onclick="if(event.target===this)closePayPopup()">
+        <div id="payPopupBox" onclick="event.stopPropagation()">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
             <div style="font-weight:900;font-size:16px;color:#1e293b" id="payPopupTitle">Pay driver</div>
             <button type="button" class="btn-sm btn-grey" onclick="closePayPopup()">✕</button>
@@ -812,7 +911,17 @@ body.dark .search-item:hover{background:#3d4a5c}
           <label class="lbl">Pay from account</label>
           <select id="pay-popup-bank"><option value="">— Optional —</option></select>
           <div id="pay-popup-upi-info" style="font-size:12px;color:#64748b;margin:10px 0 8px"></div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+          <button type="button" class="btn" style="width:100%;background:#0f766e;color:#fff;padding:14px;margin:8px 0;font-weight:800" onclick="openFinQrScan('pay')">📷 Scan / upload shared QR</button>
+          <div id="pay-popup-manual-upi" style="margin:8px 0 10px;padding:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px">
+            <label class="lbl">Or enter UPI ID for this payment</label>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input type="text" id="pay-popup-vpa" placeholder="name@ybl / mobile@okaxis" style="flex:1;margin-bottom:0" oninput="onPayPopupVpaInput()">
+              <button type="button" class="btn-sm btn-grey" onclick="copyPayPopupVpa()" style="flex:none">Copy</button>
+            </div>
+            <input type="text" id="pay-popup-payee" placeholder="Payee name (optional)" style="margin-top:8px;margin-bottom:0">
+            <div style="font-size:10px;color:#64748b;margin-top:6px;line-height:1.35">Desktop: apps may not open — copy UPI and pay on phone, then Save here. Or upload QR image.</div>
+          </div>
+          <div id="pay-popup-apps" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
             <button type="button" class="btn" style="background:#5f259f;color:#fff;padding:12px 8px" onclick="payPopupApp('phonepe')">PhonePe</button>
             <button type="button" class="btn" style="background:#1a73e8;color:#fff;padding:12px 8px" onclick="payPopupApp('gpay')">GPay</button>
             <button type="button" class="btn" style="background:#00baf2;color:#fff;padding:12px 8px" onclick="payPopupApp('paytm')">Paytm</button>
@@ -1161,7 +1270,7 @@ body.dark .search-item:hover{background:#3d4a5c}
 
   <!-- ══ FLEET ══ -->
   <div class="page" id="tab-fleet">
-    <div style="display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px">
+    <div class="fin-seg-bar">
       <button class="btn-sm btn-blue" id="fltab-tempos" onclick="showFleetTab('tempos')">🚛 Tempos</button>
       <button class="btn-sm btn-grey" id="fltab-service" onclick="showFleetTab('service')">🔧 Service</button>
     </div>
@@ -1336,7 +1445,7 @@ body.dark .search-item:hover{background:#3d4a5c}
   <!-- ══ EXPENSES ══ -->
   <div class="page" id="tab-expenses">
     <!-- Sub-tabs -->
-    <div style="display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px">
+    <div class="fin-seg-bar">
       <button class="btn-sm btn-blue" id="extab-all"  onclick="showExpenseTab('all')">📋 All</button>
       <button class="btn-sm btn-grey" id="extab-add"  onclick="showExpenseTab('add')">➕ Add</button>
       <button class="btn-sm btn-grey" id="extab-cats" onclick="showExpenseTab('cats')">🏷️ Categories</button>
@@ -1437,6 +1546,8 @@ body.dark .search-item:hover{background:#3d4a5c}
             <label class="lbl">Payee name</label>
             <input type="text" id="ex-upi-name" placeholder="Name on UPI">
           </div>
+          <button type="button" class="btn" style="width:100%;margin-top:10px;background:#0f766e;color:#fff;padding:12px" onclick="openFinQrScan('expense')">📷 Scan / upload shared QR</button>
+          <div style="font-size:10px;color:#64748b;margin:6px 0 4px;line-height:1.35">If someone shared a UPI QR (garage, shop, driver), scan or upload the image — UPI ID fills automatically.</div>
           <div id="ex-pay-apps" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
             <button type="button" class="btn" style="background:#5f259f;color:#fff;padding:11px 8px;font-size:13px" onclick="payExpenseApp('phonepe')">PhonePe</button>
             <button type="button" class="btn" style="background:#1a73e8;color:#fff;padding:11px 8px;font-size:13px" onclick="payExpenseApp('gpay')">GPay</button>
@@ -1473,7 +1584,7 @@ body.dark .search-item:hover{background:#3d4a5c}
 
   <!-- ══ BANK ══ -->
   <div class="page" id="tab-bank">
-    <div style="display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px">
+    <div class="fin-seg-bar">
       <button class="btn-sm btn-blue" id="bktab-accounts" onclick="showBankTab('accounts')">📒 Books</button>
       <button class="btn-sm btn-grey" id="bktab-add"      onclick="showBankTab('add')">➕ Entry</button>
       <button class="btn-sm btn-grey" id="bktab-transfer" onclick="showBankTab('transfer')">🔄 Transfer</button>
@@ -1718,7 +1829,7 @@ body.dark .search-item:hover{background:#3d4a5c}
 
   <!-- ══ LOANS ══ -->
   <div class="page" id="tab-loans">
-    <div style="display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px">
+    <div class="fin-seg-bar">
       <button class="btn-sm btn-blue" id="lntab-list" onclick="showLoanTab('list')">📋 My Loans</button>
       <button class="btn-sm btn-grey" id="lntab-add" onclick="showLoanTab('add')">➕ New Loan</button>
       <button class="btn-sm btn-grey" id="lntab-emis" onclick="showLoanTab('emis')">📅 EMIs</button>
@@ -1839,7 +1950,7 @@ body.dark .search-item:hover{background:#3d4a5c}
 
   <!-- ══ REPORT ══ -->
   <div class="page" id="tab-report">
-    <div style="display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px">
+    <div class="fin-seg-bar">
       <button class="btn-sm btn-blue" id="rptab-pl" onclick="showReportTab('pl')">📈 P&amp;L</button>
       <button class="btn-sm btn-grey" id="rptab-driver" onclick="showReportTab('driver')">👷 Driver Cost</button>
       <button class="btn-sm btn-grey" id="rptab-tempo" onclick="showReportTab('tempo')">🚐 Tempo</button>
@@ -2186,7 +2297,7 @@ function doLogin(){
     document.getElementById('loginScreen').style.display='none';
     document.getElementById('app').style.display='block';
     sessionStorage.setItem('fin_auth','1');
-    document.body.classList.add('fin-app');
+    document.body.classList.add('fin-app'); setTimeout(measureFinChrome, 50); setTimeout(measureFinChrome, 300);
     initApp();
   } else {
     document.getElementById('loginErr').textContent='Wrong PIN. Try again.';
@@ -2919,6 +3030,237 @@ function buildFinUpiUrl(vpa, payeeName, amount, note){
   params.set('tr', 'FIN'+Date.now().toString(36).toUpperCase());
   return 'upi://pay?'+params.toString();
 }
+
+/** Parse UPI QR / intent / plain VPA from shared code */
+function parseUpiQrText(raw){
+  raw = String(raw||'').trim();
+  if(!raw) return null;
+  var pa='', pn='', am='', tn='';
+  // plain VPA only
+  if(raw.indexOf('@')>0 && raw.indexOf(' ')===-1 && raw.length<80 && !/^[a-z]+:\/\//i.test(raw) && raw.indexOf('pa=')<0){
+    return { pa: raw, pn: '', am: '', tn: '' };
+  }
+  var q = '';
+  if(/^upi:/i.test(raw) || /^tez:/i.test(raw) || /^phonepe:/i.test(raw) || /^paytmmp:/i.test(raw)){
+    var qi = raw.indexOf('?');
+    q = qi>=0 ? raw.slice(qi+1).split('#')[0] : '';
+  } else if(/^intent:/i.test(raw)){
+    var qi2 = raw.indexOf('?');
+    var hash = raw.indexOf('#');
+    q = qi2>=0 ? raw.slice(qi2+1, hash>qi2?hash:undefined) : '';
+  } else if(/pa=/i.test(raw)){
+    q = raw.indexOf('?')>=0 ? raw.split('?')[1].split('#')[0] : raw;
+  } else {
+    return null;
+  }
+  try{
+    var params = new URLSearchParams(q);
+    pa = params.get('pa') || params.get('PA') || '';
+    pn = params.get('pn') || params.get('PN') || params.get('payeeName') || '';
+    am = params.get('am') || params.get('AM') || params.get('amount') || '';
+    tn = params.get('tn') || params.get('TN') || params.get('tr') || '';
+  }catch(e){
+    var m = q.match(/pa=([^&]+)/i); if(m) pa = decodeURIComponent(m[1]);
+    m = q.match(/pn=([^&]+)/i); if(m) pn = decodeURIComponent(m[1]);
+    m = q.match(/am=([^&]+)/i); if(m) am = decodeURIComponent(m[1]);
+  }
+  pa = String(pa||'').trim();
+  if(!pa || pa.indexOf('@')<0) return null;
+  return { pa: pa, pn: String(pn||'').trim(), am: String(am||'').trim(), tn: String(tn||'').trim() };
+}
+
+var _finQrTarget = 'expense';
+var _finQrStream = null;
+var _finQrRaf = 0;
+
+function openFinQrScan(target){
+  _finQrTarget = target || 'expense';
+  var ov = document.getElementById('finQrOverlay');
+  if(!ov){ alert('QR scanner UI missing'); return; }
+  ov.style.display = 'flex';
+  setV('finQrPaste','');
+  var msg = document.getElementById('finQrMsg');
+  if(msg) msg.innerHTML = '';
+  var camMsg = document.getElementById('finQrCamMsg');
+  if(camMsg){ camMsg.style.display='flex'; camMsg.textContent = 'Tap “Use camera” or upload a QR image'; }
+  // auto-start camera on mobile when possible
+  setTimeout(function(){ try{ startFinQrCamera(); }catch(e){} }, 200);
+}
+function closeFinQrScan(){
+  stopFinQrCamera();
+  var ov = document.getElementById('finQrOverlay');
+  if(ov) ov.style.display = 'none';
+}
+function stopFinQrCamera(){
+  if(_finQrRaf){ cancelAnimationFrame(_finQrRaf); _finQrRaf = 0; }
+  if(_finQrStream){
+    try{ _finQrStream.getTracks().forEach(function(tr){ tr.stop(); }); }catch(e){}
+    _finQrStream = null;
+  }
+  var v = document.getElementById('finQrVideo');
+  if(v){ try{ v.srcObject = null; }catch(e){} }
+}
+function finQrShowMsg(text, ok){
+  var el = document.getElementById('finQrMsg');
+  if(!el) return;
+  el.innerHTML = '<div style="padding:10px;border-radius:10px;background:'+(ok?'#ecfdf5':'#fef2f2')+';color:'+(ok?'#065f46':'#991b1b')+';font-size:12px;line-height:1.4">'+String(text||'')+'</div>';
+}
+function applyFinQrResult(parsed){
+  if(!parsed || !parsed.pa){
+    finQrShowMsg('Could not read UPI from this QR. Try upload image or paste upi:// link.', false);
+    return;
+  }
+  if(_finQrTarget === 'pay'){
+    // Driver pay popup — override UPI for this payment only
+    window._payPopupQrUpi = parsed.pa;
+    window._payPopupQrName = parsed.pn || '';
+    try{ setV('pay-popup-vpa', parsed.pa); setV('pay-popup-payee', parsed.pn||''); refreshPayPopupAppsState(); }catch(e){}
+    if(parsed.am && parseFloat(parsed.am)>0){
+      var cur = parseFloat(v('pay-popup-amt')||0);
+      if(!(cur>0)) setV('pay-popup-amt', parseFloat(parsed.am).toFixed(2));
+    }
+    if(parsed.tn && !v('pay-popup-desc')) setV('pay-popup-desc', parsed.tn);
+    var info = document.getElementById('pay-popup-upi-info');
+    if(info) info.innerHTML = '<span class="badge b-green">QR UPI '+esc(parsed.pa)+'</span>'+(parsed.pn?' · '+esc(parsed.pn):'')+' <span style="font-size:10px;color:#64748b">(from shared QR)</span>';
+    finQrShowMsg('UPI loaded: '+parsed.pa+(parsed.am?' · ₹'+parsed.am:''), true);
+  } else {
+    // Expense
+    setExpensePayee('other');
+    setV('ex-upi-vpa', parsed.pa);
+    setV('ex-upi-name', parsed.pn || '');
+    if(parsed.am && parseFloat(parsed.am)>0){
+      var cur2 = parseFloat(v('ex-amt')||0);
+      if(!(cur2>0)) setV('ex-amt', parseFloat(parsed.am).toFixed(2));
+    }
+    if(parsed.tn){
+      var note = v('ex-note')||'';
+      if(!note) setV('ex-note', parsed.tn);
+    }
+    try{ refreshExpensePayBox(); }catch(e){}
+    finQrShowMsg('UPI loaded for expense: '+parsed.pa+(parsed.am?' · ₹'+parsed.am:''), true);
+  }
+  setTimeout(function(){ closeFinQrScan(); }, 600);
+}
+function finQrHandleRaw(raw){
+  var parsed = parseUpiQrText(raw);
+  if(!parsed){
+    finQrShowMsg('Not a UPI QR. Content: '+String(raw||'').slice(0,80), false);
+    return;
+  }
+  applyFinQrResult(parsed);
+}
+function finQrFromPaste(){
+  finQrHandleRaw(v('finQrPaste'));
+}
+function startFinQrCamera(){
+  stopFinQrCamera();
+  var camMsg = document.getElementById('finQrCamMsg');
+  var video = document.getElementById('finQrVideo');
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    if(camMsg){ camMsg.style.display='flex'; camMsg.textContent = 'Camera not available — use Upload QR image'; }
+    return;
+  }
+  if(camMsg){ camMsg.style.display='flex'; camMsg.textContent = 'Starting camera…'; }
+  navigator.mediaDevices.getUserMedia({
+    audio: false,
+    video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }
+  }).then(function(stream){
+    _finQrStream = stream;
+    video.srcObject = stream;
+    video.setAttribute('playsinline','true');
+    video.play().catch(function(){});
+    if(camMsg) camMsg.style.display = 'none';
+    var canvas = document.getElementById('finQrCanvas');
+    var ctx = canvas.getContext('2d');
+    function tick(){
+      if(!_finQrStream) return;
+      if(video.readyState === video.HAVE_ENOUGH_DATA){
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        if(canvas.width && canvas.height){
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          var img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          if(typeof jsQR === 'function'){
+            var code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+            if(code && code.data){
+              finQrHandleRaw(code.data);
+              return;
+            }
+          }
+          // BarcodeDetector fallback
+          if(window.BarcodeDetector){
+            try{
+              var bd = startFinQrCamera._bd || (startFinQrCamera._bd = new BarcodeDetector({ formats: ['qr_code'] }));
+              bd.detect(canvas).then(function(codes){
+                if(codes && codes[0] && codes[0].rawValue){
+                  finQrHandleRaw(codes[0].rawValue);
+                }
+              }).catch(function(){});
+            }catch(e){}
+          }
+        }
+      }
+      _finQrRaf = requestAnimationFrame(tick);
+    }
+    _finQrRaf = requestAnimationFrame(tick);
+  }).catch(function(err){
+    if(camMsg){ camMsg.style.display='flex'; camMsg.textContent = 'Camera blocked — use Upload QR image instead'; }
+    finQrShowMsg('Camera: '+(err && err.message ? err.message : 'permission denied'), false);
+  });
+}
+function finQrFromFile(input){
+  var file = input && input.files && input.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(){
+    var img = new Image();
+    img.onload = function(){
+      var canvas = document.getElementById('finQrCanvas');
+      var ctx = canvas.getContext('2d');
+      var max = 1200;
+      var w = img.width, h = img.height;
+      if(w > max || h > max){ var s = max/Math.max(w,h); w=Math.round(w*s); h=Math.round(h*s); }
+      canvas.width = w; canvas.height = h;
+      ctx.drawImage(img, 0, 0, w, h);
+      var data = ctx.getImageData(0, 0, w, h);
+      var code = (typeof jsQR === 'function') ? jsQR(data.data, data.width, data.height) : null;
+      if(code && code.data){ finQrHandleRaw(code.data); return; }
+      if(window.BarcodeDetector){
+        try{
+          var bd = new BarcodeDetector({ formats: ['qr_code'] });
+          bd.detect(canvas).then(function(codes){
+            if(codes && codes[0] && codes[0].rawValue) finQrHandleRaw(codes[0].rawValue);
+            else finQrShowMsg('No QR found in image. Try a clearer screenshot.', false);
+          }).catch(function(){ finQrShowMsg('Could not read QR from image.', false); });
+          return;
+        }catch(e){}
+      }
+      finQrShowMsg('No QR found. Upload a clearer UPI QR screenshot.', false);
+    };
+    img.onerror = function(){ finQrShowMsg('Could not load image', false); };
+    img.src = reader.result;
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
+
+
+function measureFinChrome(){
+  try{
+    var tb = document.querySelector('.topbar');
+    var sb = document.getElementById('searchBar');
+    if(tb){
+      var h = Math.ceil(tb.getBoundingClientRect().height);
+      if(h > 40) document.documentElement.style.setProperty('--fin-topbar-h', h + 'px');
+    }
+    if(sb){
+      var h2 = Math.ceil(sb.getBoundingClientRect().height);
+      if(h2 > 30) document.documentElement.style.setProperty('--fin-search-h', h2 + 'px');
+    }
+  }catch(e){}
+}
+
 function openFinUpiPay(vpa, payeeName, amount, note, app){
   var base=buildFinUpiUrl(vpa, payeeName, amount, note);
   if(!base){ alert('Need valid UPI ID (with @) and amount > 0'); return false; }
@@ -4356,6 +4698,7 @@ function loadPayDriverList(){
   });
 }
 function openPayPopup(did){
+  window._payPopupQrUpi = ''; window._payPopupQrName = '';
   var d = null;
   try{
     for(var i=0;i<_finDriversFull.length;i++){ if(+_finDriversFull[i].id===+did){ d=_finDriversFull[i]; break; } }
@@ -4367,11 +4710,19 @@ function openPayPopup(did){
   setV('pay-popup-desc', 'Advance');
   document.getElementById('payPopupTitle').textContent = 'Pay · '+(d.name||'');
   var info = document.getElementById('pay-popup-upi-info');
-  if(d.upi_vpa){
-    info.innerHTML = '<span class="badge b-green">UPI '+esc(d.upi_vpa)+'</span>'+(d.upi_payee_name?' · '+esc(d.upi_payee_name):'');
+  setV('pay-popup-vpa', (d.upi_vpa && String(d.upi_vpa).indexOf('@')>=0) ? d.upi_vpa : '');
+  setV('pay-popup-payee', d.upi_payee_name || '');
+  if(d.upi_vpa && String(d.upi_vpa).indexOf('@')>=0){
+    info.innerHTML = '<div style="padding:10px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;font-size:12px;color:#065f46;line-height:1.4"><b>UPI ready:</b> '+esc(d.upi_vpa)+(d.upi_payee_name?' · '+esc(d.upi_payee_name):'')+'</div>';
   } else {
-    info.innerHTML = '<span style="color:#b45309">No UPI on this driver — set in Masters. You can still save cash.</span>';
+    info.innerHTML = '<div style="padding:10px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;font-size:12px;color:#9a3412;line-height:1.45">'+
+      '<b>No UPI saved for this driver.</b><br>'+
+      '1. <b>Scan / upload QR</b> or type UPI below<br>'+
+      '2. Or set UPI in <b>Masters → Drivers</b><br>'+
+      '3. Or pay cash → <b>Save payment</b>'+
+      '</div>';
   }
+  try{ refreshPayPopupAppsState(); }catch(e){}
   // Pay-from account: always load banks and pre-select default
   var dest = document.getElementById('pay-popup-bank');
   var def = '';
@@ -4411,26 +4762,86 @@ function openPayPopup(did){
     try{ advBank.value = def; }catch(e){}
   }
   var ov = document.getElementById('payPopupOverlay');
-  if(ov){ ov.style.display='flex'; }
+  if(ov){ ov.style.display='flex'; ov.classList.add('open'); }
   try{ document.body.style.overflow='hidden'; }catch(e){}
 }
 function closePayPopup(){
+  window._payPopupQrUpi = '';
+  window._payPopupQrName = '';
   var ov = document.getElementById('payPopupOverlay');
-  if(ov) ov.style.display='none';
+  if(ov){ ov.style.display='none'; ov.classList.remove('open'); }
+  try{ setV('pay-popup-vpa',''); setV('pay-popup-payee',''); }catch(e){}
   try{ document.body.style.overflow=''; }catch(e){}
 }
 function setPayPopupDesc(text){
   setV('pay-popup-desc', text);
 }
+
+function onPayPopupVpaInput(){
+  var pa = String(v('pay-popup-vpa')||'').trim();
+  if(pa.indexOf('@')>=0){
+    window._payPopupQrUpi = pa;
+    window._payPopupQrName = String(v('pay-popup-payee')||'').trim();
+  } else {
+    // keep masters UPI path if field cleared
+    if(!pa){ window._payPopupQrUpi = ''; window._payPopupQrName = ''; }
+  }
+  try{ refreshPayPopupAppsState(); }catch(e){}
+}
+function copyPayPopupVpa(){
+  var pa = String(v('pay-popup-vpa')||'').trim() || window._payPopupQrUpi || '';
+  if(!pa){
+    var drv = v('pay-popup-driver');
+    var d = getDriverUpi(drv);
+    pa = d && d.upi_vpa ? d.upi_vpa : '';
+  }
+  if(!pa){ showPayPopupMsg('No UPI to copy','er'); return; }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(pa).then(function(){ showPayPopupMsg('Copied: '+pa,'ok'); }).catch(function(){ prompt('Copy UPI:', pa); });
+  } else {
+    prompt('Copy UPI:', pa);
+  }
+}
+
+function refreshPayPopupAppsState(){
+  var manual = String(v('pay-popup-vpa')||'').trim();
+  if(manual.indexOf('@')>=0){
+    window._payPopupQrUpi = manual;
+    window._payPopupQrName = String(v('pay-popup-payee')||'').trim() || window._payPopupQrName || '';
+  }
+  var has = !!(window._payPopupQrUpi);
+  if(!has){
+    var drv = v('pay-popup-driver');
+    var d = getDriverUpi(drv);
+    has = !!(d && d.upi_vpa && String(d.upi_vpa).indexOf('@')>=0);
+  }
+  var box = document.getElementById('pay-popup-apps');
+  if(box){
+    box.style.opacity = has ? '1' : '0.45';
+    box.querySelectorAll('button').forEach(function(b){ b.disabled = !has; });
+  }
+}
 function payPopupApp(app){
   var drv = v('pay-popup-driver');
   var amt = parseFloat(v('pay-popup-amt'))||0;
   if(!drv||!(amt>0)){ showPayPopupMsg('Enter amount first','er'); return; }
-  var d = getDriverUpi(drv);
-  if(!d||!d.upi_vpa){ showPayPopupMsg('No UPI — set in Masters','er'); return; }
   var reason = v('pay-popup-desc')||'Advance';
-  if(openFinUpiPay(d.upi_vpa, d.upi_payee_name||drv, amt, 'Pay '+drv+' '+reason, app)){
-    showPayPopupMsg('App opened — after paying, tap Save','ok');
+  var vpa = window._payPopupQrUpi || '';
+  var pname = window._payPopupQrName || '';
+  if(!vpa){
+    var d = getDriverUpi(drv);
+    if(!d||!d.upi_vpa){
+      showPayPopupMsg('No UPI — use Scan / upload shared QR, or set in Masters, or Save as cash','er');
+      try{ openFinQrScan('pay'); }catch(e){}
+      return;
+    }
+    vpa = d.upi_vpa;
+    pname = d.upi_payee_name||drv;
+  } else if(!pname){
+    pname = drv;
+  }
+  if(openFinUpiPay(vpa, pname, amt, 'Pay '+drv+' '+reason, app)){
+    showPayPopupMsg('App opened — after paying, tap Save payment','ok');
   }
 }
 function showPayPopupMsg(msg, typ){

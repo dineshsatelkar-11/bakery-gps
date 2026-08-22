@@ -71,13 +71,13 @@
         @media (max-width:700px){
           .tabs{display:none !important}
           .bottom-nav{display:block !important}
-          body{padding-bottom:calc(80px + var(--sab)) !important}
-          .page{padding-bottom:calc(96px + var(--sab)) !important}
+          body{padding-bottom:calc(112px + var(--sab)) !important}
+          .page{padding-bottom:calc(120px + var(--sab)) !important}
         }
         @media (min-width:701px){
           .bottom-nav{display:none !important}
         }
-        .page{display:none;padding:12px 14px calc(80px + var(--sab))}
+        .page{display:none;padding:12px 14px calc(112px + var(--sab))}
         .page.on{display:block}
         .card{background:#fff;border:1.5px solid #e8dfd2;border-radius:16px;padding:14px;margin-bottom:10px}
         .lbl{font-size:10px;letter-spacing:2px;color:#8a7a6a;font-family:monospace;font-weight:700;margin-bottom:8px;text-transform:uppercase}
@@ -151,7 +151,7 @@
     .ptr-indicator{position:fixed;left:0;right:0;top:0;z-index:520;display:flex;align-items:flex-end;justify-content:center;pointer-events:none;opacity:0;transition:opacity .15s;padding-top:var(--sat,0px);height:0;overflow:visible}
 .ptr-indicator.show{opacity:1}
 .ptr-bubble{background:#4a2f14;color:#fff;font-size:11px;font-weight:700;font-family:monospace;padding:6px 14px;border-radius:20px;margin-top:calc(8px + var(--sat,0px));box-shadow:0 4px 12px rgba(0,0,0,.15)}
-</style>
+    </style>
 </head>
 <body>
 <div class="ptr-indicator" id="ptrIndicator"><div class="ptr-bubble" id="ptrBubble">↓ Pull to refresh</div></div>
@@ -2342,130 +2342,130 @@ async function deleteDropPhoto(){
 </script>
 
 <script>
-/* Dynamic iOS notch / safe-area handling */
-(function () {
-  if (window.__safeAreaDyn) return;
-  window.__safeAreaDyn = true;
+    /* Dynamic iOS notch / safe-area handling */
+    (function () {
+      if (window.__safeAreaDyn) return;
+      window.__safeAreaDyn = true;
 
-  var root = document.documentElement;
-  var probe = null;
+      var root = document.documentElement;
+      var probe = null;
 
-  function ensureProbe() {
-    if (probe && probe.parentNode) return probe;
-    probe = document.createElement('div');
-    probe.setAttribute('aria-hidden', 'true');
-    probe.style.cssText = [
-      'position:fixed', 'left:0', 'top:0', 'width:0', 'height:0',
-      'visibility:hidden', 'pointer-events:none', 'padding:0',
-      'padding-top:env(safe-area-inset-top,0px)',
-      'padding-right:env(safe-area-inset-right,0px)',
-      'padding-bottom:env(safe-area-inset-bottom,0px)',
-      'padding-left:env(safe-area-inset-left,0px)'
-    ].join(';');
-    (document.body || root).appendChild(probe);
-    return probe;
-  }
-
-  function px(n) {
-    n = parseFloat(n);
-    return (isFinite(n) ? n : 0) + 'px';
-  }
-
-  function readEnvInsets() {
-    var el = ensureProbe();
-    var cs = window.getComputedStyle(el);
-    return {
-      top: parseFloat(cs.paddingTop) || 0,
-      right: parseFloat(cs.paddingRight) || 0,
-      bottom: parseFloat(cs.paddingBottom) || 0,
-      left: parseFloat(cs.paddingLeft) || 0
-    };
-  }
-
-  function apply() {
-    var env = readEnvInsets();
-    var sat = env.top;
-    var sab = env.bottom;
-    var sal = env.left;
-    var sar = env.right;
-
-    // When mobile browser chrome collapses, keep a sensible bottom inset
-    // using visualViewport (does not replace home-indicator inset when larger).
-    try {
-      var vv = window.visualViewport;
-      if (vv && window.innerHeight) {
-        var gap = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
-        // Only boost bottom when browser UI leaves a gap larger than env bottom
-        // and gap is small (typical toolbar), not full keyboard.
-        if (gap > sab && gap < 120) sab = gap;
+      function ensureProbe() {
+        if (probe && probe.parentNode) return probe;
+        probe = document.createElement('div');
+        probe.setAttribute('aria-hidden', 'true');
+        probe.style.cssText = [
+          'position:fixed', 'left:0', 'top:0', 'width:0', 'height:0',
+          'visibility:hidden', 'pointer-events:none', 'padding:0',
+          'padding-top:env(safe-area-inset-top,0px)',
+          'padding-right:env(safe-area-inset-right,0px)',
+          'padding-bottom:env(safe-area-inset-bottom,0px)',
+          'padding-left:env(safe-area-inset-left,0px)'
+        ].join(';');
+        (document.body || root).appendChild(probe);
+        return probe;
       }
-    } catch (e) {}
 
-    root.style.setProperty('--sat', px(sat));
-    root.style.setProperty('--sab', px(sab));
-    root.style.setProperty('--sal', px(sal));
-    root.style.setProperty('--sar', px(sar));
+      function px(n) {
+        n = parseFloat(n);
+        return (isFinite(n) ? n : 0) + 'px';
+      }
 
-    root.classList.toggle('has-notch', sat >= 20);
-    root.classList.toggle('has-home-bar', sab >= 10);
-    root.setAttribute('data-safe-top', String(Math.round(sat)));
-    root.setAttribute('data-safe-bottom', String(Math.round(sab)));
-  }
+      function readEnvInsets() {
+        var el = ensureProbe();
+        var cs = window.getComputedStyle(el);
+        return {
+          top: parseFloat(cs.paddingTop) || 0,
+          right: parseFloat(cs.paddingRight) || 0,
+          bottom: parseFloat(cs.paddingBottom) || 0,
+          left: parseFloat(cs.paddingLeft) || 0
+        };
+      }
 
-  var scheduled = false;
-  function schedule() {
-    if (scheduled) return;
-    scheduled = true;
-    requestAnimationFrame(function () {
-      scheduled = false;
-      apply();
-    });
-  }
+      function apply() {
+        var env = readEnvInsets();
+        var sat = env.top;
+        var sab = env.bottom;
+        var sal = env.left;
+        var sar = env.right;
 
-  function boot() {
-    ensureProbe();
-    apply();
-    window.addEventListener('resize', schedule, { passive: true });
-    window.addEventListener('orientationchange', function () {
-      // iOS often updates env() one frame after orientation settles
-      schedule();
-      setTimeout(apply, 50);
-      setTimeout(apply, 300);
-    }, { passive: true });
-    window.addEventListener('pageshow', schedule, { passive: true });
-    if (window.visualViewport) {
-      visualViewport.addEventListener('resize', schedule, { passive: true });
-      visualViewport.addEventListener('scroll', schedule, { passive: true });
-    }
-    // Late paint (PWA / standalone)
-    setTimeout(apply, 100);
-    setTimeout(apply, 500);
-  }
+        // When mobile browser chrome collapses, keep a sensible bottom inset
+        // using visualViewport (does not replace home-indicator inset when larger).
+        try {
+          var vv = window.visualViewport;
+          if (vv && window.innerHeight) {
+            var gap = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
+            // Only boost bottom when browser UI leaves a gap larger than env bottom
+            // and gap is small (typical toolbar), not full keyboard.
+            if (gap > sab && gap < 120) sab = gap;
+          }
+        } catch (e) {}
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot);
-  } else {
-    boot();
-  }
-})();
+        root.style.setProperty('--sat', px(sat));
+        root.style.setProperty('--sab', px(sab));
+        root.style.setProperty('--sal', px(sal));
+        root.style.setProperty('--sar', px(sar));
+
+        root.classList.toggle('has-notch', sat >= 20);
+        root.classList.toggle('has-home-bar', sab >= 10);
+        root.setAttribute('data-safe-top', String(Math.round(sat)));
+        root.setAttribute('data-safe-bottom', String(Math.round(sab)));
+      }
+
+      var scheduled = false;
+      function schedule() {
+        if (scheduled) return;
+        scheduled = true;
+        requestAnimationFrame(function () {
+          scheduled = false;
+          apply();
+        });
+      }
+
+      function boot() {
+        ensureProbe();
+        apply();
+        window.addEventListener('resize', schedule, { passive: true });
+        window.addEventListener('orientationchange', function () {
+          // iOS often updates env() one frame after orientation settles
+          schedule();
+          setTimeout(apply, 50);
+          setTimeout(apply, 300);
+        }, { passive: true });
+        window.addEventListener('pageshow', schedule, { passive: true });
+        if (window.visualViewport) {
+          visualViewport.addEventListener('resize', schedule, { passive: true });
+          visualViewport.addEventListener('scroll', schedule, { passive: true });
+        }
+        // Late paint (PWA / standalone)
+        setTimeout(apply, 100);
+        setTimeout(apply, 500);
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', boot);
+      } else {
+        boot();
+      }
+    })();
 </script>
 
 
 <nav class="bottom-nav" id="bottomNav" aria-label="Main">
-  <div class="bottom-nav-inner">
-    <button type="button" class="bnav-item on" id="bnav-orders" onclick="showTab('orders')">
-      <span class="bnav-ico">📋</span><span class="bnav-lbl">Orders</span>
-    </button>
-    <button type="button" class="bnav-item" id="bnav-route" onclick="showTab('route')">
-      <span class="bnav-ico">🗺</span><span class="bnav-lbl">Route</span>
-    </button>
-    <button type="button" class="bnav-item" id="bnav-gps" onclick="showTab('gps')">
-      <span class="bnav-ico">📍</span><span class="bnav-lbl">GPS</span>
-    </button>
-    <button type="button" class="bnav-item" id="bnav-team" onclick="showTab('team')">
-      <span class="bnav-ico">👥</span><span class="bnav-lbl">Team</span>
-    </button>
-  </div>
+    <div class="bottom-nav-inner">
+        <button type="button" class="bnav-item on" id="bnav-orders" onclick="showTab('orders')">
+            <span class="bnav-ico">📋</span><span class="bnav-lbl">Orders</span>
+        </button>
+        <button type="button" class="bnav-item" id="bnav-route" onclick="showTab('route')">
+            <span class="bnav-ico">🗺</span><span class="bnav-lbl">Route</span>
+        </button>
+        <button type="button" class="bnav-item" id="bnav-gps" onclick="showTab('gps')">
+            <span class="bnav-ico">📍</span><span class="bnav-lbl">GPS</span>
+        </button>
+        <button type="button" class="bnav-item" id="bnav-team" onclick="showTab('team')">
+            <span class="bnav-ico">👥</span><span class="bnav-lbl">Team</span>
+        </button>
+    </div>
 </nav>
 </body>
 </html>

@@ -21,6 +21,12 @@ const CONFIG = {
   LOGISTICS_OWNER2_NAME:      'Siddhesh Satelkar',
   LOGISTICS_OWNER2_MOBILE:    '9886527036',
 
+  // Product / order related (Track page — after logistics)
+  PRODUCT_ADMIN_NAME:         'Shubham',
+  PRODUCT_ADMIN_MOBILE:       '9595157111',
+  OFFICE_NAME:                'Office',
+  OFFICE_MOBILE:              '7066676997',
+
   // WhatsApp group link — opened when driver completes all deliveries
   WHATSAPP_GROUP: 'https://chat.whatsapp.com/Bjta1D8WDKe38qPCJGVigp',
 
@@ -53,7 +59,7 @@ const CONFIG = {
   VAPID_PUBLIC_KEY: 'BPvVh1WI7_D4I7nzBYap6Psnys82iFG7ekPyZkwIHX2PltC5cAlK7t3XvcKdUJ00_U5ygtzem5OJ0Z8-vEQynu4'   // ← paste public key from generate-vapid.html
 
 };
-CONFIG.DRIVE_UPLOAD_URL = 'https://script.google.com/macros/s/AKfycbxVF8UuOIgL-r9BsNG_FmdcdgqFO1MpZMiNImsPQtHjH3i-QLRctU047Y7RazLpK9z9Ug/exec';
+CONFIG.DRIVE_UPLOAD_URL = 'https://script.google.com/macros/s/AKfycbz_icjoty5JQsNwYFrkkUIxZHUvV3NkZMvYvcPmpN5iB9ywF1XHjxmlPl40PwIih4q1/exec';
 // Smart redirect — uses clean URLs on Vercel, .html locally (IntelliJ / file server)
 function goto(page) {
   var isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';

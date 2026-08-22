@@ -1831,6 +1831,8 @@
           ' · Due: <b>₹'+_payDue(o).toLocaleString('en-IN',{maximumFractionDigits:2})+'</b>'+
           (o.invoice_total != null ? ' · Total: ₹'+Number(o.invoice_total).toLocaleString('en-IN',{maximumFractionDigits:2}) : '')+
           (o.customer_claimed_paid && st2!=='paid' ? '<br>Note: '+esc(o.customer_claim_note||'—') : '')+
+          (o.payment_ref ? '<br>UTR: <b>'+esc(o.payment_ref)+'</b>' : '')+
+          (o.payment_proof_url ? '<br><a href="'+esc(o.payment_proof_url)+'" target="_blank" rel="noopener"><img src="'+esc(o.payment_proof_url)+'" alt="Proof" style="max-width:200px;max-height:120px;border-radius:8px;margin-top:6px;border:1px solid #e2e8f0"></a>' : '')+
           (o.payment_reminder_sent_at ? '<br>Last reminder: '+esc(String(o.payment_reminder_sent_at).slice(0,16).replace('T',' ')) : '')+
           (st2==='paid' ? '<br>Paid: ₹'+(o.paid_amount!=null?o.paid_amount:_payDue(o))+' · '+esc(o.payment_mode||'') : '')+
           '</div><div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">'+actions+'</div></div></div></div>';
@@ -2152,6 +2154,64 @@
      * Record payment in Zoho Books for one invoice (mandatory when zoho_invoice_id exists).
      * Uses edge action create_customer_payment.
      */
+
+    /**
+     * Attach payment screenshot to Zoho invoice (+ customer payment if id known).
+     * Requires zoho-token edge action: attach_document (see supabase/functions/zoho-token-attach-snippet.md)
+     */
+    function zohoAttachPaymentProof(o, zohoPaymentId) {
+      if (!o || !o.payment_proof_url) return Promise.resolve({ skipped: true, reason: 'no_proof' });
+      if (typeof zohoEdge !== 'function') return Promise.resolve({ skipped: true, reason: 'no_zoho' });
+      var url = String(o.payment_proof_url || '').trim();
+      if (!url) return Promise.resolve({ skipped: true });
+      var fname = 'payment-proof-' + String(o.id || 'x') + (url.toLowerCase().indexOf('.png') >= 0 ? '.png' : '.jpg');
+      var jobs = [];
+      if (o.zoho_invoice_id) {
+        jobs.push(
+          zohoEdge('attach_document', {
+            entity: 'invoices',
+            entity_id: String(o.zoho_invoice_id),
+            file_url: url,
+            file_name: fname
+          }).then(function(data){
+            if (data && data.code != null && Number(data.code) !== 0 && !data.ok) {
+              console.warn('[zoho] invoice attach', data.message || data);
+              return { ok: false, entity: 'invoices', data: data };
+            }
+            console.log('[zoho] attached proof to invoice', o.zoho_invoice_id);
+            return { ok: true, entity: 'invoices', data: data };
+          }).catch(function(e){
+            console.warn('[zoho] invoice attach failed', e);
+            return { ok: false, entity: 'invoices', error: String(e && e.message || e) };
+          })
+        );
+      }
+      if (zohoPaymentId) {
+        jobs.push(
+          zohoEdge('attach_document', {
+            entity: 'customerpayments',
+            entity_id: String(zohoPaymentId),
+            file_url: url,
+            file_name: fname
+          }).then(function(data){
+            if (data && data.code != null && Number(data.code) !== 0 && !data.ok) {
+              console.warn('[zoho] payment attach', data.message || data);
+              return { ok: false, entity: 'customerpayments', data: data };
+            }
+            console.log('[zoho] attached proof to payment', zohoPaymentId);
+            return { ok: true, entity: 'customerpayments', data: data };
+          }).catch(function(e){
+            console.warn('[zoho] payment attach failed', e);
+            return { ok: false, entity: 'customerpayments', error: String(e && e.message || e) };
+          })
+        );
+      }
+      if (!jobs.length) return Promise.resolve({ skipped: true, reason: 'no_entity' });
+      return Promise.all(jobs).then(function(results){
+        return { ok: true, results: results };
+      });
+    }
+
     function payDeskRecordZohoPayment(o, amount, mode, ref) {
       if (!o || !o.zoho_invoice_id) return Promise.resolve({ skipped: true, reason: 'no_zoho_id' });
       if (String(o.zoho_doc_type||'').toLowerCase().indexOf('challan') >= 0 ||
@@ -2183,11 +2243,16 @@
           throw new Error(data.error || data.message || 'Zoho payment failed');
         }
         var pay = data.payment || data.customerpayment || {};
-        return {
-          ok: true,
-          zoho_payment_id: pay.payment_id || pay.customerpayment_id || '',
-          data: data
-        };
+        var zohoPaymentId = pay.payment_id || pay.customerpayment_id || '';
+        // Attach payment screenshot to Zoho invoice + payment record
+        return zohoAttachPaymentProof(o, zohoPaymentId).then(function(att){
+          return {
+            ok: true,
+            zoho_payment_id: zohoPaymentId,
+            data: data,
+            attachment: att
+          };
+        });
       });
     }
 
@@ -2234,7 +2299,7 @@
           if (o.zoho_invoice_id && !_payIsChallan(o)) {
             step = payDeskRecordZohoPayment(o, amt, mode2, ref2).then(function(zr){
               return payDeskMarkLocalPaid(o, amt, mode2, ref2, zr && zr.zoho_payment_id).then(function(){
-                results.push({ id: o.id, zoho: true });
+                results.push({ id: o.id, zoho: true, attachment: zr && zr.attachment });
               });
             });
           } else {
@@ -2274,7 +2339,8 @@ function payDeskMarkPaid(id) {
       var totalAmt = related.reduce(function(s,r){ return s + _payDue(r); }, 0);
       var mode = prompt('Payment mode (cash / upi / bank / other)', 'upi');
       if (mode == null) return;
-      var ref = prompt('Optional note / UTR', '') || '';
+      var refDefault = [o.payment_ref||'', o.payment_proof_url ? ('Proof: '+o.payment_proof_url) : ''].filter(Boolean).join(' · ');
+      var ref = prompt('Optional note / UTR', refDefault) || refDefault || '';
       if (!confirm('Mark paid ₹'+totalAmt.toLocaleString('en-IN',{maximumFractionDigits:2})+' for '+(o.shop_name||'')+'?\n'+related.length+' invoice(s). Zoho will be updated when invoice id exists.')) return;
       var needZoho = related.some(function(r){ return r.zoho_invoice_id && !_payIsChallan(r); });
       if (needZoho && !_zohoEnabled) {
