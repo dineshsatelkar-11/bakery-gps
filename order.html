@@ -2270,10 +2270,18 @@ localStorage.setItem('custSession', JSON.stringify(session));
             var invLines = g.rows.map(function(o){
               var amt = o.paid_amount != null ? parseFloat(o.paid_amount) : (o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total));
               if (isNaN(amt)) amt = 0;
+              var invTotal = o.invoice_total != null ? parseFloat(o.invoice_total) : NaN;
               var doc = o.zoho_invoice_number || ('Order #'+o.id);
-              return '<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-top:1px solid #f1f5f9;font-size:11px">'+
-                '<span style="color:#334155;font-weight:600">'+esc(doc)+'</span>'+
-                '<span style="font-family:monospace;font-weight:800;color:#0f172a">₹'+amt.toLocaleString('en-IN',{maximumFractionDigits:2})+'</span></div>';
+              var oid = String(o.id || '');
+              return '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center;padding:8px 0;border-top:1px solid #f1f5f9;font-size:11px;cursor:pointer" onclick="openInvoicePreview(\''+oid.replace(/'/g,'')+'\')">'+
+                '<div style="min-width:0;flex:1">'+
+                  '<div style="color:#334155;font-weight:700">'+esc(doc)+'</div>'+
+                  (o.delivery_date ? '<div style="font-size:10px;color:#64748b;font-family:monospace">'+esc(o.delivery_date)+'</div>' : '')+
+                  (!isNaN(invTotal) ? '<div style="font-size:10px;color:#64748b">Invoice ₹'+invTotal.toLocaleString('en-IN',{maximumFractionDigits:2})+'</div>' : '')+
+                  '<div style="font-size:10px;color:#065f46;font-weight:700">Paid ₹'+amt.toLocaleString('en-IN',{maximumFractionDigits:2})+'</div>'+
+                '</div>'+
+                '<span style="font-size:10px;font-weight:800;color:#1565c0;flex-shrink:0">Details ›</span>'+
+              '</div>';
             }).join('');
             payHtml += '<div class="hist-card" style="margin-bottom:8px">'+
               '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center">'+
@@ -2281,7 +2289,7 @@ localStorage.setItem('custSession', JSON.stringify(session));
               '</div>'+
               '<div style="font-size:11px;color:#64748b;font-family:monospace;margin-top:4px">'+(when?esc(when):'')+(g.payment_ref?(' · UTR: '+esc(g.payment_ref)):'')+'</div>'+
               '<div style="margin-top:8px;padding:8px 10px;background:#f8fafc;border-radius:10px">'+
-                '<div style="font-size:10px;font-weight:800;color:#64748b;margin-bottom:4px">INVOICES COVERED</div>'+invLines+
+                '<div style="font-size:10px;font-weight:800;color:#64748b;margin-bottom:4px">INVOICES COVERED · TAP FOR DETAILS</div>'+invLines+
               '</div>'+
               pBtn+
             '</div>';
