@@ -1832,7 +1832,7 @@
           (o.invoice_total != null ? ' · Total: ₹'+Number(o.invoice_total).toLocaleString('en-IN',{maximumFractionDigits:2}) : '')+
           (o.customer_claimed_paid && st2!=='paid' ? '<br>Note: '+esc(o.customer_claim_note||'—') : '')+
           (o.payment_ref ? '<br>UTR: <b>'+esc(o.payment_ref)+'</b>' : '')+
-          (o.payment_proof_url ? '<br><a href="'+esc(o.payment_proof_url)+'" target="_blank" rel="noopener"><img src="'+esc(o.payment_proof_url)+'" alt="Proof" style="max-width:200px;max-height:120px;border-radius:8px;margin-top:6px;border:1px solid #e2e8f0"></a>' : '')+
+          (function(){ var u=o.payment_proof_url||'', fid=o.payment_proof_file_id||''; if(!u&&!fid)return ''; if(!fid&&u){ var m=u.match(/\/d\/([a-zA-Z0-9_-]+)/)||u.match(/[?&]id=([a-zA-Z0-9_-]+)/); if(m)fid=m[1]; } var view=fid?('https://drive.google.com/file/d/'+fid+'/view?usp=sharing'):u; var img=fid?('https://drive.google.com/thumbnail?id='+fid+'&sz=w800'):u; return '<br><a href="'+esc(view)+'" target="_blank" rel="noopener"><img src="'+esc(img)+'" alt="Proof" style="max-width:200px;max-height:120px;border-radius:8px;margin-top:6px;border:1px solid #e2e8f0" onerror="this.style.display=\'none\'"></a><div style="font-size:10px;margin-top:4px"><a href="'+esc(view)+'" target="_blank" rel="noopener">Open in Drive</a></div>'; })()+
           (o.payment_reminder_sent_at ? '<br>Last reminder: '+esc(String(o.payment_reminder_sent_at).slice(0,16).replace('T',' ')) : '')+
           (st2==='paid' ? '<br>Paid: ₹'+(o.paid_amount!=null?o.paid_amount:_payDue(o))+' · '+esc(o.payment_mode||'') : '')+
           '</div><div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">'+actions+'</div></div></div></div>';
