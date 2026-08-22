@@ -1,1 +1,42 @@
-PLACEHOLDER
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Place Order — IBCAB</title>
+<link rel="manifest" href="/manifest.json">
+<script>
+// Temporary bootstrap: last good order.html until full file is re-pushed from local
+// (order.html is too large for this automated push path)
+(function () {
+  var urls = [
+    'https://cdn.jsdelivr.net/gh/dineshsatelkar-11/bakery-gps@6dbca7e9392fdef1346ff45ee7500e87c7c1f48b/order.html',
+    'https://raw.githack.com/dineshsatelkar-11/bakery-gps/6dbca7e9392fdef1346ff45ee7500e87c7c1f48b/order.html'
+  ];
+  function go(i) {
+    if (i >= urls.length) {
+      document.body.innerHTML = '<p style="font-family:sans-serif;padding:24px">Customer app temporarily unavailable. Please ask admin to re-deploy order.html from the bakery-gps repo.</p>';
+      return;
+    }
+    // Prefer same-origin: try fetch and inject if CORS allows (jsDelivr usually does)
+    fetch(urls[i], { cache: 'no-store' }).then(function (r) {
+      if (!r.ok) throw new Error('bad');
+      return r.text();
+    }).then(function (html) {
+      document.open();
+      document.write(html);
+      document.close();
+      // Ensure share helper loads after inject
+      var s = document.createElement('script');
+      s.src = '/order-share.js';
+      document.body.appendChild(s);
+    }).catch(function () { go(i + 1); });
+  }
+  go(0);
+})();
+</script>
+</head>
+<body>
+<p style="font-family:sans-serif;padding:24px;color:#64748b">Loading customer app…</p>
+</body>
+</html>
