@@ -399,7 +399,7 @@
         .trk-status-delivered{background:linear-gradient(135deg,#e8f5e9,#c8e6c9)!important;border-color:#a5d6a7!important}
         .trk-status-pending{background:linear-gradient(135deg,#fff8e1,#ffecb3)!important;border-color:#ffe082!important}
     </style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
 <div class="ptr-indicator" id="ptrIndicator"><div class="ptr-bubble" id="ptrBubble">↓ Pull to refresh</div></div>
@@ -444,8 +444,8 @@
                     <div id="custNotifSubtitle" style="font-size:11px;color:#94a3b8;font-family:monospace"></div>
                 </div>
                 <div style="display:flex;gap:6px;align-items:center">
-                  <button id="markAllReadBtn" onclick="markCustNotifsRead()" style="display:none;background:rgba(255,255,255,.15);border:none;color:#fff;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif;white-space:nowrap">✓ All read</button>
-                  <button id="clearAllNotifBtn" onclick="clearCustNotifs()" style="display:none;background:rgba(255,80,80,.2);border:none;color:#fff;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif;white-space:nowrap">Clear</button>
+                    <button id="markAllReadBtn" onclick="markCustNotifsRead()" style="display:none;background:rgba(255,255,255,.15);border:none;color:#fff;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif;white-space:nowrap">✓ All read</button>
+                    <button id="clearAllNotifBtn" onclick="clearCustNotifs()" style="display:none;background:rgba(255,80,80,.2);border:none;color:#fff;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif;white-space:nowrap">Clear</button>
                 </div>
             </div>
 
@@ -464,77 +464,77 @@
     </div>
     <!-- Customer bottom navigation -->
     <nav class="cust-bottom-nav" id="custBottomNav" aria-label="Main">
-      <div class="cust-bottom-nav-inner">
-        <button type="button" class="cbnav-item on" id="cbnav-order" onclick="showTab('order')">
-          <span class="cbnav-ico">🛒</span><span class="cbnav-lbl">Order</span>
-        </button>
-        <button type="button" class="cbnav-item" id="cbnav-payments" onclick="showTab('payments')">
-          <span class="cbnav-ico">💰</span><span class="cbnav-lbl">Pay</span>
-        </button>
-        <button type="button" class="cbnav-item" id="cbnav-history" onclick="showTab('history')">
-          <span class="cbnav-ico">📋</span><span class="cbnav-lbl">History</span>
-        </button>
-        <button type="button" class="cbnav-item" id="cbnav-track" onclick="showTab('track')">
-          <span class="cbnav-ico">📍</span><span class="cbnav-lbl">Track</span>
-        </button>
-        <button type="button" class="cbnav-item" id="cbnav-settings" onclick="showTab('settings')">
-          <span class="cbnav-ico">👤</span><span class="cbnav-lbl">You</span>
-        </button>
-      </div>
+        <div class="cust-bottom-nav-inner">
+            <button type="button" class="cbnav-item on" id="cbnav-order" onclick="showTab('order')">
+                <span class="cbnav-ico">🛒</span><span class="cbnav-lbl">Order</span>
+            </button>
+            <button type="button" class="cbnav-item" id="cbnav-payments" onclick="showTab('payments')">
+                <span class="cbnav-ico">💰</span><span class="cbnav-lbl">Pay</span>
+            </button>
+            <button type="button" class="cbnav-item" id="cbnav-history" onclick="showTab('history')">
+                <span class="cbnav-ico">📋</span><span class="cbnav-lbl">History</span>
+            </button>
+            <button type="button" class="cbnav-item" id="cbnav-track" onclick="showTab('track')">
+                <span class="cbnav-ico">📍</span><span class="cbnav-lbl">Track</span>
+            </button>
+            <button type="button" class="cbnav-item" id="cbnav-settings" onclick="showTab('settings')">
+                <span class="cbnav-ico">👤</span><span class="cbnav-lbl">You</span>
+            </button>
+        </div>
     </nav>
 
 
     <!-- Global announcement banner -->
     <style>
-      #broadcastBanner{
-        display:none;margin:14px 14px 12px;border-radius:14px;padding:14px 14px;
-        border:1.5px solid #e2e8f0;background:#f8fafc;
-        box-shadow:0 2px 10px rgba(15,23,42,.06);
-      }
-      #broadcastBanner.bcast-info{background:#f1f5f9;border-color:#e2e8f0}
-      #broadcastBanner.bcast-reminder{background:#fff8e8;border-color:#ffe082}
-      #broadcastBanner.bcast-urgent{background:#fdf2f2;border-color:#f0b0b0}
-      #broadcastBanner.bcast-success{background:#f0faf3;border-color:#a5d6a7}
-      #broadcastBanner .bcast-inner{display:flex;align-items:flex-start;gap:12px}
-      #broadcastBanner .bcast-ico{
-        width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;
-        font-size:20px;flex-shrink:0;background:rgba(15,23,42,.06);
-      }
-      #broadcastBanner.bcast-reminder .bcast-ico{background:rgba(200,140,40,.12)}
-      #broadcastBanner.bcast-urgent .bcast-ico{background:rgba(200,56,42,.1)}
-      #broadcastBanner.bcast-success .bcast-ico{background:rgba(45,122,79,.1)}
-      #broadcastBanner .bcast-body{flex:1;min-width:0}
-      #broadcastBanner .bcast-title{
-        font-size:11px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;
-        color:#64748b;margin-bottom:3px;
-      }
-      #broadcastBanner.bcast-reminder .bcast-title{color:#9a6a10}
-      #broadcastBanner.bcast-urgent .bcast-title{color:#c8382a}
-      #broadcastBanner.bcast-success .bcast-title{color:#1a5a38}
-      #broadcastBanner .bcast-text{
-        font-size:13px;font-weight:600;color:#3d2a1a;line-height:1.45;
-        font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-      }
-      #broadcastBanner .bcast-actions{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
-      #broadcastBanner .bcast-gotit{
-        border:none;background:rgba(15,23,42,.08);color:#1e293b;
-        font-size:12px;font-weight:800;padding:8px 12px;border-radius:10px;
-        cursor:pointer;font-family:inherit;min-height:36px;-webkit-tap-highlight-color:transparent;
-      }
-      #broadcastBanner.bcast-urgent .bcast-gotit{background:rgba(200,56,42,.1);color:#c8382a}
-      #broadcastBanner.bcast-success .bcast-gotit{background:rgba(45,122,79,.12);color:#1a5a38}
+        #broadcastBanner{
+          display:none;margin:14px 14px 12px;border-radius:14px;padding:14px 14px;
+          border:1.5px solid #e2e8f0;background:#f8fafc;
+          box-shadow:0 2px 10px rgba(15,23,42,.06);
+        }
+        #broadcastBanner.bcast-info{background:#f1f5f9;border-color:#e2e8f0}
+        #broadcastBanner.bcast-reminder{background:#fff8e8;border-color:#ffe082}
+        #broadcastBanner.bcast-urgent{background:#fdf2f2;border-color:#f0b0b0}
+        #broadcastBanner.bcast-success{background:#f0faf3;border-color:#a5d6a7}
+        #broadcastBanner .bcast-inner{display:flex;align-items:flex-start;gap:12px}
+        #broadcastBanner .bcast-ico{
+          width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+          font-size:20px;flex-shrink:0;background:rgba(15,23,42,.06);
+        }
+        #broadcastBanner.bcast-reminder .bcast-ico{background:rgba(200,140,40,.12)}
+        #broadcastBanner.bcast-urgent .bcast-ico{background:rgba(200,56,42,.1)}
+        #broadcastBanner.bcast-success .bcast-ico{background:rgba(45,122,79,.1)}
+        #broadcastBanner .bcast-body{flex:1;min-width:0}
+        #broadcastBanner .bcast-title{
+          font-size:11px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;
+          color:#64748b;margin-bottom:3px;
+        }
+        #broadcastBanner.bcast-reminder .bcast-title{color:#9a6a10}
+        #broadcastBanner.bcast-urgent .bcast-title{color:#c8382a}
+        #broadcastBanner.bcast-success .bcast-title{color:#1a5a38}
+        #broadcastBanner .bcast-text{
+          font-size:13px;font-weight:600;color:#3d2a1a;line-height:1.45;
+          font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+        }
+        #broadcastBanner .bcast-actions{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
+        #broadcastBanner .bcast-gotit{
+          border:none;background:rgba(15,23,42,.08);color:#1e293b;
+          font-size:12px;font-weight:800;padding:8px 12px;border-radius:10px;
+          cursor:pointer;font-family:inherit;min-height:36px;-webkit-tap-highlight-color:transparent;
+        }
+        #broadcastBanner.bcast-urgent .bcast-gotit{background:rgba(200,56,42,.1);color:#c8382a}
+        #broadcastBanner.bcast-success .bcast-gotit{background:rgba(45,122,79,.12);color:#1a5a38}
     </style>
     <div id="broadcastBanner" class="bcast-info" role="status" aria-live="polite">
-      <div class="bcast-inner">
-        <div class="bcast-ico" id="broadcastIco">📢</div>
-        <div class="bcast-body">
-          <div class="bcast-title" id="broadcastTitle">Announcement</div>
-          <div class="bcast-text" id="broadcastText"></div>
+        <div class="bcast-inner">
+            <div class="bcast-ico" id="broadcastIco">📢</div>
+            <div class="bcast-body">
+                <div class="bcast-title" id="broadcastTitle">Announcement</div>
+                <div class="bcast-text" id="broadcastText"></div>
+            </div>
+            <div class="bcast-actions">
+                <button type="button" class="bcast-gotit" id="broadcastGotIt" onclick="dismissBroadcast()">Got it</button>
+            </div>
         </div>
-        <div class="bcast-actions">
-          <button type="button" class="bcast-gotit" id="broadcastGotIt" onclick="dismissBroadcast()">Got it</button>
-        </div>
-      </div>
     </div>
 
     <!-- ORDER TAB -->
@@ -586,94 +586,94 @@
     </div>
 
     <!-- HISTORY TAB -->
-    
-      <!-- PAYMENTS (weekly) -->
-      <div class="page" id="pg-payments">
-        <div style="padding:12px 14px 8px">
-          <div style="font-size:13px;font-weight:800;color:#1e293b;margin-bottom:6px">Weekly payments</div>
-          <div style="font-size:11px;color:#64748b;line-height:1.45;margin-bottom:10px">
-            Weekly cycle — pay the total overdue, then tap <b>send request</b>. Admin confirms from the bank (usually within <b>~24 working hours</b>).
-          </div>
-          <div id="pay-total-card" style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:12px;text-align:center">
-            <div style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase">Total overdue</div>
-            <div id="pay-total-amt" style="font-size:28px;font-weight:800;font-family:monospace;color:#c8382a;margin:4px 0">₹0</div>
-            <div id="pay-total-sub" style="font-size:11px;color:#64748b">0 invoice(s)</div>
-          </div>
-          <div id="payUpiBox" style="display:none;background:#fff;border:1.5px solid #c8e6c9;border-radius:14px;padding:14px;margin-bottom:12px;text-align:center">
-            <div style="font-size:12px;font-weight:800;color:#1a5a38;margin-bottom:8px">Pay with UPI</div>
-            <div id="payQrWrap" style="display:inline-block;padding:10px;background:#fff;border-radius:12px;border:1px solid #e2e8f0;min-height:160px;min-width:160px"></div>
-            <div id="payUpiAmtLbl" style="font-size:14px;font-weight:800;font-family:monospace;color:#c8382a;margin:10px 0 4px">₹0</div>
-            <div id="payUpiMeta" style="font-size:11px;color:#64748b;font-family:monospace;margin-bottom:10px"></div>
-            <a id="payUpiLink" href="#" style="display:block;background:#5f259f;color:#fff;text-decoration:none;font-weight:800;padding:12px;border-radius:12px;margin-bottom:8px">💜 Pay with UPI (any app)</a>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
-              <a id="payUpiPhonepe" href="#" style="display:block;background:#5f259f;color:#fff;text-decoration:none;font-weight:700;padding:10px 4px;border-radius:10px;font-size:11px;text-align:center">PhonePe</a>
-              <a id="payUpiGpay" href="#" style="display:block;background:#1a73e8;color:#fff;text-decoration:none;font-weight:700;padding:10px 4px;border-radius:10px;font-size:11px;text-align:center">GPay</a>
-              <a id="payUpiPaytm" href="#" style="display:block;background:#00baf2;color:#fff;text-decoration:none;font-weight:700;padding:10px 4px;border-radius:10px;font-size:11px;text-align:center">Paytm</a>
-            </div>
-            <button type="button" onclick="copyUpiLink()" style="width:100%;background:#f1f5f9;border:1.5px solid #e2e8f0;border-radius:10px;padding:8px;font-size:11px;font-weight:700;color:#1e293b;margin-bottom:6px;cursor:pointer">Copy UPI link</button>
-            <div style="font-size:10px;color:#64748b;line-height:1.4">Scan QR or open PhonePe / GPay / Paytm → pay → then send request. Admin confirms within ~24 working hours.</div>
-          </div>
-          <button type="button" class="btn" id="payRequestBtn" style="width:100%;background:#1e293b;color:#fff;font-weight:800;padding:14px;margin-bottom:10px;border:none;border-radius:14px;font-size:15px" onclick="openPayRequestSheet()">📨 After paying — send request to admin</button>
-          <div id="payStatusPoll" style="display:none;margin-bottom:10px;padding:12px;border-radius:12px;border:1.5px solid #90caf9;background:#e3f2fd">
-            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
-              <div style="flex:1;min-width:0">
-                <div id="payStatusTitle" style="font-size:12px;font-weight:800;color:#1565c0">Checking payment status…</div>
-                <div id="payStatusSub" style="font-size:11px;color:#5472a0;margin-top:4px;line-height:1.4;font-family:monospace">Waiting for bakery to confirm</div>
-              </div>
-              <button type="button" onclick="stopPaymentStatusPoll(true)" style="background:#fff;border:1px solid #90caf9;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;color:#1565c0;cursor:pointer;flex-shrink:0">Stop</button>
-            </div>
-          </div>
-          <div id="pay-msg" style="display:none;padding:10px;border-radius:8px;font-size:12px;font-weight:700;margin-bottom:10px"></div>
-          <div style="font-size:11px;font-weight:800;color:#64748b;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Unpaid invoices &amp; challans</div>
-          <div id="pay-list"><div style="text-align:center;color:#64748b;padding:20px;font-size:12px">Open this tab to load unpaid documents…</div></div>
-        </div>
-      </div>
-      <!-- Pay request sheet -->
-      
-      <!-- Invoice preview (customer) -->
-      <div id="invPreviewSheet" style="display:none;position:fixed;inset:0;z-index:420;background:rgba(30,22,17,.5);align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeInvoicePreview()">
-        <div style="background:#fff;width:100%;max-width:100%;max-height:88vh;border-radius:18px 18px 0 0;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 -8px 32px rgba(0,0,0,.2)">
-          <div style="padding:14px 16px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0">
-            <div>
-              <div style="font-size:15px;font-weight:900;color:#1e293b" id="invPrevTitle">Invoice</div>
-              <div style="font-size:11px;color:#64748b;margin-top:2px" id="invPrevSub"></div>
-            </div>
-            <button type="button" onclick="closeInvoicePreview()" style="border:none;background:#f1f5f9;color:#1e293b;width:36px;height:36px;border-radius:50%;font-size:18px;cursor:pointer;font-weight:700">×</button>
-          </div>
-          <div id="invPrevBody" style="padding:14px 16px;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch"></div>
-          <div style="padding:12px 16px calc(14px + var(--sab));border-top:1px solid #e2e8f0;flex-shrink:0">
-            <button type="button" class="btn btn-grey" style="width:100%;padding:12px" onclick="closeInvoicePreview()">Close</button>
-          </div>
-        </div>
-      </div>
-<div id="payRequestSheet" style="display:none;position:fixed;inset:0;z-index:400;background:rgba(30,22,17,.45);align-items:flex-end;justify-content:center" onclick="if(event.target===this)closePayRequestSheet()">
-        <div style="background:#fff;width:100%;max-width:100%;border-radius:20px 20px 0 0;padding:20px 16px max(20px,var(--sab));box-shadow:0 -8px 32px rgba(0,0,0,.15)">
-          <div style="font-size:15px;font-weight:900;color:#1e293b;margin-bottom:6px">Send payment request</div>
-          <div style="font-size:12px;color:#64748b;margin-bottom:12px;line-height:1.45">You are telling admin: <b>I have paid the full overdue total</b>.<br><br>Send the request after paying. Admin will match the amount in the bank (usually within <b>24 working hours</b>). You get a notification when confirmed.</div>
-          <div style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:12px;padding:14px;text-align:center;margin-bottom:12px">
-            <div style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase">Amount</div>
-            <div id="paySheetAmt" style="font-size:26px;font-weight:900;font-family:monospace;color:#c8382a;margin:4px 0">₹0</div>
-            <div id="paySheetSub" style="font-size:11px;color:#64748b">0 invoice(s)</div>
-          </div>
-          <div class="lbl" style="margin-bottom:6px">UTR / Transaction ID (helps admin match bank)</div>
-          <input type="text" id="paySheetRef" placeholder="e.g. UPI ref / UTR number" style="width:100%;padding:12px;border:1.5px solid #e2e8f0;border-radius:12px;font-size:14px;margin-bottom:10px;box-sizing:border-box">
-          <div class="lbl" style="margin-bottom:6px">Payment screenshot (recommended)</div>
-          <div style="background:#f8fafc;border:1.5px dashed #cbd5e1;border-radius:12px;padding:12px;margin-bottom:10px;text-align:center">
-            <input type="file" id="paySheetPhoto" accept="image/*" capture="environment" style="display:none" onchange="paySheetPhotoChosen(this)">
-            <button type="button" class="btn btn-grey" style="margin:0;width:100%;padding:12px" onclick="document.getElementById('paySheetPhoto').click()">📸 Add payment screenshot</button>
-            <div id="paySheetPhotoPreview" style="margin-top:10px;display:none"></div>
-            <div style="font-size:10px;color:#64748b;margin-top:8px;line-height:1.4">Screenshot goes to bakery Drive. Admin matches UTR + photo with bank, then confirms.</div>
-          </div>
-          <div class="lbl" style="margin-bottom:6px">Optional note</div>
-          <input type="text" id="paySheetNote" placeholder="Optional — only if you want to add something" style="width:100%;padding:12px;border:1.5px solid #e2e8f0;border-radius:12px;font-size:14px;margin-bottom:12px;box-sizing:border-box">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-            <button type="button" class="btn btn-grey" style="margin:0;padding:14px" onclick="closePayRequestSheet()">Cancel</button>
-            <button type="button" class="btn" style="margin:0;padding:14px;background:#2d7a4f;color:#fff;font-weight:800;border:none;border-radius:14px" onclick="paySubmitTotalRequest()">Send request</button>
-          </div>
-        </div>
-      </div>
 
-<div class="page" id="pg-history">
+    <!-- PAYMENTS (weekly) -->
+    <div class="page" id="pg-payments">
+        <div style="padding:12px 14px 8px">
+            <div style="font-size:13px;font-weight:800;color:#1e293b;margin-bottom:6px">Weekly payments</div>
+            <div style="font-size:11px;color:#64748b;line-height:1.45;margin-bottom:10px">
+                Weekly cycle — pay the total overdue, then tap <b>send request</b>. Admin confirms from the bank (usually within <b>~24 working hours</b>).
+            </div>
+            <div id="pay-total-card" style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:12px;text-align:center">
+                <div style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase">Total overdue</div>
+                <div id="pay-total-amt" style="font-size:28px;font-weight:800;font-family:monospace;color:#c8382a;margin:4px 0">₹0</div>
+                <div id="pay-total-sub" style="font-size:11px;color:#64748b">0 invoice(s)</div>
+            </div>
+            <div id="payUpiBox" style="display:none;background:#fff;border:1.5px solid #c8e6c9;border-radius:14px;padding:14px;margin-bottom:12px;text-align:center">
+                <div style="font-size:12px;font-weight:800;color:#1a5a38;margin-bottom:8px">Pay with UPI</div>
+                <div id="payQrWrap" style="display:inline-block;padding:10px;background:#fff;border-radius:12px;border:1px solid #e2e8f0;min-height:160px;min-width:160px"></div>
+                <div id="payUpiAmtLbl" style="font-size:14px;font-weight:800;font-family:monospace;color:#c8382a;margin:10px 0 4px">₹0</div>
+                <div id="payUpiMeta" style="font-size:11px;color:#64748b;font-family:monospace;margin-bottom:10px"></div>
+                <a id="payUpiLink" href="#" style="display:block;background:#5f259f;color:#fff;text-decoration:none;font-weight:800;padding:12px;border-radius:12px;margin-bottom:8px">💜 Pay with UPI (any app)</a>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
+                    <a id="payUpiPhonepe" href="#" style="display:block;background:#5f259f;color:#fff;text-decoration:none;font-weight:700;padding:10px 4px;border-radius:10px;font-size:11px;text-align:center">PhonePe</a>
+                    <a id="payUpiGpay" href="#" style="display:block;background:#1a73e8;color:#fff;text-decoration:none;font-weight:700;padding:10px 4px;border-radius:10px;font-size:11px;text-align:center">GPay</a>
+                    <a id="payUpiPaytm" href="#" style="display:block;background:#00baf2;color:#fff;text-decoration:none;font-weight:700;padding:10px 4px;border-radius:10px;font-size:11px;text-align:center">Paytm</a>
+                </div>
+                <button type="button" onclick="copyUpiLink()" style="width:100%;background:#f1f5f9;border:1.5px solid #e2e8f0;border-radius:10px;padding:8px;font-size:11px;font-weight:700;color:#1e293b;margin-bottom:6px;cursor:pointer">Copy UPI link</button>
+                <div style="font-size:10px;color:#64748b;line-height:1.4">Scan QR or open PhonePe / GPay / Paytm → pay → then send request. Admin confirms within ~24 working hours.</div>
+            </div>
+            <button type="button" class="btn" id="payRequestBtn" style="width:100%;background:#1e293b;color:#fff;font-weight:800;padding:14px;margin-bottom:10px;border:none;border-radius:14px;font-size:15px" onclick="openPayRequestSheet()">📨 After paying — send request to admin</button>
+            <div id="payStatusPoll" style="display:none;margin-bottom:10px;padding:12px;border-radius:12px;border:1.5px solid #90caf9;background:#e3f2fd">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+                    <div style="flex:1;min-width:0">
+                        <div id="payStatusTitle" style="font-size:12px;font-weight:800;color:#1565c0">Checking payment status…</div>
+                        <div id="payStatusSub" style="font-size:11px;color:#5472a0;margin-top:4px;line-height:1.4;font-family:monospace">Waiting for bakery to confirm</div>
+                    </div>
+                    <button type="button" onclick="stopPaymentStatusPoll(true)" style="background:#fff;border:1px solid #90caf9;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:700;color:#1565c0;cursor:pointer;flex-shrink:0">Stop</button>
+                </div>
+            </div>
+            <div id="pay-msg" style="display:none;padding:10px;border-radius:8px;font-size:12px;font-weight:700;margin-bottom:10px"></div>
+            <div style="font-size:11px;font-weight:800;color:#64748b;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Unpaid invoices &amp; challans</div>
+            <div id="pay-list"><div style="text-align:center;color:#64748b;padding:20px;font-size:12px">Open this tab to load unpaid documents…</div></div>
+        </div>
+    </div>
+    <!-- Pay request sheet -->
+
+    <!-- Invoice preview (customer) -->
+    <div id="invPreviewSheet" style="display:none;position:fixed;inset:0;z-index:420;background:rgba(30,22,17,.5);align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeInvoicePreview()">
+        <div style="background:#fff;width:100%;max-width:100%;max-height:88vh;border-radius:18px 18px 0 0;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 -8px 32px rgba(0,0,0,.2)">
+            <div style="padding:14px 16px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0">
+                <div>
+                    <div style="font-size:15px;font-weight:900;color:#1e293b" id="invPrevTitle">Invoice</div>
+                    <div style="font-size:11px;color:#64748b;margin-top:2px" id="invPrevSub"></div>
+                </div>
+                <button type="button" onclick="closeInvoicePreview()" style="border:none;background:#f1f5f9;color:#1e293b;width:36px;height:36px;border-radius:50%;font-size:18px;cursor:pointer;font-weight:700">×</button>
+            </div>
+            <div id="invPrevBody" style="padding:14px 16px;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch"></div>
+            <div style="padding:12px 16px calc(14px + var(--sab));border-top:1px solid #e2e8f0;flex-shrink:0">
+                <button type="button" class="btn btn-grey" style="width:100%;padding:12px" onclick="closeInvoicePreview()">Close</button>
+            </div>
+        </div>
+    </div>
+    <div id="payRequestSheet" style="display:none;position:fixed;inset:0;z-index:400;background:rgba(30,22,17,.45);align-items:flex-end;justify-content:center" onclick="if(event.target===this)closePayRequestSheet()">
+        <div style="background:#fff;width:100%;max-width:100%;border-radius:20px 20px 0 0;padding:20px 16px max(20px,var(--sab));box-shadow:0 -8px 32px rgba(0,0,0,.15)">
+            <div style="font-size:15px;font-weight:900;color:#1e293b;margin-bottom:6px">Send payment request</div>
+            <div style="font-size:12px;color:#64748b;margin-bottom:12px;line-height:1.45">You are telling admin: <b>I have paid the full overdue total</b>.<br><br>Send the request after paying. Admin will match the amount in the bank (usually within <b>24 working hours</b>). You get a notification when confirmed.</div>
+            <div style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:12px;padding:14px;text-align:center;margin-bottom:12px">
+                <div style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase">Amount</div>
+                <div id="paySheetAmt" style="font-size:26px;font-weight:900;font-family:monospace;color:#c8382a;margin:4px 0">₹0</div>
+                <div id="paySheetSub" style="font-size:11px;color:#64748b">0 invoice(s)</div>
+            </div>
+            <div class="lbl" style="margin-bottom:6px">UTR / Transaction ID (helps admin match bank)</div>
+            <input type="text" id="paySheetRef" placeholder="e.g. UPI ref / UTR number" style="width:100%;padding:12px;border:1.5px solid #e2e8f0;border-radius:12px;font-size:14px;margin-bottom:10px;box-sizing:border-box">
+            <div class="lbl" style="margin-bottom:6px">Payment screenshot (recommended)</div>
+            <div style="background:#f8fafc;border:1.5px dashed #cbd5e1;border-radius:12px;padding:12px;margin-bottom:10px;text-align:center">
+                <input type="file" id="paySheetPhoto" accept="image/*" capture="environment" style="display:none" onchange="paySheetPhotoChosen(this)">
+                <button type="button" class="btn btn-grey" style="margin:0;width:100%;padding:12px" onclick="document.getElementById('paySheetPhoto').click()">📸 Add payment screenshot</button>
+                <div id="paySheetPhotoPreview" style="margin-top:10px;display:none"></div>
+                <div style="font-size:10px;color:#64748b;margin-top:8px;line-height:1.4">Screenshot goes to bakery Drive. Admin matches UTR + photo with bank, then confirms.</div>
+            </div>
+            <div class="lbl" style="margin-bottom:6px">Optional note</div>
+            <input type="text" id="paySheetNote" placeholder="Optional — only if you want to add something" style="width:100%;padding:12px;border:1.5px solid #e2e8f0;border-radius:12px;font-size:14px;margin-bottom:12px;box-sizing:border-box">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                <button type="button" class="btn btn-grey" style="margin:0;padding:14px" onclick="closePayRequestSheet()">Cancel</button>
+                <button type="button" class="btn" style="margin:0;padding:14px;background:#2d7a4f;color:#fff;font-weight:800;border:none;border-radius:14px" onclick="paySubmitTotalRequest()">Send request</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="page" id="pg-history">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
             <div style="font-size:13px;font-weight:800;color:#1e293b">Your Past Orders</div>
             <button class="btn-sm" onclick="loadHistory()" style="background:#f1f5f9;border:1.5px solid #e2e8f0;border-radius:10px;padding:7px 12px;font-size:12px;font-weight:700;cursor:pointer;color:#1e293b;font-family:-apple-system,sans-serif">↻ Refresh</button>
@@ -695,8 +695,8 @@
         <!-- Single profile hero (replaces topbar on More tab) -->
         <div class="settings-hero" id="settingsHero">
             <button type="button" class="settings-hero-bell" onclick="toggleCustNotifPanel()" aria-label="Notifications">
-              🔔
-              <span id="custNotifBadgeSettings" style="display:none;position:absolute;top:4px;right:4px;background:#e53935;color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:900;align-items:center;justify-content:center;font-family:monospace">0</span>
+                🔔
+                <span id="custNotifBadgeSettings" style="display:none;position:absolute;top:4px;right:4px;background:#e53935;color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:900;align-items:center;justify-content:center;font-family:monospace">0</span>
             </button>
             <div id="settingsAvatar" class="settings-hero-avatar"></div>
             <div id="settingsName" class="settings-hero-name"></div>
@@ -833,8 +833,8 @@
         <div id="pvNote" style="margin-top:10px;font-size:11px;color:#64748b;font-family:monospace;display:none"></div>
         <div id="pvMsg" style="display:none;margin-top:10px" class="msg ok"></div>
         <div class="preview-actions">
-          <button type="button" class="btn btn-grey" onclick="closePreview()">← Edit</button>
-          <button type="button" class="btn btn-green" id="confirmBtn" onclick="submitOrder()">✅ Place Order</button>
+            <button type="button" class="btn btn-grey" onclick="closePreview()">← Edit</button>
+            <button type="button" class="btn btn-green" id="confirmBtn" onclick="submitOrder()">✅ Place Order</button>
         </div>
     </div>
 </div>
@@ -845,189 +845,130 @@
       navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function() {});
     }
 
-    // ── Receive share from PhonePe / GPay (Share receipt → IBCAB) ─────────────
-    // SW intercepts POST, stores in IndexedDB, redirects to order.html?share=1
-    function applySharedPayToUi(opts) {
-      opts = opts || {};
-      try { if (typeof showTab === 'function') showTab('payments'); } catch (e0) {}
-      setTimeout(function() {
+    // ── Receive share from PhonePe / GPay / other apps (Android PWA Share Target) ──
+    // ── Share Target helpers (PhonePe / GPay / Paytm / WhatsApp) ──
+    function extractUtrFromText(txt){
+      if (!txt) return '';
+      var s = String(txt);
+      // Prefer explicit UTR / UPI ref labels
+      var labeled = s.match(/(?:UTR|UPI\s*Ref(?:erence)?|Txn(?:\.|saction)?\s*ID|Ref(?:erence)?\s*(?:No|ID)?|Transaction\s*ID)[:\s#]*([A-Za-z0-9]{8,22})/i);
+      if (labeled) return labeled[1];
+      // Long digit runs common in UPI (12–22)
+      var m = s.match(/\b([0-9]{12,22})\b/);
+      if (m) return m[1];
+      // Shorter 10–11 digit as last resort
+      m = s.match(/\b([0-9]{10,11})\b/);
+      return m ? m[1] : '';
+    }
+
+    function applySharedPayToUi(){
+      try {
+        if (typeof showTab === 'function') showTab('payments');
+      } catch (e) {}
+      setTimeout(function(){
         try {
           if (typeof openPayRequestSheet === 'function') openPayRequestSheet();
-          else if (typeof payOpenRequestSheet === 'function') payOpenRequestSheet();
-        } catch (e1) {}
-        var prev = document.getElementById('paySheetPhotoPreview');
-        var img = opts.imageDataUrl || window._sharedPayImage || '';
-        if (prev && img && String(img).indexOf('data:image') === 0) {
-          prev.innerHTML = '<img src="'+String(img).replace(/"/g,'')+'" style="max-width:100%;max-height:140px;border-radius:10px;border:1px solid #e2e8f0" alt="Receipt"><div style="font-size:11px;color:#166534;margin-top:6px">From UPI share — check UTR, then Send request</div>';
-          prev.style.display = 'block';
-        } else if (prev && opts.pdfOnly) {
-          prev.innerHTML = '<div style="font-size:12px;color:#9a3412;padding:8px;background:#fff7ed;border-radius:8px">PDF receipt received. UTR filled if found. For photo proof, attach a <b>screenshot</b> below (image works best).</div>';
-          prev.style.display = 'block';
-        }
-        var r = document.getElementById('paySheetRef') || document.getElementById('paySheetUtr') || document.getElementById('payClaimUtr');
-        var n = document.getElementById('paySheetNote') || document.getElementById('payClaimNote');
-        if (r && opts.utr) r.value = opts.utr;
-        if (n && opts.text && !opts.utr) n.value = String(opts.text).slice(0, 200);
-        if (opts.msg) {
-          try { alert(opts.msg); } catch (e2) {}
-        }
+        } catch (e2) {}
       }, 500);
     }
 
-    function loadShareFromIndexedDb() {
-      return new Promise(function(resolve) {
+    function loadShareFromIndexedDb(){
+      return new Promise(function(resolve){
         try {
           var req = indexedDB.open('ibcab-share', 1);
-          req.onupgradeneeded = function() {
+          req.onupgradeneeded = function(){
             var db = req.result;
-            if (!db.objectStoreNames.contains('incoming')) db.createObjectStore('incoming');
+            if (!db.objectStoreNames.contains('incoming')) db.createObjectStore('incoming', { keyPath: 'id' });
           };
-          req.onerror = function() { resolve(null); };
-          req.onsuccess = function() {
+          req.onerror = function(){ resolve(null); };
+          req.onsuccess = function(){
+            var db = req.result;
             try {
-              var db = req.result;
               var tx = db.transaction('incoming', 'readonly');
               var g = tx.objectStore('incoming').get('latest');
-              g.onsuccess = function() { resolve(g.result || null); };
-              g.onerror = function() { resolve(null); };
-            } catch (e) { resolve(null); }
+              g.onsuccess = function(){
+                var row = g.result;
+                // clear after read
+                try {
+                  var tx2 = db.transaction('incoming', 'readwrite');
+                  tx2.objectStore('incoming').delete('latest');
+                } catch (eClr) {}
+                resolve(row && row.data ? row.data : null);
+              };
+              g.onerror = function(){ resolve(null); };
+            } catch (e2) { resolve(null); }
           };
         } catch (e) { resolve(null); }
       });
     }
 
-    function clearShareFromIndexedDb() {
+    function handleIncomingShare(){
+      // 1) Query-string share (title/text/url)
       try {
-        var req = indexedDB.open('ibcab-share', 1);
-        req.onsuccess = function() {
-          try {
-            var db = req.result;
-            var tx = db.transaction('incoming', 'readwrite');
-            tx.objectStore('incoming').delete('latest');
-          } catch (e) {}
-        };
-      } catch (e) {}
-    }
-
-    function handleIncomingShare() {
-      var params = new URLSearchParams(location.search || '');
-      var fromShare = params.get('share') === '1' || params.get('share') === 'true';
-
-      try {
+        var params = new URLSearchParams(location.search || '');
         var sharedText = params.get('text') || params.get('title') || '';
         var sharedUrl = params.get('url') || '';
         if (sharedText || sharedUrl) {
           window._sharedPayText = [sharedText, sharedUrl].filter(Boolean).join('\n');
-          var utrQ = '';
-          var mq = window._sharedPayText.match(/\b([0-9]{10,22})\b/);
-          if (mq) utrQ = mq[1];
+          var utr = extractUtrFromText(window._sharedPayText);
           sessionStorage.setItem('sharedPayText', window._sharedPayText);
-          if (utrQ) sessionStorage.setItem('sharedPayUtr', utrQ);
-          fromShare = true;
+          if (utr) sessionStorage.setItem('sharedPayUtr', utr);
         }
       } catch (e) {}
 
-      loadShareFromIndexedDb().then(function(payload) {
-        if (!payload) {
-          if (fromShare) {
-            applySharedPayToUi({
-              msg: 'Share opened IBCAB. If screenshot is missing, attach it below, then Send request.'
-            });
+      // 2) IndexedDB payload from Service Worker (real file share)
+      var isShare = /[?&]share=1\b/.test(location.search || '');
+      if (isShare || sessionStorage.getItem('sharedPayImage') || sessionStorage.getItem('sharedPayUtr')) {
+        loadShareFromIndexedDb().then(function(data){
+          if (data) {
+            var textParts = [data.title, data.text, data.url].filter(Boolean).join('\n');
+            if (textParts) {
+              window._sharedPayText = textParts;
+              sessionStorage.setItem('sharedPayText', textParts);
+              var u = extractUtrFromText(textParts);
+              if (u) sessionStorage.setItem('sharedPayUtr', u);
+            }
+            if (data.fileB64) {
+              var mime = data.fileType || 'image/jpeg';
+              if (String(mime).indexOf('pdf') >= 0) mime = 'application/pdf';
+              var dataUrl = 'data:' + mime + ';base64,' + data.fileB64;
+              // PDF cannot be previewed as img — still keep base64 for upload
+              if (String(mime).indexOf('pdf') >= 0) {
+                window._payProofBase64 = data.fileB64;
+                window._sharedPayImage = dataUrl;
+                sessionStorage.setItem('sharedPayImage', dataUrl);
+              } else {
+                window._payProofBase64 = data.fileB64;
+                window._sharedPayImage = dataUrl;
+                sessionStorage.setItem('sharedPayImage', dataUrl);
+              }
+            }
           }
-          return;
-        }
-        var combined = payload.combined || [payload.title, payload.text, payload.url].filter(Boolean).join('\n');
-        var utr = payload.utr || '';
-        if (!utr && combined) {
-          var patterns = [
-            /(?:UTR|UPI\s*Ref(?:erence)?|Ref(?:erence)?\s*(?:No|ID|#)?|Txn(?:\s*ID)?|Transaction\s*(?:ID|No)|RRN)[:\s#\-]*([A-Za-z0-9]{8,22})/i,
-            /\b([0-9]{12})\b/,
-            /\b([0-9]{10,22})\b/
-          ];
-          for (var pi = 0; pi < patterns.length; pi++) {
-            var m = String(combined).match(patterns[pi]);
-            if (m && m[1]) { utr = m[1]; break; }
-          }
-        }
-        window._sharedPayText = combined;
+          applySharedPayToUi();
+        });
+      }
+
+      // 3) Launch Queue (Chrome Android file share fallback)
+      if ('launchQueue' in window && typeof LaunchParams !== 'undefined' && 'files' in LaunchParams.prototype) {
         try {
-          sessionStorage.setItem('sharedPayText', combined || '');
-          if (utr) sessionStorage.setItem('sharedPayUtr', utr);
-        } catch (e3) {}
-
-        var dataUrl = payload.imageDataUrl || '';
-        var mime = (payload.mime || '').toLowerCase();
-        var isImage = dataUrl.indexOf('data:image') === 0 || mime.indexOf('image/') === 0;
-        var isPdf = dataUrl.indexOf('data:application/pdf') === 0 || mime.indexOf('pdf') >= 0 || /\.pdf$/i.test(payload.fileName || '');
-
-        if (isImage && dataUrl) {
-          var b64 = dataUrl.indexOf(',') >= 0 ? dataUrl.split(',')[1] : '';
-          if (b64) {
-            window._payProofBase64 = b64;
-            window._sharedPayImage = dataUrl;
-            try { sessionStorage.setItem('sharedPayImage', dataUrl); } catch (e4) {}
-          }
-          applySharedPayToUi({
-            imageDataUrl: dataUrl,
-            utr: utr,
-            text: combined,
-            msg: 'Payment receipt received (PhonePe / GPay / Paytm / etc.). Check UTR, then Send request to admin.'
-          });
-        } else if (isPdf) {
-          applySharedPayToUi({
-            pdfOnly: true,
-            utr: utr,
-            text: combined,
-            msg: 'UPI app shared a PDF receipt. UTR filled if found. Please also attach a screenshot for proof, then Send request.'
-          });
-        } else {
-          applySharedPayToUi({
-            utr: utr,
-            text: combined,
-            msg: combined
-              ? 'Share text received. Add screenshot if needed, then Send request.'
-              : 'Share opened IBCAB. Attach payment screenshot and UTR, then Send request.'
-          });
-        }
-        clearShareFromIndexedDb();
-        try {
-          if (location.search && window.history && history.replaceState) {
-            history.replaceState({}, '', location.pathname + (location.hash || ''));
-          }
-        } catch (e5) {}
-      });
-    }
-
-    if ('launchQueue' in window && typeof LaunchParams !== 'undefined' && LaunchParams.prototype && 'files' in LaunchParams.prototype) {
-      try {
-        window.launchQueue.setConsumer(function(launchParams) {
-          if (!launchParams.files || !launchParams.files.length) return;
-          var file = launchParams.files[0];
-          var reader = new FileReader();
-          reader.onload = function() {
-            var dataUrl = reader.result || '';
-            var isImage = String(dataUrl).indexOf('data:image') === 0;
-            if (isImage) {
+          window.launchQueue.setConsumer(function(launchParams) {
+            if (!launchParams.files || !launchParams.files.length) return;
+            var file = launchParams.files[0];
+            var reader = new FileReader();
+            reader.onload = function() {
+              var dataUrl = reader.result || '';
               var b64 = String(dataUrl).indexOf(',') >= 0 ? String(dataUrl).split(',')[1] : '';
               if (b64) {
                 window._payProofBase64 = b64;
                 window._sharedPayImage = dataUrl;
-                try { sessionStorage.setItem('sharedPayImage', dataUrl); } catch (e6) {}
+                sessionStorage.setItem('sharedPayImage', dataUrl);
+                applySharedPayToUi();
               }
-              applySharedPayToUi({
-                imageDataUrl: dataUrl,
-                msg: 'Payment screenshot received from share. Add UTR if needed, then Send request.'
-              });
-            } else {
-              applySharedPayToUi({
-                pdfOnly: true,
-                msg: 'Shared file is not an image. Please attach a screenshot of the receipt, then Send request.'
-              });
-            }
-          };
-          reader.readAsDataURL(file);
-        });
-      } catch (e) {}
+            };
+            reader.readAsDataURL(file);
+          });
+        } catch (eLQ) {}
+      }
     }
     handleIncomingShare();
 
@@ -2271,7 +2212,88 @@ localStorage.setItem('custSession', JSON.stringify(session));
           if (o.date) orderByDate[o.date] = o;
         });
 
+        // Recent payments grouped by transaction (parent = amount paid; children = invoices)
+        var payHtml = '';
+        function _custPayTxnKey(o) {
+          var zpid = String(o.zoho_payment_id || '').trim();
+          if (zpid) return 'z:' + zpid;
+          var ref = String(o.payment_ref || '').trim();
+          var day = String(o.paid_at || o.customer_claimed_at || '').slice(0, 16);
+          if (ref) return 'r:' + ref + '|' + day.slice(0, 10);
+          return 'id:' + String(o.id);
+        }
+        var payAll = (custOrders || []).filter(function(o){
+          return !!(o.customer_claimed_paid || o.payment_proof_url || o.payment_ref || String(o.payment_status||'').toLowerCase()==='paid');
+        });
+        var payMap = {};
+        payAll.forEach(function(o){
+          var k = _custPayTxnKey(o);
+          if (!payMap[k]) {
+            payMap[k] = {
+              key: k,
+              payment_ref: o.payment_ref || '',
+              paid_at: o.paid_at || o.customer_claimed_at || '',
+              payment_proof_url: o.payment_proof_url || '',
+              payment_status: o.payment_status || '',
+              claimed: !!o.customer_claimed_paid,
+              rows: []
+            };
+          }
+          var g = payMap[k];
+          g.rows.push(o);
+          if (o.payment_ref && !g.payment_ref) g.payment_ref = o.payment_ref;
+          if (o.payment_proof_url && !g.payment_proof_url) g.payment_proof_url = o.payment_proof_url;
+          if (String(o.payment_status||'').toLowerCase()==='paid') g.payment_status = 'paid';
+          if (o.paid_at && (!g.paid_at || String(o.paid_at) > String(g.paid_at))) g.paid_at = o.paid_at;
+        });
+        var payGroups = Object.keys(payMap).map(function(k){ return payMap[k]; }).sort(function(a,b){
+          return String(b.paid_at||'').localeCompare(String(a.paid_at||''));
+        }).slice(0, 12);
+        if (payGroups.length) {
+          payHtml += '<div style="font-size:12px;font-weight:800;color:#1e293b;margin:4px 0 8px">Recent payments</div>';
+          payGroups.forEach(function(g){
+            var allPaid = g.rows.every(function(o){ return String(o.payment_status||'').toLowerCase()==='paid'; });
+            var badge = allPaid
+              ? '<span style="background:#e8f5e9;color:#1a5a38;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">Paid</span>'
+              : '<span style="background:#e3f2fd;color:#1565c0;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">Request sent</span>';
+            var total = g.rows.reduce(function(s,o){
+              var a = o.paid_amount != null ? parseFloat(o.paid_amount) : (o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total));
+              return s + (isNaN(a) ? 0 : a);
+            }, 0);
+            var when = '';
+            try { if (g.paid_at) when = String(g.paid_at).slice(0,16).replace('T',' '); } catch(e){}
+            var pBtn = '';
+            if (g.payment_proof_url) {
+              var pu = String(g.payment_proof_url).replace(/'/g,'');
+              pBtn = '<button type="button" onclick="viewPaymentProof(\''+pu+'\')" style="margin-top:8px;width:100%;background:#f0fdf4;border:1px solid #a7f3d0;border-radius:10px;padding:10px;font-size:12px;font-weight:700;color:#065f46;cursor:pointer">📷 View payment screenshot</button>';
+            }
+            var invLines = g.rows.map(function(o){
+              var amt = o.paid_amount != null ? parseFloat(o.paid_amount) : (o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total));
+              if (isNaN(amt)) amt = 0;
+              var doc = o.zoho_invoice_number || ('Order #'+o.id);
+              return '<div style="display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-top:1px solid #f1f5f9;font-size:11px">'+
+                '<span style="color:#334155;font-weight:600">'+esc(doc)+'</span>'+
+                '<span style="font-family:monospace;font-weight:800;color:#0f172a">₹'+amt.toLocaleString('en-IN',{maximumFractionDigits:2})+'</span></div>';
+            }).join('');
+            payHtml += '<div class="hist-card" style="margin-bottom:8px">'+
+              '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center">'+
+                '<div style="font-size:13px;font-weight:800">Payment · ₹'+total.toLocaleString('en-IN',{maximumFractionDigits:2})+'</div>'+badge+
+              '</div>'+
+              '<div style="font-size:11px;color:#64748b;font-family:monospace;margin-top:4px">'+(when?esc(when):'')+(g.payment_ref?(' · UTR: '+esc(g.payment_ref)):'')+'</div>'+
+              '<div style="margin-top:8px;padding:8px 10px;background:#f8fafc;border-radius:10px">'+
+                '<div style="font-size:10px;font-weight:800;color:#64748b;margin-bottom:4px">INVOICES COVERED</div>'+invLines+
+              '</div>'+
+              pBtn+
+            '</div>';
+          });
+          payHtml += '<div style="font-size:12px;font-weight:800;color:#1e293b;margin:16px 0 8px">Orders & deliveries</div>';
+        }
+
         if (!custOrders.length && !deliveries.length && !shopOrders.length) {
+          if (payHtml) {
+            el.innerHTML = payHtml;
+            return;
+          }
           el.innerHTML = '<div style="padding:30px;text-align:center;font-size:13px;color:#64748b;font-family:monospace">No orders or deliveries yet.</div>';
           return;
         }
@@ -2375,7 +2397,7 @@ localStorage.setItem('custSession', JSON.stringify(session));
           return '<div style="margin-top:8px;background:#f1f5f9;border-radius:10px;padding:8px 10px;font-size:12px;line-height:1.5">'+pairs.join('')+'</div>';
         }
 
-        var html = '';
+        var html = (typeof payHtml === 'string' ? payHtml : '');
         var statusLabel = {pending:'⏳ Pending Approval',approved:'✅ Approved',rejected:'❌ Rejected',kitchen:'👨‍🍳 In Kitchen',packaging:'📦 Packaging',dispatched:'🚚 Out for Delivery',delivered:'✅ Delivered',no_order:'🚫 No Order'};
         var statusClass = {pending:'s-pending',approved:'s-approved',rejected:'s-rejected',kitchen:'s-kitchen',packaging:'s-packaging',dispatched:'s-dispatched',delivered:'s-dispatched',no_order:'s-rejected'};
 
@@ -2837,7 +2859,7 @@ localStorage.setItem('custSession', JSON.stringify(session));
       if ((location.hash||'').toLowerCase().indexOf('pay') >= 0 && session) showTab('payments');
     });
 
-    
+
     function setCustBottomNav(tab){
       ['order','payments','history','track','settings'].forEach(function(k){
         var el = document.getElementById('cbnav-'+k);
@@ -2853,7 +2875,7 @@ localStorage.setItem('custSession', JSON.stringify(session));
     }
 
     function showTab(t){
-      
+
       if (t === 'payments' && !_customerPayEnabled) t = 'order';
       setCustBottomNav(t);
 if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
@@ -3225,7 +3247,7 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
       if(/^dc[-_]/i.test(num) || /challan/i.test(num)) return 'Challan';
       return 'Invoice';
     }
-    
+
     var _upiVpa = '';
     var _upiPayee = 'IBCAB';
     var _payQrObj = null;
@@ -3473,6 +3495,10 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
     function renderPayUpiBox(){
       var box = document.getElementById('payUpiBox');
       if(!box) return;
+      if (box.getAttribute('data-hidden-for-proof') === '1') {
+        box.style.display = 'none';
+        return;
+      }
       var total = typeof _payUnpaidTotal === 'function' ? _payUnpaidTotal() : 0;
       if(!_upiVpa || total <= 0){
         box.style.display = 'none';
@@ -3527,7 +3553,7 @@ function _payUnpaidTotal(){
         return s + (isNaN(d)?0:d);
       }, 0);
     }
-    
+
     function closeInvoicePreview(){
       var sh = document.getElementById('invPreviewSheet');
       if(sh){ sh.style.display = 'none'; }
@@ -3666,7 +3692,20 @@ function _payUnpaidTotal(){
       if(btn && pendingReq && total > 0){
         btn.textContent = '📨 Request sent — waiting for admin (usually 24 working hrs)';
         btn.style.background = '#1565c0';
-      } else if(btn && total <= 0){
+      }
+      try {
+        var hasAttached = unpaid.some(function(o){ return !!(o.payment_proof_url || o.payment_proof_file_id); });
+        var upiBox2 = document.getElementById('payUpiBox');
+        if (upiBox2) {
+          if (hasAttached || pendingReq) {
+            upiBox2.style.display = 'none';
+            upiBox2.setAttribute('data-hidden-for-proof', '1');
+          } else {
+            upiBox2.removeAttribute('data-hidden-for-proof');
+          }
+        }
+      } catch (eHide) {}
+      if(btn && total <= 0){
         btn.style.background = '#2d7a4f';
         try { if(typeof _payPollStop === 'function') _payPollStop(true); } catch(e) {}
         try { if(typeof _payPollUi === 'function') _payPollUi(false); } catch(e) {}
@@ -3695,11 +3734,12 @@ function _payUnpaidTotal(){
         }
         var proofLine = '';
         if(o.payment_proof_url || o.payment_proof_file_id){
-          var pu = driveProofUrls(o);
-          proofLine = '<div style="margin-top:8px"><a href="'+String(pu.view).replace(/"/g,'')+'" target="_blank" rel="noopener"><img src="'+String(pu.img).replace(/"/g,'')+'" alt="Payment proof" style="max-width:100%;max-height:120px;border-radius:10px;border:1px solid #e2e8f0" onerror="this.style.display=\'none\'"></a>'+
-            '<div style="font-size:10px;margin-top:4px"><a href="'+String(pu.view).replace(/"/g,'')+'" target="_blank" rel="noopener">Open proof in Drive</a></div>'+
-            (o.payment_ref ? '<div style="font-size:10px;color:#64748b;margin-top:4px">UTR: '+esc(o.payment_ref)+'</div>' : '')+
-            '</div>';
+          var pUrl = (o.payment_proof_url || '').replace(/'/g, '');
+          proofLine = '<div style="margin-top:8px;padding:8px 10px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:10px;font-size:12px;font-weight:700;color:#065f46;display:flex;align-items:center;justify-content:space-between;gap:8px">'+
+            '<span>✅ Screenshot attached</span>'+
+            (pUrl ? '<button type="button" onclick="viewPaymentProof(\''+pUrl+'\')" style="background:#fff;border:1px solid #a7f3d0;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;color:#065f46;cursor:pointer">View</button>' : '')+
+            '</div>'+
+            (o.payment_ref ? '<div style="font-size:10px;color:#64748b;margin-top:6px">UTR: '+esc(o.payment_ref)+'</div>' : '');
         } else if(o.payment_ref){
           proofLine = '<div style="font-size:10px;color:#64748b;margin-top:6px">UTR: '+esc(o.payment_ref)+'</div>';
         }
@@ -3716,6 +3756,41 @@ function _payUnpaidTotal(){
       }).join('');
       try { renderPayUpiBox(); } catch(e){}
     }
+    function viewPaymentProof(url){
+      if (!url) return;
+      var existing = document.getElementById('payProofLightbox');
+      if (existing) existing.remove();
+      var overlay = document.createElement('div');
+      overlay.id = 'payProofLightbox';
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:500;background:rgba(15,23,42,.72);display:flex;align-items:center;justify-content:center;padding:16px';
+      overlay.onclick = function(e){ if (e.target === overlay) overlay.remove(); };
+      var box = document.createElement('div');
+      box.style.cssText = 'background:#fff;border-radius:16px;max-width:100%;max-height:90vh;overflow:auto;padding:12px;position:relative';
+      box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
+        '<div style="font-size:13px;font-weight:800;color:#0f172a">Payment screenshot</div>'+
+        '<button type="button" onclick="document.getElementById(\'payProofLightbox\').remove()" style="border:none;background:#f1f5f9;border-radius:8px;padding:6px 10px;font-weight:700;cursor:pointer">Close</button>'+
+        '</div><div style="text-align:center;padding:20px;color:#64748b;font-size:12px" id="payProofLoading">Loading…</div>';
+      overlay.appendChild(box);
+      document.body.appendChild(overlay);
+      // Prefer direct image URL; Drive view links become thumbnail
+      var imgUrl = String(url);
+      var m = imgUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || imgUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (m) imgUrl = 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w1200';
+      var img = document.createElement('img');
+      img.alt = 'Payment proof';
+      img.style.cssText = 'max-width:100%;max-height:75vh;border-radius:10px;display:block;margin:0 auto';
+      img.onload = function(){
+        var ld = document.getElementById('payProofLoading');
+        if (ld) ld.remove();
+      };
+      img.onerror = function(){
+        var ld = document.getElementById('payProofLoading');
+        if (ld) ld.innerHTML = 'Could not load image.<br><a href="'+String(url).replace(/"/g,'')+'" target="_blank" rel="noopener" style="color:#1565c0">Open in new tab</a>';
+      };
+      img.src = imgUrl;
+      box.appendChild(img);
+    }
+
     function openPayRequestSheet(){
       var unpaid = _payUnpaidList();
       var total = _payUnpaidTotal();
@@ -3759,6 +3834,25 @@ function _payUnpaidTotal(){
         var fi = document.getElementById('paySheetPhoto');
         if(fi) fi.value = '';
       }
+      // Screenshot already attached → hide QR / UPI; only Send request
+      var hasProof = !!(window._payProofBase64 || window._sharedPayImage || window._payProofUrl);
+      if (!hasProof) {
+        try {
+          hasProof = (_payUnpaidList() || []).some(function(o){
+            return !!(o.payment_proof_url || o.payment_proof_file_id);
+          });
+        } catch (e3) {}
+      }
+      var upiBox = document.getElementById('payUpiBox');
+      if (upiBox) {
+        if (hasProof) {
+          upiBox.style.display = 'none';
+          upiBox.setAttribute('data-hidden-for-proof', '1');
+        } else {
+          upiBox.removeAttribute('data-hidden-for-proof');
+          try { renderPayUpiBox(); } catch (e4) {}
+        }
+      }
       var sheet = document.getElementById('payRequestSheet');
       if(sheet){ sheet.style.display = 'flex'; }
     }
@@ -3791,22 +3885,6 @@ function _payUnpaidTotal(){
       };
       reader.readAsDataURL(file);
     }
-    
-    function driveProofUrls(o){
-      var fid = (o && (o.payment_proof_file_id || o.file_id)) ? String(o.payment_proof_file_id || o.file_id).trim() : '';
-      var raw = (o && o.payment_proof_url) ? String(o.payment_proof_url).trim() : '';
-      if (!fid && raw) {
-        var m = raw.match(/\/d\/([a-zA-Z0-9_-]+)/) || raw.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-        if (m) fid = m[1];
-      }
-      var view = raw || '';
-      var img = raw || '';
-      if (fid) {
-        view = 'https://drive.google.com/file/d/' + fid + '/view?usp=sharing';
-        img = 'https://drive.google.com/thumbnail?id=' + fid + '&sz=w1200';
-      }
-      return { view: view, img: img, file_id: fid };
-    }
 
     function payUploadProofToDrive(){
       if(!window._payProofBase64) return Promise.resolve({ url:'', file_id:'' });
@@ -3833,8 +3911,7 @@ function _payUnpaidTotal(){
           if(!viewUrl) throw new Error('Upload failed — no file URL');
           window._payProofUrl = viewUrl;
           window._payProofFileId = fid;
-          window._payProofImgUrl = data.img_url || (fid ? ('https://drive.google.com/thumbnail?id='+fid+'&sz=w1200') : viewUrl);
-          return { url: viewUrl, file_id: fid, img_url: window._payProofImgUrl };
+          return { url: viewUrl, file_id: fid };
         });
       });
     }
@@ -3847,8 +3924,23 @@ function _payUnpaidTotal(){
       var refEl = document.getElementById('paySheetRef');
       var paymentRef = (refEl && refEl.value) ? refEl.value.trim() : '';
       var total = _payUnpaidTotal();
-      _payMsg('Sending request for ₹'+total.toLocaleString('en-IN',{maximumFractionDigits:2})+'…', null);
       var hadPhoto = !!window._payProofBase64;
+      // Require at least UTR or screenshot
+      if (!paymentRef && !hadPhoto) {
+        _payMsg('Please add UTR / Transaction ID or attach a payment screenshot before sending.', false);
+        return;
+      }
+      // Always confirm before send — UTR must be clear or admin may reject
+      var confirmMsg =
+        'Send payment request for ₹' + total.toLocaleString('en-IN', { maximumFractionDigits: 2 }) + '?\n\n' +
+        'Please check:\n' +
+        '• UTR / Transaction ID is correct in the box\n' +
+        '• If you attached a screenshot, UTR is clearly visible in the image\n\n' +
+        'If UTR is wrong or not clear in the image, admin will reject this request.\n\n' +
+        (hadPhoto ? '' : 'Note: No screenshot attached — UTR only.\n\n') +
+        'Continue and send request?';
+      if (!confirm(confirmMsg)) return;
+      _payMsg('Sending request for ₹'+total.toLocaleString('en-IN',{maximumFractionDigits:2})+'…', null);
       payUploadProofToDrive().then(function(up){
         closePayRequestSheet();
         var body = {
@@ -4098,130 +4190,124 @@ function _payUnpaidTotal(){
 </script>
 
 <script>
-/* Dynamic iOS notch / safe-area handling */
-(function () {
-  if (window.__safeAreaDyn) return;
-  window.__safeAreaDyn = true;
+    /* Dynamic iOS notch / safe-area handling */
+    (function () {
+      if (window.__safeAreaDyn) return;
+      window.__safeAreaDyn = true;
 
-  var root = document.documentElement;
-  var probe = null;
+      var root = document.documentElement;
+      var probe = null;
 
-  function ensureProbe() {
-    if (probe && probe.parentNode) return probe;
-    probe = document.createElement('div');
-    probe.setAttribute('aria-hidden', 'true');
-    probe.style.cssText = [
-      'position:fixed', 'left:0', 'top:0', 'width:0', 'height:0',
-      'visibility:hidden', 'pointer-events:none', 'padding:0',
-      'padding-top:env(safe-area-inset-top,0px)',
-      'padding-right:env(safe-area-inset-right,0px)',
-      'padding-bottom:env(safe-area-inset-bottom,0px)',
-      'padding-left:env(safe-area-inset-left,0px)'
-    ].join(';');
-    (document.body || root).appendChild(probe);
-    return probe;
-  }
-
-  function px(n) {
-    n = parseFloat(n);
-    return (isFinite(n) ? n : 0) + 'px';
-  }
-
-  function readEnvInsets() {
-    var el = ensureProbe();
-    var cs = window.getComputedStyle(el);
-    return {
-      top: parseFloat(cs.paddingTop) || 0,
-      right: parseFloat(cs.paddingRight) || 0,
-      bottom: parseFloat(cs.paddingBottom) || 0,
-      left: parseFloat(cs.paddingLeft) || 0
-    };
-  }
-
-  function apply() {
-    var env = readEnvInsets();
-    var sat = env.top;
-    var sab = env.bottom;
-    var sal = env.left;
-    var sar = env.right;
-
-    // When mobile browser chrome collapses, keep a sensible bottom inset
-    // using visualViewport (does not replace home-indicator inset when larger).
-    try {
-      var vv = window.visualViewport;
-      if (vv && window.innerHeight) {
-        var gap = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
-        // Only boost bottom when browser UI leaves a gap larger than env bottom
-        // and gap is small (typical toolbar), not full keyboard.
-        if (gap > sab && gap < 120) sab = gap;
+      function ensureProbe() {
+        if (probe && probe.parentNode) return probe;
+        probe = document.createElement('div');
+        probe.setAttribute('aria-hidden', 'true');
+        probe.style.cssText = [
+          'position:fixed', 'left:0', 'top:0', 'width:0', 'height:0',
+          'visibility:hidden', 'pointer-events:none', 'padding:0',
+          'padding-top:env(safe-area-inset-top,0px)',
+          'padding-right:env(safe-area-inset-right,0px)',
+          'padding-bottom:env(safe-area-inset-bottom,0px)',
+          'padding-left:env(safe-area-inset-left,0px)'
+        ].join(';');
+        (document.body || root).appendChild(probe);
+        return probe;
       }
-    } catch (e) {}
 
-    root.style.setProperty('--sat', px(sat));
-    root.style.setProperty('--sab', px(sab));
-    root.style.setProperty('--sal', px(sal));
-    root.style.setProperty('--sar', px(sar));
+      function px(n) {
+        n = parseFloat(n);
+        return (isFinite(n) ? n : 0) + 'px';
+      }
 
-    root.classList.toggle('has-notch', sat >= 20);
-    root.classList.toggle('has-home-bar', sab >= 10);
-    root.setAttribute('data-safe-top', String(Math.round(sat)));
-    root.setAttribute('data-safe-bottom', String(Math.round(sab)));
-  }
+      function readEnvInsets() {
+        var el = ensureProbe();
+        var cs = window.getComputedStyle(el);
+        return {
+          top: parseFloat(cs.paddingTop) || 0,
+          right: parseFloat(cs.paddingRight) || 0,
+          bottom: parseFloat(cs.paddingBottom) || 0,
+          left: parseFloat(cs.paddingLeft) || 0
+        };
+      }
 
-  var scheduled = false;
-  function schedule() {
-    if (scheduled) return;
-    scheduled = true;
-    requestAnimationFrame(function () {
-      scheduled = false;
-      apply();
-    });
-  }
+      function apply() {
+        var env = readEnvInsets();
+        var sat = env.top;
+        var sab = env.bottom;
+        var sal = env.left;
+        var sar = env.right;
 
-  function boot() {
-    ensureProbe();
-    apply();
-    window.addEventListener('resize', schedule, { passive: true });
-    window.addEventListener('orientationchange', function () {
-      // iOS often updates env() one frame after orientation settles
-      schedule();
-      setTimeout(apply, 50);
-      setTimeout(apply, 300);
-    }, { passive: true });
-    window.addEventListener('pageshow', schedule, { passive: true });
-    if (window.visualViewport) {
-      visualViewport.addEventListener('resize', schedule, { passive: true });
-      visualViewport.addEventListener('scroll', schedule, { passive: true });
-    }
-    // Late paint (PWA / standalone)
-    setTimeout(apply, 100);
-    setTimeout(apply, 500);
-  }
+        // When mobile browser chrome collapses, keep a sensible bottom inset
+        // using visualViewport (does not replace home-indicator inset when larger).
+        try {
+          var vv = window.visualViewport;
+          if (vv && window.innerHeight) {
+            var gap = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
+            // Only boost bottom when browser UI leaves a gap larger than env bottom
+            // and gap is small (typical toolbar), not full keyboard.
+            if (gap > sab && gap < 120) sab = gap;
+          }
+        } catch (e) {}
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', boot);
-  } else {
-    boot();
-  }
-})();
+        root.style.setProperty('--sat', px(sat));
+        root.style.setProperty('--sab', px(sab));
+        root.style.setProperty('--sal', px(sal));
+        root.style.setProperty('--sar', px(sar));
 
-    // Session restore after functions are defined
-    (function(){
-      var s = localStorage.getItem('custSession');
-      if (s) { try { session = JSON.parse(s); } catch(e) {} }
-      if (session) {
-        showApp();
-        // PhonePe share may land before UI ready — re-apply after login shell
-        setTimeout(function() {
-          try {
-            if (typeof handleIncomingShare === 'function') handleIncomingShare();
-          } catch (e) {}
-        }, 300);
+        root.classList.toggle('has-notch', sat >= 20);
+        root.classList.toggle('has-home-bar', sab >= 10);
+        root.setAttribute('data-safe-top', String(Math.round(sat)));
+        root.setAttribute('data-safe-bottom', String(Math.round(sab)));
+      }
+
+      var scheduled = false;
+      function schedule() {
+        if (scheduled) return;
+        scheduled = true;
+        requestAnimationFrame(function () {
+          scheduled = false;
+          apply();
+        });
+      }
+
+      function boot() {
+        ensureProbe();
+        apply();
+        window.addEventListener('resize', schedule, { passive: true });
+        window.addEventListener('orientationchange', function () {
+          // iOS often updates env() one frame after orientation settles
+          schedule();
+          setTimeout(apply, 50);
+          setTimeout(apply, 300);
+        }, { passive: true });
+        window.addEventListener('pageshow', schedule, { passive: true });
+        if (window.visualViewport) {
+          visualViewport.addEventListener('resize', schedule, { passive: true });
+          visualViewport.addEventListener('scroll', schedule, { passive: true });
+        }
+        // Late paint (PWA / standalone)
+        setTimeout(apply, 100);
+        setTimeout(apply, 500);
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', boot);
       } else {
-        // Keep share payload; after login user opens Pay
-        goto('');
+        boot();
       }
     })();
+
+        // Session restore after functions are defined
+        (function(){
+          var s = localStorage.getItem('custSession');
+          if (s) { try { session = JSON.parse(s); } catch(e) {} }
+          if (session) {
+            showApp();
+            setTimeout(function(){
+              try { if (typeof handleIncomingShare === 'function') handleIncomingShare(); } catch(e) {}
+            }, 400);
+          } else { goto(''); }
+        })();
 </script>
 
 </body>

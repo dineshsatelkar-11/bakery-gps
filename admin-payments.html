@@ -1740,6 +1740,203 @@
           _payDeskMsg('Zoho sync failed: ' + (e && e.message ? e.message : e) + ' — ensure edge supports get_invoice.', false);
         });
     }
+    function adminProofUrls(o){
+      var fid = (o && (o.payment_proof_file_id || o.file_id)) ? String(o.payment_proof_file_id || o.file_id).trim() : '';
+      var raw = (o && o.payment_proof_url) ? String(o.payment_proof_url).trim() : '';
+      if (!fid && raw) {
+        var m = raw.match(/\/d\/([a-zA-Z0-9_-]+)/) || raw.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+        if (m) fid = m[1];
+      }
+      var view = raw || '';
+      var thumb = '';
+      if (fid) {
+        view = view || ('https://drive.google.com/file/d/' + fid + '/view?usp=sharing');
+        thumb = 'https://drive.google.com/thumbnail?id=' + fid + '&sz=w400';
+      } else if (raw && /\.(jpe?g|png|gif|webp)(\?|$)/i.test(raw)) {
+        thumb = raw;
+      }
+      return { view: view, thumb: thumb, file_id: fid };
+    }
+    function adminViewPaymentProof(url){
+      if (!url) return;
+      var existing = document.getElementById('adminPayProofLightbox');
+      if (existing) existing.remove();
+      var overlay = document.createElement('div');
+      overlay.id = 'adminPayProofLightbox';
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.75);display:flex;align-items:center;justify-content:center;padding:16px';
+      overlay.onclick = function(e){ if (e.target === overlay) overlay.remove(); };
+      var box = document.createElement('div');
+      box.style.cssText = 'background:#fff;border-radius:16px;max-width:100%;max-height:92vh;overflow:auto;padding:12px;position:relative;box-shadow:0 12px 40px rgba(0,0,0,.25)';
+      box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px">'+
+        '<div style="font-size:13px;font-weight:800;color:#4a2f14">Payment screenshot</div>'+
+        '<button type="button" onclick="document.getElementById(\'adminPayProofLightbox\').remove()" style="border:none;background:#f5ede0;border-radius:8px;padding:6px 12px;font-weight:700;cursor:pointer;color:#4a2f14">Close</button>'+
+        '</div><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px" id="adminPayProofLoading">Loading…</div>';
+      overlay.appendChild(box);
+      document.body.appendChild(overlay);
+      var imgUrl = String(url);
+      var m = imgUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || imgUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (m) imgUrl = 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w1200';
+      var img = document.createElement('img');
+      img.alt = 'Payment proof';
+      img.style.cssText = 'max-width:100%;max-height:78vh;border-radius:10px;display:block;margin:0 auto';
+      img.onload = function(){ var ld = document.getElementById('adminPayProofLoading'); if (ld) ld.remove(); };
+      img.onerror = function(){
+        var ld = document.getElementById('adminPayProofLoading');
+        if (ld) ld.innerHTML = 'Could not load image.<br><a href="'+String(url).replace(/"/g,'')+'" target="_blank" rel="noopener" style="color:#1565c0">Open in Drive</a>';
+      };
+      img.src = imgUrl;
+      box.appendChild(img);
+    }
+
+    /** Group paid invoice rows into payment transactions (parent = bank/Zoho payment). */
+    function _payTxnKey(o) {
+      var zpid = String(o.zoho_payment_id || '').trim();
+      if (zpid) return 'z:' + zpid;
+      var shop = String(o.shop_id || o.shop_name || '');
+      var ref = String(o.payment_ref || '').trim();
+      var day = '';
+      try {
+        var raw = o.paid_at || o.payment_confirmed_at || o.updated_at || '';
+        if (raw) day = String(raw).slice(0, 16); // yyyy-mm-ddThh:mm
+      } catch (e) {}
+      if (ref) return 'r:' + shop + '|' + ref + '|' + day.slice(0, 10);
+      return 's:' + shop + '|' + day + '|' + String(o.id);
+    }
+    function groupPaidByTransaction(list) {
+      var map = {};
+      (list || []).forEach(function(o) {
+        var k = _payTxnKey(o);
+        if (!map[k]) {
+          map[k] = {
+            key: k,
+            shop_id: o.shop_id,
+            shop_name: o.shop_name || o.shop_id || 'Shop',
+            payment_ref: o.payment_ref || '',
+            payment_mode: o.payment_mode || '',
+            paid_at: o.paid_at || o.payment_confirmed_at || '',
+            zoho_payment_id: o.zoho_payment_id || '',
+            payment_proof_url: o.payment_proof_url || '',
+            payment_proof_file_id: o.payment_proof_file_id || '',
+            rows: []
+          };
+        }
+        var g = map[k];
+        g.rows.push(o);
+        if (o.shop_name) g.shop_name = o.shop_name;
+        if (o.payment_ref && !g.payment_ref) g.payment_ref = o.payment_ref;
+        if (o.payment_mode && !g.payment_mode) g.payment_mode = o.payment_mode;
+        if (o.paid_at && (!g.paid_at || String(o.paid_at) > String(g.paid_at))) g.paid_at = o.paid_at;
+        if (o.zoho_payment_id) g.zoho_payment_id = o.zoho_payment_id;
+        // Prefer any row that has proof on parent
+        if (o.payment_proof_url && !g.payment_proof_url) g.payment_proof_url = o.payment_proof_url;
+        if (o.payment_proof_file_id && !g.payment_proof_file_id) g.payment_proof_file_id = o.payment_proof_file_id;
+      });
+      return Object.keys(map).map(function(k){ return map[k]; }).sort(function(a,b){
+        var da = String(a.paid_at || '');
+        var db = String(b.paid_at || '');
+        return db.localeCompare(da);
+      });
+    }
+    function paidPaymentGroupHtml(g) {
+      var total = g.rows.reduce(function(s,o){
+        var a = o.paid_amount != null ? parseFloat(o.paid_amount) : _payDue(o);
+        return s + (isNaN(a) ? 0 : a);
+      }, 0);
+      var n = g.rows.length;
+      var paidLbl = '';
+      try {
+        if (g.paid_at) paidLbl = String(g.paid_at).slice(0,16).replace('T',' ');
+      } catch (e) {}
+      var proof = adminProofUrls({
+        payment_proof_url: g.payment_proof_url,
+        payment_proof_file_id: g.payment_proof_file_id
+      });
+      var proofBtn = '';
+      if (proof.view || proof.thumb) {
+        proofBtn = '<button type="button" class="btn-sm" style="background:#e8f5e9;color:#1a5a38;border:1px solid #a5d6a7" onclick="event.stopPropagation();adminViewPaymentProof(\''+(proof.view||proof.thumb).replace(/'/g,'')+'\')">📷 Screenshot</button>';
+      }
+      var lines = g.rows.map(function(o){
+        var amt = o.paid_amount != null ? parseFloat(o.paid_amount) : _payDue(o);
+        if (isNaN(amt)) amt = 0;
+        var doc = o.zoho_invoice_number || o.zoho_invoice_id || ('#'+o.id);
+        return '<div style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid #efe8dc;font-size:12px">'+
+          '<div style="min-width:0"><div style="font-weight:700;color:#4a2f14">'+esc(doc)+'</div>'+
+          '<div style="font-size:10px;color:#8a7a6a;font-family:monospace">'+esc(o.delivery_date||'')+'</div></div>'+
+          '<div style="font-weight:800;font-family:monospace;color:#1a5a38;flex-shrink:0">₹'+amt.toLocaleString('en-IN',{maximumFractionDigits:2})+'</div>'+
+          '</div>';
+      }).join('');
+      var undoId = g.rows[0] ? String(g.rows[0].id) : '';
+      return '<div class="card" style="margin-bottom:10px;padding:0;overflow:hidden;border:1.5px solid #c8e6c9">'+
+        '<div style="padding:12px 14px;background:#f1f8f4">'+
+          '<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">'+
+            '<div style="min-width:0;flex:1">'+
+              '<div style="font-size:14px;font-weight:900;color:#1a5a38;margin-bottom:2px">'+esc(g.shop_name)+'</div>'+
+              '<div style="font-size:11px;color:#5d6d5e;font-family:monospace;line-height:1.5">'+
+                '<span style="background:#e8f5e9;color:#1a5a38;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">Paid</span> '+
+                (paidLbl ? esc(paidLbl)+' · ' : '')+
+                esc(g.payment_mode || '')+
+                (g.payment_ref ? '<br><b>UTR:</b> '+esc(g.payment_ref) : '')+
+                (g.zoho_payment_id ? '<br><span style="font-size:10px">Zoho pay: '+esc(String(g.zoho_payment_id).slice(0,18))+'…</span>' : '')+
+              '</div>'+
+              '<div style="margin-top:6px;font-size:18px;font-weight:900;font-family:monospace;color:#1a5a38">₹'+total.toLocaleString('en-IN',{maximumFractionDigits:2})+'</div>'+
+              '<div style="font-size:11px;color:#5d6d5e">'+n+' invoice'+(n===1?'':'s')+' in this payment</div>'+
+            '</div>'+
+            '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">'+
+              proofBtn+
+              (undoId ? '<button type="button" class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0" onclick="event.stopPropagation();payDeskUndoPaid(\''+undoId+'\')">↩ Undo</button>' : '')+
+            '</div>'+
+          '</div>'+
+        '</div>'+
+        '<div style="padding:8px 14px 12px;background:#fff">'+
+          '<div style="font-size:10px;font-weight:800;color:#8a7a6a;letter-spacing:1px;margin-bottom:4px">INVOICES IN THIS PAYMENT</div>'+
+          lines+
+        '</div>'+
+      '</div>';
+    }
+
+    /** Lazy-load proof thumbnails only when they enter the viewport */
+    var _adminThumbObserver = null;
+    function adminLazyLoadThumbs(rootEl) {
+      var root = rootEl || document;
+      if (!root) return;
+      var imgs = root.querySelectorAll('img.admin-proof-thumb[data-src]');
+      if (!imgs.length) return;
+      if (typeof IntersectionObserver === 'undefined') {
+        for (var i = 0; i < imgs.length; i++) {
+          var im = imgs[i];
+          var s = im.getAttribute('data-src');
+          if (s) { im.src = s; im.removeAttribute('data-src'); }
+        }
+        return;
+      }
+      if (!_adminThumbObserver) {
+        _adminThumbObserver = new IntersectionObserver(function(entries) {
+          entries.forEach(function(entry) {
+            if (!entry.isIntersecting) return;
+            var img = entry.target;
+            var src = img.getAttribute('data-src');
+            if (src) {
+              img.onload = function() {
+                img.style.background = '#fff';
+                img.style.opacity = '1';
+              };
+              img.onerror = function() {
+                img.style.display = 'none';
+                var fallback = img.parentNode && img.parentNode.querySelector('.admin-proof-fallback');
+                if (fallback) fallback.style.display = 'inline-block';
+              };
+              img.src = src;
+              img.removeAttribute('data-src');
+            }
+            try { _adminThumbObserver.unobserve(img); } catch (e) {}
+          });
+        }, { root: null, rootMargin: '150px 0px', threshold: 0.01 });
+      }
+      for (var j = 0; j < imgs.length; j++) {
+        _adminThumbObserver.observe(imgs[j]);
+      }
+    }
+
     function renderPaymentsDesk() {
       var q = ((document.getElementById('pay-desk-q') || {}).value || '').toLowerCase().trim();
       // Unpaid / requests / paid = invoices only (challans stay on Challans tab until converted)
@@ -1780,7 +1977,7 @@
       }
       function matchQ(o) {
         if (!q) return true;
-        var hay = [o.shop_name, o.shop_id, o.zoho_invoice_number, o.delivery_date, o.customer_claim_note].join(' ').toLowerCase();
+        var hay = [o.shop_name, o.shop_id, o.zoho_invoice_number, o.delivery_date, o.customer_claim_note, o.payment_ref].join(' ').toLowerCase();
         return hay.indexOf(q) >= 0;
       }
       var listOpen = unpaid.filter(matchQ).sort(function(a,b){
@@ -1819,7 +2016,9 @@
         } else {
           actions += '<button class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0" onclick="payDeskUndoPaid(\''+o.id+'\')">↩ Undo paid</button>';
         }
-        actions += ' <button class="btn-sm btn-grey" onclick="showTab(\'cust-orders\')">Cust orders</button>';
+        if (st2 !== 'paid') {
+          actions += ' <button class="btn-sm btn-grey" onclick="showTab(\'cust-orders\')">Cust orders</button>';
+        }
         var canSelect = st2 !== 'paid';
         return '<div class="card" style="margin-bottom:8px;padding:12px">'+
           '<div style="display:flex;gap:10px;align-items:flex-start">'+
@@ -1830,18 +2029,51 @@
           'Date: '+esc(o.delivery_date||'—')+' · Doc: '+esc(o.zoho_invoice_number||o.zoho_invoice_id||'—')+
           ' · Due: <b>₹'+_payDue(o).toLocaleString('en-IN',{maximumFractionDigits:2})+'</b>'+
           (o.invoice_total != null ? ' · Total: ₹'+Number(o.invoice_total).toLocaleString('en-IN',{maximumFractionDigits:2}) : '')+
-          (o.customer_claimed_paid && st2!=='paid' ? '<br>Note: '+esc(o.customer_claim_note||'—') : '')+
-          (o.payment_ref ? '<br>UTR: <b>'+esc(o.payment_ref)+'</b>' : '')+
-          (function(){ var u=o.payment_proof_url||'', fid=o.payment_proof_file_id||''; if(!u&&!fid)return ''; if(!fid&&u){ var m=u.match(/\/d\/([a-zA-Z0-9_-]+)/)||u.match(/[?&]id=([a-zA-Z0-9_-]+)/); if(m)fid=m[1]; } var view=fid?('https://drive.google.com/file/d/'+fid+'/view?usp=sharing'):u; var img=fid?('https://drive.google.com/thumbnail?id='+fid+'&sz=w800'):u; return '<br><a href="'+esc(view)+'" target="_blank" rel="noopener"><img src="'+esc(img)+'" alt="Proof" style="max-width:200px;max-height:120px;border-radius:8px;margin-top:6px;border:1px solid #e2e8f0" onerror="this.style.display=\'none\'"></a><div style="font-size:10px;margin-top:4px"><a href="'+esc(view)+'" target="_blank" rel="noopener">Open in Drive</a></div>'; })()+
+          (function(){
+            var proof = adminProofUrls(o);
+            var utr = (o.payment_ref || '').trim();
+            var note = (o.customer_claim_note || '').trim();
+            var bits = '';
+            // REQUESTS: show thumbnail + UTR
+            if (o.customer_claimed_paid && st2 !== 'paid') {
+              if (utr) bits += '<br><b style="color:#1565c0">UTR:</b> '+esc(utr);
+              if (note && note !== utr) bits += '<br>Note: '+esc(note);
+              if (proof.thumb) {
+                var vUrl = (proof.view || proof.thumb).replace(/'/g,'');
+                var tUrl = proof.thumb.replace(/"/g,'');
+                bits += '<div style="margin-top:8px">'+
+                  '<img class="admin-proof-thumb" data-src="'+tUrl+'" alt="Proof" width="88" height="88" '+
+                  'onclick="adminViewPaymentProof(\''+vUrl+'\')" '+
+                  'style="width:88px;height:88px;object-fit:cover;border-radius:10px;border:1.5px solid #90caf9;cursor:pointer;background:linear-gradient(135deg,#e3f2fd,#bbdefb);opacity:0.85" title="Tap to enlarge">'+
+                  '<button type="button" class="btn-sm admin-proof-fallback" style="display:none;margin-top:4px;background:#e3f2fd;color:#1565c0;border:1px solid #90caf9" onclick="event.stopPropagation();adminViewPaymentProof(\''+vUrl+'\')">📷 View attachment</button>'+
+                  '<div style="font-size:10px;color:#1565c0;margin-top:4px">Screenshot · tap to view</div></div>';
+              } else if (proof.view) {
+                bits += '<br><button type="button" class="btn-sm" style="margin-top:6px;background:#e3f2fd;color:#1565c0;border:1px solid #90caf9" onclick="event.stopPropagation();adminViewPaymentProof(\''+proof.view.replace(/'/g,'')+'\')">📷 View attachment</button>';
+              }
+              return bits;
+            }
+            // PAID: button only if attachment; else UTR / description only
+            if (st2 === 'paid') {
+              bits += '<br>Paid: ₹'+(o.paid_amount!=null?o.paid_amount:_payDue(o))+' · '+esc(o.payment_mode||'');
+              if (utr) bits += '<br><b>UTR:</b> '+esc(utr);
+              else if (note) bits += '<br>Ref: '+esc(note);
+              if (proof.view || proof.thumb) {
+                bits += '<br><button type="button" class="btn-sm" style="margin-top:6px;background:#e8f5e9;color:#1a5a38;border:1px solid #a5d6a7" onclick="event.stopPropagation();adminViewPaymentProof(\''+(proof.view||proof.thumb).replace(/'/g,'')+'\')">📷 View screenshot</button>';
+              }
+              return bits;
+            }
+            return bits;
+          })()+
           (o.payment_reminder_sent_at ? '<br>Last reminder: '+esc(String(o.payment_reminder_sent_at).slice(0,16).replace('T',' ')) : '')+
-          (st2==='paid' ? '<br>Paid: ₹'+(o.paid_amount!=null?o.paid_amount:_payDue(o))+' · '+esc(o.payment_mode||'') : '')+
           '</div><div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">'+actions+'</div></div></div></div>';
       }
       // Enhance invoice/challan actions: Edit lines + Sync Zoho status
       var _cardBase = card;
       card = function(o) {
         var html = _cardBase(o);
-        // inject edit + clearer zoho status into actions area
+        var stPaid = String(o.payment_status||'').toLowerCase() === 'paid';
+        // Edit / Status only for unpaid & requests — paid rows keep Undo only
+        if (stPaid) return html;
         var extra = '';
         extra += ' <button class="btn-sm" style="background:#f5ede0;color:#4a2f14;border:1px solid #d0c0aa" onclick="event.stopPropagation();payDeskEditDoc(\''+String(o.id)+'\')">✏️ Edit</button>';
         if (o.zoho_invoice_id) {
@@ -1849,7 +2081,7 @@
         }
         if (html.indexOf('Cust orders') >= 0) {
           html = html.replace('>Cust orders</button>', '>Cust orders</button>'+extra);
-        } else {
+        } else if (extra) {
           html = html.replace('</div></div></div></div>', '<div style="margin-top:6px">'+extra+'</div></div></div></div></div>');
         }
         return html;
@@ -1939,7 +2171,8 @@
           ? gReq.map(customerGroupHtml).join('')
           : '<div style="text-align:center;padding:20px;color:#8a7a6a;font-size:12px">No payment requests</div>';
       }
-      if (elPaid) elPaid.innerHTML = listPaid.length ? listPaid.map(card).join('') : ('<div style="text-align:center;padding:20px;color:#8a7a6a;font-size:12px">'+(showAllPaid?'No paid rows yet':'No paid invoices in the last 7 days.<br><span style=\"font-size:11px\">Turn on “Show all paid” to see older.</span>')+'</div>');
+      if (elPaid) { var paidGroups = groupPaidByTransaction(listPaid); elPaid.innerHTML = paidGroups.length ? paidGroups.map(paidPaymentGroupHtml).join('') : ('<div style="text-align:center;padding:20px;color:#8a7a6a;font-size:12px">'+(showAllPaid?'No paid rows yet':'No paid invoices in the last 7 days.<br><span style="font-size:11px">Turn on “Show all paid” to see older.</span>')+'</div>'); }
+      try { adminLazyLoadThumbs(document.getElementById('pay-desk-list-req')); adminLazyLoadThumbs(document.getElementById('pay-desk-list-paid')); adminLazyLoadThumbs(document.getElementById('pay-desk-list')); } catch (eLazy) {}
     }
     window._payCustOpen = window._payCustOpen || {};
     function payDeskToggleCust(sid) {
@@ -1952,6 +2185,7 @@
       // When opening a shop, pull Zoho status for its docs so badges show without extra click
       if (window._payCustOpen[sid]) {
         payDeskSyncShopStatuses(sid);
+        try { adminLazyLoadThumbs(el); } catch (e) {}
       }
     }
     function payDeskSyncShopStatuses(sid) {
@@ -2151,91 +2385,38 @@
     }
 
     /**
-     * Record payment in Zoho Books for one invoice (mandatory when zoho_invoice_id exists).
-     * Uses edge action create_customer_payment.
+     * Single Zoho customer payment for one or more invoices (same shop).
+     * invoices: [{ invoice_id, amount_applied }, ...]
      */
-
-    /**
-     * Attach payment screenshot to Zoho invoice (+ customer payment if id known).
-     * Requires zoho-token edge action: attach_document (see supabase/functions/zoho-token-attach-snippet.md)
-     */
-    function zohoAttachPaymentProof(o, zohoPaymentId) {
-      if (!o || !o.payment_proof_url) return Promise.resolve({ skipped: true, reason: 'no_proof' });
-      if (typeof zohoEdge !== 'function') return Promise.resolve({ skipped: true, reason: 'no_zoho' });
-      var url = String(o.payment_proof_url || '').trim();
-      if (!url) return Promise.resolve({ skipped: true });
-      var fname = 'payment-proof-' + String(o.id || 'x') + (url.toLowerCase().indexOf('.png') >= 0 ? '.png' : '.jpg');
-      var jobs = [];
-      if (o.zoho_invoice_id) {
-        jobs.push(
-          zohoEdge('attach_document', {
-            entity: 'invoices',
-            entity_id: String(o.zoho_invoice_id),
-            file_url: url,
-            file_name: fname
-          }).then(function(data){
-            if (data && data.code != null && Number(data.code) !== 0 && !data.ok) {
-              console.warn('[zoho] invoice attach', data.message || data);
-              return { ok: false, entity: 'invoices', data: data };
-            }
-            console.log('[zoho] attached proof to invoice', o.zoho_invoice_id);
-            return { ok: true, entity: 'invoices', data: data };
-          }).catch(function(e){
-            console.warn('[zoho] invoice attach failed', e);
-            return { ok: false, entity: 'invoices', error: String(e && e.message || e) };
-          })
-        );
-      }
-      if (zohoPaymentId) {
-        jobs.push(
-          zohoEdge('attach_document', {
-            entity: 'customerpayments',
-            entity_id: String(zohoPaymentId),
-            file_url: url,
-            file_name: fname
-          }).then(function(data){
-            if (data && data.code != null && Number(data.code) !== 0 && !data.ok) {
-              console.warn('[zoho] payment attach', data.message || data);
-              return { ok: false, entity: 'customerpayments', data: data };
-            }
-            console.log('[zoho] attached proof to payment', zohoPaymentId);
-            return { ok: true, entity: 'customerpayments', data: data };
-          }).catch(function(e){
-            console.warn('[zoho] payment attach failed', e);
-            return { ok: false, entity: 'customerpayments', error: String(e && e.message || e) };
-          })
-        );
-      }
-      if (!jobs.length) return Promise.resolve({ skipped: true, reason: 'no_entity' });
-      return Promise.all(jobs).then(function(results){
-        return { ok: true, results: results };
-      });
-    }
-
-    function payDeskRecordZohoPayment(o, amount, mode, ref) {
-      if (!o || !o.zoho_invoice_id) return Promise.resolve({ skipped: true, reason: 'no_zoho_id' });
-      if (String(o.zoho_doc_type||'').toLowerCase().indexOf('challan') >= 0 ||
-          String(o.zoho_doc_type||'') === 'delivery_challan') {
-        return Promise.reject(new Error('Convert challan to invoice in Zoho first, then mark paid'));
-      }
+    function payDeskRecordZohoPaymentBatch(rows, mode, ref) {
+      rows = (rows || []).filter(function(o){ return o && o.zoho_invoice_id && !_payIsChallan(o); });
+      if (!rows.length) return Promise.resolve({ skipped: true, reason: 'no_zoho_rows' });
       if (typeof zohoEdge !== 'function') return Promise.reject(new Error('Zoho not available'));
-      var contactId = payDeskZohoContactId(o);
+      var contactId = payDeskZohoContactId(rows[0]);
       if (!contactId) return Promise.reject(new Error('Missing Zoho contact id for shop — sync customer to Zoho first'));
-      var amt = Number(amount);
-      if (!(amt > 0)) amt = _payDue(o);
+      var invLines = [];
+      var totalAmt = 0;
+      rows.forEach(function(o){
+        var amt = _payDue(o);
+        if (!(amt > 0)) amt = Number(o.invoice_total) || 0;
+        totalAmt += amt;
+        invLines.push({ invoice_id: String(o.zoho_invoice_id), amount_applied: amt });
+      });
+      if (!(totalAmt > 0)) return Promise.reject(new Error('Payment amount must be greater than 0'));
       var dateStr = (typeof todayStr === 'function' ? todayStr() : new Date().toISOString().slice(0,10));
+      var refNum = ref || ('IBCAB-' + rows.map(function(r){ return r.id; }).join('-'));
+      if (refNum.length > 50) refNum = refNum.slice(0, 50);
       return zohoEdge('create_customer_payment', {
         payment_payload: {
           customer_id: contactId,
-          amount: amt,
+          amount: totalAmt,
           date: dateStr,
           payment_mode: mode || 'Bank Transfer',
-          reference_number: ref || ('IBCAB-' + o.id),
-          invoices: [{ invoice_id: String(o.zoho_invoice_id), amount_applied: amt }]
+          reference_number: refNum,
+          invoices: invLines
         }
       }).then(function(data){
         if (!data) throw new Error('Empty Zoho response');
-        // Zoho success is usually code === 0
         if (data.code != null && Number(data.code) !== 0) {
           throw new Error(data.message || data.error || ('Zoho error code ' + data.code));
         }
@@ -2243,17 +2424,23 @@
           throw new Error(data.error || data.message || 'Zoho payment failed');
         }
         var pay = data.payment || data.customerpayment || {};
-        var zohoPaymentId = pay.payment_id || pay.customerpayment_id || '';
-        // Attach payment screenshot to Zoho invoice + payment record
-        return zohoAttachPaymentProof(o, zohoPaymentId).then(function(att){
-          return {
-            ok: true,
-            zoho_payment_id: zohoPaymentId,
-            data: data,
-            attachment: att
-          };
-        });
+        return {
+          ok: true,
+          zoho_payment_id: pay.payment_id || pay.customerpayment_id || '',
+          total: totalAmt,
+          data: data
+        };
       });
+    }
+
+    /** Legacy single-invoice helper — uses batch of one */
+    function payDeskRecordZohoPayment(o, amount, mode, ref) {
+      if (!o || !o.zoho_invoice_id) return Promise.resolve({ skipped: true, reason: 'no_zoho_id' });
+      if (String(o.zoho_doc_type||'').toLowerCase().indexOf('challan') >= 0 ||
+          String(o.zoho_doc_type||'') === 'delivery_challan') {
+        return Promise.reject(new Error('Convert challan to invoice in Zoho first, then mark paid'));
+      }
+      return payDeskRecordZohoPaymentBatch([o], mode, ref);
     }
 
     /** Mark one order paid in app after Zoho (or when no Zoho id). */
@@ -2281,8 +2468,8 @@
     }
 
     /**
-     * Full path: Zoho paid (if invoice id) → local paid → notify.
-     * relatedRows: array of order rows to settle (weekly batch).
+     * Full path: ONE Zoho payment for all linked invoices (same shop) → local paid → notify.
+     * Example: invoices ₹500 + ₹1000 → single Zoho payment ₹1500 applied to both.
      */
     function payDeskSettleWithZoho(relatedRows, mode, ref) {
       relatedRows = (relatedRows || []).slice();
@@ -2290,28 +2477,52 @@
       var mode2 = mode || 'bank';
       var ref2 = ref || '';
       var total = relatedRows.reduce(function(s,o){ return s + _payDue(o); }, 0);
-      var chain = Promise.resolve();
       var results = [];
-      relatedRows.forEach(function(o){
-        chain = chain.then(function(){
-          var amt = _payDue(o);
-          var step;
-          if (o.zoho_invoice_id && !_payIsChallan(o)) {
-            step = payDeskRecordZohoPayment(o, amt, mode2, ref2).then(function(zr){
-              return payDeskMarkLocalPaid(o, amt, mode2, ref2, zr && zr.zoho_payment_id).then(function(){
-                results.push({ id: o.id, zoho: true, attachment: zr && zr.attachment });
-              });
-            });
-          } else {
-            // No Zoho invoice: still mark local (challan must convert first if needed)
-            step = payDeskMarkLocalPaid(o, amt, mode2, ref2, '').then(function(){
-              results.push({ id: o.id, zoho: false });
-            });
-          }
-          return step;
-        });
+
+      // Block if any challan still needs conversion
+      var challanBlocked = relatedRows.filter(function(o){
+        return _payIsChallan(o) && o.zoho_invoice_id;
       });
-      return chain.then(function(){
+      // Challans without convert: mark local only if no zoho invoice path; if they look like challan docs reject when trying zoho
+      var zohoRows = relatedRows.filter(function(o){ return o.zoho_invoice_id && !_payIsChallan(o); });
+      var localOnlyRows = relatedRows.filter(function(o){ return !o.zoho_invoice_id || _payIsChallan(o); });
+
+      // Challans that still have zoho id typed as challan — require convert
+      var badChallan = relatedRows.filter(function(o){
+        return _payIsChallan(o);
+      });
+      if (badChallan.length && zohoRows.length === 0 && badChallan.some(function(o){ return o.zoho_invoice_id; })) {
+        // only challans — force convert message if they tried zoho path
+      }
+
+      var chain = Promise.resolve({ zoho_payment_id: '' });
+
+      if (zohoRows.length) {
+        // Reject pure challan mix that shouldn't hit create_customer_payment as invoice
+        var stillChallan = zohoRows.filter(function(o){
+          return String(o.zoho_doc_type||'').toLowerCase().indexOf('challan') >= 0;
+        });
+        if (stillChallan.length) {
+          return Promise.reject(new Error('Convert challan to invoice in Zoho first, then mark paid'));
+        }
+        chain = payDeskRecordZohoPaymentBatch(zohoRows, mode2, ref2);
+      }
+
+      return chain.then(function(zr){
+        var zpid = (zr && zr.zoho_payment_id) ? zr.zoho_payment_id : '';
+        // Mark all related rows local (same zoho_payment_id on zoho-linked ones)
+        var markChain = Promise.resolve();
+        relatedRows.forEach(function(o){
+          markChain = markChain.then(function(){
+            var amt = _payDue(o);
+            var useZpid = (o.zoho_invoice_id && !_payIsChallan(o)) ? zpid : '';
+            return payDeskMarkLocalPaid(o, amt, mode2, ref2, useZpid).then(function(){
+              results.push({ id: o.id, zoho: !!useZpid });
+            });
+          });
+        });
+        return markChain;
+      }).then(function(){
         var shopId = relatedRows[0].shop_id;
         var shopName = relatedRows[0].shop_name || '';
         if (shopId) {
@@ -2339,8 +2550,7 @@ function payDeskMarkPaid(id) {
       var totalAmt = related.reduce(function(s,r){ return s + _payDue(r); }, 0);
       var mode = prompt('Payment mode (cash / upi / bank / other)', 'upi');
       if (mode == null) return;
-      var refDefault = [o.payment_ref||'', o.payment_proof_url ? ('Proof: '+o.payment_proof_url) : ''].filter(Boolean).join(' · ');
-      var ref = prompt('Optional note / UTR', refDefault) || refDefault || '';
+      var ref = prompt('Optional note / UTR', '') || '';
       if (!confirm('Mark paid ₹'+totalAmt.toLocaleString('en-IN',{maximumFractionDigits:2})+' for '+(o.shop_name||'')+'?\n'+related.length+' invoice(s). Zoho will be updated when invoice id exists.')) return;
       var needZoho = related.some(function(r){ return r.zoho_invoice_id && !_payIsChallan(r); });
       if (needZoho && !_zohoEnabled) {
