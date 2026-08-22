@@ -317,18 +317,18 @@
   <div id="pay-desk-list-paid"><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Open tab to load…</div></div>
 </div>
 
-<!-- Paid invoice detail sheet -->
-<div id="payInvDetailSheet" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(30,22,17,.45);align-items:flex-end;justify-content:center" onclick="if(event.target===this)closePayInvDetail()">
-  <div style="background:#fff;width:100%;max-width:520px;max-height:88vh;border-radius:18px 18px 0 0;display:flex;flex-direction:column;box-shadow:0 -8px 32px rgba(0,0,0,.18)" onclick="event.stopPropagation()">
-    <div style="padding:14px 16px;border-bottom:1.5px solid #efe8dc;display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+<!-- Paid invoice detail sheet — sits above bottom nav (z-index), safe-area padding so last lines + Close are never under navbar -->
+<div id="payInvDetailSheet" style="display:none;position:fixed;inset:0;z-index:6000;background:rgba(30,22,17,.5);align-items:flex-end;justify-content:center;padding:0" onclick="if(event.target===this)closePayInvDetail()">
+  <div style="background:#fff;width:100%;max-width:520px;max-height:min(92vh, calc(100% - env(safe-area-inset-top, 0px)));border-radius:18px 18px 0 0;display:flex;flex-direction:column;box-shadow:0 -8px 32px rgba(0,0,0,.22);padding-bottom:max(12px, env(safe-area-inset-bottom, 0px))" onclick="event.stopPropagation()">
+    <div style="padding:14px 16px;border-bottom:1.5px solid #efe8dc;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-shrink:0">
       <div style="min-width:0;flex:1">
         <div style="font-size:15px;font-weight:900;color:#4a2f14" id="payInvDetailTitle">Invoice</div>
         <div style="font-size:11px;color:#8a7a6a;margin-top:2px;font-family:monospace" id="payInvDetailSub"></div>
       </div>
       <button type="button" onclick="closePayInvDetail()" style="border:none;background:#f5ede0;color:#4a2f14;width:36px;height:36px;border-radius:50%;font-size:18px;cursor:pointer;font-weight:700;flex-shrink:0">×</button>
     </div>
-    <div id="payInvDetailBody" style="padding:14px 16px;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch"></div>
-    <div style="padding:12px 16px;border-top:1.5px solid #efe8dc">
+    <div id="payInvDetailBody" style="padding:14px 16px 8px;overflow-y:auto;flex:1;min-height:0;-webkit-overflow-scrolling:touch"></div>
+    <div style="padding:12px 16px 16px;border-top:1.5px solid #efe8dc;flex-shrink:0;background:#fff">
       <button type="button" class="btn-sm" style="width:100%;padding:12px;background:#4a2f14;color:#fff;border:none;border-radius:10px;font-weight:800" onclick="closePayInvDetail()">Close</button>
     </div>
   </div>
@@ -968,18 +968,27 @@
     }
 
     function challanDeskSyncStatus(id) {
+      if (typeof _zohoSyncTryAcquire === 'function') {
+        if (_challanSyncRunning || (typeof _paySyncRunning !== 'undefined' && _paySyncRunning) || !_zohoSyncTryAcquire('challan status')) {
+          _challanMsg(typeof _zohoSyncBusyMsg === 'function' ? _zohoSyncBusyMsg() : 'Sync already running.', false);
+          return;
+        }
+      }
       var o = _challanDeskRows.find(function(r){ return String(r.id) === String(id); });
       if (!o || !o.zoho_invoice_id) {
+        if (typeof _zohoSyncRelease === 'function') _zohoSyncRelease();
         _challanMsg('No Zoho document id on this challan.', false);
         return;
       }
       if (typeof _zohoEnabled !== 'undefined' && !_zohoEnabled) {
+        if (typeof _zohoSyncRelease === 'function') _zohoSyncRelease();
         _challanMsg('Turn on Zoho Integration first.', false);
         return;
       }
       _challanMsg('Fetching Zoho status…', null);
       _challanSyncOneRow(o)
         .then(function(res){
+          if (typeof _zohoSyncRelease === 'function') _zohoSyncRelease();
           if (!res) return;
           if (res.kind === 'converted') {
             _challanMsg('Zoho fulfilled · Invoice mapped: ' + (res.detail || ''), true);
@@ -991,6 +1000,7 @@
           renderChallanDesk();
         })
         .catch(function(e){
+          if (typeof _zohoSyncRelease === 'function') _zohoSyncRelease();
           var msg = (e && e.message) ? e.message : String(e);
           if (typeof _payIsZohoRateLimit === 'function' && _payIsZohoRateLimit(e))
             msg = 'Zoho rate limit — wait a minute and try again';
@@ -1000,17 +1010,65 @@
 
     var _challanSyncRunning = false;
     var _challanSyncStop = false;
+    /** One global Zoho sync at a time (challan + unpaid + single) — also shared across tabs via localStorage. */
+    var _ZOHO_SYNC_LOCK_KEY = 'bakery_gps_zoho_sync_lock';
+    var _ZOHO_SYNC_LOCK_TTL_MS = 12 * 60 * 1000; // 12 min safety expiry
+    function _zohoSyncLockOwner() {
+      try {
+        var raw = localStorage.getItem(_ZOHO_SYNC_LOCK_KEY);
+        if (!raw) return null;
+        var o = JSON.parse(raw);
+        if (!o || !o.ts) return null;
+        if (Date.now() - Number(o.ts) > _ZOHO_SYNC_LOCK_TTL_MS) {
+          localStorage.removeItem(_ZOHO_SYNC_LOCK_KEY);
+          return null;
+        }
+        return o;
+      } catch (e) { return null; }
+    }
+    function _zohoSyncTryAcquire(who) {
+      if (_challanSyncRunning || _paySyncRunning) return false;
+      var cur = _zohoSyncLockOwner();
+      if (cur && cur.who && cur.tabId !== _zohoSyncTabId) return false;
+      try {
+        localStorage.setItem(_ZOHO_SYNC_LOCK_KEY, JSON.stringify({
+          who: who || 'sync',
+          ts: Date.now(),
+          tabId: _zohoSyncTabId
+        }));
+      } catch (e) {}
+      return true;
+    }
+    function _zohoSyncRelease() {
+      try {
+        var cur = _zohoSyncLockOwner();
+        if (!cur || cur.tabId === _zohoSyncTabId) localStorage.removeItem(_ZOHO_SYNC_LOCK_KEY);
+      } catch (e) {}
+    }
+    function _zohoSyncBusyMsg() {
+      var cur = _zohoSyncLockOwner();
+      if (cur && cur.who) return 'Another Zoho sync is running (' + cur.who + '). Wait or stop it first — only one sync at a time.';
+      return 'A Zoho sync is already running. Use Stop or wait — only one sync at a time.';
+    }
+    var _zohoSyncTabId = (function(){
+      try {
+        var id = sessionStorage.getItem('bakery_gps_tab_id');
+        if (!id) { id = 't' + Date.now() + '_' + Math.random().toString(36).slice(2, 8); sessionStorage.setItem('bakery_gps_tab_id', id); }
+        return id;
+      } catch (e) { return 't' + Date.now(); }
+    })();
     function challanDeskSyncStop() {
       _challanSyncStop = true;
       _challanMsg('Stopping after current challan…', null);
     }
     /** Sync all challans for selected date — same Zoho timing as Unpaid bulk sync. */
     function challanDeskSyncAll() {
-      if (_challanSyncRunning) {
-        _challanMsg('Sync already running. Use Stop or wait.', false);
+      if (_challanSyncRunning || _paySyncRunning || !_zohoSyncTryAcquire('challan bulk')) {
+        _challanMsg(_zohoSyncBusyMsg(), false);
         return;
       }
       if (typeof _zohoEnabled !== 'undefined' && !_zohoEnabled) {
+        _zohoSyncRelease();
         _challanMsg('Turn on Zoho Integration first.', false);
         return;
       }
@@ -1025,6 +1083,7 @@
         return true;
       });
       if (!targets.length) {
+        _zohoSyncRelease();
         _challanMsg('No challans with Zoho id on this date.', false);
         return;
       }
@@ -1034,7 +1093,7 @@
         'All will be processed in batches of 15 (pause between batches).\n' +
         '~1.5 sec between each doc. Auto-stops if Zoho rate-limits.\n\n' +
         'If Zoho already converted a challan to invoice, our DB will update.'
-      )) return;
+      )) { _zohoSyncRelease(); return; }
 
       _challanSyncRunning = true;
       _challanSyncStop = false;
@@ -1052,6 +1111,7 @@
 
       function finish() {
         _challanSyncRunning = false;
+        _zohoSyncRelease();
         if (stopBtn) stopBtn.style.display = 'none';
         if (allBtn) allBtn.disabled = false;
         renderChallanDesk();
@@ -1603,11 +1663,12 @@
     }
     function payDeskSyncFromZoho(mode) {
       mode = mode || 'all';
-      if (_paySyncRunning) {
-        _payDeskMsg('Sync already running. Use Stop or wait.', false);
+      if (_paySyncRunning || _challanSyncRunning || !_zohoSyncTryAcquire('unpaid ' + mode)) {
+        _payDeskMsg(_zohoSyncBusyMsg(), false);
         return;
       }
       if (!_zohoEnabled) {
+        _zohoSyncRelease();
         _payDeskMsg('Turn on Zoho Integration first (Users / Zoho tab).', false);
         return;
       }
@@ -1615,6 +1676,7 @@
       if (mode === 'selected') {
         var boxes = document.querySelectorAll('.pay-desk-cb:checked');
         if (!boxes.length) {
+          _zohoSyncRelease();
           _payDeskMsg('Select one or more invoices first (expand customer → tick boxes).', false);
           return;
         }
@@ -1624,6 +1686,7 @@
           if (o && o.zoho_invoice_id) targets.push(o);
         });
         if (!targets.length) {
+          _zohoSyncRelease();
           _payDeskMsg('Selected rows have no Zoho document id.', false);
           return;
         }
@@ -1649,13 +1712,17 @@
         return true;
       });
       if (!targets.length) {
+        _zohoSyncRelease();
         _payDeskMsg('No documents with Zoho id to sync.', false);
         return;
       }
       var label = mode === 'selected' ? 'selected' : (mode === 'unpaid' ? 'unpaid' : 'all');
       var totalFound = targets.length;
       // No hard cut at 12 — process all, with pauses between batches of 15
-      if (!confirm('Bulk sync ' + totalFound + ' ' + label + ' document(s) from Zoho?\n\nAll will be processed in batches of 15 (pause between batches).\n~1.5 sec between each doc. Auto-stops if Zoho rate-limits.')) return;
+      if (!confirm('Bulk sync ' + totalFound + ' ' + label + ' document(s) from Zoho?\n\nAll will be processed in batches of 15 (pause between batches).\n~1.5 sec between each doc. Auto-stops if Zoho rate-limits.')) {
+        _zohoSyncRelease();
+        return;
+      }
 
       _paySyncRunning = true;
       _paySyncStop = false;
@@ -1670,6 +1737,7 @@
       var batchSize = 15;
       function finish() {
         _paySyncRunning = false;
+        _zohoSyncRelease();
         if (stopBtn) stopBtn.style.display = 'none';
         var msg = 'Bulk Zoho sync done: ' + ok + ' updated' + (linesOk ? (' (' + linesOk + ' order lines matched from Zoho)') : '') + ', ' + fail + ' failed of ' + targets.length + '.';
         if (_paySyncStop) msg += ' (stopped early)';
@@ -1736,12 +1804,18 @@
     }
 
     function payDeskSyncOne(id) {
+      if (_paySyncRunning || _challanSyncRunning || !_zohoSyncTryAcquire('status one')) {
+        _payDeskMsg(_zohoSyncBusyMsg(), false);
+        return;
+      }
       if (!_zohoEnabled) {
+        _zohoSyncRelease();
         _payDeskMsg('Turn on Zoho Integration first.', false);
         return;
       }
       var o = _payDeskRows.find(function(r){ return String(r.id) === String(id); });
       if (!o || !o.zoho_invoice_id) {
+        _zohoSyncRelease();
         _payDeskMsg('No Zoho document id on this row.', false);
         return;
       }
@@ -1749,10 +1823,12 @@
       _payFetchZohoDoc(o.zoho_invoice_id, o.zoho_doc_type)
         .then(function(data){ return _payApplyZohoDocToOrder(o, data); })
         .then(function(){
+          _zohoSyncRelease();
           _payDeskMsg('Updated from Zoho: ' + (o.zoho_invoice_number || '') + ' · due ₹' + _payDue(o), true);
           renderPaymentsDesk();
         })
         .catch(function(e){
+          _zohoSyncRelease();
           _payDeskMsg('Zoho sync failed: ' + (e && e.message ? e.message : e) + ' — ensure edge supports get_invoice.', false);
         });
     }
@@ -2135,8 +2211,9 @@
         if (o.payment_reminder_sent_at)
           badges += '<span style="background:#eceff1;color:#546e7a;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-left:4px">Reminded</span>';
         var actions = '';
-        if (o.zoho_invoice_id) {
-          actions += '<button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1px solid #ffe082" onclick="payDeskSyncOne(\''+o.id+'\')">🔗 Zoho</button> ';
+        // Single status sync only (no duplicate 🔗 Zoho + ↻ Status)
+        if (o.zoho_invoice_id && st2 !== 'paid') {
+          actions += '<button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1px solid #ffe082" onclick="event.stopPropagation();payDeskSyncOne(\''+o.id+'\')">↻ Status</button> ';
         }
         if (st2 !== 'paid') {
           actions += '<button class="btn-sm" style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9" onclick="payDeskRemindOne(\''+o.id+'\')">📨 Remind</button> ';
@@ -2196,18 +2273,13 @@
           (o.payment_reminder_sent_at ? '<br>Last reminder: '+esc(String(o.payment_reminder_sent_at).slice(0,16).replace('T',' ')) : '')+
           '</div><div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">'+actions+'</div></div></div></div>';
       }
-      // Enhance invoice/challan actions: Edit lines + Sync Zoho status
+      // Enhance invoice actions: Edit only (Status already on card — do not duplicate)
       var _cardBase = card;
       card = function(o) {
         var html = _cardBase(o);
         var stPaid = String(o.payment_status||'').toLowerCase() === 'paid';
-        // Edit / Status only for unpaid & requests — paid rows keep Undo only
         if (stPaid) return html;
-        var extra = '';
-        extra += ' <button class="btn-sm" style="background:#f5ede0;color:#4a2f14;border:1px solid #d0c0aa" onclick="event.stopPropagation();payDeskEditDoc(\''+String(o.id)+'\')">✏️ Edit</button>';
-        if (o.zoho_invoice_id) {
-          extra += ' <button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1px solid #ffe082" onclick="event.stopPropagation();payDeskSyncOne(\''+String(o.id)+'\')">↻ Status</button>';
-        }
+        var extra = ' <button class="btn-sm" style="background:#f5ede0;color:#4a2f14;border:1px solid #d0c0aa" onclick="event.stopPropagation();payDeskEditDoc(\''+String(o.id)+'\')">✏️ Edit</button>';
         if (html.indexOf('Cust orders') >= 0) {
           html = html.replace('>Cust orders</button>', '>Cust orders</button>'+extra);
         } else if (extra) {
@@ -2318,12 +2390,16 @@
       }
     }
     function payDeskSyncShopStatuses(sid) {
-      if (!_zohoEnabled) return;
+      if (_paySyncRunning || _challanSyncRunning || !_zohoSyncTryAcquire('shop status')) {
+        if (typeof _payDeskMsg === 'function') _payDeskMsg(_zohoSyncBusyMsg(), false);
+        return;
+      }
+      if (!_zohoEnabled) { _zohoSyncRelease(); return; }
       var rows = (_payDeskRows || []).filter(function(o) {
         var key = String(o.shop_id || o.shop_name || '').replace(/[^a-zA-Z0-9_-]/g, '_');
         return key === String(sid) && o.zoho_invoice_id;
       });
-      if (!rows.length) return;
+      if (!rows.length) { _zohoSyncRelease(); return; }
       // Prefer rows missing status first
       rows.sort(function(a,b){
         var ma = a.zoho_invoice_status ? 1 : 0;
@@ -2340,6 +2416,7 @@
       var i = 0;
       function next() {
         if (i >= rows.length) {
+          _zohoSyncRelease();
           var newlyPaid = rows.filter(function(r){ return String(r.payment_status||'').toLowerCase()==='paid'; }).length;
           if (typeof _payDeskMsg === 'function') {
             _payDeskMsg(newlyPaid

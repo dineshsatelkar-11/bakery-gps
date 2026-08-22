@@ -630,18 +630,18 @@
     </div>
     <!-- Pay request sheet -->
 
-    <!-- Invoice preview (customer) -->
-    <div id="invPreviewSheet" style="display:none;position:fixed;inset:0;z-index:420;background:rgba(30,22,17,.5);align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeInvoicePreview()">
-        <div style="background:#fff;width:100%;max-width:100%;max-height:88vh;border-radius:18px 18px 0 0;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 -8px 32px rgba(0,0,0,.2)">
+    <!-- Invoice preview (customer) — above bottom nav; safe-area so totals/Close never sit under navbar -->
+    <div id="invPreviewSheet" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(30,22,17,.5);align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeInvoicePreview()">
+        <div style="background:#fff;width:100%;max-width:100%;max-height:min(92vh, calc(100% - env(safe-area-inset-top, 0px)));border-radius:18px 18px 0 0;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 -8px 32px rgba(0,0,0,.22);padding-bottom:max(8px, env(safe-area-inset-bottom, 0px))">
             <div style="padding:14px 16px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0">
-                <div>
+                <div style="min-width:0;flex:1">
                     <div style="font-size:15px;font-weight:900;color:#1e293b" id="invPrevTitle">Invoice</div>
                     <div style="font-size:11px;color:#64748b;margin-top:2px" id="invPrevSub"></div>
                 </div>
-                <button type="button" onclick="closeInvoicePreview()" style="border:none;background:#f1f5f9;color:#1e293b;width:36px;height:36px;border-radius:50%;font-size:18px;cursor:pointer;font-weight:700">×</button>
+                <button type="button" onclick="closeInvoicePreview()" style="border:none;background:#f1f5f9;color:#1e293b;width:36px;height:36px;border-radius:50%;font-size:18px;cursor:pointer;font-weight:700;flex-shrink:0">×</button>
             </div>
-            <div id="invPrevBody" style="padding:14px 16px;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch"></div>
-            <div style="padding:12px 16px calc(14px + var(--sab));border-top:1px solid #e2e8f0;flex-shrink:0">
+            <div id="invPrevBody" style="padding:14px 16px 8px;overflow-y:auto;flex:1;min-height:0;-webkit-overflow-scrolling:touch"></div>
+            <div style="padding:12px 16px 16px;border-top:1px solid #e2e8f0;flex-shrink:0;background:#fff">
                 <button type="button" class="btn btn-grey" style="width:100%;padding:12px" onclick="closeInvoicePreview()">Close</button>
             </div>
         </div>
@@ -3565,6 +3565,7 @@ function _payUnpaidTotal(){
     function closeInvoicePreview(){
       var sh = document.getElementById('invPreviewSheet');
       if(sh){ sh.style.display = 'none'; }
+      try { document.body.classList.remove('preview-open'); } catch(e) {}
     }
     function _payParseOrderItems(o){
       // App stores items/qty as comma-separated strings: "A,B" / "2,3"
@@ -3637,6 +3638,8 @@ function _payUnpaidTotal(){
       if (isNaN(due)) due = 0;
       var total = o.invoice_total != null ? parseFloat(o.invoice_total) : due;
       if (isNaN(total)) total = due;
+      var paidAmt = o.paid_amount != null ? parseFloat(o.paid_amount) : (paid ? total : NaN);
+      if (isNaN(paidAmt) && paid) paidAmt = total;
       var docNo = o.zoho_invoice_number || ('Order #' + o.id);
       var zst = o.zoho_invoice_status ? String(o.zoho_invoice_status) : '';
       if (title) title.textContent = docNo;
@@ -3658,19 +3661,32 @@ function _payUnpaidTotal(){
       var sgst = o.tax_sgst != null ? parseFloat(o.tax_sgst) : null;
       var ship = o.shipping_amount != null ? parseFloat(o.shipping_amount) : null;
       function money(n){ return '₹' + (Number(n)||0).toLocaleString('en-IN', { maximumFractionDigits: 2 }); }
+      var meta = '';
+      if (paid || o.payment_mode || o.payment_ref || o.paid_at) {
+        meta = '<div style="font-size:11px;color:#64748b;font-family:monospace;line-height:1.6;margin-bottom:12px">';
+        if (o.payment_mode) meta += 'Mode: <b style="color:#1e293b">'+esc(o.payment_mode)+'</b><br>';
+        if (o.payment_ref) meta += 'UTR: <b style="color:#1e293b">'+esc(o.payment_ref)+'</b><br>';
+        if (o.paid_at) meta += 'Paid at: '+esc(String(o.paid_at).slice(0,16).replace('T',' '))+'<br>';
+        meta += '</div>';
+      }
       var totals = '<div style="background:#f8fafc;border-radius:12px;padding:12px;border:1px solid #e2e8f0">';
       if (subtotal != null && !isNaN(subtotal)) totals += '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span>Taxable</span><b>'+money(subtotal)+'</b></div>';
       if (cgst != null && !isNaN(cgst)) totals += '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span>CGST</span><b>'+money(cgst)+'</b></div>';
       if (sgst != null && !isNaN(sgst)) totals += '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span>SGST</span><b>'+money(sgst)+'</b></div>';
       if (ship != null && !isNaN(ship)) totals += '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span>Shipping</span><b>'+money(ship)+'</b></div>';
-      totals += '<div style="display:flex;justify-content:space-between;font-size:15px;font-weight:900;margin-top:8px;padding-top:8px;border-top:1.5px solid #e2e8f0;color:#1e293b"><span>Total</span><span>'+money(total)+'</span></div>';
-      if (!paid) totals += '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:800;margin-top:6px;color:#c8382a"><span>Balance due</span><span>'+money(due)+'</span></div>';
-      else totals += '<div style="margin-top:6px;font-size:12px;font-weight:800;color:#1a5a38">Paid · Balance ₹0</div>';
+      totals += '<div style="display:flex;justify-content:space-between;font-size:15px;font-weight:900;margin-top:8px;padding-top:8px;border-top:1.5px solid #e2e8f0;color:#1e293b"><span>Invoice total</span><span>'+money(total)+'</span></div>';
+      if (!paid) {
+        totals += '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:800;margin-top:6px;color:#c8382a"><span>Balance due</span><span>'+money(due)+'</span></div>';
+      } else {
+        totals += '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:800;margin-top:6px;color:#1a5a38"><span>Paid amount</span><span>'+money(paidAmt)+'</span></div>';
+        totals += '<div style="margin-top:4px;font-size:11px;font-weight:700;color:#1a5a38">Balance ₹0</div>';
+      }
       totals += '</div>';
       body.innerHTML =
         '<div style="font-size:11px;color:#64748b;margin-bottom:10px">Shop: <b style="color:#1e293b">'+esc((session && session.shop_name) || o.shop_name || '')+'</b></div>' +
-        linesHtml + totals +
-        '<div style="font-size:10px;color:#64748b;margin-top:12px;line-height:1.45">This is your order / invoice summary from the app. Official tax invoice is in Zoho Books.</div>';
+        meta + linesHtml + totals +
+        '<div style="font-size:10px;color:#64748b;margin-top:12px;line-height:1.45;padding-bottom:4px">This is your order / invoice summary from the app. Official tax invoice is in Zoho Books.</div>';
+      try { document.body.classList.add('preview-open'); } catch(e) {}
       sh.style.display = 'flex';
     }
     window.openInvoicePreview = openInvoicePreview;
