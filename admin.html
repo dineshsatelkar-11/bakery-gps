@@ -1425,6 +1425,7 @@
                 <option value="rejected">❌ Rejected</option>
                 <option value="packaging">📦 Packaging</option>
                 <option value="dispatched">🚚 Dispatched</option>
+                <option value="sticker_pending">🏷 Sticker not printed</option>
             </select>
         </div>
         <input type="search" id="co-search" placeholder="🔍 Search shop, mobile, invoice #, items…" oninput="renderCustOrders()" style="width:100%;margin:8px 0 0;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;background:#f8fafc">
@@ -4438,6 +4439,10 @@ if(tbQueue) tbQueue.textContent = '⚠️ Queue ('+data.length+')';
 
     /* ── DELIVERY ── */
     var _delivOrds=[], _delivMap={}, _delivFilter='all';
+    function _canAdminMarkDelivery(){
+      var r = String(_staffRole || sessionStorage.getItem('role') || '').toLowerCase();
+      return r === 'admin' || r === 'super_admin';
+    }
     function adminCancelDelivery(driver, shopId, date, shopName){
       if(!confirm('Undo delivery for "'+shopName+'"?\nThis will mark it as pending again.'))return;
       apiPost({action:'cancelDelivery', driver:driver, shop_id:shopId, date:date}).then(function(res){
@@ -4445,6 +4450,52 @@ if(tbQueue) tbQueue.textContent = '⚠️ Queue ('+data.length+')';
         else alert('Failed to undo: '+(res.error||'unknown error'));
       });
     }
+    /** Admin / super_admin: mark delivery done when driver did not */
+    function adminMarkDeliveryDone(driver, shopId, shopName, date){
+      if (!_canAdminMarkDelivery()) {
+        alert('Only Admin or Super Admin can mark delivery done.');
+        return;
+      }
+      shopId = String(shopId || '');
+      shopName = String(shopName || shopId || 'Shop');
+      driver = String(driver || '').trim();
+      date = String(date || todayStr());
+      if (!shopId) { alert('Missing shop id'); return; }
+      if (!driver || driver === '—') {
+        alert('No driver assigned on this order. Assign a driver first, then mark done.');
+        return;
+      }
+      if (!confirm('Mark delivered for "'+shopName+'"?\nDriver: '+driver+'\nDate: '+date+'\n\nUse when the driver forgot to mark done.')) return;
+      var time = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+      // Same payload as driver app (deliveries table: driver, shop_id, shop_name, date, time)
+      var body = {
+        action: 'markDelivered',
+        driver: driver,
+        shop_id: shopId,
+        shop_name: shopName,
+        date: date,
+        time: time
+      };
+      apiPost(body).then(function(res){
+        if (res && res.ok === false) throw new Error(res.error || 'Failed');
+        // Notify customer (same as driver app)
+        try {
+          var delivMsg = 'Delivered at ' + time + ' (confirmed by admin). Thank you!';
+          apiPost({ action: 'sendCustomerNotification', shop_id: shopId, shop_name: shopName, message: delivMsg });
+          if (typeof CONFIG !== 'undefined' && CONFIG.SUPABASE_URL) {
+            fetch(CONFIG.SUPABASE_URL + '/functions/v1/clever-function', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + CONFIG.SUPABASE_ANON_KEY },
+              body: JSON.stringify({ shop_ids: [shopId], message: delivMsg.slice(0, 100) })
+            }).catch(function(){});
+          }
+        } catch (eN) {}
+        loadDeliveries();
+      }).catch(function(e){
+        alert('Failed to mark done: ' + (e.message || e));
+      });
+    }
+    window.adminMarkDeliveryDone = adminMarkDeliveryDone;
     function setDelivFilter(f){
       _delivFilter=f;
       renderDeliveries();
@@ -4490,12 +4541,20 @@ if(tbQueue) tbQueue.textContent = '⚠️ Queue ('+data.length+')';
             'style="font-size:10px;font-family:monospace;color:#1565c0;margin-left:6px">📍 Map ↗</a>';
         }
         var _delDate=document.getElementById('f-del-date').value||todayStr();
-        var cancelBtn=dn?'<button class="btn-sm" style="background:#fde8e8;color:#c8382a;border:none;cursor:pointer;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;margin-left:6px;flex-shrink:0" onclick="adminCancelDelivery(\''+esc(del.driver||drD)+'\',\''+esc(o.customer_id||o.shop_id)+'\',\''+esc(_delDate)+'\',\''+esc(o.shop_name)+'\')">↩ Undo</button>':'';
+        var shopKey=esc(String(o.customer_id||o.shop_id||''));
+        var shopNm=esc(String(o.shop_name||''));
+        var drvEsc=esc(String(del && del.driver ? del.driver : drD));
+        var cancelBtn=dn?'<button class="btn-sm" style="background:#fde8e8;color:#c8382a;border:none;cursor:pointer;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;margin-left:6px;flex-shrink:0" onclick="adminCancelDelivery(\''+drvEsc+'\',\''+shopKey+'\',\''+esc(_delDate)+'\',\''+shopNm+'\')">↩ Undo</button>':'';
+        // Admin / Super Admin can mark done if driver did not
+        var markBtn='';
+        if (!dn && _canAdminMarkDelivery()) {
+          markBtn='<button class="btn-sm" style="background:#e8f5e9;color:#1a5a38;border:1px solid #a5d6a7;cursor:pointer;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;margin-left:6px;flex-shrink:0" onclick="adminMarkDeliveryDone(\''+esc(String(drD))+'\',\''+shopKey+'\',\''+shopNm+'\',\''+esc(_delDate)+'\')">✅ Mark done</button>';
+        }
         return '<div class="deliv-row"><div style="flex:1">'+
           '<div style="font-size:13px;font-weight:800">'+esc(o.shop_name)+'</div>'+
           '<div style="font-size:10px;color:#64748b;font-family:monospace;margin-top:2px"><span class="badge '+dc+'">'+esc(drD)+'</span> · '+esc(o.items)+'</div>'+
           (dn?'<div style="font-size:10px;font-family:monospace;color:#2d7a4f;margin-top:2px">✅ Done '+(del.time||'')+locLink+'</div>':'')+
-          '</div><div style="display:flex;align-items:center"><span class="badge '+(dn?'b-ok':'b-miss')+'">'+(dn?'Done':'Pending')+'</span>'+cancelBtn+'</div></div>';
+          '</div><div style="display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:4px"><span class="badge '+(dn?'b-ok':'b-miss')+'">'+(dn?'Done':'Pending')+'</span>'+markBtn+cancelBtn+'</div></div>';
       }).join('');
     }
 
@@ -8932,9 +8991,23 @@ onStaffRoleChange();
       });
     }
 
+    function _coNeedsSticker(o){
+      if (!o) return false;
+      var st = String(o.status || '').toLowerCase();
+      if (st === 'no_order' || st === 'rejected') return false;
+      return true;
+    }
+    function _coStickerPrinted(o){
+      if (!o) return false;
+      return o.sticker_printed === true || o.sticker_printed === 'true' || o.sticker_printed === 1;
+    }
     function renderCoStats(){
       var counts = {pending:0, approved:0, rejected:0, packaging:0, dispatched:0, no_order:0};
-      allCustOrders.forEach(function(o){ if(counts[o.status]!==undefined) counts[o.status]++; });
+      var stickerLeft = 0;
+      allCustOrders.forEach(function(o){
+        if(counts[o.status]!==undefined) counts[o.status]++;
+        if (_coNeedsSticker(o) && !_coStickerPrinted(o)) stickerLeft++;
+      });
       var total = allCustOrders.length;
       var f = _coStatusFilter;
 
@@ -8956,6 +9029,7 @@ onStaffRoleChange();
         chip('approved', 'Kitchen', counts.approved, '#e67e22', '#f5c87a') +
         chip('packaging', 'Packaging', counts.packaging, '#6e3da8', '#ce93d8') +
         chip('dispatched', 'Dispatched', counts.dispatched, '#2d7a4f', '#a5d6a7') +
+        chip('sticker_pending', '🏷 Stickers left', stickerLeft, stickerLeft ? '#c8382a' : '#2d7a4f', stickerLeft ? '#f0b0b0' : '#a5d6a7') +
         chip('no_order', 'No Order', counts.no_order, '#64748b', '#e0d0c0');
     }
 
@@ -8967,7 +9041,11 @@ onStaffRoleChange();
       var list = allCustOrders.slice();
       if(_coStatusFilter){
         var want = String(_coStatusFilter).toLowerCase();
-        list = list.filter(function(o){ return String(o.status||'').toLowerCase() === want; });
+        if (want === 'sticker_pending') {
+          list = list.filter(function(o){ return _coNeedsSticker(o) && !_coStickerPrinted(o); });
+        } else {
+          list = list.filter(function(o){ return String(o.status||'').toLowerCase() === want; });
+        }
       }
       var q = ((document.getElementById('co-search')||{}).value||'').toLowerCase().trim();
       if(q){
@@ -9062,6 +9140,21 @@ onStaffRoleChange();
     ? '<div style="font-size:10px;color:#c8382a;font-family:monospace;margin-bottom:4px">⚠️ No Zoho invoice yet</div>'
     : '')
 )+
+          // Sticker printed toggle (skip no_order / rejected)
+          (function(){
+            if (!_coNeedsSticker(o)) return '';
+            var on = _coStickerPrinted(o);
+            return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin:8px 0 4px;padding:8px 10px;background:'+(on?'#e8f5e9':'#fff8e1')+';border:1.5px solid '+(on?'#a5d6a7':'#ffe082')+';border-radius:10px">'+
+              '<div style="min-width:0">'+
+                '<div style="font-size:12px;font-weight:800;color:'+(on?'#1a5a38':'#7a4800')+'">'+(on?'🏷 Sticker printed':'🏷 Sticker not printed')+'</div>'+
+                (on && o.sticker_printed_at ? '<div style="font-size:10px;font-family:monospace;color:#64748b;margin-top:2px">'+esc(String(o.sticker_printed_at).slice(0,16).replace('T',' '))+'</div>' : '')+
+              '</div>'+
+              '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex-shrink:0">'+
+                '<span style="font-size:10px;font-weight:700;color:#64748b">'+(on?'ON':'OFF')+'</span>'+
+                '<input type="checkbox" '+(on?'checked':'')+' onchange="toggleOrderStickerPrinted(\''+String(o.id).replace(/'/g,'')+'\', this.checked)" style="width:18px;height:18px;accent-color:#2d7a4f;cursor:pointer">'+
+              '</label>'+
+            '</div>';
+          })()+
           '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">'+
             (o.status==='pending'?'<button class="btn-sm" style="background:#e8f5e9;color:#2d7a4f" onclick="quickApprove('+o.id+')">✅ Approve</button>':'') +
             (o.status==='pending'?'<button class="btn-sm btn-del" onclick="quickReject('+o.id+')">❌ Reject</button>':'') +
@@ -9072,6 +9165,30 @@ onStaffRoleChange();
         '</div>';
       }).join('');
     }
+
+    function toggleOrderStickerPrinted(id, printed){
+      var o = (allCustOrders || []).find(function(r){ return String(r.id) === String(id); });
+      if (!o) return;
+      var prev = _coStickerPrinted(o);
+      o.sticker_printed = !!printed;
+      o.sticker_printed_at = printed ? new Date().toISOString() : null;
+      renderCoStats();
+      renderCustOrders();
+      apiPost({
+        action: 'setOrderStickerPrinted',
+        id: id,
+        sticker_printed: !!printed
+      }).then(function(res){
+        if (res && res.ok === false) throw new Error(res.error || 'Save failed');
+      }).catch(function(e){
+        o.sticker_printed = prev;
+        o.sticker_printed_at = prev ? o.sticker_printed_at : null;
+        renderCoStats();
+        renderCustOrders();
+        alert('Could not save sticker status. Run sticker-print-setup.sql in Supabase if column is missing.\n' + (e.message || e));
+      });
+    }
+    window.toggleOrderStickerPrinted = toggleOrderStickerPrinted;
 
     function quickApprove(id){
   var order = allCustOrders.find(function(o){ return String(o.id) === String(id); });
@@ -12968,12 +13085,25 @@ function testZohoConnection() {
     }
     window._adminOpenOrderById = _adminOpenOrderById;
 
-    // Payments iframe: open order in parent (never load full admin inside iframe)
+    // Payments iframe: open order / hide bottom nav while sheet open
     window.addEventListener('message', function(ev){
       try {
         var d = ev && ev.data;
-        if (!d || d.source !== 'bakery-payments' || d.action !== 'openOrder') return;
-        _adminOpenOrderById(d.id);
+        if (!d || d.source !== 'bakery-payments') return;
+        if (d.action === 'openOrder') {
+          _adminOpenOrderById(d.id);
+          return;
+        }
+        if (d.action === 'sheetOpen') {
+          var bn = document.getElementById('bottomNav');
+          if (bn) bn.style.visibility = 'hidden';
+          return;
+        }
+        if (d.action === 'sheetClosed') {
+          var bn2 = document.getElementById('bottomNav');
+          if (bn2) bn2.style.visibility = '';
+          return;
+        }
       } catch (e) {}
     });
 

@@ -969,6 +969,16 @@ function normalizeProducts(list) {
         return sbPatch('customer_orders', { id: b.id }, upd2);
       }
 
+      // Admin: mark shop-order delivery sticker printed / not printed
+      case 'setOrderStickerPrinted': {
+        if (!b.id) return Promise.resolve({ ok: false, error: 'id required' });
+        var printed = b.sticker_printed === true || b.sticker_printed === 'true' || b.sticker_printed === 1;
+        return sbPatch('customer_orders', { id: b.id }, {
+          sticker_printed: printed,
+          sticker_printed_at: printed ? new Date().toISOString() : null
+        });
+      }
+
       // Admin / kitchen / packaging: update order status
       case 'updateCustomerOrderStatus': {
         var upd = { status: b.status };
