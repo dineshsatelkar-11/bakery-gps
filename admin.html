@@ -8974,11 +8974,13 @@ onStaffRoleChange();
     function renderCoStats(){
       var counts = {pending:0, approved:0, rejected:0, packaging:0, dispatched:0, no_order:0};
       var stickerLeft = 0;
+      var total = 0; // real orders only — exclude no_order
       allCustOrders.forEach(function(o){
-        if(counts[o.status]!==undefined) counts[o.status]++;
+        var st = String(o.status || '');
+        if(counts[st]!==undefined) counts[st]++;
+        if (st !== 'no_order') total++;
         if (_coNeedsSticker(o) && !_coStickerPrinted(o)) stickerLeft++;
       });
-      var total = allCustOrders.length;
       var f = _coStatusFilter;
 
       function chip(key, label, n, color, border){
@@ -9016,6 +9018,9 @@ onStaffRoleChange();
         } else {
           list = list.filter(function(o){ return String(o.status||'').toLowerCase() === want; });
         }
+      } else {
+        // Total = real orders only (no_order has its own chip)
+        list = list.filter(function(o){ return String(o.status||'').toLowerCase() !== 'no_order'; });
       }
       var q = ((document.getElementById('co-search')||{}).value||'').toLowerCase().trim();
       if(q){
