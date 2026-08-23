@@ -676,11 +676,118 @@ function normalizeProducts(list) {
         return sbPatch('orders', { order_id: b.order_id }, b.patch || {});
 
       case 'updateOrderDriver':
-        return sbPatch('orders', { order_id: b.order_id }, { driver: b.driver });
+        // Prefer order_id; fall back to shop_id + date (Tea Post / CO rows sometimes lack clean ids in UI)
+        if (b.order_id) {
+          return sbPatch('orders', { order_id: b.order_id }, { driver: b.driver });
+        }
+        if (b.shop_id && b.date) {
+          var uShop = BASE + '/orders?date=eq.' + encodeURIComponent(b.date) +
+            '&or=(shop_id.eq.' + encodeURIComponent(b.shop_id) + ',customer_id.eq.' + encodeURIComponent(b.shop_id) + ')';
+          return fetch(uShop, {
+            method: 'PATCH',
+            headers: hdrs({ 'Prefer': 'return=minimal' }),
+            body: JSON.stringify({ driver: b.driver })
+          }).then(function(r) {
+            return r.ok ? { ok: true } : r.json().then(function(e) { return { ok: false, error: e.message || 'Error' }; });
+          }).catch(function() { return { ok: false, error: 'Network error' }; });
+        }
+        return Promise.resolve({ ok: false, error: 'order_id or shop_id+date required' });
 
       case 'substituteDriver':
-        // Reassign all orders for a driver on a specific date to another driver (today only)
-        return sbPatch('orders', { driver: b.from, date: b.date }, { driver: b.to });
+        // Reassign ALL orders for absent driver on a date → substitute.
+        // Why shops were missed before:
+        //  - only exact driver match on orders (blank / different driver name skipped)
+        //  - Tea Post shops assigned on shops table but order.driver empty or other name
+        // Fix: (1) patch by driver+date (2) also move orders whose shop is assigned to `from`
+        //       even if order.driver differs (3) report counts
+        return (function() {
+          var from = String(b.from || '').trim();
+          var to = String(b.to || '').trim();
+          var date = String(b.date || '').trim();
+          if (!from || !to || !date) {
+            return Promise.resolve({ ok: false, error: 'from, to, date required' });
+          }
+          function fetchJson(url) {
+            return fetch(url, { headers: hdrs() }).then(function(r){ return r.ok ? r.json() : []; }).catch(function(){ return []; });
+          }
+          function patchOrderIds(ids, driver) {
+            if (!ids.length) return Promise.resolve(0);
+            // Patch in chunks of 40 to avoid long URLs / timeouts
+            var chunks = [];
+            for (var i = 0; i < ids.length; i += 40) chunks.push(ids.slice(i, i + 40));
+            return chunks.reduce(function(chain, chunk) {
+              return chain.then(function(n) {
+                return Promise.all(chunk.map(function(oid) {
+                  return sbPatch('orders', { order_id: oid }, { driver: driver }).then(function(res) {
+                    return res && res.ok !== false ? 1 : 0;
+                  });
+                })).then(function(parts) {
+                  return n + parts.reduce(function(a, b){ return a + b; }, 0);
+                });
+              });
+            }, Promise.resolve(0));
+          }
+          // 1) Orders already tagged with from-driver
+          var q1 = BASE + '/orders?date=eq.' + encodeURIComponent(date) +
+            '&driver=eq.' + encodeURIComponent(from) +
+            '&select=order_id,shop_id,customer_id,shop_name,driver';
+          // 2) Shops permanently assigned to from-driver
+          var qShops = BASE + '/shops?assigned_driver=eq.' + encodeURIComponent(from) +
+            '&select=shop_id,customer_id,name,assigned_driver';
+          return Promise.all([fetchJson(q1), fetchJson(qShops)]).then(function(pair) {
+            var byDriver = Array.isArray(pair[0]) ? pair[0] : [];
+            var shops = Array.isArray(pair[1]) ? pair[1] : [];
+            var shopIds = {};
+            shops.forEach(function(s) {
+              if (s.shop_id) shopIds[String(s.shop_id)] = true;
+              if (s.customer_id) shopIds[String(s.customer_id)] = true;
+            });
+            // 3) All orders that day for those shop ids (catches blank/wrong driver on TP rows)
+            var idList = Object.keys(shopIds);
+            var shopOrderPromises = [];
+            for (var i = 0; i < idList.length; i += 30) {
+              var slice = idList.slice(i, i + 30);
+              var inList = slice.map(function(id){ return encodeURIComponent(id); }).join(',');
+              shopOrderPromises.push(fetchJson(
+                BASE + '/orders?date=eq.' + encodeURIComponent(date) +
+                '&or=(shop_id.in.(' + inList + '),customer_id.in.(' + inList + '))' +
+                '&select=order_id,shop_id,customer_id,shop_name,driver'
+              ));
+            }
+            return Promise.all(shopOrderPromises).then(function(chunks) {
+              var byShop = [];
+              chunks.forEach(function(rows) {
+                if (Array.isArray(rows)) byShop = byShop.concat(rows);
+              });
+              var seen = {};
+              var all = [];
+              function add(row) {
+                if (!row || !row.order_id) return;
+                var oid = String(row.order_id);
+                if (seen[oid]) return;
+                // Only move if currently from-driver OR blank OR shop belongs to from
+                var d = String(row.driver || '').trim();
+                var sid = String(row.shop_id || row.customer_id || '');
+                var shopOwned = sid && shopIds[sid];
+                if (d === from || d === '' || shopOwned) {
+                  seen[oid] = true;
+                  all.push(row);
+                }
+              }
+              byDriver.forEach(add);
+              byShop.forEach(add);
+              var ids = all.map(function(r){ return r.order_id; });
+              return patchOrderIds(ids, to).then(function(moved) {
+                return {
+                  ok: true,
+                  moved: moved,
+                  found: ids.length,
+                  shops_on_from: shops.length
+                };
+              });
+            });
+          });
+        })();
 
       case 'cancelDelivery':
         // Undo a mistaken delivery mark — delete by driver+shop_id+date
@@ -693,7 +800,9 @@ function normalizeProducts(list) {
       // Update undelivered orders for one customer from today onwards when their driver changes
       case 'reassignOrdersForCustomer': {
         var today0 = new Date().toISOString().slice(0, 10);
-        var url0 = BASE + '/orders?shop_id=eq.' + encodeURIComponent(b.shop_id) + '&date=gte.' + encodeURIComponent(today0);
+        var sid = encodeURIComponent(b.shop_id);
+        var url0 = BASE + '/orders?date=gte.' + encodeURIComponent(today0) +
+          '&or=(shop_id.eq.' + sid + ',customer_id.eq.' + sid + ')';
         return fetch(url0, {
           method: 'PATCH',
           headers: hdrs({ 'Prefer': 'return=minimal' }),

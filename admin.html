@@ -5958,12 +5958,19 @@ function shareAllCustLogins(){
       apiPost({action:'bulkReassignDriver',from:from,to:to}).then(function(res){
         if(res&&res.ok){
           targets.forEach(function(c){c.assigned_driver=to;});
-          bmsg.textContent='✅ Moved '+targets.length+' → '+to;bmsg.className='msg ok';
-          // Notify destination driver
-          var bulkMsg=targets.length+' shop'+(targets.length>1?'s have':' has')+' been reassigned to your route'+(from?' from '+from:'');
-          apiPost({action:'addNotification',driver_name:to,type:'shop_reassigned',message:bulkMsg});
-          sendPush(to, bulkMsg);
-          renderCustomers();
+          // Also move open/future orders so today's Tea Post (etc.) are not left on old driver
+          var afterShops = function(){
+            bmsg.textContent='✅ Moved '+targets.length+' shops → '+to;bmsg.className='msg ok';
+            var bulkMsg=targets.length+' shop'+(targets.length>1?'s have':' has')+' been reassigned to your route'+(from?' from '+from:'');
+            apiPost({action:'addNotification',driver_name:to,type:'shop_reassigned',message:bulkMsg});
+            sendPush(to, bulkMsg);
+            renderCustomers();
+          };
+          if (from) {
+            apiPost({action:'bulkReassignOrderDriver', from:from, to:to}).then(afterShops).catch(afterShops);
+          } else {
+            afterShops();
+          }
         }else{
           bmsg.textContent='❌ Failed: '+(res.error||'unknown');bmsg.className='msg er';
         }
@@ -5983,14 +5990,44 @@ function shareAllCustLogins(){
       if(!to){preview.textContent='Select substitute driver.';preview.style.display='block';return;}
       if(from===to){preview.textContent='From and To cannot be the same driver.';preview.style.display='block';return;}
       preview.textContent='⏳ Checking orders…'; preview.style.display='block';
-      api({action:'getOrders', driver:from, date:date}).then(function(orders){
-        if(!orders||!orders.length){
+      // Preview uses driver filter; actual substitute also pulls shops on this driver's master route
+      // so Tea Post rows with blank/other driver are not missed.
+      Promise.all([
+        api({action:'getOrders', driver:from, date:date}),
+        api({action:'getOrders', date:date})
+      ]).then(function(res){
+        var byDrv = Array.isArray(res[0]) ? res[0] : [];
+        var allDay = Array.isArray(res[1]) ? res[1] : [];
+        var shopOnFrom = {};
+        (allCustomers||[]).forEach(function(c){
+          if (String(c.assigned_driver||'') === String(from)) {
+            if (c.shop_id) shopOnFrom[String(c.shop_id)] = true;
+            if (c.customer_id) shopOnFrom[String(c.customer_id)] = true;
+          }
+        });
+        var seen = {};
+        var orders = [];
+        function add(o){
+          if (!o) return;
+          var k = String(o.order_id || o.shop_id || o.shop_name || '');
+          if (!k || seen[k]) return;
+          seen[k] = true;
+          orders.push(o);
+        }
+        byDrv.forEach(add);
+        allDay.forEach(function(o){
+          var sid = String(o.shop_id || o.customer_id || '');
+          var d = String(o.driver || '').trim();
+          if (shopOnFrom[sid] && (d === from || d === '' || d !== to)) add(o);
+        });
+        if(!orders.length){
           preview.innerHTML='<span style="color:#2d7a4f">✅ No orders for <b>'+esc(from)+'</b> on '+esc(date)+'</span>';
           btn.style.display='none';
           return;
         }
-        preview.innerHTML='<b>'+orders.length+' orders</b> will move from <b>'+esc(from)+'</b> → <b>'+esc(to)+'</b> on '+esc(date)+':<br>'+
-          orders.map(function(o){return '• '+esc(o.shop_name);}).join('<br>');
+        preview.innerHTML='<b>'+orders.length+' orders</b> will move from <b>'+esc(from)+'</b> → <b>'+esc(to)+'</b> on '+esc(date)+
+          ' <span style="color:#64748b;font-size:11px">(includes shops on this driver’s route even if order driver was blank)</span>:<br>'+
+          orders.map(function(o){return '• '+esc(o.shop_name||o.shop_id)+(o.driver&&o.driver!==from?' <span style="color:#c8382a">['+esc(o.driver)+']</span>':'');}).join('<br>');
         btn.style.display='block';
         btn.textContent='🔄 Reassign '+orders.length+' Orders to '+to;
       });
@@ -6008,9 +6045,10 @@ function shareAllCustLogins(){
         if(res&&res.ok){
           btn.style.display='none';
           document.getElementById('sub-preview').style.display='none';
-          msg.textContent='✅ Done! All orders for '+from+' on '+date+' reassigned to '+to+'.';
+          var n = (res.moved != null ? res.moved : res.found);
+          msg.textContent='✅ Done! '+(n != null ? n+' order(s)' : 'Orders')+' for '+from+' on '+date+' → '+to+
+            (res.shops_on_from != null ? ' · '+res.shops_on_from+' shop(s) on master route' : '')+'.';
           msg.className='msg ok'; msg.style.display='block';
-          // Notify substitute driver
           apiPost({action:'addNotification', driver_name:to, type:'shop_reassigned',
             message:from+'\'s deliveries for '+date+' have been reassigned to you.'});
           sendPush(to, from+'\'s deliveries for '+date+' are now assigned to you.');
@@ -6039,20 +6077,28 @@ function shareAllCustLogins(){
       ]).then(function(res){
         var orders = Array.isArray(res[0]) ? res[0] : [];
         var delivs  = Array.isArray(res[1]) ? res[1] : [];
-        // build delivered set by shop_id
+        // Delivered by shop_id OR customer_id (Tea Post ids often differ across rows)
         _movDelivered = {};
-        delivs.forEach(function(d){ _movDelivered[d.shop_id] = true; });
-        // keep only undelivered
-        _movOrders = orders.filter(function(o){ return !_movDelivered[o.shop_id]; });
+        delivs.forEach(function(d){
+          if (d.shop_id) _movDelivered[String(d.shop_id)] = true;
+          if (d.customer_id) _movDelivered[String(d.customer_id)] = true;
+        });
+        _movOrders = orders.filter(function(o){
+          var a = String(o.shop_id || '');
+          var b = String(o.customer_id || '');
+          return !(_movDelivered[a] || _movDelivered[b]);
+        });
         if(!_movOrders.length){
           listEl.innerHTML = '<div style="padding:12px;text-align:center;font-size:12px;color:#64748b;font-family:monospace">No undelivered orders for this driver on '+date+'.</div>';
           countEl.textContent = '';
           return;
         }
-        listEl.innerHTML = _movOrders.map(function(o){
+        listEl.innerHTML = _movOrders.map(function(o, idx){
+          var key = o.order_id ? ('id:'+o.order_id) : ('shop:'+String(o.shop_id||o.customer_id||'')+':'+idx);
           return '<label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #f0e8dc;cursor:pointer">'+
-            '<input type="checkbox" class="mov-chk" value="'+esc(o.order_id||o.shop_id)+'" onchange="updateMovCount()" style="width:16px;height:16px;flex-shrink:0">'+
-            '<span style="font-size:13px;font-weight:700;color:#0f172a">'+esc(o.shop_name||o.shop_id)+'</span>'+
+            '<input type="checkbox" class="mov-chk" data-idx="'+idx+'" value="'+esc(key)+'" onchange="updateMovCount()" style="width:16px;height:16px;flex-shrink:0">'+
+            '<span style="font-size:13px;font-weight:700;color:#0f172a;flex:1">'+esc(o.shop_name||o.shop_id)+'</span>'+
+            '<span style="font-size:10px;font-family:monospace;color:#64748b">'+esc(String(o.shop_id||o.customer_id||''))+'</span>'+
             '</label>';
         }).join('');
         updateMovCount();
@@ -6082,10 +6128,27 @@ function shareAllCustLogins(){
       if(!checked.length){ msg.textContent='Select at least one order.'; msg.className='msg er'; msg.style.display='block'; return; }
       if(!confirm('Move '+checked.length+' order(s) from '+from+' → '+to+'?')) return;
       msg.textContent='⏳ Moving…'; msg.className='msg in'; msg.style.display='block';
-      // Find full order objects for the checked IDs
-      var toMove = _movOrders.filter(function(o){ return checked.indexOf(o.order_id||o.shop_id) >= 0; });
+      var date = document.getElementById('mov-date').value || todayStr();
+      var toMove = [];
+      document.querySelectorAll('.mov-chk:checked').forEach(function(c){
+        var idx = parseInt(c.getAttribute('data-idx'), 10);
+        if (!isNaN(idx) && _movOrders[idx]) toMove.push(_movOrders[idx]);
+      });
+      if (!toMove.length) {
+        // fallback by value match
+        toMove = _movOrders.filter(function(o){
+          var key = o.order_id ? ('id:'+o.order_id) : null;
+          return key && checked.indexOf(key) >= 0;
+        });
+      }
       Promise.all(toMove.map(function(o){
-        return apiPost({action:'updateOrderDriver', order_id:o.order_id, driver:to});
+        return apiPost({
+          action: 'updateOrderDriver',
+          order_id: o.order_id || undefined,
+          shop_id: o.shop_id || o.customer_id || undefined,
+          date: date,
+          driver: to
+        });
       })).then(function(results){
         var failed = results.filter(function(r){ return !r.ok; }).length;
         if(failed){
