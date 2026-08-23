@@ -754,7 +754,8 @@
       }).join('');
     }
     window.challanDeskEdit = function(id) {
-      var o = _challanDeskRows.find(function(r){ return String(r.id) === String(id); });
+      var o = (_challanDeskRows || []).find(function(r){ return String(r.id) === String(id); });
+      if (!o) o = (_payDeskRows || []).find(function(r){ return String(r.id) === String(id); });
       if (!o) { alert('Order not found'); return; }
       var names = String(o.items || '').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
       var qtys = String(o.qty || '').split(',').map(function(s){ return s.trim(); });
@@ -843,9 +844,15 @@
           o.items = itemsStr;
           o.qty = qtyStr;
           o.item_ids = idsStr;
+          // Keep pay desk row in sync if present
+          try {
+            var po = (_payDeskRows || []).find(function(r){ return String(r.id) === String(o.id); });
+            if (po) { po.items = itemsStr; po.qty = qtyStr; po.item_ids = idsStr; }
+          } catch (eSync) {}
           box.remove();
           _challanMsg('Quantities updated. Next: Send/Update Zoho if already sent.', true);
-          renderChallanDesk();
+          try { if (typeof renderChallanDesk === 'function') renderChallanDesk(); } catch (eR) {}
+          try { if (typeof renderPaymentsDesk === 'function') renderPaymentsDesk(); } catch (eP) {}
         }).catch(function(e) {
           _challanMsg('Failed: ' + (e.message || e), false);
         });
@@ -2109,9 +2116,16 @@
       if (o.payment_ref) meta += 'UTR: <b style="color:#4a2f14">'+esc(o.payment_ref)+'</b><br>';
       if (o.paid_at) meta += 'Paid at: '+esc(String(o.paid_at).slice(0,16).replace('T',' '))+'<br>';
       if (o.zoho_invoice_status) meta += 'Zoho: '+esc(String(o.zoho_invoice_status))+'<br>';
+      if (!paid) meta += 'Status: <b style="color:#c8382a">'+esc(o.payment_status || 'unpaid')+'</b><br>';
       meta += '</div>';
-      var openOrderBtn = '<button type="button" class="btn-sm" style="margin-top:12px;width:100%;padding:10px;background:#f5ede0;color:#4a2f14;border:1px solid #d0c0aa;border-radius:10px;font-weight:800" onclick="(typeof _openAdminOrder===\'function\'?_openAdminOrder(\''+String(o.id).replace(/'/g,'')+'\'): (window.location.href=\'admin.html?openOrder='+encodeURIComponent(String(o.id))+'\'))">Open full order in Admin</button>';
-      body.innerHTML = meta + linesHtml + totals + openOrderBtn;
+      var oid = String(o.id).replace(/'/g, '');
+      var editBtn = '';
+      if (!paid) {
+        editBtn =
+          '<button type="button" class="btn-sm" style="margin-top:12px;width:100%;padding:12px;background:#4a2f14;color:#fff;border:none;border-radius:10px;font-weight:800" onclick="closePayInvDetail();challanDeskEdit(\''+oid+'\')">✏️ Edit quantities</button>'+
+          '<div style="font-size:10px;color:#8a7a6a;margin-top:6px;text-align:center">Damage / missing: change qty, save, then sync Zoho if needed.</div>';
+      }
+      body.innerHTML = meta + linesHtml + totals + editBtn;
       sh.style.display = 'flex';
     }
     window.openPayInvDetail = openPayInvDetail;
@@ -2240,8 +2254,9 @@
         } else {
           actions += '<button class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0" onclick="payDeskUndoPaid(\''+o.id+'\')">↩ Undo paid</button>';
         }
+        // One combined View / Edit (invoice preview + qty edit) — no separate Cust orders
         if (st2 !== 'paid') {
-          actions += ' <button class="btn-sm btn-grey" onclick="showTab(\'cust-orders\')">Cust orders</button>';
+          actions += ' <button class="btn-sm" style="background:#f5ede0;color:#4a2f14;border:1px solid #d0c0aa" onclick="event.stopPropagation();openPayInvDetail(\''+String(o.id).replace(/'/g,'')+'\')">📄 View / Edit</button>';
         }
         var canSelect = st2 !== 'paid';
         return '<div class="card" style="margin-bottom:8px;padding:12px">'+
@@ -2291,20 +2306,7 @@
           (o.payment_reminder_sent_at ? '<br>Last reminder: '+esc(String(o.payment_reminder_sent_at).slice(0,16).replace('T',' ')) : '')+
           '</div><div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">'+actions+'</div></div></div></div>';
       }
-      // Enhance invoice actions: Edit only (Status already on card — do not duplicate)
-      var _cardBase = card;
-      card = function(o) {
-        var html = _cardBase(o);
-        var stPaid = String(o.payment_status||'').toLowerCase() === 'paid';
-        if (stPaid) return html;
-        var extra = ' <button class="btn-sm" style="background:#f5ede0;color:#4a2f14;border:1px solid #d0c0aa" onclick="event.stopPropagation();payDeskEditDoc(\''+String(o.id)+'\')">✏️ Edit</button>';
-        if (html.indexOf('Cust orders') >= 0) {
-          html = html.replace('>Cust orders</button>', '>Cust orders</button>'+extra);
-        } else if (extra) {
-          html = html.replace('</div></div></div></div>', '<div style="margin-top:6px">'+extra+'</div></div></div></div></div>');
-        }
-        return html;
-      };
+      // View / Edit is already on the card via openPayInvDetail — no second Edit button
 
       function groupByCustomer(list) {
         var map = {};
@@ -2489,7 +2491,9 @@
       window.location.href = url;
     }
     function payDeskEditDoc(id) {
-      _openAdminOrder(id);
+      // Same as View / Edit — local invoice preview (works in embed; no parent cust-orders lookup)
+      if (typeof openPayInvDetail === 'function') openPayInvDetail(id);
+      else if (typeof challanDeskEdit === 'function') challanDeskEdit(id);
     }
     
     function payDeskUpdateSelCount() {

@@ -12932,20 +12932,37 @@ function testZohoConnection() {
 
     function _adminOpenOrderById(oid) {
       if (!oid) return;
+      function findOrder(){
+        var lists = [];
+        try { if (typeof _coRows !== 'undefined' && _coRows) lists.push(_coRows); } catch (e) {}
+        try { if (typeof allCustOrders !== 'undefined' && allCustOrders) lists.push(allCustOrders); } catch (e2) {}
+        for (var i = 0; i < lists.length; i++) {
+          var o = (lists[i] || []).find(function(r){ return String(r.id) === String(oid); });
+          if (o) return o;
+        }
+        return null;
+      }
+      var existing = findOrder();
+      if (existing && typeof openCoModal === 'function') {
+        try {
+          if (typeof showGroup === 'function') showGroup('customers');
+          else if (typeof showTab === 'function') showTab('cust-orders');
+        } catch (e0) {}
+        openCoModal(existing);
+        return;
+      }
       try {
         if (typeof showGroup === 'function') showGroup('customers');
         else if (typeof showTab === 'function') showTab('cust-orders');
-      } catch (e0) {}
-      try { if (typeof loadCustOrders === 'function') loadCustOrders(); } catch (e1) {}
+      } catch (e1) {}
+      try { if (typeof loadCustOrders === 'function') loadCustOrders(); } catch (e2) {}
       var tries = 0;
       var t = setInterval(function(){
         tries++;
         try {
-          if (typeof openCoModal === 'function' && typeof _coRows !== 'undefined') {
-            var o = (_coRows||[]).find(function(r){ return String(r.id)===String(oid); });
-            if (o) { openCoModal(o); clearInterval(t); return; }
-          }
-        } catch (e2) {}
+          var o = findOrder();
+          if (o && typeof openCoModal === 'function') { openCoModal(o); clearInterval(t); return; }
+        } catch (e3) {}
         if (tries > 25) clearInterval(t);
       }, 400);
     }
