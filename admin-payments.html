@@ -349,6 +349,13 @@
     (function(){
       var params = new URLSearchParams(location.search || '');
       var embed = params.get('embed') === '1' || params.get('embed') === 'true';
+      // If we are inside admin.html iframe but URL lost embed=1, still treat as embed
+      try {
+        if (!embed && window.parent && window.parent !== window) {
+          var pref = String(window.parent.location.pathname || window.parent.location.href || '');
+          if (/admin\.html/i.test(pref)) embed = true;
+        }
+      } catch (e2) {}
       window.__payEmbed = embed;
       function applyEmbed(){
         if (!embed) return;
@@ -356,10 +363,10 @@
         if (document.body) document.body.classList.add('embed-mode');
         ['pay-chrome-top','paySubtabs','bottomNav'].forEach(function(id){
           var el = document.getElementById(id);
-          if (el) { el.style.display = 'none'; el.setAttribute('hidden',''); }
+          if (el) { el.style.cssText = 'display:none!important;height:0!important;overflow:hidden!important;visibility:hidden!important'; el.setAttribute('hidden',''); }
         });
         document.querySelectorAll('.topbar, .subtabs, .bottom-nav').forEach(function(el){
-          el.style.display = 'none';
+          el.style.cssText = 'display:none!important;height:0!important;overflow:hidden!important;visibility:hidden!important';
           el.setAttribute('hidden','');
         });
       }
@@ -368,6 +375,9 @@
       } else {
         applyEmbed();
       }
+      // Re-apply after a tick in case scripts re-show chrome
+      setTimeout(applyEmbed, 50);
+      setTimeout(applyEmbed, 300);
     })();
     </script>
 <script src="config.js"></script>
@@ -550,20 +560,25 @@
       };
       window.challanDeskSendZoho = function(id){
         if (confirm('Open Admin to Send/Update this challan in Zoho?')) {
-          window.location.href = 'admin.html?openOrder=' + encodeURIComponent(String(id)) + '&zoho=1';
+          if (typeof _openAdminOrder === 'function') _openAdminOrder(id, 'zoho=1');
+          else window.location.href = 'admin.html?openOrder=' + encodeURIComponent(String(id)) + '&zoho=1';
         }
       };
       window.challanDeskSyncAll = function(){ if (typeof challanDeskSyncAll === "function") challanDeskSyncAll(); };
       window.challanDeskSyncStop = function(){ if (typeof challanDeskSyncStop === "function") challanDeskSyncStop(); };
       window.challanDeskConvertInvoice = function(id){
         if (confirm('Open Admin to convert this challan to a Zoho invoice?')) {
-          window.location.href = 'admin.html?openOrder=' + encodeURIComponent(String(id)) + '&zoho=1';
+          if (typeof _openAdminOrder === 'function') _openAdminOrder(id, 'zoho=1');
+          else window.location.href = 'admin.html?openOrder=' + encodeURIComponent(String(id)) + '&zoho=1';
         }
       };
 
 
       window.openZohoInvoicePreview = function(o){
-        if (o && o.id) window.location.href = 'admin.html?openOrder=' + encodeURIComponent(String(o.id)) + '&zoho=1';
+        if (o && o.id) {
+          if (typeof _openAdminOrder === 'function') _openAdminOrder(o.id, 'zoho=1');
+          else window.location.href = 'admin.html?openOrder=' + encodeURIComponent(String(o.id)) + '&zoho=1';
+        }
       };
 
     /* ── CHALLAN DESK (daily: edit → Zoho → deliver → invoice) ── */
@@ -1262,7 +1277,10 @@
           notes: (challanRef ? ('From DC ' + challanRef + '. ') : '') + 'Converted by IBCAB'
         });
         if (typeof zohoCreateInvoiceReal !== 'function') {
-          if (confirm('Open Admin to create Zoho invoice for this order?')) window.location.href='admin.html?openOrder='+encodeURIComponent(String(id))+'&zoho=1';
+          if (confirm('Open Admin to create Zoho invoice for this order?')) {
+            if (typeof _openAdminOrder === 'function') _openAdminOrder(id, 'zoho=1');
+            else window.location.href='admin.html?openOrder='+encodeURIComponent(String(id))+'&zoho=1';
+          }
           return;
         }
         zohoCreateInvoiceReal(orderForInv).then(function(inv) {
@@ -2092,7 +2110,7 @@
       if (o.paid_at) meta += 'Paid at: '+esc(String(o.paid_at).slice(0,16).replace('T',' '))+'<br>';
       if (o.zoho_invoice_status) meta += 'Zoho: '+esc(String(o.zoho_invoice_status))+'<br>';
       meta += '</div>';
-      var openOrderBtn = '<button type="button" class="btn-sm" style="margin-top:12px;width:100%;padding:10px;background:#f5ede0;color:#4a2f14;border:1px solid #d0c0aa;border-radius:10px;font-weight:800" onclick="window.location.href=\'admin.html?openOrder='+encodeURIComponent(String(o.id))+'\')">Open full order in Admin</button>';
+      var openOrderBtn = '<button type="button" class="btn-sm" style="margin-top:12px;width:100%;padding:10px;background:#f5ede0;color:#4a2f14;border:1px solid #d0c0aa;border-radius:10px;font-weight:800" onclick="(typeof _openAdminOrder===\'function\'?_openAdminOrder(\''+String(o.id).replace(/'/g,'')+'\'): (window.location.href=\'admin.html?openOrder='+encodeURIComponent(String(o.id))+'\'))">Open full order in Admin</button>';
       body.innerHTML = meta + linesHtml + totals + openOrderBtn;
       sh.style.display = 'flex';
     }
@@ -2440,8 +2458,38 @@
       }
       next();
     }
+    /** Open order in parent admin when embedded — never navigate iframe to full admin (avoids double Hello/Owner chrome). */
+    function _openAdminOrder(id, extraParams) {
+      var q = 'openOrder=' + encodeURIComponent(String(id));
+      if (extraParams) q += (String(extraParams).charAt(0) === '&' ? '' : '&') + extraParams;
+      var url = 'admin.html?' + q;
+      var embed = !!(window.__payEmbed || /[?&]embed=1\b/.test(location.search || '') || /[?&]embed=true\b/.test(location.search || ''));
+      if (embed) {
+        try {
+          if (window.parent && window.parent !== window) {
+            var opened = false;
+            try {
+              if (typeof window.parent._adminOpenOrderById === 'function') {
+                window.parent._adminOpenOrderById(String(id));
+                opened = true;
+              }
+            } catch (eDirect) {}
+            try {
+              window.parent.postMessage({ source: 'bakery-payments', action: 'openOrder', id: String(id), extra: extraParams || '' }, '*');
+              opened = true;
+            } catch (e0) {}
+            if (opened) return;
+            try {
+              window.parent.location.href = url;
+              return;
+            } catch (e1) {}
+          }
+        } catch (e2) {}
+      }
+      window.location.href = url;
+    }
     function payDeskEditDoc(id) {
-      window.location.href = 'admin.html?openOrder=' + encodeURIComponent(String(id));
+      _openAdminOrder(id);
     }
     
     function payDeskUpdateSelCount() {
@@ -3295,7 +3343,8 @@ function payDeskLoadBlockSettings() {
             try { return _origSend(id); } catch (e) {}
           }
           if (confirm('Send/Update Zoho from Admin for this order?')) {
-            window.location.href = 'admin.html?openOrder=' + encodeURIComponent(String(id)) + '&zoho=1';
+            if (typeof _openAdminOrder === 'function') _openAdminOrder(id, 'zoho=1');
+            else window.location.href = 'admin.html?openOrder=' + encodeURIComponent(String(id)) + '&zoho=1';
           }
         };
       }
@@ -3325,6 +3374,9 @@ function payDeskLoadBlockSettings() {
       window.payDeskSelectShop = payDeskSelectShop;
       window.payDeskUpdateSelCount = typeof payDeskUpdateSelCount === 'function' ? payDeskUpdateSelCount : function(){};
       window.payDeskEditDoc = typeof payDeskEditDoc === 'function' ? payDeskEditDoc : function(){};
+      window._openAdminOrder = typeof _openAdminOrder === 'function' ? _openAdminOrder : function(id, extra){
+        window.location.href = 'admin.html?openOrder=' + encodeURIComponent(String(id)) + (extra ? ('&' + extra) : '');
+      };
       window.payDeskSyncOne = typeof payDeskSyncOne === 'function' ? payDeskSyncOne : function(){};
       window.payDeskRemindOne = typeof payDeskRemindOne === 'function' ? payDeskRemindOne : function(){};
       window.payDeskConfirmReceived = typeof payDeskConfirmReceived === 'function' ? payDeskConfirmReceived : function(){};

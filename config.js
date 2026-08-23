@@ -45,7 +45,7 @@ const CONFIG = {
     }
   },
 
-  VERSION: '3.1',
+  VERSION: '3.2',
 
   // ── Web Push (VAPID) ───────────────────────────────────────────────────────
   // 1. Open generate-vapid.html in your browser → click Generate → copy Public Key here

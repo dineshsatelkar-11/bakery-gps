@@ -876,9 +876,10 @@
       }
       // Session / unpaid list may load after share redirect — retry a few times
       tryOpen();
-      setTimeout(tryOpen, 400);
-      setTimeout(tryOpen, 1200);
-      setTimeout(tryOpen, 2500);
+      setTimeout(tryOpen, 300);
+      setTimeout(tryOpen, 900);
+      setTimeout(tryOpen, 2000);
+      setTimeout(tryOpen, 4000);
     }
 
     function loadShareFromIndexedDb(clearAfter){
@@ -897,19 +898,33 @@
               var g = tx.objectStore('incoming').get('latest');
               g.onsuccess = function(){
                 var row = g.result;
-                if (clearAfter !== false) {
+                resolve(row && row.data ? row.data : null);
+                // Only clear when caller asks AND we have a file (or explicit clear)
+                if (clearAfter === true) {
                   try {
                     var tx2 = db.transaction('incoming', 'readwrite');
                     tx2.objectStore('incoming').delete('latest');
                   } catch (eClr) {}
                 }
-                resolve(row && row.data ? row.data : null);
               };
               g.onerror = function(){ resolve(null); };
             } catch (e2) { resolve(null); }
           };
         } catch (e) { resolve(null); }
       });
+    }
+
+    function clearShareFromIndexedDb(){
+      try {
+        var req = indexedDB.open('ibcab-share', 1);
+        req.onsuccess = function(){
+          try {
+            var db = req.result;
+            var tx = db.transaction('incoming', 'readwrite');
+            tx.objectStore('incoming').delete('latest');
+          } catch (e) {}
+        };
+      } catch (e2) {}
     }
 
     /** Apply share payload (file preferred). Avoid huge base64 in sessionStorage (quota). */
@@ -926,18 +941,45 @@
         }
         got = true;
       }
-      if (data.fileB64) {
+      if (data.fileB64 && String(data.fileB64).length > 20) {
         var mime = data.fileType || 'image/jpeg';
         if (String(mime).indexOf('pdf') >= 0) mime = 'application/pdf';
         var dataUrl = 'data:' + mime + ';base64,' + data.fileB64;
         window._payProofBase64 = data.fileB64;
         window._sharedPayImage = dataUrl;
         window._payProofMime = mime;
-        // Flag only in sessionStorage — full image stays in memory (sessionStorage often too small)
         try { sessionStorage.setItem('sharedPayHasImage', '1'); } catch (eF) {}
         got = true;
       }
       return got;
+    }
+
+    /** Poll IndexedDB until share file appears (SW may finish slightly after redirect). */
+    function pullShareFromDbWithRetry(maxTries, gapMs){
+      maxTries = maxTries || 8;
+      gapMs = gapMs || 400;
+      var n = 0;
+      function once(){
+        return loadShareFromIndexedDb(false).then(function(data){
+          n++;
+          if (data && data.fileB64 && String(data.fileB64).length > 20) {
+            applySharePayload(data);
+            // Keep in IDB until user successfully sends (or clears) — still apply now
+            applySharedPayToUi();
+            return true;
+          }
+          if (data) {
+            applySharePayload(data); // text/UTR at least
+          }
+          if (n < maxTries) {
+            return new Promise(function(r){ setTimeout(function(){ r(once()); }, gapMs); });
+          }
+          // Final: open sheet even without image so user can attach manually
+          applySharedPayToUi();
+          return false;
+        });
+      }
+      return once();
     }
 
     function handleIncomingShare(){
@@ -957,11 +999,8 @@
       // 2) IndexedDB payload from Service Worker (real file share from PhonePe etc.)
       var isShare = /[?&]share=1\b/.test(location.search || '');
       var maybeShare = isShare || sessionStorage.getItem('sharedPayHasImage') || sessionStorage.getItem('sharedPayUtr') || sessionStorage.getItem('sharedPayText');
-      if (maybeShare) {
-        loadShareFromIndexedDb(true).then(function(data){
-          applySharePayload(data);
-          applySharedPayToUi();
-        });
+      if (maybeShare || isShare) {
+        pullShareFromDbWithRetry(isShare ? 10 : 4, 350);
       }
 
       // 3) Launch Queue (Chrome Android file share fallback)
@@ -985,6 +1024,17 @@
             reader.readAsDataURL(file);
           });
         } catch (eLQ) {}
+      }
+
+      // 4) SW finished stashing while page already open
+      if (navigator.serviceWorker) {
+        try {
+          navigator.serviceWorker.addEventListener('message', function(ev){
+            var d = ev && ev.data;
+            if (!d || d.type !== 'ibcab-share-ready') return;
+            pullShareFromDbWithRetry(6, 250);
+          });
+        } catch (eMsg) {}
       }
     }
     handleIncomingShare();
@@ -4025,6 +4075,9 @@ function _payUnpaidTotal(){
       } catch(e){}
       window._sharedPayImage = null;
       window._sharedPayText = null;
+      window._payProofBase64 = null;
+      window._payProofMime = null;
+      try { clearShareFromIndexedDb(); } catch (e2) {}
     }
     function closePayRequestSheet(){
       var sheet = document.getElementById('payRequestSheet');
@@ -4121,6 +4174,7 @@ function _payUnpaidTotal(){
         };
         return apiPost(body).then(function(res){
           if(res && res.ok === false) throw new Error(res.error||'Failed');
+          clearSharedPay();
           _payMsg('Request sent for ₹'+total.toLocaleString('en-IN',{maximumFractionDigits:2})+' ('+ids.length+' invoices)'+(hadPhoto?' · screenshot attached':'')+'. Admin usually confirms within 24 working hours.', true);
           loadPaymentsTab();
           startPaymentStatusPoll('request');
@@ -4136,6 +4190,7 @@ function _payUnpaidTotal(){
             payment_proof_url: window._payProofUrl || undefined
           });
         })).then(function(){
+          clearSharedPay();
           _payMsg('Request sent'+(hadPhoto?' (photo upload may have failed — try again if admin cannot see screenshot)':'')+'. Admin usually confirms within 24 working hours.', true);
           loadPaymentsTab();
           startPaymentStatusPoll('request');

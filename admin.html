@@ -12930,26 +12930,42 @@ function testZohoConnection() {
   });
 }
 
+    function _adminOpenOrderById(oid) {
+      if (!oid) return;
+      try {
+        if (typeof showGroup === 'function') showGroup('customers');
+        else if (typeof showTab === 'function') showTab('cust-orders');
+      } catch (e0) {}
+      try { if (typeof loadCustOrders === 'function') loadCustOrders(); } catch (e1) {}
+      var tries = 0;
+      var t = setInterval(function(){
+        tries++;
+        try {
+          if (typeof openCoModal === 'function' && typeof _coRows !== 'undefined') {
+            var o = (_coRows||[]).find(function(r){ return String(r.id)===String(oid); });
+            if (o) { openCoModal(o); clearInterval(t); return; }
+          }
+        } catch (e2) {}
+        if (tries > 25) clearInterval(t);
+      }, 400);
+    }
+    window._adminOpenOrderById = _adminOpenOrderById;
+
+    // Payments iframe: open order in parent (never load full admin inside iframe)
+    window.addEventListener('message', function(ev){
+      try {
+        var d = ev && ev.data;
+        if (!d || d.source !== 'bakery-payments' || d.action !== 'openOrder') return;
+        _adminOpenOrderById(d.id);
+      } catch (e) {}
+    });
+
     (function(){
       try {
         var p = new URLSearchParams(location.search);
         var oid = p.get('openOrder');
         if (oid) {
-          setTimeout(function(){
-            try {
-              if (typeof loadCustOrders === 'function') loadCustOrders();
-              // try open modal when rows loaded
-              var tries = 0;
-              var t = setInterval(function(){
-                tries++;
-                if (typeof openCoModal === 'function' && typeof _coRows !== 'undefined') {
-                  var o = (_coRows||[]).find(function(r){ return String(r.id)===String(oid); });
-                  if (o) { openCoModal(o); clearInterval(t); }
-                }
-                if (tries > 20) clearInterval(t);
-              }, 400);
-            } catch(e) {}
-          }, 600);
+          setTimeout(function(){ _adminOpenOrderById(oid); }, 600);
         }
       } catch(e) {}
     })();

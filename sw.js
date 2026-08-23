@@ -97,7 +97,8 @@ self.addEventListener('activate', function(e) {
 });
 
 // ── Share Target (PhonePe / GPay / Paytm / WhatsApp → payment proof) ──────────
-// POST multipart from share_target → stash file + text in IndexedDB → redirect GET
+// POST multipart → stash in IndexedDB → 303 redirect to order?share=1
+// Do NOT rely on network for POST (Vercel cleanUrls can drop body on redirect).
 function openShareDb() {
   return new Promise(function(resolve, reject) {
     var req = indexedDB.open('ibcab-share', 1);
@@ -123,44 +124,90 @@ function stashSharePayload(payload) {
   });
 }
 
+function isShareTargetPost(req) {
+  if (req.method !== 'POST') return false;
+  var u = req.url || '';
+  // /order.html, /order, ?share=1, or path ending with order
+  if (u.indexOf('share=1') >= 0) return true;
+  if (/\/order(\.html)?([?#]|$)/i.test(u)) return true;
+  return false;
+}
+
 // Fetch — share POST first, then network-first for GET
 self.addEventListener('fetch', function(e) {
   var url = e.request.url;
   if (url.startsWith('chrome-extension://')) return;
 
   // Share Target POST (multipart from PhonePe / GPay / etc.)
-  if (e.request.method === 'POST' && (url.indexOf('/order.html') >= 0 || url.indexOf('share=1') >= 0)) {
+  if (isShareTargetPost(e.request)) {
     e.respondWith((async function() {
+      var hasFile = false;
       try {
         var form = await e.request.formData();
         var title = form.get('title') || '';
         var text  = form.get('text') || '';
         var shareUrl = form.get('url') || '';
-        var file = form.get('media');
+        // PhonePe / GPay / system share use various field names
+        var file = form.get('media') || form.get('file') || form.get('files') || form.get('image') || form.get('screenshot');
+        if (!file || typeof file.arrayBuffer !== 'function') {
+          try {
+            var entries = form.entries();
+            var pair = entries.next();
+            while (!pair.done) {
+              var v = pair.value && pair.value[1];
+              if (v && typeof v.arrayBuffer === 'function' && (v.size == null || v.size > 0)) {
+                file = v;
+                break;
+              }
+              pair = entries.next();
+            }
+          } catch (eIter) {}
+        }
         var fileB64 = '';
         var fileName = '';
         var fileType = '';
         if (file && typeof file.arrayBuffer === 'function') {
           var buf = await file.arrayBuffer();
-          var bytes = new Uint8Array(buf);
-          var binary = '';
-          for (var i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-          fileB64 = btoa(binary);
-          fileName = file.name || 'share.jpg';
-          fileType = file.type || 'image/jpeg';
+          if (buf && buf.byteLength > 0) {
+            var bytes = new Uint8Array(buf);
+            var chunk = 0x8000;
+            var binary = '';
+            for (var i = 0; i < bytes.length; i += chunk) {
+              binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunk, bytes.length)));
+            }
+            fileB64 = btoa(binary);
+            fileName = file.name || 'share.jpg';
+            fileType = file.type || 'image/jpeg';
+            hasFile = !!fileB64;
+          }
         }
         await stashSharePayload({
-          title: String(title),
-          text: String(text),
-          url: String(shareUrl),
+          title: String(title || ''),
+          text: String(text || ''),
+          url: String(shareUrl || ''),
           fileB64: fileB64,
           fileName: fileName,
-          fileType: fileType
+          fileType: fileType,
+          hasFile: hasFile,
+          ts: Date.now()
         });
+        // Notify any open order clients
+        try {
+          var list = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+          list.forEach(function(c) {
+            try {
+              c.postMessage({ type: 'ibcab-share-ready', hasFile: hasFile });
+            } catch (eMsg) {}
+          });
+        } catch (eCl) {}
       } catch (err) {
         console.warn('[SW] share stash failed', err);
+        try {
+          await stashSharePayload({ title: '', text: '', url: '', fileB64: '', hasFile: false, err: String(err) });
+        } catch (e2) {}
       }
-      return Response.redirect('/order.html?share=1', 303);
+      // Prefer clean /order?share=1 (matches vercel cleanUrls); keep order.html as fallback path
+      return Response.redirect('/order?share=1', 303);
     })());
     return;
   }
