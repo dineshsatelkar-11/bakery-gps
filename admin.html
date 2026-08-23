@@ -337,15 +337,15 @@
         <div style="font-size:10px;color:#64748b;font-family:monospace;margin-top:8px;line-height:1.5">One-time setup: new orders + payment requests on this device. Card hides after push is ON.</div>
     </div>
 
-    <!-- Today delivery stats -->
-    <div class="dash-deliv-lbl" style="font-size:10px;font-weight:800;color:#64748b;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Deliveries</div>
-    <div class="stats-grid" id="dash-stats" style="margin-bottom:14px"></div>
-    <div id="dash-alerts" style="margin-bottom:10px"></div>
-
-    <!-- Today delivery stats — Tea Post row (shown below main stats) -->
-    <div id="dash-tp-row" style="display:none;margin-bottom:14px">
-        <div style="font-size:10px;font-weight:800;color:#7a4800;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">🍵 Tea Post · Today</div>
-        <div class="stats-grid" id="dash-tp-stats"></div>
+    <!-- Today delivery stats — only when no tomorrow orders placed yet -->
+    <div id="dash-deliv-block">
+      <div class="dash-deliv-lbl" style="font-size:10px;font-weight:800;color:#64748b;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Deliveries · Today</div>
+      <div class="stats-grid" id="dash-stats" style="margin-bottom:14px"></div>
+      <div id="dash-alerts" style="margin-bottom:10px"></div>
+      <div id="dash-tp-row" style="display:none;margin-bottom:14px">
+          <div style="font-size:10px;font-weight:800;color:#7a4800;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">🍵 Tea Post · Today</div>
+          <div class="stats-grid" id="dash-tp-stats"></div>
+      </div>
     </div>
 
     <!-- Tomorrow customer order pipeline — counts only -->
@@ -357,10 +357,6 @@
         <div style="font-size:10px;font-weight:800;color:#7a4800;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">🍵 Tea Post · Tomorrow</div>
         <div class="stats-grid" id="dash-tp-tmr-stats" style="grid-template-columns:repeat(3,1fr)"></div>
     </div>
-
-    <!-- Issues -->
-    <div style="font-size:10px;font-weight:800;color:#64748b;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">⚠️ Issues to Fix</div>
-    <div id="dash-issues"></div>
 </div>
 
 <div class="page" id="pg-my-brand">
@@ -2842,105 +2838,87 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
     /* ── DASHBOARD ── */
     function loadDashboard(){
       var tomorrow = tomorrowStr();
+      var today = todayStr();
       var stats      = document.getElementById('dash-stats');
       var alerts     = document.getElementById('dash-alerts');
-      var issues     = document.getElementById('dash-issues');
       var tmrStats   = document.getElementById('dash-tmr-stats');
+      var delivBlock = document.getElementById('dash-deliv-block');
 
-      stats.innerHTML    = '<div style="text-align:center;padding:8px;font-size:11px;color:#64748b;font-family:monospace;grid-column:1/-1">Loading…</div>';
-      tmrStats.innerHTML = '<div style="text-align:center;padding:8px;font-size:11px;color:#64748b;font-family:monospace;grid-column:1/-1">Loading…</div>';
-      alerts.innerHTML = ''; issues.innerHTML = '';
+      if (stats) stats.innerHTML = '<div style="text-align:center;padding:8px;font-size:11px;color:#64748b;font-family:monospace;grid-column:1/-1">Loading…</div>';
+      if (tmrStats) tmrStats.innerHTML = '<div style="text-align:center;padding:8px;font-size:11px;color:#64748b;font-family:monospace;grid-column:1/-1">Loading…</div>';
+      if (alerts) alerts.innerHTML = '';
 
-      // Find the most recent date that has orders (could be today or tomorrow)
-      api({action:'getLatestDate', table:'orders'}).then(function(latestDate){
-        var delivDate = latestDate || tomorrowStr();
-        return Promise.all([
-          api({action:'getOrders',         date: delivDate}),
-          api({action:'getDeliveries',     date: delivDate}),
-          api({action:'getCustomerOrders', delivery_date: tomorrow, limit: 200}),
-          loadCustomerMaster(),
-          Promise.resolve(delivDate)
-        ]);
-      }).then(function(res){
+      // Deliveries = TODAY only. Tomorrow pipeline = customer_orders for tomorrow.
+      Promise.all([
+        api({action:'getOrders', date: today}),
+        api({action:'getDeliveries', date: today}),
+        api({action:'getCustomerOrders', delivery_date: tomorrow, limit: 500}),
+        loadCustomerMaster()
+      ]).then(function(res){
         var orders      = Array.isArray(res[0]) ? res[0] : [];
         var deliveries  = Array.isArray(res[1]) ? res[1] : [];
         var custOrders  = Array.isArray(res[2]) ? res[2] : [];
-        var customers   = allCustomers;
-        var delivDate   = res[4] || tomorrowStr();
+        // Real orders only (exclude pure no_order markers for "started" check)
+        var tmrPlaced = custOrders.filter(function(o){
+          var st = String(o.status || '').toLowerCase();
+          return st !== 'no_order' && st !== 'rejected';
+        });
+        var tomorrowOrdersStarted = tmrPlaced.length > 0;
 
-        // Update section heading to show which delivery date is being shown
-        var delivHeading = document.querySelector('#pg-dashboard [id="dash-stats"]');
-        var delivSection = document.querySelector('#pg-dashboard .dash-deliv-lbl');
-        if(delivSection) delivSection.textContent = 'Delivery Date: ' + delivDate;
+        // If at least one tomorrow order placed → hide today delivery cards
+        // If none placed → show today delivery progress
+        if (delivBlock) delivBlock.style.display = tomorrowOrdersStarted ? 'none' : 'block';
 
-             /* ── Delivery stats for delivDate ── */
-        var totalOrders   = orders.length;
-        // Build delivery lookup — same key logic as Delivery tab
-        var delivMap = {};
-        deliveries.forEach(function(d){ delivMap[String(d.shop_id||d.customer_id)] = d; });
-
-        // Count ORDERS that have a matching delivery (not raw delivery rows)
-        var delivered = orders.filter(function(o){
-          return !!delivMap[String(o.customer_id||o.shop_id)];
-        }).length;
-        var pending   = Math.max(0, totalOrders - delivered);
-
-        var activeDrivers = Object.keys(orders.reduce(function(m,o){
-          if(o.driver && o.driver!=='—' && o.driver!=='Logistics') m[o.driver]=1; return m;
-        },{})).length;
-        var noDriver      = orders.filter(function(o){return !o.driver||o.driver==='—';}).length;
-
-        // Match customers tab: GPS = has lat, no group = product_group_ids empty/null
-        var withGPS  = customers.filter(function(c){return !!c.lat;}).length;
-        var noGPS    = customers.length - withGPS;
-        var noGroup  = customers.filter(function(c){
-          var g = c.product_group_ids;
-          return !g || (Array.isArray(g) ? g.length===0 : false);
-        }).length;
-        var noMobile = customers.filter(function(c){return !c.mobile||!c.mobile.trim();}).length;
-
-        // Store delivery date for click handlers
+        var delivDate = today;
         _dashDelivDate = delivDate;
-
-        // Update section heading to show delivery date
         var delivLbl = document.querySelector('#pg-dashboard .dash-deliv-lbl');
-        if(delivLbl) delivLbl.textContent = 'Deliveries · ' + delivDate;
+        if (delivLbl) delivLbl.textContent = 'Deliveries · ' + delivDate + ' (today)';
 
-        // Stats: Orders | Drivers | Delivered | Pending | GPS ✅ | No GPS  — all clickable
-        var S = 'cursor:pointer;transition:box-shadow .15s' ;
-        stats.innerHTML =
-          '<div class="stat" style="'+S+'" onclick="dashGoOrders()" title="View orders"><div class="stat-n">'+totalOrders+'</div><div class="stat-l">Orders ↗</div></div>'+
-          '<div class="stat" style="'+S+'" onclick="dashGoRoutes()" title="View routes"><div class="stat-n" style="color:#1a5fa8">'+activeDrivers+'</div><div class="stat-l">Drivers ↗</div></div>'+
-          '<div class="stat" style="'+S+'" onclick="dashGoDelivery(\'done\')" title="View delivered"><div class="stat-n" style="color:#2d7a4f">'+delivered+'</div><div class="stat-l">Delivered ↗</div></div>'+
-          '<div class="stat" style="'+S+'" onclick="dashGoDelivery(\'pending\')" title="View pending"><div class="stat-n" style="color:'+(pending>0?'#c8382a':'#2d7a4f')+'">'+pending+'</div><div class="stat-l">Pending ↗</div></div>'+
-          '<div class="stat" style="'+S+'" onclick="dashGoGPS(\'saved\')" title="View shops with GPS"><div class="stat-n" style="color:#2d7a4f">'+withGPS+'</div><div class="stat-l">GPS ✅ ↗</div></div>'+
-          '<div class="stat" style="'+S+'" onclick="dashGoGPS(\'missing\')" title="View shops missing GPS"><div class="stat-n" style="color:'+(noGPS>0?'#c8382a':'#2d7a4f')+'">'+noGPS+'</div><div class="stat-l">No GPS ↗</div></div>';
+        if (!tomorrowOrdersStarted) {
+          var totalOrders = orders.length;
+          var delivMap = {};
+          deliveries.forEach(function(d){ delivMap[String(d.shop_id||d.customer_id)] = d; });
+          var delivered = orders.filter(function(o){
+            return !!delivMap[String(o.customer_id||o.shop_id)];
+          }).length;
+          var pending = Math.max(0, totalOrders - delivered);
+          var activeDrivers = Object.keys(orders.reduce(function(m,o){
+            if(o.driver && o.driver!=='—' && o.driver!=='Logistics') m[o.driver]=1; return m;
+          },{})).length;
+          var noDriver = orders.filter(function(o){return !o.driver||o.driver==='—';}).length;
 
-        // Alerts (actionable warnings)
-        var alertHtml = '';
-        if(noDriver>0) alertHtml+='<div class="msg warn" style="margin-bottom:6px">⚠️ '+noDriver+' order'+(noDriver>1?'s have':' has')+' no driver — go to Queue tab.</div>';
-        if(pending>0)  alertHtml+='<div class="msg in"   style="margin-bottom:6px">🚚 '+delivered+' of '+totalOrders+' delivered · '+pending+' still pending.</div>';
-        alerts.innerHTML = alertHtml;
+          // No GPS / no mobile counts removed from dashboard
+          var S = 'cursor:pointer;transition:box-shadow .15s';
+          if (stats) stats.innerHTML =
+            '<div class="stat" style="'+S+'" onclick="dashGoOrders()" title="View orders"><div class="stat-n">'+totalOrders+'</div><div class="stat-l">Orders ↗</div></div>'+
+            '<div class="stat" style="'+S+'" onclick="dashGoRoutes()" title="View routes"><div class="stat-n" style="color:#1a5fa8">'+activeDrivers+'</div><div class="stat-l">Drivers ↗</div></div>'+
+            '<div class="stat" style="'+S+'" onclick="dashGoDelivery(\'done\')" title="View delivered"><div class="stat-n" style="color:#2d7a4f">'+delivered+'</div><div class="stat-l">Delivered ↗</div></div>'+
+            '<div class="stat" style="'+S+'" onclick="dashGoDelivery(\'pending\')" title="View pending"><div class="stat-n" style="color:'+(pending>0?'#c8382a':'#2d7a4f')+'">'+pending+'</div><div class="stat-l">Pending ↗</div></div>';
 
-        /* ── Tea Post counts (today) ── */
-        var tpOrders    = orders.filter(function(o){ return (o.shop_name||'').toLowerCase().indexOf('tea post')>=0; });
-        var tpDelivered = tpOrders.filter(function(o){ return !!delivMap[o.customer_id||o.shop_id]; }).length;
-        var tpPending   = tpOrders.length - tpDelivered;
-        var tpRow       = document.getElementById('dash-tp-row');
-        var tpStats     = document.getElementById('dash-tp-stats');
-        if(tpRow && tpStats){
-          if(tpOrders.length){
-            tpRow.style.display = 'block';
-            tpStats.innerHTML =
-              '<div class="stat"><div class="stat-n">'+tpOrders.length+'</div><div class="stat-l">TP Orders</div></div>'+
-              '<div class="stat" style="background:#e8f5e9;border-color:#2d7a4f40"><div class="stat-n" style="color:#2d7a4f">'+tpDelivered+'</div><div class="stat-l">Delivered</div></div>'+
-              '<div class="stat" style="background:'+(tpPending>0?'#fde8e8':'#e8f5e9')+';border-color:'+(tpPending>0?'#c8382a40':'#2d7a4f40')+'"><div class="stat-n" style="color:'+(tpPending>0?'#c8382a':'#2d7a4f')+'">'+tpPending+'</div><div class="stat-l">Pending</div></div>';
-          } else {
-            tpRow.style.display = 'none';
+          var alertHtml = '';
+          if(noDriver>0) alertHtml+='<div class="msg warn" style="margin-bottom:6px">⚠️ '+noDriver+' order'+(noDriver>1?'s have':' has')+' no driver — go to Queue tab.</div>';
+          if(pending>0)  alertHtml+='<div class="msg in"   style="margin-bottom:6px">🚚 '+delivered+' of '+totalOrders+' delivered · '+pending+' still pending.</div>';
+          if (alerts) alerts.innerHTML = alertHtml;
+
+          var tpOrders    = orders.filter(function(o){ return (o.shop_name||'').toLowerCase().indexOf('tea post')>=0; });
+          var tpDelivered = tpOrders.filter(function(o){ return !!delivMap[o.customer_id||o.shop_id]; }).length;
+          var tpPending   = tpOrders.length - tpDelivered;
+          var tpRow       = document.getElementById('dash-tp-row');
+          var tpStats     = document.getElementById('dash-tp-stats');
+          if(tpRow && tpStats){
+            if(tpOrders.length){
+              tpRow.style.display = 'block';
+              tpStats.innerHTML =
+                '<div class="stat"><div class="stat-n">'+tpOrders.length+'</div><div class="stat-l">TP Orders</div></div>'+
+                '<div class="stat" style="background:#e8f5e9;border-color:#2d7a4f40"><div class="stat-n" style="color:#2d7a4f">'+tpDelivered+'</div><div class="stat-l">Delivered</div></div>'+
+                '<div class="stat" style="background:'+(tpPending>0?'#fde8e8':'#e8f5e9')+';border-color:'+(tpPending>0?'#c8382a40':'#2d7a4f40')+'"><div class="stat-n" style="color:'+(tpPending>0?'#c8382a':'#2d7a4f')+'">'+tpPending+'</div><div class="stat-l">Pending</div></div>';
+            } else {
+              tpRow.style.display = 'none';
+            }
           }
         }
 
-        /* ── Tomorrow's customer order pipeline (counts only, correct statuses) ── */
+        /* ── Tomorrow's customer order pipeline ── */
         var STATUS_CFG = [
           { key:'pending',    label:'⏳ Pending',   color:'#7a4800', bg:'#fff8e1' },
           { key:'approved',   label:'👨‍🍳 Appr/Kitchen', color:'#4a148c', bg:'#f3e8ff' },
@@ -2956,7 +2934,7 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
           else counts['pending']++;
         });
 
-        tmrStats.innerHTML = (custOrders.length === 0
+        if (tmrStats) tmrStats.innerHTML = (custOrders.length === 0
           ? '<div style="font-size:12px;color:#64748b;font-family:monospace;grid-column:1/-1;padding:8px 0">No customer orders placed yet for '+tomorrow+'.</div>'
           : STATUS_CFG.map(function(s){
               var n = counts[s.key] || 0;
@@ -2967,7 +2945,6 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
             }).join('')
         );
 
-        /* ── Tea Post counts (tomorrow's orders) ── */
         var tpCustOrders = custOrders.filter(function(o){ return (o.shop_name||'').toLowerCase().indexOf('tea post')>=0; });
         var tpTmrRow     = document.getElementById('dash-tp-tmr-row');
         var tpTmrStats   = document.getElementById('dash-tp-tmr-stats');
@@ -2991,14 +2968,7 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
             tpTmrRow.style.display = 'none';
           }
         }
-
-        /* ── Issues ── */
-        var issueRows = [];
-        if(noGroup>0)  issueRows.push('<div class="item-card" style="margin-bottom:8px"><div style="font-size:12px;font-weight:800;color:#7a4800;margin-bottom:6px">📦 '+noGroup+' customer'+(noGroup>1?'s have':' has')+' no product group</div><button class="btn-sm" style="background:#7a4800;color:#fff" onclick="dashGoCustomers(\'nogroup\')">Go to Customers →</button></div>');
-        if(noMobile>0) issueRows.push('<div class="item-card" style="margin-bottom:8px"><div style="font-size:12px;font-weight:800;color:#7a4800;margin-bottom:6px">📱 '+noMobile+' customer'+(noMobile>1?'s have':' has')+' no mobile</div><button class="btn-sm" style="background:#7a4800;color:#fff" onclick="dashGoCustomers(\'nomobile\')">Go to Customers →</button></div>');
-        if(noGPS>0)    issueRows.push('<div class="item-card" style="margin-bottom:8px"><div style="font-size:12px;font-weight:800;color:#64748b;margin-bottom:6px">📍 '+noGPS+' customer'+(noGPS>1?'s have':' has')+' no GPS</div><button class="btn-sm" style="background:#64748b;color:#fff" onclick="showTab(\'gps\')">Go to GPS →</button></div>');
-        if(!issueRows.length) issueRows.push('<div class="msg ok">✅ No issues — all customers have groups, mobiles and GPS.</div>');
-        issues.innerHTML = issueRows.join('');
+        // Issues block removed (no group / no mobile / no GPS messages)
 
       }).catch(function(e){
         if(stats) stats.innerHTML='<div class="msg er" style="grid-column:1/-1">Failed to load dashboard.</div>';
@@ -9376,24 +9346,37 @@ onStaffRoleChange();
       var qtyMap  = {};
       itemArr.forEach(function(name,i){ qtyMap[name] = qtyArr[i]||0; });
 
-      // Get products for this shop's group
-      var shop     = (allCustomers||[]).find(function(c){ return c.shop_id===o.shop_id; });
-      var groupId  = shop ? shop.product_group_id : null;
-      var groupProds = groupId
-        ? allProducts.filter(function(p){ return String(p.group_id)===String(groupId); })
-        : [];
+      // Products only from this shop's product group(s) — not the full catalog
+      var shop = (allCustomers||[]).find(function(c){
+        return String(c.shop_id||'') === String(o.shop_id||'') ||
+               String(c.customer_id||'') === String(o.shop_id||'');
+      });
+      var gids = [];
+      if (shop) {
+        if (Array.isArray(shop.product_group_ids) && shop.product_group_ids.length) {
+          gids = shop.product_group_ids.map(function(g){ return String(g); });
+        } else if (shop.product_group_id) {
+          gids = [String(shop.product_group_id)];
+        }
+      }
+      var groupProds = (allProducts||[]).filter(function(p){
+        if (!gids.length) return false;
+        if (p.active === false) return false;
+        return gids.indexOf(String(p.group_id)) >= 0;
+      });
 
-      // Merge: group products first, then any order items not in the group
+      // Group products only; keep ordered lines that are outside group (qty already on order)
       var rows = groupProds.slice();
       itemArr.forEach(function(name){
-        var inGroup = groupProds.some(function(p){ return p.name===name; });
+        var q = qtyMap[name] || 0;
+        if (q <= 0) return; // do not inject zero-qty non-group products
+        var inGroup = groupProds.some(function(p){ return p.name === name; });
         if (!inGroup) rows.push({ product_id:'_'+name, name:name, unit:'', price:'' });
       });
 
       if (!rows.length){
-        // Fallback: just show items from order as editable rows
         itemArr.forEach(function(name){
-          rows.push({ product_id:'_'+name, name:name, unit:'', price:'' });
+          if ((qtyMap[name]||0) > 0) rows.push({ product_id:'_'+name, name:name, unit:'', price:'' });
         });
       }
 
