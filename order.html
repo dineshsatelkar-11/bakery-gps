@@ -882,54 +882,96 @@
       setTimeout(tryOpen, 4000);
     }
 
-    function loadShareFromIndexedDb(clearAfter){
-      return new Promise(function(resolve){
+    var SHARE_DB_NAME = 'ibcab-share';
+    var SHARE_DB_VER = 2;
+    window._shareIdbLastError = '';
+
+    function openShareDbPage(){
+      return new Promise(function(resolve, reject){
         try {
-          var req = indexedDB.open('ibcab-share', 1);
+          if (!window.indexedDB) {
+            window._shareIdbLastError = 'IndexedDB not available in this browser';
+            reject(new Error(window._shareIdbLastError));
+            return;
+          }
+          var req = indexedDB.open(SHARE_DB_NAME, SHARE_DB_VER);
           req.onupgradeneeded = function(){
             var db = req.result;
             if (!db.objectStoreNames.contains('incoming')) db.createObjectStore('incoming', { keyPath: 'id' });
           };
-          req.onerror = function(){ resolve(null); };
-          req.onsuccess = function(){
-            var db = req.result;
-            try {
-              var tx = db.transaction('incoming', 'readonly');
-              var g = tx.objectStore('incoming').get('latest');
-              g.onsuccess = function(){
-                var row = g.result;
-                resolve(row && row.data ? row.data : null);
-                // Only clear when caller asks AND we have a file (or explicit clear)
-                if (clearAfter === true) {
-                  try {
-                    var tx2 = db.transaction('incoming', 'readwrite');
-                    tx2.objectStore('incoming').delete('latest');
-                  } catch (eClr) {}
-                }
-              };
-              g.onerror = function(){ resolve(null); };
-            } catch (e2) { resolve(null); }
+          req.onsuccess = function(){ resolve(req.result); };
+          req.onerror = function(){
+            window._shareIdbLastError = (req.error && req.error.message) ? req.error.message : 'IDB open failed';
+            reject(req.error || new Error(window._shareIdbLastError));
           };
-        } catch (e) { resolve(null); }
+          req.onblocked = function(){
+            window._shareIdbLastError = 'IDB open blocked (close other tabs)';
+          };
+        } catch (e) {
+          window._shareIdbLastError = String(e && e.message ? e.message : e);
+          reject(e);
+        }
+      });
+    }
+
+    function loadShareFromIndexedDb(clearAfter){
+      return openShareDbPage().then(function(db){
+        return new Promise(function(resolve){
+          try {
+            var tx = db.transaction('incoming', 'readonly');
+            var g = tx.objectStore('incoming').get('latest');
+            g.onsuccess = function(){
+              var row = g.result;
+              resolve(row && row.data ? row.data : null);
+              if (clearAfter === true) {
+                try {
+                  var tx2 = db.transaction('incoming', 'readwrite');
+                  tx2.objectStore('incoming').delete('latest');
+                } catch (eClr) {}
+              }
+            };
+            g.onerror = function(){
+              window._shareIdbLastError = (g.error && g.error.message) || 'IDB read failed';
+              resolve(null);
+            };
+          } catch (e2) {
+            window._shareIdbLastError = String(e2 && e2.message ? e2.message : e2);
+            resolve(null);
+          }
+        });
+      }).catch(function(err){
+        window._shareIdbLastError = String(err && err.message ? err.message : err);
+        return null;
       });
     }
 
     function clearShareFromIndexedDb(){
-      try {
-        var req = indexedDB.open('ibcab-share', 1);
-        req.onsuccess = function(){
-          try {
-            var db = req.result;
-            var tx = db.transaction('incoming', 'readwrite');
-            tx.objectStore('incoming').delete('latest');
-          } catch (e) {}
-        };
-      } catch (e2) {}
+      openShareDbPage().then(function(db){
+        try {
+          var tx = db.transaction('incoming', 'readwrite');
+          tx.objectStore('incoming').delete('latest');
+        } catch (e) {}
+      }).catch(function(){});
     }
 
-    /** Apply share payload (file preferred). Avoid huge base64 in sessionStorage (quota). */
+    /** Blob / ArrayBuffer → base64 (in memory only; not stored in sessionStorage). */
+    function blobToBase64(blob){
+      return new Promise(function(resolve, reject){
+        if (!blob) { resolve(''); return; }
+        var reader = new FileReader();
+        reader.onload = function(){
+          var dataUrl = String(reader.result || '');
+          var b64 = dataUrl.indexOf(',') >= 0 ? dataUrl.split(',')[1] : '';
+          resolve(b64);
+        };
+        reader.onerror = function(){ reject(reader.error || new Error('FileReader failed')); };
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    /** Apply share payload. Supports fileBlob (preferred) or legacy fileB64. */
     function applySharePayload(data){
-      if (!data) return false;
+      if (!data) return Promise.resolve(false);
       var got = false;
       var textParts = [data.title, data.text, data.url].filter(Boolean).join('\n');
       if (textParts) {
@@ -941,17 +983,38 @@
         }
         got = true;
       }
-      if (data.fileB64 && String(data.fileB64).length > 20) {
-        var mime = data.fileType || 'image/jpeg';
-        if (String(mime).indexOf('pdf') >= 0) mime = 'application/pdf';
-        var dataUrl = 'data:' + mime + ';base64,' + data.fileB64;
-        window._payProofBase64 = data.fileB64;
-        window._sharedPayImage = dataUrl;
-        window._payProofMime = mime;
-        try { sessionStorage.setItem('sharedPayHasImage', '1'); } catch (eF) {}
-        got = true;
+      if (data.err) {
+        window._shareIdbLastError = String(data.err);
       }
-      return got;
+
+      // Preferred: Blob from SW
+      if (data.fileBlob && typeof Blob !== 'undefined' && data.fileBlob instanceof Blob && data.fileBlob.size > 0) {
+        var mime = data.fileType || data.fileBlob.type || 'image/jpeg';
+        return blobToBase64(data.fileBlob).then(function(b64){
+          if (!b64) return got;
+          window._payProofBase64 = b64;
+          window._sharedPayImage = 'data:' + mime + ';base64,' + b64;
+          window._payProofMime = mime;
+          try { sessionStorage.setItem('sharedPayHasImage', '1'); } catch (eF) {}
+          return true;
+        }).catch(function(e){
+          window._shareIdbLastError = 'blobToBase64: ' + (e && e.message ? e.message : e);
+          return got;
+        });
+      }
+
+      // Legacy: base64 string in IDB
+      if (data.fileB64 && String(data.fileB64).length > 20) {
+        var mime2 = data.fileType || 'image/jpeg';
+        if (String(mime2).indexOf('pdf') >= 0) mime2 = 'application/pdf';
+        window._payProofBase64 = data.fileB64;
+        window._sharedPayImage = 'data:' + mime2 + ';base64,' + data.fileB64;
+        window._payProofMime = mime2;
+        try { sessionStorage.setItem('sharedPayHasImage', '1'); } catch (eF2) {}
+        return Promise.resolve(true);
+      }
+
+      return Promise.resolve(got);
     }
 
     /** Poll IndexedDB until share file appears (SW may finish slightly after redirect). */
@@ -962,21 +1025,25 @@
       function once(){
         return loadShareFromIndexedDb(false).then(function(data){
           n++;
-          if (data && data.fileB64 && String(data.fileB64).length > 20) {
-            applySharePayload(data);
-            // Keep in IDB until user successfully sends (or clears) — still apply now
+          return applySharePayload(data).then(function(applied){
+            var hasImg = !!(window._payProofBase64 || (window._sharedPayImage && String(window._sharedPayImage).indexOf('data:') === 0));
+            if (hasImg) {
+              applySharedPayToUi();
+              return true;
+            }
+            if (n < maxTries) {
+              return new Promise(function(r){ setTimeout(function(){ r(once()); }, gapMs); });
+            }
             applySharedPayToUi();
-            return true;
-          }
-          if (data) {
-            applySharePayload(data); // text/UTR at least
-          }
-          if (n < maxTries) {
-            return new Promise(function(r){ setTimeout(function(){ r(once()); }, gapMs); });
-          }
-          // Final: open sheet even without image so user can attach manually
-          applySharedPayToUi();
-          return false;
+            if (window._shareIdbLastError) {
+              try {
+                if (typeof _payMsg === 'function') {
+                  _payMsg('Share received but image missing (' + window._shareIdbLastError + '). Add screenshot manually.', false);
+                }
+              } catch (eMsg) {}
+            }
+            return false;
+          });
         });
       }
       return once();
@@ -4059,9 +4126,9 @@ function _payUnpaidTotal(){
       // If share flag set but memory empty (page reloaded), try IDB again without clearing until applied
       if (!_hasPayProofAttached()) {
         loadShareFromIndexedDb(false).then(function(data){
-          if (data) applySharePayload(data);
-          finishOpen();
-        });
+          if (!data) { finishOpen(); return; }
+          return applySharePayload(data).then(function(){ finishOpen(); });
+        }).catch(function(){ finishOpen(); });
       } else {
         finishOpen();
       }

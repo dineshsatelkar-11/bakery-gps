@@ -416,35 +416,46 @@ function normalizeProducts(list) {
         });
     }
     var dc = 'CO-' + coId;
-    // Resolve assigned driver from shops
+    // Resolve default driver from shops master — but NEVER overwrite a day-level
+    // driver already set on the orders row (substitute / move / shuffle for today).
     return fetch(BASE + '/shops?shop_id=eq.' + encodeURIComponent(shopId) + '&select=assigned_driver,name&limit=1', { headers: hdrs() })
       .then(function(r){ return r.ok ? r.json() : []; })
       .then(function(shops){
-        var driver = (shops && shops[0] && shops[0].assigned_driver) || b.driver || '';
+        var masterDriver = (shops && shops[0] && shops[0].assigned_driver) || '';
         var shopName = b.shop_name || (shops && shops[0] && shops[0].name) || '';
-        var payload = {
-          customer_id: shopId, shop_id: shopId,
-          shop_name: shopName, driver: driver,
-          items: items, qty: qty, item_ids: itemIds, note: note,
-          date: date, dc_num: dc
-        };
-        // Upsert by dc_num first, then shop_id+date
-        var findDc = BASE + '/orders?dc_num=eq.' + encodeURIComponent(dc) + '&select=order_id&limit=1';
+        function basePayload(driver) {
+          return {
+            customer_id: shopId, shop_id: shopId,
+            shop_name: shopName, driver: driver,
+            items: items, qty: qty, item_ids: itemIds, note: note,
+            date: date, dc_num: dc
+          };
+        }
+        function keepOrMaster(existingDriver) {
+          // Explicit force from caller wins; else keep non-empty day assignment
+          if (b.force_driver && b.driver) return String(b.driver);
+          var cur = String(existingDriver || '').trim();
+          if (cur) return cur;
+          if (b.driver) return String(b.driver);
+          return masterDriver || '';
+        }
+        // Upsert by dc_num first, then shop_id+date — always read existing driver
+        var findDc = BASE + '/orders?dc_num=eq.' + encodeURIComponent(dc) + '&select=order_id,driver&limit=1';
         return fetch(findDc, { headers: hdrs() })
           .then(function(r){ return r.ok ? r.json() : []; })
           .then(function(rows){
             if (Array.isArray(rows) && rows[0] && rows[0].order_id) {
-              return sbPatch('orders', { order_id: rows[0].order_id }, payload);
+              return sbPatch('orders', { order_id: rows[0].order_id }, basePayload(keepOrMaster(rows[0].driver)));
             }
             var findShop = BASE + '/orders?shop_id=eq.' + encodeURIComponent(shopId) +
-              '&date=eq.' + encodeURIComponent(date) + '&select=order_id&limit=3';
+              '&date=eq.' + encodeURIComponent(date) + '&select=order_id,driver&limit=3';
             return fetch(findShop, { headers: hdrs() })
               .then(function(r2){ return r2.ok ? r2.json() : []; })
               .then(function(rows2){
                 if (Array.isArray(rows2) && rows2[0] && rows2[0].order_id) {
-                  return sbPatch('orders', { order_id: rows2[0].order_id }, payload);
+                  return sbPatch('orders', { order_id: rows2[0].order_id }, basePayload(keepOrMaster(rows2[0].driver)));
                 }
-                return sbPost('orders', payload);
+                return sbPost('orders', basePayload(keepOrMaster('')));
               });
           });
       });
@@ -1144,29 +1155,35 @@ function normalizeProducts(list) {
         return sbPatch('customer_orders', { id: b.id }, { status: 'dispatched', packaged_at: now })
           .then(function(res) {
             if (!res.ok) return res;
-            // Upsert into orders: if CO-{id} already exists (from early approve sync), patch it
+            // Upsert into orders: if CO-{id} already exists (from early approve sync), patch it.
+            // Keep existing day-level driver (from substitute/shuffle) — do not restore shops.assigned_driver.
             var dc = 'CO-' + b.id;
-            var findOrd = BASE + '/orders?dc_num=eq.' + encodeURIComponent(dc) + '&select=order_id&limit=1';
+            var findOrd = BASE + '/orders?dc_num=eq.' + encodeURIComponent(dc) + '&select=order_id,driver&limit=1';
             return fetch(findOrd, { headers: hdrs() })
               .then(function(r){ return r.ok ? r.json() : []; })
               .then(function(rows){
-                var payload = {
-                  customer_id: b.shop_id, shop_id: b.shop_id,
-                  shop_name:   b.shop_name,
-                  driver:      b.driver || '',
-                  items:       b.items,
-                  qty:         b.qty,
-                  item_ids:    b.item_ids || '',
-                  note:        b.note || '',
-                  date:        b.delivery_date,
-                  dc_num:      dc
-                };
-                if (Array.isArray(rows) && rows[0] && rows[0].order_id) {
-                  return sbPatch('orders', { order_id: rows[0].order_id }, payload);
+                function buildPayload(existingDriver) {
+                  var cur = String(existingDriver || '').trim();
+                  var incoming = String(b.driver || '').trim();
+                  // Existing non-empty driver wins (day shuffle); else packaging/shop driver
+                  var driver = cur || incoming;
+                  return {
+                    customer_id: b.shop_id, shop_id: b.shop_id,
+                    shop_name:   b.shop_name,
+                    driver:      driver,
+                    items:       b.items,
+                    qty:         b.qty,
+                    item_ids:    b.item_ids || '',
+                    note:        b.note || '',
+                    date:        b.delivery_date,
+                    dc_num:      dc
+                  };
                 }
-                // Also try match by shop_id + date (early sync may have different dc_num)
+                if (Array.isArray(rows) && rows[0] && rows[0].order_id) {
+                  return sbPatch('orders', { order_id: rows[0].order_id }, buildPayload(rows[0].driver));
+                }
                 var find2 = BASE + '/orders?shop_id=eq.' + encodeURIComponent(b.shop_id) +
-                  '&date=eq.' + encodeURIComponent(b.delivery_date) + '&select=order_id&limit=5';
+                  '&date=eq.' + encodeURIComponent(b.delivery_date) + '&select=order_id,driver,dc_num&limit=5';
                 return fetch(find2, { headers: hdrs() })
                   .then(function(r2){ return r2.ok ? r2.json() : []; })
                   .then(function(rows2){
@@ -1174,9 +1191,9 @@ function normalizeProducts(list) {
                       return String(o.dc_num || '').indexOf('CO-') === 0 || !o.dc_num;
                     }) || (rows2 && rows2[0]);
                     if (match && match.order_id) {
-                      return sbPatch('orders', { order_id: match.order_id }, payload);
+                      return sbPatch('orders', { order_id: match.order_id }, buildPayload(match.driver));
                     }
-                    return sbPost('orders', payload);
+                    return sbPost('orders', buildPayload(''));
                   });
               });
           });

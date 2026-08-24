@@ -97,11 +97,14 @@ self.addEventListener('activate', function(e) {
 });
 
 // ── Share Target (PhonePe / GPay / Paytm / WhatsApp → payment proof) ──────────
-// POST multipart → stash in IndexedDB → 303 redirect to order?share=1
-// Do NOT rely on network for POST (Vercel cleanUrls can drop body on redirect).
+// POST multipart → stash Blob in IndexedDB (not base64 — avoids QuotaExceededError)
+// → 303 redirect to /order?share=1
+var SHARE_DB = 'ibcab-share';
+var SHARE_DB_VER = 2;
+
 function openShareDb() {
   return new Promise(function(resolve, reject) {
-    var req = indexedDB.open('ibcab-share', 1);
+    var req = indexedDB.open(SHARE_DB, SHARE_DB_VER);
     req.onupgradeneeded = function() {
       var db = req.result;
       if (!db.objectStoreNames.contains('incoming')) {
@@ -109,17 +112,34 @@ function openShareDb() {
       }
     };
     req.onsuccess = function() { resolve(req.result); };
-    req.onerror = function() { reject(req.error); };
+    req.onerror = function() {
+      console.warn('[SW] IDB open failed', req.error);
+      reject(req.error || new Error('IDB open failed'));
+    };
+    req.onblocked = function() {
+      console.warn('[SW] IDB open blocked');
+    };
   });
 }
 
 function stashSharePayload(payload) {
   return openShareDb().then(function(db) {
     return new Promise(function(resolve, reject) {
-      var tx = db.transaction('incoming', 'readwrite');
-      tx.objectStore('incoming').put({ id: 'latest', ts: Date.now(), data: payload });
-      tx.oncomplete = function() { resolve(); };
-      tx.onerror = function() { reject(tx.error); };
+      try {
+        var tx = db.transaction('incoming', 'readwrite');
+        tx.oncomplete = function() { resolve(); };
+        tx.onerror = function() {
+          console.warn('[SW] IDB tx error', tx.error);
+          reject(tx.error || new Error('IDB write failed'));
+        };
+        tx.onabort = function() {
+          console.warn('[SW] IDB tx abort', tx.error);
+          reject(tx.error || new Error('IDB write aborted'));
+        };
+        tx.objectStore('incoming').put({ id: 'latest', ts: Date.now(), data: payload });
+      } catch (e) {
+        reject(e);
+      }
     });
   });
 }
@@ -127,7 +147,6 @@ function stashSharePayload(payload) {
 function isShareTargetPost(req) {
   if (req.method !== 'POST') return false;
   var u = req.url || '';
-  // /order.html, /order, ?share=1, or path ending with order
   if (u.indexOf('share=1') >= 0) return true;
   if (/\/order(\.html)?([?#]|$)/i.test(u)) return true;
   return false;
@@ -142,12 +161,12 @@ self.addEventListener('fetch', function(e) {
   if (isShareTargetPost(e.request)) {
     e.respondWith((async function() {
       var hasFile = false;
+      var stashErr = '';
       try {
         var form = await e.request.formData();
         var title = form.get('title') || '';
         var text  = form.get('text') || '';
         var shareUrl = form.get('url') || '';
-        // PhonePe / GPay / system share use various field names
         var file = form.get('media') || form.get('file') || form.get('files') || form.get('image') || form.get('screenshot');
         if (!file || typeof file.arrayBuffer !== 'function') {
           try {
@@ -163,50 +182,75 @@ self.addEventListener('fetch', function(e) {
             }
           } catch (eIter) {}
         }
-        var fileB64 = '';
+
+        var fileBlob = null;
         var fileName = '';
         var fileType = '';
+        var fileSize = 0;
         if (file && typeof file.arrayBuffer === 'function') {
           var buf = await file.arrayBuffer();
           if (buf && buf.byteLength > 0) {
-            var bytes = new Uint8Array(buf);
-            var chunk = 0x8000;
-            var binary = '';
-            for (var i = 0; i < bytes.length; i += chunk) {
-              binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunk, bytes.length)));
-            }
-            fileB64 = btoa(binary);
-            fileName = file.name || 'share.jpg';
             fileType = file.type || 'image/jpeg';
-            hasFile = !!fileB64;
+            fileName = file.name || 'share.jpg';
+            fileSize = buf.byteLength;
+            // Store as Blob (much smaller / safer than base64 string in IDB)
+            fileBlob = new Blob([buf], { type: fileType });
+            hasFile = true;
           }
         }
-        await stashSharePayload({
+
+        var payload = {
           title: String(title || ''),
           text: String(text || ''),
           url: String(shareUrl || ''),
-          fileB64: fileB64,
+          fileBlob: fileBlob,
           fileName: fileName,
           fileType: fileType,
+          fileSize: fileSize,
           hasFile: hasFile,
           ts: Date.now()
-        });
-        // Notify any open order clients
+        };
+
+        try {
+          await stashSharePayload(payload);
+        } catch (idbErr) {
+          // Quota or IDB failure — try text-only fallback so UTR still arrives
+          stashErr = (idbErr && idbErr.name ? idbErr.name + ': ' : '') + String(idbErr && idbErr.message ? idbErr.message : idbErr);
+          console.warn('[SW] share IDB write failed', stashErr);
+          try {
+            await stashSharePayload({
+              title: payload.title,
+              text: payload.text,
+              url: payload.url,
+              fileBlob: null,
+              hasFile: false,
+              err: stashErr,
+              ts: Date.now()
+            });
+          } catch (e2) {
+            console.warn('[SW] share text-only stash also failed', e2);
+          }
+          hasFile = false;
+        }
+
         try {
           var list = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
           list.forEach(function(c) {
             try {
-              c.postMessage({ type: 'ibcab-share-ready', hasFile: hasFile });
+              c.postMessage({ type: 'ibcab-share-ready', hasFile: hasFile, err: stashErr || '' });
             } catch (eMsg) {}
           });
         } catch (eCl) {}
       } catch (err) {
         console.warn('[SW] share stash failed', err);
         try {
-          await stashSharePayload({ title: '', text: '', url: '', fileB64: '', hasFile: false, err: String(err) });
+          await stashSharePayload({
+            title: '', text: '', url: '', fileBlob: null, hasFile: false,
+            err: String(err && err.message ? err.message : err),
+            ts: Date.now()
+          });
         } catch (e2) {}
       }
-      // Prefer clean /order?share=1 (matches vercel cleanUrls); keep order.html as fallback path
       return Response.redirect('/order?share=1', 303);
     })());
     return;
