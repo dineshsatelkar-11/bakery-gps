@@ -34,10 +34,21 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    const { data: subs, error } = await supabase
+    // Prefer enabled devices only (soft-disable keeps row but stops push)
+    let { data: subs, error } = await supabase
       .from('push_subscriptions')
       .select('*')
-      .in('shop_id', shop_ids.map(String));
+      .in('shop_id', shop_ids.map(String))
+      .or('enabled.is.null,enabled.eq.true');
+    // Fallback if enabled column missing
+    if (error && /enabled/i.test(String(error.message || error))) {
+      const retry = await supabase
+        .from('push_subscriptions')
+        .select('*')
+        .in('shop_id', shop_ids.map(String));
+      subs = retry.data;
+      error = retry.error;
+    }
 
     console.log('[push] subscriptions found:', subs ? subs.length : 0, 'error:', error);
 

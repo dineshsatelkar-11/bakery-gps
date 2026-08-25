@@ -10379,17 +10379,21 @@ onStaffRoleChange();
         var when = r.created_at ? String(r.created_at).slice(0,16).replace('T',' ') : '';
         var ep = String(r.endpoint || '');
         var isThis = _adminCurrentEndpoint && ep && ep === _adminCurrentEndpoint;
-        // Store endpoint on a stable list so Disable can look it up by index (URLs break onclick strings)
+        var isOff = (r.enabled === false || r.enabled === 'false' || r.enabled === 0);
+        // Store endpoint on a stable list so Disable/Enable can look it up by index
         if (!_adminDeviceEndpoints) _adminDeviceEndpoints = [];
         _adminDeviceEndpoints[i] = ep;
-        lines.push('<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #f1f5f9;flex-wrap:wrap">'+
+        var btn = isOff
+          ? '<button type="button" class="btn-sm" style="flex-shrink:0;background:#e8f5e9;color:#1a5a38;border:1px solid #a5d6a7;padding:4px 8px;font-size:10px;font-weight:800" onclick="enableAdminPushDeviceByIndex('+i+')">Enable</button>'
+          : '<button type="button" class="btn-sm" style="flex-shrink:0;background:#fff;color:#c8382a;border:1px solid #f5c2c2;padding:4px 8px;font-size:10px;font-weight:800" onclick="disableAdminPushDeviceByIndex('+i+')">Disable</button>';
+        lines.push('<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #f1f5f9;flex-wrap:wrap;opacity:'+(isOff?'0.65':'1')+'">'+
           '<span>'+_notifDeviceLabel(t)+'</span>'+
           '<span style="color:#64748b;font-size:10px;flex:1;min-width:80px">'+esc(_notifBrowserHint(r))+
             (when?' · '+esc(when):'')+
             (isThis?' · <b style="color:#1565c0">this device</b>':'')+
+            (isOff?' · <b style="color:#c8382a">disabled</b>':'')+
           '</span>'+
-          '<button type="button" class="btn-sm" style="flex-shrink:0;background:#fff;color:#c8382a;border:1px solid #f5c2c2;padding:4px 8px;font-size:10px;font-weight:800" '+
-            'onclick="disableAdminPushDeviceByIndex('+i+')">Disable</button>'+
+          btn+
         '</div>');
       });
       lines.push('<div style="margin-top:10px;font-size:10px;color:#64748b"><b>Drivers:</b> OneSignal (per driver login) — not listed here</div>');
@@ -10686,32 +10690,25 @@ onStaffRoleChange();
     }
     function disableAdminPushDeviceByIndex(idx){
       var ep = (_adminDeviceEndpoints && _adminDeviceEndpoints[idx]) || '';
-      disableAdminPushDevice(ep);
+      setAdminPushDeviceEnabled(ep, false);
     }
-    function disableAdminPushDevice(endpoint){
+    function enableAdminPushDeviceByIndex(idx){
+      var ep = (_adminDeviceEndpoints && _adminDeviceEndpoints[idx]) || '';
+      setAdminPushDeviceEnabled(ep, true);
+    }
+    function setAdminPushDeviceEnabled(endpoint, enabled){
       if (!endpoint) return;
-      if (!confirm('Disable this admin device?\n\nIt will stop receiving background push until Enable Push is used again on that device.')) return;
-      apiPost({ action: 'deletePushSubscriptionByEndpoint', endpoint: endpoint }).then(function(res){
+      var on = !!enabled;
+      var msg = on
+        ? 'Enable this device for background push again?'
+        : 'Disable this admin device?\n\nIt will stay in the list but stop receiving push until you tap Enable.';
+      if (!confirm(msg)) return;
+      apiPost({ action: 'setPushSubscriptionEnabled', endpoint: endpoint, enabled: on }).then(function(res){
         if (res && res.ok === false) {
-          alert('Could not disable device. Try again.');
+          alert((res.error || 'Could not update device. If column is missing, run SQL for push_subscriptions.enabled'));
           return;
         }
-        // If this browser's subscription was removed, clear local ready flag
-        if (_adminCurrentEndpoint && endpoint === _adminCurrentEndpoint) {
-          _adminPushReady = false;
-          _adminCurrentEndpoint = '';
-          try {
-            if (navigator.serviceWorker && navigator.serviceWorker.ready) {
-              navigator.serviceWorker.ready.then(function(reg){
-                return reg.pushManager.getSubscription();
-              }).then(function(sub){
-                if (sub) return sub.unsubscribe();
-              }).catch(function(){});
-            }
-          } catch(e){}
-          try { updateAdminPushUI(); } catch(e){}
-        }
-        // Refresh device list
+        // Do NOT delete the row or unsubscribe the browser — device stays registered
         try {
           if (typeof loadNotifManage === 'function') loadNotifManage();
           else if (typeof loadNotifStatus === 'function') loadNotifStatus();
@@ -10724,6 +10721,8 @@ onStaffRoleChange();
         } catch(e){}
       });
     }
+    // Back-compat name
+    function disableAdminPushDevice(endpoint){ setAdminPushDeviceEnabled(endpoint, false); }
     // Keep track of this browser's push endpoint (for "this device" label)
     (function _trackAdminEndpoint(){
       try {

@@ -386,12 +386,16 @@ function normalizeProducts(list) {
 
       // All web-push subscriptions (customers shop_id, admin keys)
       case 'getPushSubscriptions':
-        return fetch(BASE + '/push_subscriptions?select=shop_id,endpoint,created_at,user_agent,device_type&order=shop_id,created_at', { headers: hdrs() })
+        return fetch(BASE + '/push_subscriptions?select=shop_id,endpoint,created_at,user_agent,device_type,enabled&order=shop_id,created_at', { headers: hdrs() })
           .then(function(r){
             if (r.ok) return r.json();
             // Fallback if optional columns missing
-            return fetch(BASE + '/push_subscriptions?select=shop_id,endpoint,created_at&order=shop_id', { headers: hdrs() })
-              .then(function(r2){ return r2.ok ? r2.json() : []; });
+            return fetch(BASE + '/push_subscriptions?select=shop_id,endpoint,created_at,user_agent,device_type&order=shop_id,created_at', { headers: hdrs() })
+              .then(function(r2){
+                if (r2.ok) return r2.json();
+                return fetch(BASE + '/push_subscriptions?select=shop_id,endpoint,created_at&order=shop_id', { headers: hdrs() })
+                  .then(function(r3){ return r3.ok ? r3.json() : []; });
+              });
           })
           .catch(function(){ return []; });
 
@@ -1367,7 +1371,8 @@ function normalizeProducts(list) {
             shop_id:  sid,
             endpoint: b.endpoint,
             p256dh:   b.p256dh,
-            auth:     b.auth
+            auth:     b.auth,
+            enabled:  true
           };
           if (ua) row.user_agent = ua;
           if (dtype) row.device_type = dtype;
@@ -1388,12 +1393,32 @@ function normalizeProducts(list) {
           method: 'DELETE', headers: hdrs({ 'Prefer': 'return=minimal' })
         }).then(function(r){ return {ok: r.ok}; }).catch(function(){ return {ok:false}; });
 
-      // Disable one specific device (admin or customer) by endpoint only
+      // Soft-disable one device by endpoint (keep row — do not delete)
       case 'deletePushSubscriptionByEndpoint':
+      case 'setPushSubscriptionEnabled': {
         if (!b.endpoint) return Promise.resolve({ ok: false, error: 'endpoint required' });
+        var wantOn = (b.action === 'setPushSubscriptionEnabled')
+          ? (b.enabled !== false && b.enabled !== 'false' && b.enabled !== 0)
+          : false; // deletePushSubscriptionByEndpoint = disable
+        if (b.enabled === true || b.enabled === 'true' || b.enabled === 1) wantOn = true;
+        if (b.enabled === false || b.enabled === 'false' || b.enabled === 0) wantOn = false;
         return fetch(BASE + '/push_subscriptions?endpoint=eq.' + encodeURIComponent(b.endpoint), {
-          method: 'DELETE', headers: hdrs({ 'Prefer': 'return=minimal' })
-        }).then(function(r){ return { ok: r.ok }; }).catch(function(){ return { ok: false }; });
+          method: 'PATCH',
+          headers: hdrs({ 'Prefer': 'return=minimal', 'Content-Type': 'application/json' }),
+          body: JSON.stringify({ enabled: wantOn })
+        }).then(function(r){
+          // If column missing, fall back to no-op success so UI does not break
+          if (r.status === 400 || r.status === 404) {
+            return r.text().then(function(t){
+              if (/enabled|column/i.test(t||'')) {
+                return { ok: false, error: 'Run SQL: ADD COLUMN enabled boolean DEFAULT true on push_subscriptions' };
+              }
+              return { ok: false, error: t || 'update failed' };
+            });
+          }
+          return { ok: r.ok };
+        }).catch(function(){ return { ok: false }; });
+      }
 
       case 'sendCustomerNotification':
         return sbPost('customer_notifications', {
