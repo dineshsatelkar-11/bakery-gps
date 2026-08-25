@@ -1112,18 +1112,7 @@
     var products = [];  // active products for this customer's group
     var qty = {};       // { product_id: qty }
     var existingOrder = null; // existing order for tomorrow (if any)
-    var _customerPayEnabled = true; // set by allowlist in loadCustomerPaySetting
-    var PAY_TAB_ALLOWED_USERNAMES = ['xyz111', 'xyx2323'];
-    function _sessionLoginUser(){
-      if (!session) return '';
-      return String(session.login_username || session.username || session.user || '').toLowerCase().trim();
-    }
-    function isPayTabAllowedForSession(){
-      var u = _sessionLoginUser();
-      if (!u) return false;
-      var list = Array.isArray(PAY_TAB_ALLOWED_USERNAMES) ? PAY_TAB_ALLOWED_USERNAMES : [];
-      return list.indexOf(u) >= 0;
-    }
+    var _customerPayEnabled = true; // controlled by admin setting customer_payments_enabled
 
     // Session restore runs after showApp is defined (see end of init).
 
@@ -1136,14 +1125,21 @@
     }
 
     // ── APP INIT ──
+    // Pay tab: follows admin Manage → Customer Payments (setting key customer_payments_enabled).
+    // Empty / missing setting = enabled (same default as admin).
     function loadCustomerPaySetting(){
-      try {
-        _customerPayEnabled = isPayTabAllowedForSession();
-      } catch (e) {
-        _customerPayEnabled = false;
-      }
-      applyCustPayTabVisibility();
-      return Promise.resolve();
+      return api({ action: 'getSetting', key: 'customer_payments_enabled' }).then(function(row){
+        if (!row || row.value == null || row.value === '') {
+          _customerPayEnabled = true;
+        } else {
+          var v = String(row.value).toLowerCase().trim();
+          _customerPayEnabled = !(v === '0' || v === 'false' || v === 'off');
+        }
+        applyCustPayTabVisibility();
+      }).catch(function(){
+        _customerPayEnabled = true;
+        applyCustPayTabVisibility();
+      });
     }
     function applyCustPayTabVisibility(){
       var tb = document.getElementById('tb-payments');
@@ -1558,8 +1554,8 @@
         if (mine.username) session.username = mine.username;
         session.login_username = session.login_username || session.username || '';
         // Refresh Pay tab visibility after shop fields load
-        try { _customerPayEnabled = isPayTabAllowedForSession(); applyCustPayTabVisibility(); } catch(e) {}
-localStorage.setItem('custSession', JSON.stringify(session));
+        try { loadCustomerPaySetting(); } catch(e) {}
+        localStorage.setItem('custSession', JSON.stringify(session));
         console.log('[order] refreshed group ids:', ids);
       }).catch(function(){ console.log('[order] refreshSession failed'); });
     }
