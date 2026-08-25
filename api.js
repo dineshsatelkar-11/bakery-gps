@@ -1397,27 +1397,30 @@ function normalizeProducts(list) {
       case 'deletePushSubscriptionByEndpoint':
       case 'setPushSubscriptionEnabled': {
         if (!b.endpoint) return Promise.resolve({ ok: false, error: 'endpoint required' });
-        var wantOn = (b.action === 'setPushSubscriptionEnabled')
-          ? (b.enabled !== false && b.enabled !== 'false' && b.enabled !== 0)
-          : false; // deletePushSubscriptionByEndpoint = disable
+        var wantOn = true;
+        if (b.action === 'deletePushSubscriptionByEndpoint') wantOn = false;
         if (b.enabled === true || b.enabled === 'true' || b.enabled === 1) wantOn = true;
         if (b.enabled === false || b.enabled === 'false' || b.enabled === 0) wantOn = false;
         return fetch(BASE + '/push_subscriptions?endpoint=eq.' + encodeURIComponent(b.endpoint), {
           method: 'PATCH',
-          headers: hdrs({ 'Prefer': 'return=minimal', 'Content-Type': 'application/json' }),
+          headers: hdrs({ 'Prefer': 'return=representation', 'Content-Type': 'application/json' }),
           body: JSON.stringify({ enabled: wantOn })
         }).then(function(r){
-          // If column missing, fall back to no-op success so UI does not break
-          if (r.status === 400 || r.status === 404) {
-            return r.text().then(function(t){
-              if (/enabled|column/i.test(t||'')) {
-                return { ok: false, error: 'Run SQL: ADD COLUMN enabled boolean DEFAULT true on push_subscriptions' };
+          return r.text().then(function(txt){
+            if (!r.ok) {
+              if (/enabled|schema cache|column/i.test(txt||'')) {
+                return { ok: false, error: 'Missing column. Run SQL:\nALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS enabled boolean DEFAULT true;' };
               }
-              return { ok: false, error: t || 'update failed' };
-            });
-          }
-          return { ok: r.ok };
-        }).catch(function(){ return { ok: false }; });
+              return { ok: false, error: txt || ('HTTP ' + r.status) };
+            }
+            var rows = [];
+            try { rows = txt ? JSON.parse(txt) : []; } catch (e) { rows = []; }
+            if (Array.isArray(rows) && rows.length === 0) {
+              return { ok: false, error: 'No matching device endpoint found' };
+            }
+            return { ok: true, enabled: wantOn, rows: rows };
+          });
+        }).catch(function(e){ return { ok: false, error: String(e && e.message || e) }; });
       }
 
       case 'sendCustomerNotification':

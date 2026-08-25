@@ -10705,20 +10705,22 @@ onStaffRoleChange();
       if (!confirm(msg)) return;
       apiPost({ action: 'setPushSubscriptionEnabled', endpoint: endpoint, enabled: on }).then(function(res){
         if (res && res.ok === false) {
-          alert((res.error || 'Could not update device. If column is missing, run SQL for push_subscriptions.enabled'));
+          alert(res.error || 'Could not update device.\n\nRun this SQL in Supabase once:\nALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS enabled boolean DEFAULT true;');
           return;
         }
-        // Do NOT delete the row or unsubscribe the browser — device stays registered
+        // Optimistic UI: flip button immediately (do not remove the row)
+        try {
+          (_notifPushRows || []).forEach(function(r){
+            if (String(r.endpoint || '') === String(endpoint)) r.enabled = on;
+          });
+          if (typeof renderNotifStaffGrid === 'function') renderNotifStaffGrid();
+        } catch (e1) {}
+        // Then reload from server so state sticks
         try {
           if (typeof loadNotifManage === 'function') loadNotifManage();
-          else if (typeof loadNotifStatus === 'function') loadNotifStatus();
-          else {
-            api({ action: 'getPushSubscriptions' }).then(function(rows){
-              _notifPushRows = Array.isArray(rows) ? rows : [];
-              renderNotifStaffGrid();
-            });
-          }
-        } catch(e){}
+        } catch (e2) {}
+      }).catch(function(){
+        alert('Network error — could not update device.');
       });
     }
     // Back-compat name
