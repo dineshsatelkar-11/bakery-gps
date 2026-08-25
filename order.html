@@ -1208,19 +1208,40 @@
       checkAndPromptNotifications();
       if (window._timerOrderWindow) clearInterval(window._timerOrderWindow);
       if (window._timerNotifs)      clearInterval(window._timerNotifs);
-      window._timerOrderWindow = setInterval(checkOrderWindow, 30000);
-      window._timerNotifs      = setInterval(loadCustomerNotifs, 10000);
+      // Slower intervals to reduce Disk IO (was 30s / 10s)
+      window._timerOrderWindow = setInterval(function(){
+        if (document.visibilityState === 'hidden') return;
+        checkOrderWindow();
+      }, 90000);
+      window._timerNotifs = setInterval(function(){
+        if (document.visibilityState === 'hidden') return;
+        loadCustomerNotifs();
+      }, 45000);
     }
 
-    // When phone unlocks / user switches back to tab — restart polling immediately
+    // When phone unlocks / user switches back to tab — one check + restart interval
     if (!window._visibilityListenerAdded) {
       window._visibilityListenerAdded = true;
       document.addEventListener('visibilitychange', function() {
         if (document.visibilityState === 'visible' && session) {
           loadCustomerNotifs();
-          // Restart interval in case browser throttled/cleared it
+          checkOrderWindow();
           clearInterval(window._timerNotifs);
-          window._timerNotifs = setInterval(loadCustomerNotifs, 10000);
+          clearInterval(window._timerOrderWindow);
+          window._timerNotifs = setInterval(function(){
+            if (document.visibilityState === 'hidden') return;
+            loadCustomerNotifs();
+          }, 45000);
+          window._timerOrderWindow = setInterval(function(){
+            if (document.visibilityState === 'hidden') return;
+            checkOrderWindow();
+          }, 90000);
+        } else {
+          // Pause polls while tab is backgrounded
+          clearInterval(window._timerNotifs);
+          clearInterval(window._timerOrderWindow);
+          window._timerNotifs = null;
+          window._timerOrderWindow = null;
         }
       });
     }
@@ -1250,12 +1271,18 @@
         });
       }).then(function(sub){
         var j = sub.toJSON();
+        var ua = (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : '';
+        var dtype = /Mobi|Android|iPhone|iPod|iPad/i.test(ua)
+          ? (/iPad|Tablet/i.test(ua) ? 'tablet' : 'phone')
+          : 'desktop';
         return apiPost({
           action:   'savePushSubscription',
           shop_id:  session.shop_id,
           endpoint: sub.endpoint,
           p256dh:   j.keys.p256dh,
-          auth:     j.keys.auth
+          auth:     j.keys.auth,
+          user_agent: ua,
+          device_type: dtype
         });
       }).catch(function(){});
     }
@@ -1302,12 +1329,18 @@
       }).then(function(sub){
         if(btn) btn.textContent='⏳ Step 4: Saving to database…';
         var j = sub.toJSON();
+        var ua = (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : '';
+        var dtype = /Mobi|Android|iPhone|iPod|iPad/i.test(ua)
+          ? (/iPad|Tablet/i.test(ua) ? 'tablet' : 'phone')
+          : 'desktop';
         return apiPost({
           action:   'savePushSubscription',
           shop_id:  session.shop_id,
           endpoint: sub.endpoint,
           p256dh:   j.keys.p256dh,
-          auth:     j.keys.auth
+          auth:     j.keys.auth,
+          user_agent: ua,
+          device_type: dtype
         }).then(function(res){
           if(!res || !res.ok) throw new Error('DB save failed: ' + (res && res.error ? res.error : 'unknown'));
         });

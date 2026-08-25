@@ -35,6 +35,23 @@ function normalizeProducts(list) {
     }).join('&');
   }
 
+  /** Classify push endpoint / UA as phone | tablet | desktop */
+  function _inferDeviceType(ua, endpoint) {
+    var s = String(ua || '').toLowerCase();
+    var ep = String(endpoint || '').toLowerCase();
+    if (/ipad|tablet|kindle|playbook|silk|(android(?!.*mobile))/.test(s)) return 'tablet';
+    if (/mobi|iphone|ipod|android.*mobile|windows phone|opera mini|iemobile/.test(s)) return 'phone';
+    if (/web\.push\.apple\.com|push\.apple\.com/.test(ep)) return 'phone';
+    if (/fcm\.googleapis|android\.googleapis|wns2-.*notify\.windows\.com/.test(ep)) {
+      // FCM is often Android phone; still phone-ish for bakery use
+      if (/windows|macintosh|linux|cros|x11/.test(s) && !/mobi|android/.test(s)) return 'desktop';
+      if (!s) return 'phone';
+    }
+    if (/windows|macintosh|linux|cros|x11/.test(s) && !/mobi|android/.test(s)) return 'desktop';
+    if (s) return 'desktop';
+    return 'unknown';
+  }
+
   function sbGet(table, where, order, select) {
     var url = BASE + '/' + table + '?select=' + (select || '*');
     if (where && Object.keys(where).length) url += '&' + filters(where);
@@ -219,12 +236,19 @@ function normalizeProducts(list) {
         }).then(function(r){ return r.ok ? r.json() : []; }).catch(function(){ return []; });
 
       case 'getCustomerOrders': {
-        var url = BASE + '/customer_orders?select=*&order=created_at.desc';
+        // Optional p.select (comma columns), p.customer_claimed_paid, p.payment_status_not_in
+        // keep default select=* so existing callers stay unchanged
+        var sel = (p.select && String(p.select).trim()) ? String(p.select).trim() : '*';
+        var url = BASE + '/customer_orders?select=' + encodeURIComponent(sel) + '&order=created_at.desc';
         if (p.status)         url += '&status=eq.'         + encodeURIComponent(p.status);
         if (p.shop_id)        url += '&shop_id=eq.'        + encodeURIComponent(p.shop_id);
         if (p.delivery_date)  url += '&delivery_date=eq.'  + encodeURIComponent(p.delivery_date);
         if (p.statuses && p.statuses.length)
           url += '&status=in.(' + p.statuses.map(encodeURIComponent).join(',') + ')';
+        if (p.customer_claimed_paid === true || p.customer_claimed_paid === 'true')
+          url += '&customer_claimed_paid=eq.true';
+        if (p.payment_status_not_in && p.payment_status_not_in.length)
+          url += '&payment_status=not.in.(' + p.payment_status_not_in.map(encodeURIComponent).join(',') + ')';
         if (p.limit)          url += '&limit=' + parseInt(p.limit);
         return fetch(url, { headers: hdrs() })
           .then(function(r){ return r.ok ? r.json() : []; })
@@ -362,8 +386,13 @@ function normalizeProducts(list) {
 
       // All web-push subscriptions (customers shop_id, admin keys)
       case 'getPushSubscriptions':
-        return fetch(BASE + '/push_subscriptions?select=shop_id,endpoint,created_at&order=shop_id', { headers: hdrs() })
-          .then(function(r){ return r.ok ? r.json() : []; })
+        return fetch(BASE + '/push_subscriptions?select=shop_id,endpoint,created_at,user_agent,device_type&order=shop_id,created_at', { headers: hdrs() })
+          .then(function(r){
+            if (r.ok) return r.json();
+            // Fallback if optional columns missing
+            return fetch(BASE + '/push_subscriptions?select=shop_id,endpoint,created_at&order=shop_id', { headers: hdrs() })
+              .then(function(r2){ return r2.ok ? r2.json() : []; });
+          })
           .catch(function(){ return []; });
 
       case 'getCustomerNotifications':
@@ -1322,21 +1351,34 @@ function normalizeProducts(list) {
       }
 
       case 'savePushSubscription': {
-        // Customers: one device per shop (wipe then insert).
-        // Admin keys (admin / admin:Name): keep multiple devices — only replace same endpoint.
+        // Multi-device per shop (and admin): only replace the same endpoint.
+        // Stores user_agent / device_type so Manage tab can show "2 phone · 1 desktop".
         var sid = String(b.shop_id || '');
-        var isAdminKey = (sid === 'admin' || sid.indexOf('admin:') === 0);
-        var delUrl = isAdminKey
-          ? (BASE + '/push_subscriptions?endpoint=eq.' + encodeURIComponent(b.endpoint || ''))
-          : (BASE + '/push_subscriptions?shop_id=eq.' + encodeURIComponent(sid));
+        var ua = String(b.user_agent || '').slice(0, 400);
+        var dtype = String(b.device_type || '').toLowerCase();
+        if (dtype !== 'phone' && dtype !== 'desktop' && dtype !== 'tablet') {
+          dtype = _inferDeviceType(ua, b.endpoint);
+        }
+        var delUrl = BASE + '/push_subscriptions?endpoint=eq.' + encodeURIComponent(b.endpoint || '');
         return fetch(delUrl, {
           method: 'DELETE', headers: hdrs({ 'Prefer': 'return=minimal' })
         }).catch(function(){}).then(function(){
-          return sbPost('push_subscriptions', {
+          var row = {
             shop_id:  sid,
             endpoint: b.endpoint,
             p256dh:   b.p256dh,
             auth:     b.auth
+          };
+          if (ua) row.user_agent = ua;
+          if (dtype) row.device_type = dtype;
+          return sbPost('push_subscriptions', row).then(function(res){
+            // If optional columns missing, retry without them
+            if (res && res.ok === false) {
+              return sbPost('push_subscriptions', {
+                shop_id: sid, endpoint: b.endpoint, p256dh: b.p256dh, auth: b.auth
+              });
+            }
+            return res;
           });
         });
       }
@@ -1345,6 +1387,13 @@ function normalizeProducts(list) {
         return fetch(BASE + '/push_subscriptions?shop_id=eq.' + encodeURIComponent(b.shop_id), {
           method: 'DELETE', headers: hdrs({ 'Prefer': 'return=minimal' })
         }).then(function(r){ return {ok: r.ok}; }).catch(function(){ return {ok:false}; });
+
+      // Disable one specific device (admin or customer) by endpoint only
+      case 'deletePushSubscriptionByEndpoint':
+        if (!b.endpoint) return Promise.resolve({ ok: false, error: 'endpoint required' });
+        return fetch(BASE + '/push_subscriptions?endpoint=eq.' + encodeURIComponent(b.endpoint), {
+          method: 'DELETE', headers: hdrs({ 'Prefer': 'return=minimal' })
+        }).then(function(r){ return { ok: r.ok }; }).catch(function(){ return { ok: false }; });
 
       case 'sendCustomerNotification':
         return sbPost('customer_notifications', {

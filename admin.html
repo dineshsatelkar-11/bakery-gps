@@ -1185,17 +1185,18 @@
                 <div class="stat"><div class="stat-n">—</div><div class="stat-l">Customers</div></div>
                 <div class="stat"><div class="stat-n">—</div><div class="stat-l">Push ON</div></div>
                 <div class="stat"><div class="stat-n">—</div><div class="stat-l">Push OFF</div></div>
-                <div class="stat"><div class="stat-n">—</div><div class="stat-l">Admin devices</div></div>
+                <div class="stat"><div class="stat-n">—</div><div class="stat-l">Devices</div></div>
             </div>
+            <div id="notifDeviceBreakdown" style="font-size:11px;color:#64748b;font-family:monospace;line-height:1.7;margin-bottom:8px"></div>
             <div style="font-size:11px;color:#64748b;font-family:monospace;line-height:1.6;margin-bottom:8px">
-                Customers use web push (order app). Drivers use OneSignal (driver app login). Kitchen / Packaging push not registered yet.
+                Customers use web push (order app). One store can register multiple devices (phones + desktop). Drivers use OneSignal.
             </div>
             <button class="btn btn-grey" style="margin-bottom:0" onclick="loadNotifManage()">🔄 Refresh Status</button>
         </div>
 
         <div class="card" style="margin-bottom:12px">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px;flex-wrap:wrap">
-                <div style="font-size:13px;font-weight:900;color:#1e293b">👥 Customers — Notification Enabled</div>
+                <div style="font-size:13px;font-weight:900;color:#1e293b">👥 Customers — devices by store</div>
                 <input type="text" id="notifManageSearch" placeholder="🔍 Filter…" oninput="renderNotifCustomerGrid()" style="margin-bottom:0;width:160px;padding:8px 10px;font-size:12px">
             </div>
             <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
@@ -1203,7 +1204,7 @@
                 <button class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1.5px solid #f0b0b0;padding:6px 10px;font-size:11px" onclick="_notifGridFilter='off';renderNotifCustomerGrid()">❌ Push OFF</button>
                 <button class="btn-sm" style="background:#e2e8f0;color:#1e293b;border:1.5px solid #d0c0aa;padding:6px 10px;font-size:11px" onclick="_notifGridFilter='all';renderNotifCustomerGrid()">All</button>
             </div>
-            <div id="notifCustomerGrid" style="max-height:360px;overflow-y:auto;border:1.5px solid #e2e8f0;border-radius:10px;background:#f8fafc">
+            <div id="notifCustomerGrid" style="max-height:480px;overflow-y:auto;border:1.5px solid #e2e8f0;border-radius:10px;background:#f8fafc">
                 <div style="padding:14px;text-align:center;font-size:12px;color:#64748b;font-family:monospace">Open Manage tab to load…</div>
             </div>
         </div>
@@ -2699,6 +2700,7 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
       if(t === 'attendance' && _staffRole !== 'super_admin') return;
       if(t === 'drivers' && _staffRole !== 'super_admin') return;
       if(_visibleTabs[t] === false) return;
+      _currentAdminTab = t;
       try {
         localStorage.setItem('adminLastTab', t);
         localStorage.setItem('adminLastTabRole', _staffRole || '');
@@ -9557,14 +9559,18 @@ onStaffRoleChange();
         // getSetting returns a single row object (or null), NOT an array
         var enabled = !results[0] || results[0].value !== 'false';
         var msg = results[1] ? (results[1].value||'') : '';
+        _ordersOpen = !!enabled;
         renderOrderWindowStatus(enabled);
-        document.getElementById('orderWindowMsg').value = msg;
+        var msgEl = document.getElementById('orderWindowMsg');
+        if (msgEl) msgEl.value = msg;
       });
     }
 
     function renderOrderWindowStatus(enabled){
+      _ordersOpen = !!enabled;
       var st = document.getElementById('orderWindowStatus');
       var btn = document.getElementById('orderWindowBtn');
+      if(!st || !btn) return;
       if(enabled){
         st.textContent='✅ Orders OPEN'; st.style.color='#2d7a4f';
         btn.textContent='🔒 Close Orders'; btn.style.background='#c8382a'; btn.style.color='#fff';
@@ -9578,14 +9584,20 @@ onStaffRoleChange();
     function toggleOrderWindow(){
       var btn = document.getElementById('orderWindowBtn');
       var newEnabled = !btn._enabled;
-      var msg = document.getElementById('orderWindowMsg').value.trim();
+      var msg = (document.getElementById('orderWindowMsg') || {}).value || '';
+      msg = String(msg).trim();
       btn.disabled=true;
       Promise.all([
         apiPost({action:'setSetting', key:'order_enabled', value: newEnabled ? 'true' : 'false'}),
         apiPost({action:'setSetting', key:'order_message', value: msg})
       ]).then(function(){
         btn.disabled=false;
+        _ordersOpen = !!newEnabled;
         renderOrderWindowStatus(newEnabled);
+        // When admin opens orders, kick one poll so pending alerts start immediately
+        if (newEnabled && _staffRole === 'admin' && isAdminOrderPollingEnabled()) {
+          try { pollNewOrders(); } catch(e){}
+        }
         // Auto-broadcast message to customers
         if(msg){
           var bcast = newEnabled ? ('✅ Orders are now OPEN! '+msg) : ('🔒 Orders are now CLOSED. '+msg);
@@ -10048,6 +10060,7 @@ onStaffRoleChange();
     };
     var _notifChannelState = {}; // key → 'true'|'false'
     var _notifPushShopIds = {};  // shop_id → true
+    var _notifPushByShop = {};   // shop_id → [subscription rows]
     var _notifPushRows = [];
     var _notifGridFilter = 'all';
 
@@ -10073,9 +10086,13 @@ onStaffRoleChange();
       ]).then(function(res){
         _notifPushRows = Array.isArray(res[2]) ? res[2] : [];
         _notifPushShopIds = {};
+        _notifPushByShop = {};
         _notifPushRows.forEach(function(r){
           var sid = String(r.shop_id||'').trim();
-          if(sid) _notifPushShopIds[sid] = true;
+          if(!sid) return;
+          _notifPushShopIds[sid] = true;
+          if (!_notifPushByShop[sid]) _notifPushByShop[sid] = [];
+          _notifPushByShop[sid].push(r);
         });
         renderNotifChannelToggles();
         renderNotifStatusStats();
@@ -10087,6 +10104,58 @@ onStaffRoleChange();
         renderNotifCustomerGrid();
       });
     }
+
+    function _notifInferDeviceType(r){
+      if (!r) return 'unknown';
+      var dt = String(r.device_type || '').toLowerCase();
+      if (dt === 'phone' || dt === 'desktop' || dt === 'tablet') return dt;
+      var ua = String(r.user_agent || '').toLowerCase();
+      var ep = String(r.endpoint || '').toLowerCase();
+      if (/ipad|tablet|(android(?!.*mobile))/.test(ua)) return 'tablet';
+      if (/mobi|iphone|ipod|android.*mobile|windows phone/.test(ua)) return 'phone';
+      if (/web\.push\.apple\.com/.test(ep)) return 'phone';
+      if (/fcm\.googleapis|android\.googleapis/.test(ep) && !/windows|macintosh|linux/.test(ua)) return 'phone';
+      if (/windows|macintosh|linux|cros|x11/.test(ua) && !/mobi|android/.test(ua)) return 'desktop';
+      if (ua) return 'desktop';
+      return 'unknown';
+    }
+    function _notifDeviceSummary(rows){
+      var counts = { phone:0, desktop:0, tablet:0, unknown:0 };
+      (rows || []).forEach(function(r){
+        var t = _notifInferDeviceType(r);
+        if (counts[t] === undefined) counts.unknown++;
+        else counts[t]++;
+      });
+      var parts = [];
+      if (counts.phone) parts.push(counts.phone + ' phone' + (counts.phone > 1 ? 's' : ''));
+      if (counts.desktop) parts.push(counts.desktop + ' desktop' + (counts.desktop > 1 ? 's' : ''));
+      if (counts.tablet) parts.push(counts.tablet + ' tablet' + (counts.tablet > 1 ? 's' : ''));
+      if (counts.unknown) parts.push(counts.unknown + ' other');
+      return { counts: counts, text: parts.join(' · ') || '0 devices', total: (rows || []).length };
+    }
+    function _notifDeviceLabel(t){
+      if (t === 'phone') return '📱 Phone';
+      if (t === 'desktop') return '💻 Desktop';
+      if (t === 'tablet') return '📲 Tablet';
+      return '❔ Device';
+    }
+    function _notifBrowserHint(r){
+      var ua = String(r.user_agent || '');
+      var ep = String(r.endpoint || '');
+      if (/Edg\//i.test(ua)) return 'Edge';
+      if (/Chrome\//i.test(ua) && !/Edg\//i.test(ua)) return 'Chrome';
+      if (/Firefox\//i.test(ua) || /mozilla\.com/i.test(ep)) return 'Firefox';
+      if (/Safari\//i.test(ua) && !/Chrome\//i.test(ua)) return 'Safari';
+      if (/web\.push\.apple/i.test(ep)) return 'Safari / iOS';
+      if (/fcm\.googleapis/i.test(ep)) return 'Chrome / Android';
+      return 'Browser';
+    }
+    function toggleNotifShopDevices(sid){
+      var el = document.getElementById('notif-dev-'+String(sid).replace(/[^a-zA-Z0-9_-]/g,'_'));
+      if (!el) return;
+      el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+    window.toggleNotifShopDevices = toggleNotifShopDevices;
 
     function renderNotifChannelToggles(){
       var el = document.getElementById('notifChannelToggles');
@@ -10177,25 +10246,33 @@ onStaffRoleChange();
       if(!el) return;
       var total = (allCustomers||[]).length;
       var on = 0;
+      var custDeviceRows = [];
       (allCustomers||[]).forEach(function(c){
         var sid = String(c.shop_id||c.customer_id||'').trim();
-        if(sid && _notifPushShopIds[sid]) on++;
+        if(sid && _notifPushShopIds[sid]) {
+          on++;
+          custDeviceRows = custDeviceRows.concat(_notifPushByShop[sid] || []);
+        }
       });
       var off = Math.max(0, total - on);
-      var adminDev = 0;
-      Object.keys(_notifPushShopIds).forEach(function(sid){
-        if(sid==='admin' || sid.indexOf('admin:')===0) adminDev++;
-      });
-      // count admin subscription rows more accurately
-      adminDev = _notifPushRows.filter(function(r){
+      var adminRows = (_notifPushRows||[]).filter(function(r){
         var sid=String(r.shop_id||'');
         return sid==='admin' || sid.indexOf('admin:')===0;
-      }).length;
+      });
+      var custSum = _notifDeviceSummary(custDeviceRows);
+      var adminSum = _notifDeviceSummary(adminRows);
       el.innerHTML =
         '<div class="stat"><div class="stat-n">'+total+'</div><div class="stat-l">Customers</div></div>'+
-        '<div class="stat" style="background:#e8f5e9;border-color:#2d7a4f40"><div class="stat-n" style="color:#2d7a4f">'+on+'</div><div class="stat-l">Push ON</div></div>'+
-        '<div class="stat" style="background:#fde8e8;border-color:#c8382a40"><div class="stat-n" style="color:#c8382a">'+off+'</div><div class="stat-l">Push OFF</div></div>'+
-        '<div class="stat"><div class="stat-n">'+adminDev+'</div><div class="stat-l">Admin devices</div></div>';
+        '<div class="stat" style="background:#e8f5e9;border-color:#2d7a4f40"><div class="stat-n" style="color:#2d7a4f">'+on+'</div><div class="stat-l">Stores ON</div></div>'+
+        '<div class="stat" style="background:#fde8e8;border-color:#c8382a40"><div class="stat-n" style="color:#c8382a">'+off+'</div><div class="stat-l">Stores OFF</div></div>'+
+        '<div class="stat"><div class="stat-n">'+custSum.total+'</div><div class="stat-l">Store devices</div></div>'+
+        '<div class="stat"><div class="stat-n">'+adminSum.total+'</div><div class="stat-l">Admin devices</div></div>';
+      var bd = document.getElementById('notifDeviceBreakdown');
+      if (bd) {
+        bd.innerHTML =
+          '<b>Customer devices:</b> ' + esc(custSum.text || 'none') +
+          ' &nbsp;·&nbsp; <b>Admin:</b> ' + esc(adminSum.text || 'none');
+      }
     }
 
     function renderNotifCustomerGrid(){
@@ -10217,15 +10294,39 @@ onStaffRoleChange();
       }
       el.innerHTML = list.map(function(c){
         var sid = String(c.shop_id||c.customer_id||'').trim();
-        var has = !!(sid && _notifPushShopIds[sid]);
-        return '<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid #f0e8dc">'+
-          '<div style="flex:1;min-width:0">'+
-            '<div style="font-size:13px;font-weight:700;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(c.name||'—')+'</div>'+
-            '<div style="font-size:10px;color:#64748b;font-family:monospace">'+esc(c.area||'—')+(c.mobile?' · '+esc(c.mobile):'')+'</div>'+
+        var rows = (_notifPushByShop && _notifPushByShop[sid]) ? _notifPushByShop[sid] : [];
+        var has = rows.length > 0;
+        var sum = _notifDeviceSummary(rows);
+        var safeId = String(sid).replace(/[^a-zA-Z0-9_-]/g,'_');
+        var detail = '';
+        if (has) {
+          detail = '<div id="notif-dev-'+safeId+'" style="display:none;margin-top:8px;padding:8px 10px;background:#fff;border:1px solid #e2e8f0;border-radius:10px">'+
+            rows.map(function(r, i){
+              var t = _notifInferDeviceType(r);
+              var when = r.created_at ? String(r.created_at).slice(0,16).replace('T',' ') : '';
+              var br = _notifBrowserHint(r);
+              return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #f1f5f9;font-size:11px">'+
+                '<span style="flex-shrink:0">'+_notifDeviceLabel(t)+'</span>'+
+                '<span style="color:#64748b;font-family:monospace;flex:1">'+esc(br)+(when?' · '+esc(when):'')+'</span>'+
+                '<span style="color:#94a3b8;font-family:monospace;font-size:10px">#'+(i+1)+'</span>'+
+              '</div>';
+            }).join('')+
+          '</div>';
+        }
+        return '<div style="padding:10px 12px;border-bottom:1px solid #f0e8dc">'+
+          '<div style="display:flex;align-items:center;gap:10px">'+
+            '<div style="flex:1;min-width:0">'+
+              '<div style="font-size:13px;font-weight:700;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(c.name||'—')+'</div>'+
+              '<div style="font-size:10px;color:#64748b;font-family:monospace">'+esc(c.area||'—')+(c.mobile?' · '+esc(c.mobile):'')+'</div>'+
+              (has
+                ? '<div style="font-size:11px;font-weight:700;color:#1a5a38;margin-top:4px">'+sum.total+' device'+(sum.total===1?'':'s')+' · '+esc(sum.text)+'</div>'
+                : '')+
+            '</div>'+
+            (has
+              ? '<button type="button" class="btn-sm" style="flex-shrink:0;background:#e8f5e9;color:#1a5a38;border:1px solid #a5d6a7;padding:5px 10px;font-size:10px;font-weight:800" onclick="toggleNotifShopDevices(\''+esc(sid).replace(/'/g,'')+'\')">Details</button>'
+              : '<span style="flex-shrink:0;font-size:10px;font-weight:800;color:#c8382a;background:#fde8e8;border-radius:8px;padding:3px 9px;font-family:monospace">OFF</span>')+
           '</div>'+
-          (has
-            ? '<span style="flex-shrink:0;font-size:10px;font-weight:800;color:#2d7a4f;background:#e8f5e9;border-radius:8px;padding:3px 9px;font-family:monospace">✅ ON</span>'
-            : '<span style="flex-shrink:0;font-size:10px;font-weight:800;color:#c8382a;background:#fde8e8;border-radius:8px;padding:3px 9px;font-family:monospace">OFF</span>')+
+          detail+
         '</div>';
       }).join('');
     }
@@ -10237,15 +10338,62 @@ onStaffRoleChange();
         var sid=String(r.shop_id||'');
         return sid==='admin' || sid.indexOf('admin:')===0;
       });
+      var sum = _notifDeviceSummary(adminRows);
+      var pollOn = isAdminOrderPollingEnabled();
+      var payPollOn = isAdminPaymentPollingEnabled();
       var lines = [];
-      lines.push('<div style="margin-bottom:6px"><b>Admin web push:</b> '+adminRows.length+' device(s) registered</div>');
+      lines.push('<div style="margin-bottom:10px;padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px">'+
+        '<div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:4px">📡 Live order polling (this browser)</div>'+
+        '<div style="font-size:10px;color:#64748b;font-family:monospace;line-height:1.5;margin-bottom:8px">'+
+          'Runs only while <b>Open Orders</b> is ON. '+
+          (typeof _ordersOpen !== 'undefined' && !_ordersOpen
+            ? '<span style="color:#c8382a;font-weight:700">Orders are CLOSED — no polling.</span> '
+            : '')+
+          'Turn OFF below to stop DB hits from this device only.'+
+        '</div>'+
+        '<button type="button" class="btn-sm" style="font-weight:800;padding:6px 12px;'+
+          (pollOn
+            ? 'background:#e8f5e9;color:#1a5a38;border:1px solid #a5d6a7'
+            : 'background:#fde8e8;color:#c8382a;border:1px solid #f5c2c2')+
+          '" onclick="toggleAdminOrderPolling()">'+
+          (pollOn ? '✅ Order poll ON — tap to disable' : '⛔ Order poll OFF — tap to enable')+
+        '</button></div>');
+      lines.push('<div style="margin-bottom:10px;padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px">'+
+        '<div style="font-size:12px;font-weight:800;color:#0f172a;margin-bottom:4px">💰 Payment-request polling (this browser)</div>'+
+        '<div style="font-size:10px;color:#64748b;font-family:monospace;line-height:1.5;margin-bottom:8px">'+
+          'Default <b>OFF</b> to save Disk IO. Enable only when you want live alerts for customer payment claims.'+
+        '</div>'+
+        '<button type="button" class="btn-sm" style="font-weight:800;padding:6px 12px;'+
+          (payPollOn
+            ? 'background:#e8f5e9;color:#1a5a38;border:1px solid #a5d6a7'
+            : 'background:#fde8e8;color:#c8382a;border:1px solid #f5c2c2')+
+          '" onclick="toggleAdminPaymentPolling()">'+
+          (payPollOn ? '✅ Payment poll ON — tap to disable' : '⛔ Payment poll OFF — tap to enable')+
+        '</button></div>');
+      lines.push('<div style="margin-bottom:8px"><b>Admin devices (web push):</b> '+sum.total+' — '+esc(sum.text||'none')+'</div>');
+      if (!adminRows.length) {
+        lines.push('<div style="font-size:11px;color:#94a3b8;font-family:monospace;margin-bottom:8px">No admin devices registered yet. Open Dashboard → Enable Push on each phone/PC.</div>');
+      }
       adminRows.forEach(function(r,i){
-        var ep = String(r.endpoint||'');
-        var short = ep.length>48 ? ep.slice(0,28)+'…'+ep.slice(-12) : ep;
-        lines.push('<div style="color:#64748b;font-size:10px">#'+(i+1)+' · '+esc(String(r.shop_id))+ ' · '+esc(short)+'</div>');
+        var t = _notifInferDeviceType(r);
+        var when = r.created_at ? String(r.created_at).slice(0,16).replace('T',' ') : '';
+        var ep = String(r.endpoint || '');
+        var isThis = _adminCurrentEndpoint && ep && ep === _adminCurrentEndpoint;
+        // Store endpoint on a stable list so Disable can look it up by index (URLs break onclick strings)
+        if (!_adminDeviceEndpoints) _adminDeviceEndpoints = [];
+        _adminDeviceEndpoints[i] = ep;
+        lines.push('<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #f1f5f9;flex-wrap:wrap">'+
+          '<span>'+_notifDeviceLabel(t)+'</span>'+
+          '<span style="color:#64748b;font-size:10px;flex:1;min-width:80px">'+esc(_notifBrowserHint(r))+
+            (when?' · '+esc(when):'')+
+            (isThis?' · <b style="color:#1565c0">this device</b>':'')+
+          '</span>'+
+          '<button type="button" class="btn-sm" style="flex-shrink:0;background:#fff;color:#c8382a;border:1px solid #f5c2c2;padding:4px 8px;font-size:10px;font-weight:800" '+
+            'onclick="disableAdminPushDeviceByIndex('+i+')">Disable</button>'+
+        '</div>');
       });
-      lines.push('<div style="margin-top:10px"><b>Drivers:</b> OneSignal (per driver login) — not listed in this table</div>');
-      lines.push('<div style="margin-top:6px"><b>Kitchen / Packaging:</b> no push registration yet</div>');
+      lines.push('<div style="margin-top:10px;font-size:10px;color:#64748b"><b>Drivers:</b> OneSignal (per driver login) — not listed here</div>');
+      lines.push('<div style="margin-top:4px;font-size:10px;color:#64748b"><b>Kitchen / Packaging:</b> no push registration yet</div>');
       el.innerHTML = lines.join('');
     }
 
@@ -10298,14 +10446,21 @@ onStaffRoleChange();
       }).then(function(sub){
         if(!sub) return false;
         var j = sub.toJSON();
+        var ua = (typeof navigator !== 'undefined' && navigator.userAgent) ? navigator.userAgent : '';
+        var dtype = /Mobi|Android|iPhone|iPod|iPad/i.test(ua)
+          ? (/iPad|Tablet/i.test(ua) ? 'tablet' : 'phone')
+          : 'desktop';
         return apiPost({
           action:   'savePushSubscription',
           shop_id:  adminPushShopId(),
           endpoint: sub.endpoint,
           p256dh:   (j.keys && j.keys.p256dh) || '',
-          auth:     (j.keys && j.keys.auth) || ''
+          auth:     (j.keys && j.keys.auth) || '',
+          user_agent: ua,
+          device_type: dtype
         }).then(function(res){
           _adminPushReady = !!(res && res.ok !== false);
+          if (_adminPushReady && sub.endpoint) _adminCurrentEndpoint = sub.endpoint;
           try { updateAdminPushUI(); } catch(e){}
           return _adminPushReady;
         });
@@ -10479,10 +10634,128 @@ onStaffRoleChange();
       } catch(e){}
     }
 
+    // ── Admin device / live-polling controls ──
+    // Customer-order polling runs only when:
+    //   1) Notify → "Open Orders" is ON  (_ordersOpen / setting order_enabled)
+    //   2) This device has live polling ON (Notify toggle)
+    //   3) Admin role + browser tab visible
+    var _currentAdminTab = '';
+    var _ordersOpen = true; // default open until loadOrderWindow says otherwise
+    var _adminCurrentEndpoint = '';
+    var _adminDeviceEndpoints = [];
+    var _lastPayReqCount = -1;
+
+    function isAdminOrderPollingEnabled(){
+      try {
+        var v = localStorage.getItem('adminOrderPollingEnabled');
+        // Default ON for admin devices
+        if (v === null || v === undefined || v === '') return true;
+        return v === '1' || v === 'true';
+      } catch(e){ return true; }
+    }
+    function setAdminOrderPollingEnabled(on){
+      try { localStorage.setItem('adminOrderPollingEnabled', on ? '1' : '0'); } catch(e){}
+    }
+    function toggleAdminOrderPolling(){
+      var next = !isAdminOrderPollingEnabled();
+      setAdminOrderPollingEnabled(next);
+      try { renderNotifStaffGrid(); } catch(e){}
+      if (next && _ordersOpen) {
+        try { pollNewOrders(); } catch(e){}
+      }
+    }
+    // Payment-request poll: default OFF — admin enables only when checking status
+    function isAdminPaymentPollingEnabled(){
+      try {
+        var v = localStorage.getItem('adminPaymentPollingEnabled');
+        if (v === null || v === undefined || v === '') return false;
+        return v === '1' || v === 'true';
+      } catch(e){ return false; }
+    }
+    function setAdminPaymentPollingEnabled(on){
+      try { localStorage.setItem('adminPaymentPollingEnabled', on ? '1' : '0'); } catch(e){}
+    }
+    function toggleAdminPaymentPolling(){
+      var next = !isAdminPaymentPollingEnabled();
+      setAdminPaymentPollingEnabled(next);
+      try { renderNotifStaffGrid(); } catch(e){}
+      if (next) {
+        _lastPayReqCount = -1; // reset baseline so first result does not false-alert
+        try { pollPaymentRequests(); } catch(e){}
+      }
+    }
+    function disableAdminPushDeviceByIndex(idx){
+      var ep = (_adminDeviceEndpoints && _adminDeviceEndpoints[idx]) || '';
+      disableAdminPushDevice(ep);
+    }
+    function disableAdminPushDevice(endpoint){
+      if (!endpoint) return;
+      if (!confirm('Disable this admin device?\n\nIt will stop receiving background push until Enable Push is used again on that device.')) return;
+      apiPost({ action: 'deletePushSubscriptionByEndpoint', endpoint: endpoint }).then(function(res){
+        if (res && res.ok === false) {
+          alert('Could not disable device. Try again.');
+          return;
+        }
+        // If this browser's subscription was removed, clear local ready flag
+        if (_adminCurrentEndpoint && endpoint === _adminCurrentEndpoint) {
+          _adminPushReady = false;
+          _adminCurrentEndpoint = '';
+          try {
+            if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+              navigator.serviceWorker.ready.then(function(reg){
+                return reg.pushManager.getSubscription();
+              }).then(function(sub){
+                if (sub) return sub.unsubscribe();
+              }).catch(function(){});
+            }
+          } catch(e){}
+          try { updateAdminPushUI(); } catch(e){}
+        }
+        // Refresh device list
+        try {
+          if (typeof loadNotifManage === 'function') loadNotifManage();
+          else if (typeof loadNotifStatus === 'function') loadNotifStatus();
+          else {
+            api({ action: 'getPushSubscriptions' }).then(function(rows){
+              _notifPushRows = Array.isArray(rows) ? rows : [];
+              renderNotifStaffGrid();
+            });
+          }
+        } catch(e){}
+      });
+    }
+    // Keep track of this browser's push endpoint (for "this device" label)
+    (function _trackAdminEndpoint(){
+      try {
+        if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+        navigator.serviceWorker.ready.then(function(reg){
+          return reg.pushManager.getSubscription();
+        }).then(function(sub){
+          if (sub && sub.endpoint) _adminCurrentEndpoint = sub.endpoint;
+        }).catch(function(){});
+      } catch(e){}
+    })();
+
+    // Load Open Orders status early so polling gate is correct even before Notify tab is opened
+    if (typeof _staffRole !== 'undefined' && _staffRole === 'admin') {
+      try { loadOrderWindow(); } catch(e){}
+    }
+
     function pollNewOrders(){
-      // Only admin role gets new-order phone/browser alerts (per requirement)
+      // Gate 1: admin role only
       if(_staffRole !== 'admin') return;
-      api({ action:'getCustomerOrders', status:'pending' }).then(function(data){
+      // Gate 2: this device has live polling enabled (Notify toggle)
+      if(!isAdminOrderPollingEnabled()) return;
+      // Gate 3: Open Orders button must be ON (customers can place orders)
+      if(!_ordersOpen) return;
+
+      // Light poll: only columns needed for count + alert detail
+      api({
+        action: 'getCustomerOrders',
+        status: 'pending',
+        select: 'id,shop_name,status,created_at,delivery_date',
+        limit: 100
+      }).then(function(data){
         var list = Array.isArray(data) ? data : [];
         var count = list.length;
 
@@ -10517,16 +10790,20 @@ onStaffRoleChange();
       }).catch(function(){});
     }
 
-    /** Same admin push devices — alert when payment request count increases (app open). */
-    var _lastPayReqCount = -1;
+    /** Payment-request alerts — only when admin enables Payment poll in Notify. */
     function pollPaymentRequests(){
       if(_staffRole !== 'admin') return;
-      api({ action:'getCustomerOrders', limit: 400 }).then(function(data){
-        var list = (Array.isArray(data) ? data : []).filter(function(o){
-          if(!o || !o.customer_claimed_paid) return false;
-          var ps = String(o.payment_status || '').toLowerCase();
-          return ps !== 'paid' && ps !== 'void';
-        });
+      if(!isAdminPaymentPollingEnabled()) return;
+
+      // Filter in DB (not client): claimed + not paid/void; small payload
+      api({
+        action: 'getCustomerOrders',
+        customer_claimed_paid: true,
+        payment_status_not_in: ['paid', 'void'],
+        select: 'id,shop_name,customer_claimed_paid,payment_status,created_at',
+        limit: 50
+      }).then(function(data){
+        var list = Array.isArray(data) ? data : [];
         var count = list.length;
         if(_lastPayReqCount >= 0 && count > _lastPayReqCount){
           var newest = list[0] || {};
@@ -10543,21 +10820,29 @@ onStaffRoleChange();
       }).catch(function(){});
     }
 
-    // Faster while tab visible; still runs in background tab on many Android browsers
+    // Every 20s while admin page is visible — each poll type has its own enable flag
     setInterval(function(){
-      if(document.visibilityState === 'hidden') return; // save battery when fully backgrounded
-      pollNewOrders();
-      pollPaymentRequests();
+      if(document.visibilityState === 'hidden') return;
+      if(_staffRole !== 'admin') return;
+      if(isAdminOrderPollingEnabled()) pollNewOrders();       // also needs Open Orders ON
+      if(isAdminPaymentPollingEnabled()) pollPaymentRequests();
     }, 20000);
-    // Also one check when user returns to tab
     document.addEventListener('visibilitychange', function(){
-      if(document.visibilityState === 'visible'){
-        pollNewOrders();
-        pollPaymentRequests();
-      }
+      if(document.visibilityState !== 'visible') return;
+      if(_staffRole !== 'admin') return;
+      if(isAdminOrderPollingEnabled()) pollNewOrders();
+      if(isAdminPaymentPollingEnabled()) pollPaymentRequests();
     });
-    pollNewOrders();
-    pollPaymentRequests();
+    // Initial order poll after short delay (gives loadOrderWindow time to set _ordersOpen)
+    setTimeout(function(){
+      if(_staffRole !== 'admin') return;
+      if(isAdminOrderPollingEnabled()) {
+        try { pollNewOrders(); } catch(e){}
+      }
+      if(isAdminPaymentPollingEnabled()) {
+        try { pollPaymentRequests(); } catch(e){}
+      }
+    }, 2500);
 
 
     /* ══════════════════════════════════════════════

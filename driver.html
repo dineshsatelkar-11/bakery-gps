@@ -615,9 +615,8 @@
       }
     }
 
-    // Load on start, then poll every 60 seconds
+    // Notifications: no auto-polling — load once on open, again when bell panel opens / pull-refresh
     loadNotifications();
-    setInterval(loadNotifications, 60000);
     // Close panel when tapping outside
     document.addEventListener('click', function(e) {
       if (!_notifOpen) return;
@@ -1940,6 +1939,7 @@ async function deleteDropPhoto(){
         var date = (typeof selectedDate !== 'undefined' && selectedDate) ? selectedDate : (typeof todayStr === 'function' ? todayStr() : '');
         if(typeof loadOrdersForDate === 'function' && date) await loadOrdersForDate(date);
         else if(typeof init === 'function') await init();
+        if(typeof loadNotifications === 'function') loadNotifications();
         if(bubble) bubble.textContent = '✓ Updated';
       } catch(e){
         if(bubble) bubble.textContent = 'Failed — try again';
