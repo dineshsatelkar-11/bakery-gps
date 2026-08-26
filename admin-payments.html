@@ -1118,7 +1118,7 @@
       }
     }
     window.payDeskPushOrderToZoho = payDeskPushOrderToZoho;
-    
+
     /** Zoho already converted this challan → invoice (UI or API status). */
     function _challanAlreadyInvoiced(o) {
       if (!o) return false;
@@ -2789,8 +2789,8 @@
               (note ? '<div style="margin-top:4px;font-size:12px;color:#546e7a">Note: '+esc(note)+'</div>' : '')+
               '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center">'+
                 (hasAtt
-                  ? '<button type="button" class="btn-sm" style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;padding:8px 12px;font-weight:800" onclick="adminViewPaymentProof(\''+attUrl+'\')">View attachment</button>'
-                  : '<span style="font-size:11px;color:#8a7a6a">No attachment</span>')+
+                  ? '<button type="button" class="btn-sm" style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;padding:8px 12px;font-weight:800" onclick="adminViewPaymentProof(\''+attUrl+'\')">📷 Screenshot attached — view</button>'
+                  : '<span style="display:inline-block;padding:6px 10px;border-radius:8px;background:#fff8e1;color:#7a4800;border:1px solid #ffe082;font-size:11px;font-weight:800">⚠ No screenshot</span>')+
                 '<button type="button" class="btn-sm" style="background:#2d7a4f;color:#fff;border:none;padding:8px 14px;font-weight:800" onclick="payDeskConfirmReceived(\''+String(o.id)+'\')">Approve</button>'+
                 '<button type="button" class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0;padding:8px 14px;font-weight:800" onclick="payDeskRejectRequest(\''+String(o.id)+'\')">Reject</button>'+
               '</div></div>';
@@ -2900,7 +2900,7 @@
       if (typeof openPayInvDetail === 'function') openPayInvDetail(id);
       else if (typeof challanDeskEdit === 'function') challanDeskEdit(id);
     }
-    
+
     function payDeskUpdateSelCount() {
       var n = document.querySelectorAll('.pay-desk-cb:checked').length;
       var el = document.getElementById('pay-desk-selcount');
@@ -3029,7 +3029,7 @@
       next();
     }
 
-    
+
     /** Resolve Zoho Books contact id for an order */
     function payDeskZohoContactId(o) {
       var shop = null;
@@ -3524,12 +3524,37 @@ function payDeskMarkPaid(id) {
       if (!related.length) related = [o];
       var totalAmt = related.reduce(function(s,r){ return s + _payDue(r); }, 0);
       var needZoho = related.filter(function(r){ return r.zoho_invoice_id && !_payIsChallan(r); });
+      function _hasProof(r){
+        if (!r) return false;
+        if (r.payment_proof_file_id && String(r.payment_proof_file_id).trim()) return true;
+        if (r.payment_proof_url && String(r.payment_proof_url).trim().length > 8) return true;
+        try {
+          var pr = typeof adminProofUrls === 'function' ? adminProofUrls(r) : null;
+          if (pr && (pr.file_id || (pr.view && pr.view.length > 8) || (pr.thumb && pr.thumb.length > 8))) return true;
+        } catch(e){}
+        return false;
+      }
+      var withShot = related.filter(_hasProof);
+      var withoutShot = related.filter(function(r){ return !_hasProof(r); });
       var msg = 'Confirm ₹'+totalAmt.toLocaleString('en-IN',{maximumFractionDigits:2})+' received for '+(o.shop_name||'')+'?\n\n'+
         related.length+' invoice(s).\n';
+      if (withShot.length) {
+        msg += '\n📷 Screenshot attached: YES ('+withShot.length+'/'+related.length+')';
+        if (withShot.length === 1 && related.length === 1) msg += ' — review before approve if needed';
+      }
+      if (withoutShot.length) {
+        msg += '\n⚠ Screenshot attached: NO for '+withoutShot.length+' invoice(s)';
+        withoutShot.slice(0,3).forEach(function(r){
+          msg += '\n   · '+(r.zoho_invoice_number || r.shop_name || r.id);
+        });
+      }
       if (needZoho.length) {
-        msg += '\n• Zoho will be marked PAID for '+needZoho.length+' invoice(s) (mandatory)\n• Then app status → paid\n• Customer notified';
+        msg += '\n\n• Zoho will be marked PAID for '+needZoho.length+' invoice(s) (mandatory)\n• Then app status → paid\n• Customer notified';
       } else {
-        msg += '\n• No Zoho invoice id — app only will be marked paid';
+        msg += '\n\n• No Zoho invoice id — app only will be marked paid';
+      }
+      if (withoutShot.length && withShot.length === 0) {
+        msg += '\n\nContinue without screenshot?';
       }
       if (!confirm(msg)) return;
       if (!_zohoEnabled && needZoho.length) {
@@ -3546,7 +3571,7 @@ function payDeskMarkPaid(id) {
           _payDeskMsg('Failed (Zoho or app): '+(e && e.message ? e.message : e), false);
         });
     }
-    
+
     function payDeskRejectRequest(id) {
       var o = _payDeskRows.find(function(r){ return String(r.id) === String(id); });
       if (!o) return;
@@ -3626,7 +3651,7 @@ function payDeskMarkPaid(id) {
       next();
     }
 
-    
+
     function payDeskSaveUpi() {
       if (!window._isSuperAdmin && window._staffRole !== 'super_admin') {
         _payDeskMsg('Only super admin can change bank / UPI settings', false);
