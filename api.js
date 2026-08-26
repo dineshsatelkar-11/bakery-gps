@@ -526,6 +526,8 @@ function normalizeProducts(list) {
           zoho_contact_id: b.zoho_contact_id || null,
           shipping_charge: b.shipping_charge !== undefined && b.shipping_charge !== '' && b.shipping_charge != null
             ? parseFloat(b.shipping_charge) : null,
+          payment_terms_days: b.payment_terms_days !== undefined && b.payment_terms_days !== '' && b.payment_terms_days != null
+            ? parseInt(b.payment_terms_days, 10) : null,
           assigned_driver: b.assigned_driver || '', mobile: b.mobile || '', email: b.email || '', flag: b.flag || '',
           lat: b.lat !== '' && b.lat != null ? parseFloat(b.lat) : null,
           lng: b.lng !== '' && b.lng != null ? parseFloat(b.lng) : null,
@@ -553,6 +555,9 @@ function normalizeProducts(list) {
           zoho_contact_id: b.zoho_contact_id !== undefined ? (b.zoho_contact_id || null) : undefined,
           shipping_charge: b.shipping_charge !== undefined
             ? (b.shipping_charge === '' || b.shipping_charge == null ? null : parseFloat(b.shipping_charge))
+            : undefined,
+          payment_terms_days: b.payment_terms_days !== undefined
+            ? (b.payment_terms_days === '' || b.payment_terms_days == null ? null : parseInt(b.payment_terms_days, 10))
             : undefined,
           drop_photo_url:        b.drop_photo_url,
               drop_photo_by:         b.drop_photo_by,
@@ -1050,14 +1055,32 @@ function normalizeProducts(list) {
                if (dt === 'deliverychallan' || dt === 'challan' || dt === 'dc' || dt === 'delivery_challans')
                  dt = 'delivery_challan';
                if (dt !== 'delivery_challan' && dt !== 'invoice') dt = 'invoice';
-               return sbPost('customer_orders', {
+               var st = String(b.status || 'pending').toLowerCase().trim();
+               if (st !== 'pending' && st !== 'approved' && st !== 'no_order') st = 'pending';
+               var rowBody = {
                  shop_id: b.shop_id, shop_name: b.shop_name,
                  delivery_date: b.delivery_date,
                  items: b.items, qty: b.qty, item_ids: b.item_ids || '',
                  note: b.note || '',
-                 status: 'pending',
+                 status: st,
                  zoho_doc_type: dt
-               });
+               };
+               // return=representation so admin Link-Zoho can read new id
+               return fetch(BASE + '/customer_orders', {
+                 method: 'POST',
+                 headers: hdrs({ 'Prefer': 'return=representation' }),
+                 body: JSON.stringify(rowBody)
+               }).then(function(r) {
+                 if (!r.ok) {
+                   return r.json().then(function(e) {
+                     return { ok: false, error: (e && (e.message || e.error)) || 'Insert failed' };
+                   }).catch(function(){ return { ok: false, error: 'Insert failed' }; });
+                 }
+                 return r.json().then(function(rows) {
+                   var row = Array.isArray(rows) ? rows[0] : rows;
+                   return { ok: true, id: row && row.id, row: row };
+                 }).catch(function(){ return { ok: true }; });
+               }).catch(function(){ return { ok: false, error: 'Network error' }; });
              });
 
       // Customer marks "no order" for a delivery date (explicit skip)

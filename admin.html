@@ -339,13 +339,13 @@
 
     <!-- Today delivery stats — only when no tomorrow orders placed yet -->
     <div id="dash-deliv-block">
-      <div class="dash-deliv-lbl" style="font-size:10px;font-weight:800;color:#64748b;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Deliveries · Today</div>
-      <div class="stats-grid" id="dash-stats" style="margin-bottom:14px"></div>
-      <div id="dash-alerts" style="margin-bottom:10px"></div>
-      <div id="dash-tp-row" style="display:none;margin-bottom:14px">
-          <div style="font-size:10px;font-weight:800;color:#7a4800;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">🍵 Tea Post · Today</div>
-          <div class="stats-grid" id="dash-tp-stats"></div>
-      </div>
+        <div class="dash-deliv-lbl" style="font-size:10px;font-weight:800;color:#64748b;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Deliveries · Today</div>
+        <div class="stats-grid" id="dash-stats" style="margin-bottom:14px"></div>
+        <div id="dash-alerts" style="margin-bottom:10px"></div>
+        <div id="dash-tp-row" style="display:none;margin-bottom:14px">
+            <div style="font-size:10px;font-weight:800;color:#7a4800;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">🍵 Tea Post · Today</div>
+            <div class="stats-grid" id="dash-tp-stats"></div>
+        </div>
     </div>
 
     <!-- Tomorrow customer order pipeline — counts only -->
@@ -1229,6 +1229,8 @@
             <button type="button" id="paySeg-open" onclick="showTab('pay-open')">💸 Unpaid</button>
             <button type="button" id="paySeg-requests" onclick="showTab('pay-requests')">📨 Requests</button>
             <button type="button" id="paySeg-paid" onclick="showTab('pay-paid')">✅ Paid</button>
+            <button type="button" id="paySeg-link" onclick="showTab('pay-link')">🔗 Link</button>
+            <button type="button" id="paySeg-zoho-list" onclick="showTab('pay-zoho-list')" style="border-style:dashed">🔎 Zoho list</button>
         </div>
     </div>
     <iframe id="payEmbedFrame" title="Payments" src="admin-payments.html?embed=1&tab=pay-challan"
@@ -1237,6 +1239,8 @@
 <div class="page" id="pg-pay-open"></div>
 <div class="page" id="pg-pay-requests"></div>
 <div class="page" id="pg-pay-paid"></div>
+<div class="page" id="pg-pay-link"></div>
+<div class="page" id="pg-pay-zoho-list"></div>
 
 
 
@@ -1317,7 +1321,7 @@
     <div class="card" id="zoho-checklist-card" style="margin-bottom:12px">
         <div style="font-size:13px;font-weight:900;color:#1e293b;margin-bottom:6px">📄 Invoice / Challan data checklist</div>
         <div style="font-size:11px;font-family:monospace;color:#1e293b;line-height:1.7;background:#f8fafc;border-radius:10px;padding:10px 12px">
-            <div><b>Sent now:</b> customer_id, date, reference, line <b>name + qty + rate</b>, item_id (if Zoho id), <b>shipping_charge</b>, notes, invoice vs delivery_challan</div>
+            <div><b>Sent now:</b> customer_id, date, reference, line <b>name + qty + rate</b>, item_id (if Zoho id), <b>shipping_charge</b>, <b>payment_terms / due_date</b>, notes, invoice vs delivery_challan</div>
             <div style="margin-top:6px;color:#2d7a4f"><b>Tax:</b> set <b>Zoho Tax ID</b> on each product (Products → Edit). Blank = no tax on that line.</div>
             <div style="margin-top:6px;color:#c8382a"><b>Still from Zoho templates:</b></div>
             <div>• Place of supply / GSTIN / billing address block</div>
@@ -1736,6 +1740,9 @@
         </select>
         <div class="lbl">Shipping charge (₹) — this customer</div>
         <input type="number" id="cm-shipping" min="0" step="1" placeholder="e.g. 20 (0 = no shipping)" style="margin-bottom:8px">
+        <div class="lbl">Payment terms (days) — Zoho Net N</div>
+        <input type="number" id="cm-payment-days" min="0" step="1" placeholder="e.g. 0 = Due on Receipt, 15 = Net 15" style="margin-bottom:8px">
+        <div style="font-size:10px;color:#64748b;margin:-4px 0 8px;line-height:1.35">Invoice due date = document date + these days. Synced from Zoho contact when you pull customers.</div>
         <div class="lbl">Driver Note</div><input type="text" id="cm-flag" placeholder="e.g. back gate, opens 7am, ring twice">
         <div class="lbl">Drop Point Photo</div><div id="cm-drop-photo-preview" style="margin-bottom:8px"></div>
         <div class="lbl">GPS Latitude</div><input type="text" id="cm-lat" placeholder="18.560123">
@@ -2081,7 +2088,7 @@
     function initTabVisibility(){
       var allTabKeys = ['dashboard','orders','approve','queue','summary','delivery','routes','customers',
 'cust-orders','manual-order','products','groups','ingredients','recipes','production','drivers','gps',
-'users','notify','zoho','cleanup','audit','attendance','my-brand','pay-challan','pay-open','pay-requests','pay-paid'];
+'users','notify','zoho','cleanup','audit','attendance','my-brand','pay-challan','pay-open','pay-requests','pay-paid','pay-link','pay-zoho-list'];
 allTabKeys.forEach(function(t){
         var show;
         if(t === 'users' || t === 'cleanup' || t === 'audit' || t === 'attendance' || t === 'drivers') {
@@ -2089,7 +2096,7 @@ allTabKeys.forEach(function(t){
         } else if(t === 'zoho') {
           // Zoho ops page for admin + super_admin; settings UI gated separately
           show = (_staffRole === 'super_admin' || _staffRole === 'admin');
-        } else if(t === 'notify' || t === 'manual-order' || t === 'pay-challan' || t === 'pay-open' || t === 'pay-requests' || t === 'pay-paid') {
+        } else if(t === 'notify' || t === 'manual-order' || t === 'pay-challan' || t === 'pay-open' || t === 'pay-requests' || t === 'pay-paid' || t === 'pay-link' || t === 'pay-zoho-list') {
           show = (_staffRole === 'super_admin' || _staffRole === 'admin');
         } else if(t === 'dashboard') {
           show = (_staffRole === 'super_admin' || _staffRole === 'admin' || _staffRole === 'assistant');
@@ -2660,8 +2667,10 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
                   {key:'audit',       label:'🔍 Audit'}],
       payments:  [{key:'pay-challan',  label:'📋 Challans'},
                   {key:'pay-open',     label:'💸 Unpaid'},
-                  {key:'pay-requests', label:'📨 Pay requests'},
-                  {key:'pay-paid',     label:'✅ Paid'}],
+                  {key:'pay-requests', label:'📨 Requests'},
+                  {key:'pay-paid',     label:'✅ Paid'},
+                  {key:'pay-link',     label:'🔗 Link Zoho'},
+                  {key:'pay-zoho-list',label:'🔎 Zoho list'}],
       customers: [{key:'customers',   label:'🏪 Customers'}],
       /* notify lives under Orders group */
       notify:    [],
@@ -2705,11 +2714,11 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
         localStorage.setItem('adminLastTab', t);
         localStorage.setItem('adminLastTabRole', _staffRole || '');
       } catch(e){}
-      ['dashboard','orders','approve','queue','summary','delivery','routes','customers','cust-orders','manual-order','products','groups','ingredients','recipes','production','drivers','gps','users','notify','zoho','cleanup','audit', 'attendance', 'my-brand','pay-challan','pay-open','pay-requests','pay-paid'].forEach(function(x){
+      ['dashboard','orders','approve','queue','summary','delivery','routes','customers','cust-orders','manual-order','products','groups','ingredients','recipes','production','drivers','gps','users','notify','zoho','cleanup','audit', 'attendance', 'my-brand','pay-challan','pay-open','pay-requests','pay-paid','pay-link','pay-zoho-list'].forEach(function(x){
         var pg=document.getElementById('pg-'+x); if(!pg) return;
         var on = (x===t);
         // All payment subtabs share the embed frame on pg-pay-challan
-        if (t==='pay-challan'||t==='pay-open'||t==='pay-requests'||t==='pay-paid') {
+        if (t==='pay-challan'||t==='pay-open'||t==='pay-requests'||t==='pay-paid'||t==='pay-link'||t==='pay-zoho-list') {
           on = (x === 'pay-challan');
         }
         pg.classList.toggle('on', on);
@@ -2753,7 +2762,7 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
       }
       // Highlight payment segment buttons (mobile in-page header)
       try {
-        var segMap = {'pay-challan':'paySeg-challan','pay-open':'paySeg-open','pay-requests':'paySeg-requests','pay-paid':'paySeg-paid'};
+        var segMap = {'pay-challan':'paySeg-challan','pay-open':'paySeg-open','pay-requests':'paySeg-requests','pay-paid':'paySeg-paid','pay-link':'paySeg-link','pay-zoho-list':'paySeg-zoho-list'};
         Object.keys(segMap).forEach(function(k){
           var b = document.getElementById(segMap[k]);
           if (b) b.classList.toggle('on', k === t);
@@ -2834,7 +2843,7 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
       if(t==='attendance')   initAttendanceTab();
       if(t==='my-brand')   initMyBrandTab();
       if(t==='pay-challan') loadChallanDesk();
-      if(t==='pay-challan' || t==='pay-open' || t==='pay-requests' || t==='pay-paid'){ ensurePayEmbed(t); }
+      if(t==='pay-challan' || t==='pay-open' || t==='pay-requests' || t==='pay-paid' || t==='pay-link' || t==='pay-zoho-list'){ ensurePayEmbed(t); }
     }
 
     /* ── DASHBOARD ── */
@@ -5216,7 +5225,7 @@ function refreshBrandDatalist(){
     function openAddCustomer(){
       document.getElementById('custModalTitle').textContent='Add Customer';
       document.getElementById('custModalSub').textContent='';
-      ['cm-id','cm-cust-id','cm-name','cm-address','cm-area','cm-mobile','cm-email','cm-flag', 'cm-brand','cm-lat','cm-lng','cm-login-user','cm-login-pass','cm-shipping'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+      ['cm-id','cm-cust-id','cm-name','cm-address','cm-area','cm-mobile','cm-email','cm-flag', 'cm-brand','cm-lat','cm-lng','cm-login-user','cm-login-pass','cm-shipping','cm-payment-days'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
       document.getElementById('cm-driver').value='';
       renderCmGroupList([]);
       document.getElementById('cm-msg').style.display='none';
@@ -5243,6 +5252,8 @@ function refreshBrandDatalist(){
       document.getElementById('cm-doc-type').value = c.zoho_doc_type || 'invoice';
       var shipEl=document.getElementById('cm-shipping');
       if(shipEl) shipEl.value = (c.shipping_charge!=null && c.shipping_charge!=='') ? c.shipping_charge : '';
+      var daysEl=document.getElementById('cm-payment-days');
+      if(daysEl) daysEl.value = (c.payment_terms_days!=null && c.payment_terms_days!=='') ? c.payment_terms_days : '';
       document.getElementById('cm-login-pass').value=''; // never pre-fill password
       var dpEl = document.getElementById('cm-drop-photo-preview');
 dpEl.innerHTML = c.drop_photo_url
@@ -5325,6 +5336,7 @@ function openCustDetailModal(c){
   html += '<div><b>📋 Groups:</b> '+(groupNames.length?esc(groupNames.join(', ')):'<span style="color:#c8382a">None</span>')+'</div>';
   html += '<div><b>📄 Doc Type:</b> '+(c.zoho_doc_type==='delivery_challan'?'📋 Delivery Challan':'🧾 Invoice')+'</div>';
   html += '<div><b>🚚 Shipping:</b> '+(c.shipping_charge!=null && c.shipping_charge!=='' ? ('₹'+c.shipping_charge) : '— (use default)')+'</div>';
+  html += '<div><b>📅 Payment terms:</b> '+(c.payment_terms_days!=null && c.payment_terms_days!=='' ? (c.payment_terms_days+' days'+(Number(c.payment_terms_days)===0?' (Due on Receipt)':'')) : '— (default 0)')+'</div>';
   html += '<div><b>🏷 Note:</b> '+esc(c.flag||'—')+'</div>';
   html += '<div><b>🌐 GPS:</b> '+(c.lat?(esc(c.lat)+', '+esc(c.lng)+' <a href="https://www.google.com/maps?q='+c.lat+','+c.lng+'" target="_blank" style="color:#1565c0">map ↗</a>'):'<span style="color:#c8382a">Not saved</span>')+'</div>';
   html += '<div><b>🔐 Login Username:</b> '+esc(c.login_username||'—')+'</div>';
@@ -5684,6 +5696,7 @@ function shareCdHistoryReport(){
         assigned_driver:assignedDriver,
         zoho_doc_type: document.getElementById('cm-doc-type').value,
         shipping_charge: (function(){ var v=document.getElementById('cm-shipping'); var n=v?parseFloat(v.value):NaN; return isNaN(n)?'':n; })(),
+        payment_terms_days: (function(){ var v=document.getElementById('cm-payment-days'); var n=v?parseInt(v.value,10):NaN; return isNaN(n)?'':n; })(),
         brand:document.getElementById('cm-brand').value.trim(),
         mobile:document.getElementById('cm-mobile').value.trim(),email:document.getElementById('cm-email').value.trim(),flag:document.getElementById('cm-flag').value.trim(),
         lat:document.getElementById('cm-lat').value,lng:document.getElementById('cm-lng').value,
@@ -7563,7 +7576,7 @@ apiPost({
 
       // Fields that only matter for Zoho
       var zohoFieldIds = [
-        'cm-doc-type','cm-shipping','apm-doc-type','apm-shipping','pm-tax-id','com-doc-type'
+        'cm-doc-type','cm-shipping','cm-payment-days','apm-doc-type','apm-shipping','pm-tax-id','com-doc-type'
       ];
       zohoFieldIds.forEach(function(id){
         var el = document.getElementById(id);
@@ -7951,15 +7964,22 @@ apiPost({
               || (zname && (c.name||'').trim().toLowerCase() === zname.toLowerCase());
           });
           var changes = [];
-          if(!local) return { kind:'new', zoho:z, zid:zid, zname:zname, zmobile:zmobile, zemail:zemail, local:null, changes:['New customer'] };
+          if(!local) return { kind:'new', zoho:z, zid:zid, zname:zname, zmobile:zmobile, zemail:zemail, payment_terms_days: zohoParsePaymentTermsDays(z), local:null, changes:['New customer'] };
           if(zname && zname !== (local.name||'')) changes.push('Name: '+(local.name||'')+' → '+zname);
           if(zmobile && zmobile !== (local.mobile||'')) changes.push('Mobile: '+(local.mobile||'—')+' → '+zmobile);
           if(zemail && zemail !== (local.email||'')) changes.push('Email: '+(local.email||'—')+' → '+zemail);
           var zaddr = (z.billing_address && (z.billing_address.address || z.billing_address.street)) || '';
           if(zaddr && zaddr !== (local.address||'')) changes.push('Address changed');
+          var zDays = zohoParsePaymentTermsDays(z);
+          var locDays = zohoParsePaymentTermsDays(local.payment_terms_days);
+          if (zDays != null && zDays !== locDays) {
+            changes.push('Payment terms: '+(locDays!=null?locDays+' days':'—')+' → '+zDays+' days');
+          }
           return {
             kind: changes.length ? 'changed' : 'same',
-            zoho:z, zid:zid, zname:zname, zmobile:zmobile, zemail:zemail, local:local, changes:changes
+            zoho:z, zid:zid, zname:zname, zmobile:zmobile, zemail:zemail,
+            payment_terms_days: zDays,
+            local:local, changes:changes
           };
         });
         var nNew = _zohoPullCustomers.filter(function(r){ return r.kind==='new'; }).length;
@@ -8027,6 +8047,7 @@ apiPost({
             assigned_driver: '',
             zoho_contact_id: row.zid,
             zoho_doc_type: 'invoice',
+            payment_terms_days: (row.payment_terms_days != null ? row.payment_terms_days : zohoParsePaymentTermsDays(z)),
             last_updated_by: 'Zoho Pull',
             last_updated_at: new Date().toLocaleString('en-IN')
           }).then(function(){
@@ -8052,6 +8073,7 @@ apiPost({
           assigned_driver: loc.assigned_driver || '',
           zoho_contact_id: row.zid || loc.zoho_contact_id || '',
           zoho_doc_type: loc.zoho_doc_type || 'invoice',
+          payment_terms_days: (row.payment_terms_days != null ? row.payment_terms_days : (zohoParsePaymentTermsDays(z) != null ? zohoParsePaymentTermsDays(z) : loc.payment_terms_days)),
           flag: loc.flag || '',
           lat: loc.lat || '', lng: loc.lng || '',
           last_updated_by: 'Zoho Pull',
@@ -8306,7 +8328,7 @@ apiPost({
       var frame = document.getElementById('payEmbedFrame');
       if(!host) return;
       // Always show the challan page slot which holds the iframe (all pay subtabs share it)
-      ['pg-pay-challan','pg-pay-open','pg-pay-requests','pg-pay-paid'].forEach(function(id){
+      ['pg-pay-challan','pg-pay-open','pg-pay-requests','pg-pay-paid','pg-pay-link','pg-pay-zoho-list'].forEach(function(id){
         var el = document.getElementById(id);
         if(el) el.classList.toggle('on', id === 'pg-pay-challan');
       });
@@ -12712,6 +12734,65 @@ function applyZohoShipping(payload, shipping, isDeliveryChallan){
 }
 
 /** Resolve shipping ₹: order → shop master → global default (never blank→0). */
+
+/** Parse Zoho contact payment_terms → integer days (0 = due on receipt). */
+function zohoParsePaymentTermsDays(src) {
+  if (src == null || src === '') return null;
+  if (typeof src === 'object') {
+    var n = src.payment_terms != null ? src.payment_terms : src.payment_terms_days;
+    if (n == null || n === '') {
+      var lab = String(src.payment_terms_label || src.payment_terms_label_formatted || '');
+      var m = lab.match(/(\d+)/);
+      if (m) return parseInt(m[1], 10);
+      if (/due\s*on\s*receipt|immediate|net\s*0/i.test(lab)) return 0;
+      return null;
+    }
+    src = n;
+  }
+  var d = parseInt(src, 10);
+  return isNaN(d) || d < 0 ? null : d;
+}
+
+/** YYYY-MM-DD + N days → YYYY-MM-DD (local calendar). */
+function zohoAddDaysToDate(dateStr, days) {
+  var s = String(dateStr || '').trim().slice(0, 10);
+  var d = s ? new Date(s + 'T12:00:00') : new Date();
+  if (isNaN(d.getTime())) d = new Date();
+  var n = parseInt(days, 10);
+  if (isNaN(n) || n < 0) n = 0;
+  d.setDate(d.getDate() + n);
+  var y = d.getFullYear();
+  var m = String(d.getMonth() + 1).padStart(2, '0');
+  var day = String(d.getDate()).padStart(2, '0');
+  return y + '-' + m + '-' + day;
+}
+
+/**
+ * Apply payment terms (days) on Zoho invoice/challan payload.
+ * - payment_terms always sent when we know days (invoice + challan)
+ * - due_date only on invoices (challan API has no due date)
+ */
+function applyZohoPaymentTerms(payload, shop, order, isDeliveryChallan) {
+  if (!payload) return null;
+  var days = null;
+  if (order && order.payment_terms_days != null && order.payment_terms_days !== '')
+    days = zohoParsePaymentTermsDays(order.payment_terms_days);
+  if (days == null && shop && shop.payment_terms_days != null && shop.payment_terms_days !== '')
+    days = zohoParsePaymentTermsDays(shop.payment_terms_days);
+  if (days == null && shop)
+    days = zohoParsePaymentTermsDays(shop); // object may carry payment_terms from Zoho
+  if (days == null) days = 0; // default Due on Receipt
+  payload.payment_terms = days;
+  if (days === 0) payload.payment_terms_label = 'Due on Receipt';
+  else payload.payment_terms_label = 'Net ' + days;
+  var baseDate = (order && (order.delivery_date || order.date)) || payload.date || (typeof todayStr === 'function' ? todayStr() : '');
+  if (!isDeliveryChallan) {
+    payload.due_date = zohoAddDaysToDate(baseDate, days);
+  }
+  console.log('[zoho] payment_terms days=', days, 'due_date=', payload.due_date || '(n/a for DC)');
+  return days;
+}
+
 function resolveShippingAmt(order, shop) {
   if (!shop && order) shop = findShopForZoho(order);
   var shipAmt = order && order.shipping_charge;
@@ -12877,6 +12958,96 @@ function closeZohoInvPreview(sent){
   if(!sent) loadCustOrders();
 }
 
+/**
+ * Find existing Zoho invoice/challan by our reference IBCAB-{orderId}.
+ * Prevents duplicate CREATE when first send failed in UI but Zoho already created the doc.
+ */
+function zohoFindDocByOrderReference(order) {
+  if (!order || !order.id) return Promise.resolve(null);
+  if (typeof zohoEdge !== 'function') return Promise.resolve(null);
+  var ref = 'IBCAB-' + String(order.id);
+  var shop = (typeof findShopForZoho === 'function') ? findShopForZoho(order) : null;
+  var docType = (typeof resolveZohoDocType === 'function') ? resolveZohoDocType(order, shop) : 'invoice';
+  var isDC = String(docType) === 'delivery_challan';
+  var contactId = (shop && (shop.zoho_contact_id || shop.customer_id || shop.contact_id)) || '';
+
+  function matchInList(list) {
+    if (!Array.isArray(list)) return null;
+    for (var i = 0; i < list.length; i++) {
+      var inv = list[i] || {};
+      var r = String(inv.reference_number || inv.reference || '').trim();
+      if (r === ref || r.indexOf(ref) >= 0) return inv;
+    }
+    return null;
+  }
+  function toResult(inv, forceDC) {
+    if (!inv) return null;
+    var id = String(inv.invoice_id || inv.deliverychallan_id || inv.deliverychallans_id || '').trim();
+    if (!id) return null;
+    return {
+      invoice_id: id,
+      invoice_number: String(inv.invoice_number || inv.deliverychallan_number || inv.deliverychallans_number || ''),
+      total: inv.total != null ? inv.total : null,
+      balance: inv.balance != null ? inv.balance : (inv.balance_due != null ? inv.balance_due : null),
+      doc_type: forceDC ? 'delivery_challan' : (inv.deliverychallan_id || inv.deliverychallans_id ? 'delivery_challan' : 'invoice'),
+      _linked_existing: true
+    };
+  }
+  function listOnce(action) {
+    var payload = { page: 1, per_page: 50, reference_number: ref };
+    if (contactId) payload.contact_id = String(contactId);
+    return zohoEdge(action, payload).then(function(res) {
+      if (res && (res.error || res.code > 0) && !res.invoices && !res.deliverychallans && !res.delivery_challans) {
+        return null;
+      }
+      var list = (res && (res.invoices || res.deliverychallans || res.delivery_challans || res.data)) || [];
+      return toResult(matchInList(list), action.indexOf('challan') >= 0);
+    }).catch(function(){ return null; });
+  }
+
+  var primary = isDC ? 'list_delivery_challans' : 'list_invoices';
+  var secondary = isDC ? 'list_invoices' : 'list_delivery_challans';
+  return listOnce(primary).then(function(found) {
+    if (found) return found;
+    return listOnce(secondary);
+  }).then(function(found) {
+    if (found) {
+      console.log('[zoho] found existing doc by reference', ref, found.invoice_id, found.invoice_number);
+    }
+    return found;
+  }).catch(function(){ return null; });
+}
+
+/** Re-fetch invoice/challan by id so number + totals match Zoho exactly. */
+function zohoRefetchCanonical(docId, docType) {
+  if (!docId || typeof zohoEdge !== 'function') return Promise.resolve(null);
+  var isDC = String(docType || '').toLowerCase().indexOf('challan') >= 0;
+  var first = isDC ? 'get_delivery_challan' : 'get_invoice';
+  var second = isDC ? 'get_invoice' : 'get_delivery_challan';
+  function once(action) {
+    return zohoEdge(action, { invoice_id: String(docId) }).then(function(data) {
+      if (!data || data.error || data.status === 'failure') return null;
+      var doc = data.invoice || data.deliverychallan || data.deliverychallans || data.delivery_challan || {};
+      var id = String(doc.invoice_id || doc.deliverychallan_id || doc.deliverychallans_id || docId).trim();
+      if (!id && !(doc.invoice_number || doc.deliverychallan_number)) return null;
+      var isChallan = !!(data.deliverychallan || data.deliverychallans || data.delivery_challan
+        || doc.deliverychallan_id || doc.challan_status);
+      return {
+        invoice_id: id || String(docId),
+        invoice_number: String(doc.invoice_number || doc.deliverychallan_number || doc.deliverychallans_number || ''),
+        total: doc.total != null ? parseFloat(doc.total) : null,
+        balance: doc.balance != null ? parseFloat(doc.balance) : null,
+        status: doc.status || doc.challan_status || '',
+        doc_type: isChallan ? 'delivery_challan' : 'invoice'
+      };
+    }).catch(function(){ return null; });
+  }
+  return once(first).then(function(r) {
+    if (r && (r.invoice_number || r.total != null)) return r;
+    return once(second);
+  });
+}
+
 function confirmZohoInvPreviewSend(){
   var order = _zohoPreviewOrder;
   if(!order){ closeZohoInvPreview(false); return; }
@@ -12888,11 +13059,49 @@ function confirmZohoInvPreviewSend(){
   if(msg){ msg.style.display='block'; msg.className='msg in'; msg.textContent='Sending to Zoho Books…'; }
 
   var existingId = order.zoho_invoice_id || '';
-  var promise = existingId
-    ? zohoUpdateInvoiceReal(existingId, order)
-    : zohoCreateInvoiceReal(order);
+  var linkMode = ''; // 'update' | 'link' | 'create'
+
+  var promise;
+  if (existingId) {
+    linkMode = 'update';
+    if (msg) msg.textContent = 'Updating existing Zoho document…';
+    promise = zohoUpdateInvoiceReal(existingId, order);
+  } else {
+    // Before CREATE: search Zoho by IBCAB-{id} so Retry does not create a second invoice
+    if (msg) msg.textContent = 'Checking Zoho for existing document…';
+    promise = zohoFindDocByOrderReference(order).then(function(found) {
+      if (found && found.invoice_id) {
+        linkMode = 'link';
+        order.zoho_invoice_id = found.invoice_id;
+        if (msg) msg.textContent = 'Found existing Zoho doc ' + (found.invoice_number || found.invoice_id) + ' — linking…';
+        // Link only (no forced update) to avoid Access Denied overwriting Zoho-side edits
+        return found;
+      }
+      linkMode = 'create';
+      if (msg) msg.textContent = 'Creating new document in Zoho…';
+      return zohoCreateInvoiceReal(order);
+    });
+  }
 
   promise.then(function(inv){
+    var id = (inv && inv.invoice_id) || existingId || '';
+    var dt = (inv && inv.doc_type) || '';
+    // Canonical re-fetch: number + totals from Zoho (source of truth)
+    if (!id) return inv;
+    if (msg) msg.textContent = 'Confirming number & amount from Zoho…';
+    return zohoRefetchCanonical(id, dt).then(function(canon) {
+      if (!canon) return inv;
+      return {
+        invoice_id: canon.invoice_id || inv.invoice_id || id,
+        invoice_number: canon.invoice_number || inv.invoice_number || '',
+        total: (canon.total != null && !isNaN(canon.total)) ? canon.total : inv.total,
+        balance: (canon.balance != null && !isNaN(canon.balance)) ? canon.balance : inv.balance,
+        doc_type: canon.doc_type || inv.doc_type || dt,
+        status: canon.status || inv.status || '',
+        _linked_existing: inv._linked_existing
+      };
+    }).catch(function(){ return inv; });
+  }).then(function(inv){
     var lines = buildZohoLineItems(order);
     var shop = findShopForZoho(order);
     var ship = null;
@@ -12901,9 +13110,12 @@ function confirmZohoInvPreviewSend(){
     else ship = (_zohoShippingCharge != null ? _zohoShippingCharge : 20);
     var gst = computeInvoiceGst(lines, ship);
     var zohoTotal = parseFloat(inv && inv.total);
+    var zohoBal = parseFloat(inv && inv.balance);
     if (isNaN(zohoTotal)) zohoTotal = null;
-    // Prefer app GST total for customer due (consistent with preview); Zoho total as fallback
-    var total = gst.grand_total > 0 ? gst.grand_total : zohoTotal;
+    if (isNaN(zohoBal)) zohoBal = null;
+    // Prefer Zoho totals (source of truth); app GST only if Zoho did not return amounts
+    var total = zohoTotal != null ? zohoTotal : (gst.grand_total > 0 ? gst.grand_total : null);
+    var balance = zohoBal != null ? zohoBal : total;
     var body = {
       action: 'updateCustomerOrderStatus',
       id: order.id,
@@ -12919,16 +13131,16 @@ function confirmZohoInvPreviewSend(){
       payment_status: 'unpaid',
       zoho_doc_type: (inv && inv.doc_type) || resolveZohoDocType(order, shop)
     };
-    if (total != null) {
-      body.invoice_total = total;
-      body.balance_due = total;
-    }
+    if (inv && inv.status) body.zoho_invoice_status = inv.status;
+    if (total != null) body.invoice_total = total;
+    if (balance != null) body.balance_due = balance;
     return apiPost(body).then(function(){ return inv; });
   }).then(function(inv){
     if(msg){
       msg.className='msg ok';
-      msg.textContent = '✅ Zoho '+(existingId?'updated':'created')+': '+(inv.invoice_number||inv.invoice_id||'OK')
-        + (inv.total ? ' · ₹'+inv.total : '');
+      var verb = linkMode === 'update' ? 'updated' : (linkMode === 'link' ? 'linked (already in Zoho)' : 'created');
+      msg.textContent = '✅ Zoho '+verb+': '+(inv.invoice_number||inv.invoice_id||'OK')
+        + (inv.total != null ? ' · ₹'+inv.total : '');
     }
     if(btn) btn.textContent = '✅ Done';
     setTimeout(function(){
@@ -12936,6 +13148,47 @@ function confirmZohoInvPreviewSend(){
       loadCustOrders();
     }, 1800);
   }).catch(function(err){
+    // On failure, still try to recover: maybe Zoho created despite error response
+    if (!existingId && order && order.id) {
+      zohoFindDocByOrderReference(order).then(function(found) {
+        if (found && found.invoice_id) {
+          return zohoRefetchCanonical(found.invoice_id, found.doc_type).then(function(canon) {
+            var inv = canon || found;
+            return apiPost({
+              action: 'updateCustomerOrderStatus',
+              id: order.id,
+              status: 'approved',
+              zoho_invoice_id: inv.invoice_id || found.invoice_id,
+              zoho_invoice_number: inv.invoice_number || found.invoice_number || '',
+              zoho_doc_type: inv.doc_type || found.doc_type || '',
+              payment_status: 'unpaid',
+              invoice_total: inv.total != null ? inv.total : undefined,
+              balance_due: (inv.balance != null ? inv.balance : inv.total) != null ? (inv.balance != null ? inv.balance : inv.total) : undefined
+            }).then(function(){
+              if(msg){
+                msg.className='msg ok';
+                msg.textContent = '✅ Recovered: linked existing Zoho '+(inv.invoice_number||inv.invoice_id)
+                  + ' (create response failed but document exists).';
+              }
+              if(btn) btn.textContent = '✅ Done';
+              setTimeout(function(){
+                closeZohoInvPreview(true);
+                loadCustOrders();
+              }, 2000);
+            });
+          });
+        }
+        throw err;
+      }).catch(function(){
+        if(msg){
+          msg.className='msg er';
+          msg.textContent = '❌ Zoho failed: '+(err && err.message ? err.message : String(err||'unknown'))
+            + ' — Order stays approved in app only.';
+        }
+        if(btn){ btn.disabled=false; btn.textContent = existingId ? '✏️ Retry update' : '✅ Retry send'; }
+      });
+      return;
+    }
     if(msg){
       msg.className='msg er';
       msg.textContent = '❌ Zoho failed: '+(err && err.message ? err.message : String(err||'unknown'))
@@ -13043,6 +13296,18 @@ function zohoAttachEmailCommunication(payload, token, zohoCustomerId) {
     } else {
       console.warn('[zoho] no contact_person_id on contact — Email Communications stays unchecked');
     }
+    // Prefer live Zoho contact payment_terms when present (source of truth)
+    var cDays = typeof zohoParsePaymentTermsDays === 'function' ? zohoParsePaymentTermsDays(contact) : null;
+    if (cDays != null) {
+      payload.payment_terms = cDays;
+      payload.payment_terms_label = cDays === 0 ? 'Due on Receipt' : ('Net ' + cDays);
+      // Only recompute due_date when this payload is an invoice (already has due_date)
+      if (payload.due_date != null && typeof zohoAddDaysToDate === 'function') {
+        var base = payload.date || payload.due_date;
+        payload.due_date = zohoAddDaysToDate(base, cDays);
+      }
+      console.log('[zoho] payment_terms from contact:', cDays, 'due_date=', payload.due_date || '(n/a)');
+    }
     return payload;
   });
 }
@@ -13129,10 +13394,8 @@ async function zohoCreateInvoiceReal(order) {
       applyZohoShipping(payload, shipAmt, isDeliveryChallan);
       console.log('[zoho] create shipping=', shipAmt, 'isDC=', isDeliveryChallan, 'payload.shipping_charge=', payload.shipping_charge);
 
-      // invoice has due_date, delivery challan does not
-      if (!isDeliveryChallan) {
-        payload.due_date = order.delivery_date || todayStr();
-      }
+      // Payment terms (days) + due_date (invoice only)
+      applyZohoPaymentTerms(payload, shop, order, isDeliveryChallan);
 
       // ── choose action for edge function ──
       var action = isDeliveryChallan ? 'create_delivery_challan' : 'create_invoice';
@@ -13252,6 +13515,7 @@ async function zohoUpdateInvoiceReal(invoiceId, order) {
       var shipAmt = resolveShippingAmt(order, shop);
       order.shipping_charge = shipAmt;
       applyZohoShipping(payload, shipAmt, isDeliveryChallan);
+      applyZohoPaymentTerms(payload, shop, order, isDeliveryChallan);
       console.log('[zoho] UPDATE shipping=', shipAmt, 'isDC=', isDeliveryChallan, 'payload=', JSON.stringify(payload));
 
       var action = isDeliveryChallan ? 'update_delivery_challan' : 'update_invoice';
