@@ -88,7 +88,7 @@
         .bnav-item.on{color:#0f766e;background:#f0fdfa}
         .bnav-item.on .bnav-ico{opacity:1;transform:scale(1.08)}
         .bnav-item.on .bnav-lbl{font-weight:900}
-        .more-sheet{display:none;position:fixed;inset:0;z-index:250;background:rgba(30,22,17,.45)}
+        .more-sheet{display:none;position:fixed;inset:0;z-index:4500;background:rgba(30,22,17,.45)}
         .more-sheet.open{display:block}
         .more-panel{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:16px 16px 0 0;padding:14px 14px max(16px,var(--sab));max-width:520px;margin:0 auto;max-height:75vh;overflow-y:auto;box-shadow:0 -8px 32px rgba(0,0,0,.15)}
         .more-panel h3{font-size:13px;font-weight:900;color:#1e293b;margin-bottom:10px}
@@ -213,8 +213,8 @@
         .pr-items{font-size:11px;font-family:monospace;background:#f1f5f9;padding:6px 10px;border-radius:8px;line-height:1.8}
         .pr-driver-row{display:flex;align-items:center;gap:8px;margin-top:8px}
         .pr-driver-row select{flex:1;padding:7px 10px;font-size:12px;margin-bottom:0;border:1.5px solid #e2e8f0;border-radius:8px;background:#f1f5f9;outline:none}
-        .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:flex;align-items:flex-end;justify-content:center}
-        .modal{background:#f1f5f9;border-radius:20px 20px 0 0;padding:20px 16px calc(40px + var(--sab));width:100%;max-width:520px;max-height:92vh;max-height:92dvh;overflow-y:auto}
+        .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:5000;display:flex;align-items:flex-end;justify-content:center;padding:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
+        .modal{background:#f1f5f9;border-radius:20px 20px 0 0;padding:20px 16px calc(40px + var(--sab));width:100%;max-width:520px;max-height:min(92vh,92dvh);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
         .modal-title{font-size:17px;font-weight:900;color:#1e293b;margin-bottom:4px}
         .modal-sub{font-size:11px;color:#64748b;font-family:monospace;margin-bottom:14px}
         .queue-banner{background:#fff3e0;border:1.5px solid #ffc87a;border-radius:12px;padding:12px 14px;margin-bottom:10px;font-size:12px;font-family:monospace;color:#7a4800;line-height:1.8}
@@ -227,7 +227,7 @@
         @media(min-width:768px){
           body{max-width:960px}.topbar,.tabs{max-width:960px}
           .stats-grid{grid-template-columns:repeat(6,1fr)}
-          .modal-bg{align-items:center}
+          .modal-bg{align-items:center;padding:24px 16px}.modal{border-radius:16px;max-height:min(90vh,90dvh)}
           .modal{border-radius:20px;margin:20px auto;align-self:center;max-height:85vh}
           .filter-row{flex-wrap:nowrap}
           .tabs{justify-content:flex-start}
@@ -268,7 +268,7 @@
     </div>
 </div>
 <!-- Global Search Modal -->
-<div id="gs-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;padding:16px;align-items:flex-start;justify-content:center">
+<div id="gs-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:5000;padding:16px;align-items:flex-start;justify-content:center">
     <div style="background:#fff;border-radius:16px;padding:16px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;margin-top:8px">
         <div style="display:flex;gap:8px;margin-bottom:12px">
             <input type="text" id="gs-input" placeholder="🔍 Search customers, orders, products…" oninput="runGlobalSearch()" autocomplete="off" style="flex:1;margin-bottom:0">
@@ -339,13 +339,13 @@
 
     <!-- Today delivery stats — only when no tomorrow orders placed yet -->
     <div id="dash-deliv-block">
-        <div class="dash-deliv-lbl" style="font-size:10px;font-weight:800;color:#64748b;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Deliveries · Today</div>
-        <div class="stats-grid" id="dash-stats" style="margin-bottom:14px"></div>
-        <div id="dash-alerts" style="margin-bottom:10px"></div>
-        <div id="dash-tp-row" style="display:none;margin-bottom:14px">
-            <div style="font-size:10px;font-weight:800;color:#7a4800;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">🍵 Tea Post · Today</div>
-            <div class="stats-grid" id="dash-tp-stats"></div>
-        </div>
+      <div class="dash-deliv-lbl" style="font-size:10px;font-weight:800;color:#64748b;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Deliveries · Today</div>
+      <div class="stats-grid" id="dash-stats" style="margin-bottom:14px"></div>
+      <div id="dash-alerts" style="margin-bottom:10px"></div>
+      <div id="dash-tp-row" style="display:none;margin-bottom:14px">
+          <div style="font-size:10px;font-weight:800;color:#7a4800;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">🍵 Tea Post · Today</div>
+          <div class="stats-grid" id="dash-tp-stats"></div>
+      </div>
     </div>
 
     <!-- Tomorrow customer order pipeline — counts only -->
@@ -1731,8 +1731,8 @@
             <option value="">Unassigned</option>
         </select>
         <div class="lbl">Mobile</div><input type="tel" id="cm-mobile" placeholder="Contact number">
-        <div class="lbl">Email</div><input type="text" id="cm-email" placeholder="shop@example.com">
-        <div class="lbl">Email</div><input type="text" id="cm-email" placeholder="shop@example.com">
+        <div class="lbl">Email (primary)</div><input type="text" id="cm-email" placeholder="shop@example.com">
+        <div class="lbl">Email 2 (secondary)</div><input type="text" id="cm-email2" placeholder="second@example.com">
         <div class="lbl">Zoho Document Type</div>
         <select id="cm-doc-type" style="margin-bottom:8px">
             <option value="delivery_challan">📋 Delivery Challan (recommended first)</option>
@@ -1824,7 +1824,7 @@
 </div>
 
 <!-- ZOHO INVOICE PREVIEW (approve → confirm send) -->
-<div class="modal-bg" id="zohoInvPreviewModal" style="display:none;z-index:300" onclick="if(event.target===this)closeZohoInvPreview(false)">
+<div class="modal-bg" id="zohoInvPreviewModal" style="display:none;z-index:5000" onclick="if(event.target===this)closeZohoInvPreview(false)">
     <div class="modal" style="max-width:440px;max-height:92vh;overflow-y:auto;padding:0">
         <div style="padding:14px 16px 10px;border-bottom:1.5px solid #e2e8f0;position:sticky;top:0;background:#fff;z-index:2">
             <div style="font-size:14px;font-weight:900;color:#7a4800">📄 Zoho Document Preview</div>
@@ -5225,7 +5225,7 @@ function refreshBrandDatalist(){
     function openAddCustomer(){
       document.getElementById('custModalTitle').textContent='Add Customer';
       document.getElementById('custModalSub').textContent='';
-      ['cm-id','cm-cust-id','cm-name','cm-address','cm-area','cm-mobile','cm-email','cm-flag', 'cm-brand','cm-lat','cm-lng','cm-login-user','cm-login-pass','cm-shipping','cm-payment-days'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
+      ['cm-id','cm-cust-id','cm-name','cm-address','cm-area','cm-mobile','cm-email','cm-email2','cm-flag', 'cm-brand','cm-lat','cm-lng','cm-login-user','cm-login-pass','cm-shipping','cm-payment-days'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='';});
       document.getElementById('cm-driver').value='';
       renderCmGroupList([]);
       document.getElementById('cm-msg').style.display='none';
@@ -5244,6 +5244,7 @@ function refreshBrandDatalist(){
       document.getElementById('cm-driver').value=c.assigned_driver||'';
       document.getElementById('cm-mobile').value=c.mobile||'';
       document.getElementById('cm-email').value=c.email||'';
+      var e2=document.getElementById('cm-email2'); if(e2) e2.value=c.email2||'';
       document.getElementById('cm-brand').value = c.brand || '';
       document.getElementById('cm-flag').value=c.flag||'';
       document.getElementById('cm-lat').value=c.lat||'';
@@ -5698,7 +5699,7 @@ function shareCdHistoryReport(){
         shipping_charge: (function(){ var v=document.getElementById('cm-shipping'); var n=v?parseFloat(v.value):NaN; return isNaN(n)?'':n; })(),
         payment_terms_days: (function(){ var v=document.getElementById('cm-payment-days'); var n=v?parseInt(v.value,10):NaN; return isNaN(n)?'':n; })(),
         brand:document.getElementById('cm-brand').value.trim(),
-        mobile:document.getElementById('cm-mobile').value.trim(),email:document.getElementById('cm-email').value.trim(),flag:document.getElementById('cm-flag').value.trim(),
+        mobile:document.getElementById('cm-mobile').value.trim(),email:document.getElementById('cm-email').value.trim(),email2:(document.getElementById('cm-email2')||{}).value?document.getElementById('cm-email2').value.trim():'',flag:document.getElementById('cm-flag').value.trim(),
         lat:document.getElementById('cm-lat').value,lng:document.getElementById('cm-lng').value,
         last_updated_by:'Admin',last_updated_at:now
       }).then(function(res){
@@ -7942,21 +7943,32 @@ apiPost({
           else if(z.contact_persons && z.contact_persons[0]){
             zmobile = String(z.contact_persons[0].mobile || z.contact_persons[0].phone || '');
           }
-          // Email: contact root → primary contact person → any person with email
-          if (z.email) zemail = String(z.email).trim();
-          else if (z.contact_persons && z.contact_persons.length) {
-            var cp0 = z.contact_persons[0] || {};
-            zemail = String(cp0.email || '').trim();
-            if (!zemail) {
+          // Emails: contact root + all contact_persons (unique); 1st = primary, 2nd = email2
+          var zemail2 = '';
+          (function(){
+            var emails = [];
+            function addEm(e) {
+              e = String(e || '').trim();
+              if (!e) return;
+              var low = e.toLowerCase();
+              for (var i = 0; i < emails.length; i++) {
+                if (emails[i].toLowerCase() === low) return;
+              }
+              emails.push(e);
+            }
+            addEm(z.email);
+            if (z.contact_persons && z.contact_persons.length) {
               for (var ci = 0; ci < z.contact_persons.length; ci++) {
-                var em = String((z.contact_persons[ci] || {}).email || '').trim();
-                if (em) { zemail = em; break; }
+                addEm((z.contact_persons[ci] || {}).email);
+              }
+              if (!zmobile) {
+                var cp0 = z.contact_persons[0] || {};
+                zmobile = String(cp0.mobile || cp0.phone || '').trim();
               }
             }
-            if (!zmobile) {
-              zmobile = String(cp0.mobile || cp0.phone || '').trim();
-            }
-          }
+            zemail = emails[0] || '';
+            zemail2 = emails[1] || '';
+          })();
           var local = (allCustomers||[]).find(function(c){
             return String(c.zoho_contact_id||'') === zid
               || String(c.customer_id||'') === zid
@@ -7964,10 +7976,11 @@ apiPost({
               || (zname && (c.name||'').trim().toLowerCase() === zname.toLowerCase());
           });
           var changes = [];
-          if(!local) return { kind:'new', zoho:z, zid:zid, zname:zname, zmobile:zmobile, zemail:zemail, payment_terms_days: zohoParsePaymentTermsDays(z), local:null, changes:['New customer'] };
+          if(!local) return { kind:'new', zoho:z, zid:zid, zname:zname, zmobile:zmobile, zemail:zemail, zemail2:zemail2, payment_terms_days: zohoParsePaymentTermsDays(z), local:null, changes:['New customer'] };
           if(zname && zname !== (local.name||'')) changes.push('Name: '+(local.name||'')+' → '+zname);
           if(zmobile && zmobile !== (local.mobile||'')) changes.push('Mobile: '+(local.mobile||'—')+' → '+zmobile);
           if(zemail && zemail !== (local.email||'')) changes.push('Email: '+(local.email||'—')+' → '+zemail);
+          if(zemail2 && zemail2 !== (local.email2||'')) changes.push('Email2: '+(local.email2||'—')+' → '+zemail2);
           var zaddr = (z.billing_address && (z.billing_address.address || z.billing_address.street)) || '';
           if(zaddr && zaddr !== (local.address||'')) changes.push('Address changed');
           var zDays = zohoParsePaymentTermsDays(z);
@@ -7977,7 +7990,7 @@ apiPost({
           }
           return {
             kind: changes.length ? 'changed' : 'same',
-            zoho:z, zid:zid, zname:zname, zmobile:zmobile, zemail:zemail,
+            zoho:z, zid:zid, zname:zname, zmobile:zmobile, zemail:zemail, zemail2:zemail2,
             payment_terms_days: zDays,
             local:local, changes:changes
           };
@@ -8044,6 +8057,7 @@ apiPost({
             address: addr, area: city,
             mobile: row.zmobile || '',
             email: row.zemail || '',
+            email2: row.zemail2 || '',
             assigned_driver: '',
             zoho_contact_id: row.zid,
             zoho_doc_type: 'invoice',
@@ -8070,6 +8084,7 @@ apiPost({
           area: city || loc.area || '',
           mobile: row.zmobile || loc.mobile || '',
           email: row.zemail || loc.email || '',
+          email2: row.zemail2 || loc.email2 || '',
           assigned_driver: loc.assigned_driver || '',
           zoho_contact_id: row.zid || loc.zoho_contact_id || '',
           zoho_doc_type: loc.zoho_doc_type || 'invoice',

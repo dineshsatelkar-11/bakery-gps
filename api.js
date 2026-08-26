@@ -528,7 +528,7 @@ function normalizeProducts(list) {
             ? parseFloat(b.shipping_charge) : null,
           payment_terms_days: b.payment_terms_days !== undefined && b.payment_terms_days !== '' && b.payment_terms_days != null
             ? parseInt(b.payment_terms_days, 10) : null,
-          assigned_driver: b.assigned_driver || '', mobile: b.mobile || '', email: b.email || '', flag: b.flag || '',
+          assigned_driver: b.assigned_driver || '', mobile: b.mobile || '', email: b.email || '', email2: b.email2 || '', flag: b.flag || '',
           lat: b.lat !== '' && b.lat != null ? parseFloat(b.lat) : null,
           lng: b.lng !== '' && b.lng != null ? parseFloat(b.lng) : null,
           drop_photo_url:        b.drop_photo_url,
@@ -548,6 +548,7 @@ function normalizeProducts(list) {
            brand: b.brand !== undefined ? (b.brand || null) : undefined,
           assigned_driver: b.assigned_driver || '', mobile: b.mobile || '',
           email: b.email !== undefined ? (b.email || '') : undefined,
+          email2: b.email2 !== undefined ? (b.email2 || '') : undefined,
           flag: b.flag || '',
           lat: b.lat !== '' && b.lat != null ? parseFloat(b.lat) : null,
           lng: b.lng !== '' && b.lng != null ? parseFloat(b.lng) : null,
