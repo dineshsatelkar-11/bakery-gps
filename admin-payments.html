@@ -173,7 +173,21 @@
       padding: 8px 10px 12px !important;
       max-width: none !important;
     }
-    </style>
+    
+    /* When detail/edit sheet open in embed: only show the sheet over transparent page */
+    html.sheet-open,
+    html.sheet-open body {
+      background: transparent !important;
+    }
+    html.sheet-open body > *:not(#payInvDetailSheet):not(#challan-edit-box) {
+      visibility: hidden !important;
+    }
+    html.sheet-open #payInvDetailSheet,
+    html.sheet-open #challan-edit-box {
+      visibility: visible !important;
+    }
+
+  </style>
   <script>
     (function(){
       try {
@@ -369,8 +383,8 @@
 </div>
 
 <!-- Invoice detail sheet — sticky footer above bottom nav (incl. parent iframe nav ~64px) -->
-<div id="payInvDetailSheet" style="display:none;position:fixed;inset:0;z-index:6000;background:rgba(30,22,17,.5);align-items:flex-end;justify-content:center;padding:0" onclick="if(event.target===this)closePayInvDetail()">
-  <div id="payInvDetailPanel" style="background:#fff;width:100%;max-width:520px;max-height:min(88vh, calc(100% - env(safe-area-inset-top, 0px) - 8px));border-radius:18px 18px 0 0;display:flex;flex-direction:column;box-shadow:0 -8px 32px rgba(0,0,0,.22);padding-bottom:calc(72px + env(safe-area-inset-bottom, 0px))" onclick="event.stopPropagation()">
+<div id="payInvDetailSheet" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(30,22,17,.55);align-items:center;justify-content:center;padding:16px;box-sizing:border-box" onclick="if(event.target===this)closePayInvDetail()">
+  <div id="payInvDetailPanel" style="background:#fff;width:100%;max-width:520px;max-height:min(90vh, 90dvh);border-radius:16px;display:flex;flex-direction:column;box-shadow:0 16px 48px rgba(0,0,0,.28);padding-bottom:0;overflow:hidden" onclick="event.stopPropagation()">
     <div style="padding:14px 16px;border-bottom:1.5px solid #efe8dc;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-shrink:0">
       <div style="min-width:0;flex:1">
         <div style="font-size:15px;font-weight:900;color:#4a2f14" id="payInvDetailTitle">Invoice</div>
@@ -915,9 +929,31 @@
       var box = document.createElement('div');
       box.id = 'challan-edit-box';
       var isDesk = window.matchMedia('(min-width:701px)').matches;
-      box.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;justify-content:center;padding:16px;box-sizing:border-box;' +
-        (isDesk ? 'align-items:center;' : 'align-items:flex-end;');
-      box.onclick = function(e){ if (e.target === box) box.remove(); };
+      box.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10001;display:flex;justify-content:center;padding:16px;box-sizing:border-box;align-items:center;';
+      try {
+        document.documentElement.classList.add('sheet-open');
+        if (document.body) document.body.classList.add('sheet-open');
+      } catch (eSo3) {}
+      try {
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage({ source: 'bakery-payments', action: 'sheetOpen' }, '*');
+        }
+      } catch (ePm2) {}
+      function _challanEditClose() {
+        box.remove();
+        try {
+          var detail = document.getElementById('payInvDetailSheet');
+          var detailOpen = detail && detail.style.display && detail.style.display !== 'none';
+          if (!detailOpen) {
+            document.documentElement.classList.remove('sheet-open');
+            if (document.body) document.body.classList.remove('sheet-open');
+            if (window.parent && window.parent !== window) {
+              window.parent.postMessage({ source: 'bakery-payments', action: 'sheetClosed' }, '*');
+            }
+          }
+        } catch (e3) {}
+      }
+      box.onclick = function(e){ if (e.target === box) _challanEditClose(); };
       var panelRadius = isDesk ? '16px' : '16px 16px 0 0';
       box.innerHTML =
         '<div style="background:#f9f6f1;border-radius:'+panelRadius+';padding:16px;width:100%;max-width:480px;max-height:min(80vh,640px);overflow:auto;box-shadow:0 12px 40px rgba(0,0,0,.2)" onclick="event.stopPropagation()">' +
@@ -958,7 +994,7 @@
         });
       }
       paint();
-      document.getElementById('challan-edit-cancel').onclick = function(){ box.remove(); };
+      document.getElementById('challan-edit-cancel').onclick = function(){ _challanEditClose(); };
       document.getElementById('challan-edit-save').onclick = function() {
         linesEl.querySelectorAll('.ch-qinp').forEach(function(inp) {
           var i = parseInt(inp.getAttribute('data-i'), 10);
@@ -1032,7 +1068,13 @@
                 if (wasPaid) po.paid_amount = o.paid_amount;
               }
             } catch (eSync) {}
-            box.remove();
+            _challanEditClose();
+            try {
+              var dsh = document.getElementById('payInvDetailSheet');
+              if (dsh && dsh.style.display && dsh.style.display !== 'none' && typeof openPayInvDetail === 'function') {
+                openPayInvDetail(String(o.id));
+              }
+            } catch (eRe) {}
             _challanMsg(
               'Saved: qty + total ₹' + totals.invoice_total.toLocaleString('en-IN', { maximumFractionDigits: 2 }) +
               ' (tax ₹' + totals.tax_amount.toLocaleString('en-IN', { maximumFractionDigits: 2 }) + ').',
@@ -2280,6 +2322,10 @@
       var sh = document.getElementById('payInvDetailSheet');
       if (sh) sh.style.display = 'none';
       try {
+        document.documentElement.classList.remove('sheet-open');
+        if (document.body) document.body.classList.remove('sheet-open');
+      } catch (eSo2) {}
+      try {
         var bn = document.getElementById('bottomNav');
         if (bn) bn.style.visibility = '';
       } catch (e) {}
@@ -2406,6 +2452,10 @@
         var bn = document.getElementById('bottomNav');
         if (bn) bn.style.visibility = 'hidden';
       } catch (eBn) {}
+      try {
+        document.documentElement.classList.add('sheet-open');
+        if (document.body) document.body.classList.add('sheet-open');
+      } catch (eSo) {}
       try {
         if (window.parent && window.parent !== window) {
           window.parent.postMessage({ source: 'bakery-payments', action: 'sheetOpen' }, '*');

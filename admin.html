@@ -223,6 +223,28 @@
         body.modal-open .del-mobile-seg-wrap,
         body.modal-open .ord-mobile-seg-wrap,
         body.modal-open .mng-mobile-seg-wrap{z-index:10 !important}
+        #payEmbedFrame.pay-frame-sheet-open{
+          position:fixed !important;
+          inset:0 !important;
+          z-index:10000 !important;
+          width:100% !important;
+          height:100% !important;
+          min-height:100dvh !important;
+          max-height:none !important;
+          border-radius:0 !important;
+          border:none !important;
+          background:transparent !important;
+          pointer-events:auto !important;
+        }
+        #pg-pay-challan.pay-host-sheet-open{
+          position:static !important;
+        }
+        /* Keep admin chrome visible under dim; modal lives in transparent iframe */
+        body.pay-sheet-open .topbar,
+        body.pay-sheet-open .tabs,
+        body.pay-sheet-open #subTabs{
+          z-index:1 !important;
+        }
         .modal{background:#f1f5f9;border-radius:20px 20px 0 0;padding:20px 16px calc(40px + var(--sab));width:100%;max-width:520px;max-height:min(92vh,92dvh);overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
         .modal-title{font-size:17px;font-weight:900;color:#1e293b;margin-bottom:4px}
         .modal-sub{font-size:11px;color:#64748b;font-family:monospace;margin-bottom:14px}
@@ -348,13 +370,13 @@
 
     <!-- Today delivery stats — only when no tomorrow orders placed yet -->
     <div id="dash-deliv-block">
-        <div class="dash-deliv-lbl" style="font-size:10px;font-weight:800;color:#64748b;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Deliveries · Today</div>
-        <div class="stats-grid" id="dash-stats" style="margin-bottom:14px"></div>
-        <div id="dash-alerts" style="margin-bottom:10px"></div>
-        <div id="dash-tp-row" style="display:none;margin-bottom:14px">
-            <div style="font-size:10px;font-weight:800;color:#7a4800;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">🍵 Tea Post · Today</div>
-            <div class="stats-grid" id="dash-tp-stats"></div>
-        </div>
+      <div class="dash-deliv-lbl" style="font-size:10px;font-weight:800;color:#64748b;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Deliveries · Today</div>
+      <div class="stats-grid" id="dash-stats" style="margin-bottom:14px"></div>
+      <div id="dash-alerts" style="margin-bottom:10px"></div>
+      <div id="dash-tp-row" style="display:none;margin-bottom:14px">
+          <div style="font-size:10px;font-weight:800;color:#7a4800;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">🍵 Tea Post · Today</div>
+          <div class="stats-grid" id="dash-tp-stats"></div>
+      </div>
     </div>
 
     <!-- Tomorrow customer order pipeline — counts only -->
@@ -7734,7 +7756,8 @@ apiPost({
     function zohoEdge(action, extra){
       return loadZohoCreds().then(function(){
         _zohoAccessToken = null;
-        _zohoTokenExpires = 0;
+      _zohoTokenExpires = 0;
+      _zohoCredsLoadedAt = 0;
         return zohoGetAccessToken();
       }).then(function(token){
         var body = Object.assign({
@@ -9270,6 +9293,9 @@ onStaffRoleChange();
           '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">'+
             (o.status==='pending'?'<button class="btn-sm" style="background:#e8f5e9;color:#2d7a4f" onclick="quickApprove('+o.id+')">✅ Approve</button>':'') +
             (o.status==='pending'?'<button class="btn-sm btn-del" onclick="quickReject('+o.id+')">❌ Reject</button>':'') +
+            ((o.status==='approved'||o.status==='delivered') && _zohoEnabled && !o.zoho_invoice_id
+              ? '<button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1px solid #ffe082" onclick="sendOrderToZoho('+o.id+')">📤 Send to Zoho</button>'
+              : '') +
             ((o.zoho_invoice_id||o.zoho_invoice_number||o.payment_status) ? '<a class="btn-sm" href="#" onclick="showGroup(\'payments\');return false" style="background:#f3e5f5;color:#6a1b9a;border:1px solid #ce93d8;text-decoration:none;display:inline-block">💰 Payments desk</a>':'') +
             ((o.zoho_invoice_id||o.zoho_invoice_number) && (o.payment_status||'')==='paid' ? '<span class="btn-sm" style="background:#e8f5e9;color:#2d7a4f;border:1px solid #a5d6a7;cursor:default">✅ Payment received</span>':'') +
             '<button class="btn-sm btn-edit" onclick=\'openCoModal('+esc(JSON.stringify(o))+')\'>✏️ Edit</button>'+
@@ -9301,6 +9327,32 @@ onStaffRoleChange();
       });
     }
     window.toggleOrderStickerPrinted = toggleOrderStickerPrinted;
+
+
+    function sendOrderToZoho(id) {
+      if (!_zohoEnabled) { alert('Zoho integration is OFF'); return; }
+      var order = (allCustOrders || []).find(function(o){ return String(o.id) === String(id); });
+      if (!order) { alert('Order not found'); return; }
+      if (order.zoho_invoice_id) {
+        alert('Already linked to Zoho: ' + (order.zoho_invoice_number || order.zoho_invoice_id));
+        return;
+      }
+      var shop = (typeof findShopForZoho === 'function') ? findShopForZoho(order) : null;
+      openZohoInvPreview({
+        id: order.id,
+        shop_id: order.shop_id,
+        shop_name: order.shop_name,
+        delivery_date: order.delivery_date,
+        items: order.items,
+        qty: order.qty,
+        item_ids: order.item_ids || '',
+        zoho_doc_type: (typeof resolveZohoDocType === 'function') ? resolveZohoDocType(order, shop) : (order.zoho_doc_type || 'invoice'),
+        zoho_invoice_id: '',
+        zoho_invoice_number: order.zoho_invoice_number || '',
+        shipping_charge: (typeof resolveShippingAmt === 'function') ? resolveShippingAmt(order, shop) : (order.shipping_amount || 0)
+      });
+    }
+    window.sendOrderToZoho = sendOrderToZoho;
 
     function quickApprove(id){
   var order = allCustOrders.find(function(o){ return String(o.id) === String(id); });
@@ -9424,7 +9476,7 @@ onStaffRoleChange();
     function zohoRecordCustomerPayment(order, amount, mode, ref){
       // Uses same zoho-token edge function if action is supported; otherwise no-op
       return loadZohoCreds().then(function(){
-        _zohoAccessToken = null; _zohoTokenExpires = 0;
+        _zohoAccessToken = null; _zohoTokenExpires = 0; _zohoCredsLoadedAt = 0;
         return zohoGetAccessToken();
       }).then(function(token){
         return fetch(CONFIG.SUPABASE_URL + '/functions/v1/zoho-token', {
@@ -12577,7 +12629,13 @@ var _zohoCreds = { client_id:'', client_secret:'', refresh_token:'', org_id:'', 
 var _zohoAccessToken = null;
 var _zohoTokenExpires = 0;
 
-function loadZohoCreds() {
+var _zohoCredsLoadedAt = 0;
+function loadZohoCreds(force) {
+  // Cache settings in memory (~10 min) — avoids 5 REST calls on every Send
+  if (!force && _zohoCreds.client_id && _zohoCreds.refresh_token && _zohoCreds.org_id
+      && (Date.now() - _zohoCredsLoadedAt) < 600000) {
+    return Promise.resolve();
+  }
   var keys = ['zoho_client_id','zoho_client_secret','zoho_refresh_token','zoho_org_id','zoho_dc'];
   return Promise.all(keys.map(function(k){ return api({action:'getSetting', key:k}); }))
     .then(function(res) {
@@ -12586,6 +12644,7 @@ function loadZohoCreds() {
       _zohoCreds.refresh_token = res[2] ? res[2].value : '';
       _zohoCreds.org_id        = res[3] ? res[3].value : '';
       _zohoCreds.dc            = res[4] ? (res[4].value || 'in') : 'in';
+      _zohoCredsLoadedAt = Date.now();
     });
 }
 
@@ -13109,28 +13168,15 @@ function confirmZohoInvPreviewSend(){
   if(msg){ msg.style.display='block'; msg.className='msg in'; msg.textContent='Sending to Zoho Books…'; }
 
   var existingId = order.zoho_invoice_id || '';
-  var linkMode = ''; // 'update' | 'link' | 'create'
 
   var promise;
   if (existingId) {
-    linkMode = 'update';
     if (msg) msg.textContent = 'Updating existing Zoho document…';
     promise = zohoUpdateInvoiceReal(existingId, order);
   } else {
-    // Before CREATE: search Zoho by IBCAB-{id} so Retry does not create a second invoice
-    if (msg) msg.textContent = 'Checking Zoho for existing document…';
-    promise = zohoFindDocByOrderReference(order).then(function(found) {
-      if (found && found.invoice_id) {
-        linkMode = 'link';
-        order.zoho_invoice_id = found.invoice_id;
-        if (msg) msg.textContent = 'Found existing Zoho doc ' + (found.invoice_number || found.invoice_id) + ' — linking…';
-        // Link only (no forced update) to avoid Access Denied overwriting Zoho-side edits
-        return found;
-      }
-      linkMode = 'create';
-      if (msg) msg.textContent = 'Creating new document in Zoho…';
-      return zohoCreateInvoiceReal(order);
-    });
+    // Direct CREATE — no pre-search by reference (use Payments Sync / Link Zoho if id is missing)
+    if (msg) msg.textContent = 'Creating new document in Zoho…';
+    promise = zohoCreateInvoiceReal(order);
   }
 
   promise.then(function(inv){
@@ -13188,7 +13234,7 @@ function confirmZohoInvPreviewSend(){
   }).then(function(inv){
     if(msg){
       msg.className='msg ok';
-      var verb = linkMode === 'update' ? 'updated' : (linkMode === 'link' ? 'linked (already in Zoho)' : 'created');
+      var verb = existingId ? 'updated' : 'created';
       msg.textContent = '✅ Zoho '+verb+': '+(inv.invoice_number||inv.invoice_id||'OK')
         + (inv.total != null ? ' · ₹'+inv.total : '');
     }
@@ -13198,47 +13244,6 @@ function confirmZohoInvPreviewSend(){
       loadCustOrders();
     }, 1800);
   }).catch(function(err){
-    // On failure, still try to recover: maybe Zoho created despite error response
-    if (!existingId && order && order.id) {
-      zohoFindDocByOrderReference(order).then(function(found) {
-        if (found && found.invoice_id) {
-          return zohoRefetchCanonical(found.invoice_id, found.doc_type).then(function(canon) {
-            var inv = canon || found;
-            return apiPost({
-              action: 'updateCustomerOrderStatus',
-              id: order.id,
-              status: 'approved',
-              zoho_invoice_id: inv.invoice_id || found.invoice_id,
-              zoho_invoice_number: inv.invoice_number || found.invoice_number || '',
-              zoho_doc_type: inv.doc_type || found.doc_type || '',
-              payment_status: 'unpaid',
-              invoice_total: inv.total != null ? inv.total : undefined,
-              balance_due: (inv.balance != null ? inv.balance : inv.total) != null ? (inv.balance != null ? inv.balance : inv.total) : undefined
-            }).then(function(){
-              if(msg){
-                msg.className='msg ok';
-                msg.textContent = '✅ Recovered: linked existing Zoho '+(inv.invoice_number||inv.invoice_id)
-                  + ' (create response failed but document exists).';
-              }
-              if(btn) btn.textContent = '✅ Done';
-              setTimeout(function(){
-                closeZohoInvPreview(true);
-                loadCustOrders();
-              }, 2000);
-            });
-          });
-        }
-        throw err;
-      }).catch(function(){
-        if(msg){
-          msg.className='msg er';
-          msg.textContent = '❌ Zoho failed: '+(err && err.message ? err.message : String(err||'unknown'))
-            + ' — Order stays approved in app only.';
-        }
-        if(btn){ btn.disabled=false; btn.textContent = existingId ? '✏️ Retry update' : '✅ Retry send'; }
-      });
-      return;
-    }
     if(msg){
       msg.className='msg er';
       msg.textContent = '❌ Zoho failed: '+(err && err.message ? err.message : String(err||'unknown'))
@@ -13399,9 +13404,7 @@ async function zohoCreateInvoiceReal(order) {
   return loadZohoCreds()
     .then(function(){ return loadZohoShippingCharge(); })
     .then(function() {
-      // Always force a fresh token — never risk a stale cached one
-      _zohoAccessToken = null;
-      _zohoTokenExpires = 0;
+      // Use cached access token until ~5 min before expiry (see zohoGetAccessToken)
       return zohoGetAccessToken();
     })
     .then(function(token) {
@@ -13459,9 +13462,12 @@ async function zohoCreateInvoiceReal(order) {
         payload: payload
       }));
 
-      // If shop has email, refresh Zoho contact so contact master also has it
+      // Skip sync_contact when we already have a Zoho contact id (avoids "already exists" + ~1s)
+      // Skip get_contact / email attach on create (saves ~2s) — draft invoices do not need it
       var ensureContact = Promise.resolve();
-      if (_createCtx.shopEmail && shop) {
+      var hasZohoContactId = !!(zohoCustomerId && String(zohoCustomerId).length >= 10);
+      if (!hasZohoContactId && _createCtx.shopEmail && shop) {
+        console.log('[zoho] no contact id — syncing contact before create');
         ensureContact = zohoSyncCustomerReal({
           name: shop.name || order.shop_name,
           address: shop.address || '',
@@ -13473,13 +13479,14 @@ async function zohoCreateInvoiceReal(order) {
         }).catch(function(e){
           console.warn('[zoho] contact email sync before create failed:', e);
         });
+      } else {
+        console.log('[zoho] skip contact sync (id=', zohoCustomerId || 'none', ')');
       }
 
       return ensureContact.then(function(){
-        // Pre-select Email communication on contact persons (Draft only — do not send)
-        return zohoAttachEmailCommunication(payload, token, zohoCustomerId);
-      }).then(function(finalPayload){
-        _createCtx.emailCommIds = finalPayload._email_comm_ids || finalPayload.contact_persons || [];
+        // Fast path: create without get_contact / contact_persons (Email Communications optional in Zoho UI)
+        var finalPayload = payload;
+        _createCtx.emailCommIds = [];
         try {
           delete finalPayload._email_comm_ids;
           delete finalPayload.contact_persons_associated;
@@ -13541,8 +13548,6 @@ async function zohoUpdateInvoiceReal(invoiceId, order) {
   return loadZohoCreds()
     .then(function(){ return loadZohoShippingCharge(); })
     .then(function() {
-      _zohoAccessToken = null;
-      _zohoTokenExpires = 0;
       return zohoGetAccessToken();
     })
     .then(function(token) {
@@ -13572,8 +13577,8 @@ async function zohoUpdateInvoiceReal(invoiceId, order) {
 
       console.log('✏️ Updating', docType, invoiceId, 'for', order.shop_name);
 
-      return zohoAttachEmailCommunication(payload, token, zohoCustomerId).then(function(finalPayload){
-        return fetch(CONFIG.SUPABASE_URL + '/functions/v1/zoho-token', {
+      // Fast update — no get_contact / email attach
+      return fetch(CONFIG.SUPABASE_URL + '/functions/v1/zoho-token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + CONFIG.SUPABASE_ANON_KEY },
           body: JSON.stringify({
@@ -13582,10 +13587,9 @@ async function zohoUpdateInvoiceReal(invoiceId, order) {
             org_id:          _zohoCreds.org_id,
             dc:              _zohoCreds.dc || 'in',
             invoice_id:      invoiceId,
-            invoice_payload: finalPayload
+            invoice_payload: payload
           })
         });
-      });
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {
@@ -13748,11 +13752,29 @@ function testZohoConnection() {
         if (d.action === 'sheetOpen') {
           var bn = document.getElementById('bottomNav');
           if (bn) bn.style.visibility = 'hidden';
+          document.body.classList.add('modal-open');
+          document.body.classList.add('pay-sheet-open');
+          var frame = document.getElementById('payEmbedFrame');
+          if (frame) frame.classList.add('pay-frame-sheet-open');
+          var host = document.getElementById('pg-pay-challan');
+          if (host) host.classList.add('pay-host-sheet-open');
           return;
         }
         if (d.action === 'sheetClosed') {
           var bn2 = document.getElementById('bottomNav');
           if (bn2) bn2.style.visibility = '';
+          var frame2 = document.getElementById('payEmbedFrame');
+          if (frame2) frame2.classList.remove('pay-frame-sheet-open');
+          var host2 = document.getElementById('pg-pay-challan');
+          if (host2) host2.classList.remove('pay-host-sheet-open');
+          document.body.classList.remove('pay-sheet-open');
+          var anyModal = false;
+          try {
+            document.querySelectorAll('.modal-bg').forEach(function(m){
+              if (m.style.display && m.style.display !== 'none') anyModal = true;
+            });
+          } catch(e){}
+          if (!anyModal) document.body.classList.remove('modal-open');
           return;
         }
       } catch (e) {}
