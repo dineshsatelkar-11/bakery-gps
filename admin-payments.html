@@ -299,25 +299,11 @@
 </div>
 <div class="page" id="pg-pay-requests">
   <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">📨 Pay requests</div>
-  <div style="font-size:11px;color:#8a7a6a;margin-bottom:10px;line-height:1.45">Customer says they paid. Match in bank by <b>shop name / amount / time</b> → <b>Confirm received</b>. Customers expect up to <b>24 working hours</b>.</div>
-  <div class="card" style="margin-bottom:10px;padding:12px;background:#e8f5e9;border:1.5px solid #a5d6a7">
-    <div style="font-size:12px;font-weight:900;color:#1a5a38;margin-bottom:6px">🔄 Auto-reconcile helper</div>
-    <div style="font-size:11px;color:#8a7a6a;line-height:1.45;margin-bottom:8px">
-      No bank feed / no gateway. Suggests matches when a request amount is <b>unique</b> among open requests (safe to confirm after you see the credit in bank).
-    </div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
-      <button type="button" class="btn-sm" style="background:#2d7a4f;color:#fff;border:none" onclick="payDeskRunReconcile()">↻ Build suggestions</button>
-      <button type="button" class="btn-sm" style="background:#e8f5e9;color:#1a5a38;border:1px solid #a5d6a7" onclick="payDeskConfirmReconcileHigh()">✓ Confirm all high-confidence</button>
-    </div>
-    <div style="font-size:11px;color:#8a7a6a;margin-bottom:6px">Paste bank credits (one per line: amount or amount + text). Optional.</div>
-    <textarea id="pay-reconcile-paste" rows="3" placeholder="4500&#10;1280 FRANKS&#10;3200" style="width:100%;padding:8px 10px;border:1.5px solid #e8dfd2;border-radius:8px;font-size:12px;font-family:monospace;box-sizing:border-box;margin-bottom:6px"></textarea>
-    <button type="button" class="btn-sm btn-grey" onclick="payDeskMatchBankPaste()">Match pasted amounts</button>
-    <div id="pay-reconcile-out" style="margin-top:10px;font-size:12px"></div>
+  <div style="font-size:11px;color:#8a7a6a;margin-bottom:10px;line-height:1.45">Customer marked as paid. Check attachment / UTR → <b>Approve</b> or <b>Reject</b>.</div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+    <button type="button" class="btn-sm btn-grey" onclick="loadPaymentsDesk('pay-requests')">↻ Refresh</button>
   </div>
-  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
-    <button type="button" class="btn-sm" style="background:#e8f5e9;color:#1a5a38;border:1px solid #a5d6a7;font-weight:700" onclick="payDeskConfirmSelectedRequests()">✓ Confirm received (selected)</button>
-    <button type="button" class="btn-sm btn-grey" onclick="payDeskSelect('unpaid')">Select unpaid</button>
-  </div>
+  <div id="pay-desk-msg-req" style="display:none;margin-bottom:8px;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:700"></div>
   <div id="pay-desk-list-req"><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Open tab to load…</div></div>
 </div>
 <div class="page" id="pg-pay-paid">
@@ -1642,12 +1628,14 @@
     var _payDeskTab = 'pay-open';
 
     function _payDeskMsg(t, ok) {
-      var el = document.getElementById('pay-desk-msg');
-      if (!el) return;
-      el.style.display = 'block';
-      el.textContent = t;
-      el.style.background = ok === false ? '#fde8e8' : (ok ? '#e8f5e9' : '#e8f0ff');
-      el.style.color = ok === false ? '#c8382a' : (ok ? '#1a5a38' : '#1a3a8a');
+      ['pay-desk-msg','pay-desk-msg-req'].forEach(function(id){
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.style.display = 'block';
+        el.textContent = t;
+        el.style.background = ok === false ? '#fde8e8' : (ok ? '#e8f5e9' : '#e8f0ff');
+        el.style.color = ok === false ? '#c8382a' : (ok ? '#1a5a38' : '#1a3a8a');
+      });
     }
     function _payDue(o) {
       if (o.balance_due != null && o.balance_due !== '') return parseFloat(o.balance_due) || 0;
@@ -1710,7 +1698,23 @@
       }).then(function(list) {
         if (!Array.isArray(list)) list = [];
         _payDeskRows = list.filter(_payHasDoc);
-        _payDeskMsg('Loaded ' + _payDeskRows.length + ' document(s).', true);
+        var tab = _payDeskTab || '';
+        var msg;
+        if (tab === 'pay-requests') {
+          var nReq = _payDeskRows.filter(function(o){
+            return o.customer_claimed_paid && !_payIsPaid(o) && !_payIsVoid(o);
+          }).length;
+          msg = nReq === 1 ? '1 payment request' : (nReq + ' payment request(s)');
+        } else if (tab === 'pay-paid') {
+          var nPaid = _payDeskRows.filter(function(o){ return !_payIsChallan(o) && _payIsPaid(o); }).length;
+          msg = nPaid + ' paid document(s)';
+        } else if (tab === 'pay-open') {
+          var nOpen = _payDeskRows.filter(function(o){ return !_payIsChallan(o) && !_payIsPaid(o) && !_payIsVoid(o); }).length;
+          msg = nOpen + ' unpaid invoice(s)';
+        } else {
+          msg = 'Loaded ' + _payDeskRows.length + ' document(s)';
+        }
+        _payDeskMsg(msg, true);
         renderPaymentsDesk();
       }).catch(function(e) {
         _payDeskRows = [];
@@ -2176,34 +2180,75 @@
     }
     function adminViewPaymentProof(url){
       if (!url) return;
+      var raw = String(url).trim();
+      if (!raw) return;
+      var fid = '';
+      var m = raw.match(/\/d\/([a-zA-Z0-9_-]+)/) || raw.match(/[?&]id=([a-zA-Z0-9_-]+)/) || raw.match(/^([a-zA-Z0-9_-]{20,})$/);
+      if (m) fid = m[1];
+
+      // Try sources that can render inside <img> without leaving the app
+      var candidates = [];
+      if (fid) {
+        candidates.push('https://lh3.googleusercontent.com/d/' + fid + '=w1200');
+        candidates.push('https://drive.google.com/thumbnail?id=' + fid + '&sz=w1200');
+        candidates.push('https://drive.google.com/uc?export=view&id=' + fid);
+      }
+      if (/\.(jpe?g|png|gif|webp)(\?|$)/i.test(raw) || raw.indexOf('googleusercontent') >= 0) {
+        candidates.push(raw);
+      }
+      if (!candidates.length) candidates.push(raw);
+
       var existing = document.getElementById('adminPayProofLightbox');
       if (existing) existing.remove();
+
+      // Light dim (not solid black)
       var overlay = document.createElement('div');
       overlay.id = 'adminPayProofLightbox';
-      overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.75);display:flex;align-items:center;justify-content:center;padding:16px';
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:10050;background:rgba(74,47,20,.35);display:flex;align-items:center;justify-content:center;padding:16px';
       overlay.onclick = function(e){ if (e.target === overlay) overlay.remove(); };
+
       var box = document.createElement('div');
-      box.style.cssText = 'background:#fff;border-radius:16px;max-width:100%;max-height:92vh;overflow:auto;padding:12px;position:relative;box-shadow:0 12px 40px rgba(0,0,0,.25)';
-      box.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px">'+
-        '<div style="font-size:13px;font-weight:800;color:#4a2f14">Payment screenshot</div>'+
-        '<button type="button" onclick="document.getElementById(\'adminPayProofLightbox\').remove()" style="border:none;background:#f5ede0;border-radius:8px;padding:6px 12px;font-weight:700;cursor:pointer;color:#4a2f14">Close</button>'+
-        '</div><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px" id="adminPayProofLoading">Loading…</div>';
+      box.style.cssText = 'background:#fff;border-radius:16px;width:min(480px,100%);max-height:90vh;overflow:auto;padding:14px;box-shadow:0 16px 48px rgba(74,47,20,.2);border:1.5px solid #e8dfd2';
+      box.innerHTML =
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">'+
+          '<div style="font-size:14px;font-weight:900;color:#4a2f14">Attachment</div>'+
+          '<button type="button" onclick="document.getElementById(\'adminPayProofLightbox\').remove()" style="border:none;background:#f5ede0;border-radius:8px;padding:6px 12px;font-weight:700;cursor:pointer;color:#4a2f14">Close</button>'+
+        '</div><div id="adminPayProofBody" style="text-align:center;min-height:120px;color:#8a7a6a;font-size:12px">Loading…</div>';
       overlay.appendChild(box);
       document.body.appendChild(overlay);
-      var imgUrl = String(url);
-      var m = imgUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || imgUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-      if (m) imgUrl = 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w1200';
-      var img = document.createElement('img');
-      img.alt = 'Payment proof';
-      img.style.cssText = 'max-width:100%;max-height:78vh;border-radius:10px;display:block;margin:0 auto';
-      img.onload = function(){ var ld = document.getElementById('adminPayProofLoading'); if (ld) ld.remove(); };
-      img.onerror = function(){
-        var ld = document.getElementById('adminPayProofLoading');
-        if (ld) ld.innerHTML = 'Could not load image.<br><a href="'+String(url).replace(/"/g,'')+'" target="_blank" rel="noopener" style="color:#1565c0">Open in Drive</a>';
-      };
-      img.src = imgUrl;
-      box.appendChild(img);
+      var body = document.getElementById('adminPayProofBody');
+
+      var idx = 0;
+      function tryNext(){
+        if (idx >= candidates.length) {
+          // Last resort: embed Drive preview iframe (stays in popup, no new tab)
+          if (fid && body) {
+            body.innerHTML = '';
+            var frame = document.createElement('iframe');
+            frame.src = 'https://drive.google.com/file/d/' + fid + '/preview';
+            frame.title = 'Attachment';
+            frame.style.cssText = 'width:100%;height:min(70vh,480px);border:0;border-radius:12px;background:#f9f6f1';
+            body.appendChild(frame);
+            return;
+          }
+          if (body) body.innerHTML = '<div style="padding:24px;color:#8a7a6a">No attachment preview available</div>';
+          return;
+        }
+        var src = candidates[idx++];
+        var img = document.createElement('img');
+        img.alt = 'Payment attachment';
+        img.style.cssText = 'max-width:100%;max-height:75vh;border-radius:12px;display:block;margin:0 auto;background:#f9f6f1';
+        img.onload = function(){
+          if (body) { body.innerHTML = ''; body.appendChild(img); }
+        };
+        img.onerror = function(){ tryNext(); };
+        img.src = src;
+      }
+      tryNext();
     }
+    window.adminViewPaymentProof = adminViewPaymentProof;
+
+
 
     /** Group paid invoice rows into payment transactions (parent = bank/Zoho payment). */
     function _payTxnKey(o) {
@@ -2513,7 +2558,7 @@
       var q = ((document.getElementById('pay-desk-q') || {}).value || '').toLowerCase().trim();
       // Unpaid / requests / paid = invoices only (challans stay on Challans tab until converted)
       var unpaid = _payDeskRows.filter(function(o){ return !_payIsChallan(o) && !_payIsPaid(o) && !_payIsVoid(o); });
-      var claims = _payDeskRows.filter(function(o){ return !_payIsChallan(o) && o.customer_claimed_paid && !_payIsPaid(o) && !_payIsVoid(o); });
+      var claims = _payDeskRows.filter(function(o){ return o.customer_claimed_paid && !_payIsPaid(o) && !_payIsVoid(o); });
       var paidAll = _payDeskRows.filter(function(o){ return !_payIsChallan(o) && _payIsPaid(o); });
       var showAllPaid = !!(window._payPaidShowAll || (document.getElementById('pay-paid-all') && document.getElementById('pay-paid-all').checked));
       var paidCutoff = new Date();
@@ -2621,6 +2666,8 @@
                   '<div style="font-size:10px;color:#1565c0;margin-top:4px">Screenshot · tap to view</div></div>';
               } else if (proof.view) {
                 bits += '<br><button type="button" class="btn-sm" style="margin-top:6px;background:#e3f2fd;color:#1565c0;border:1px solid #90caf9" onclick="event.stopPropagation();adminViewPaymentProof(\''+proof.view.replace(/'/g,'')+'\')">📷 View attachment</button>';
+              } else {
+                bits += '<br><span style="font-size:10px;color:#8a7a6a;font-family:monospace">No screenshot uploaded</span>';
               }
               return bits;
             }
@@ -2720,10 +2767,33 @@
           : '<div style="text-align:center;padding:20px;color:#8a7a6a;font-size:12px">No unpaid documents</div>';
       }
       if (elReq) {
-        var gReq = groupByCustomer(listReq);
-        elReq.innerHTML = gReq.length
-          ? gReq.map(customerGroupHtml).join('')
-          : '<div style="text-align:center;padding:20px;color:#8a7a6a;font-size:12px">No payment requests</div>';
+        if (!listReq.length) {
+          elReq.innerHTML = '<div style="text-align:center;padding:20px;color:#8a7a6a;font-size:12px">No payment requests</div>';
+        } else {
+          elReq.innerHTML = listReq.map(function(o){
+            var due = _payDue(o);
+            var utr = String(o.payment_ref || o.customer_claim_note || '').trim();
+            var note = String(o.customer_claim_note || '').trim();
+            if (note && note === utr) note = '';
+            var proof = adminProofUrls(o);
+            var hasAtt = !!(proof.file_id || (proof.view && proof.view.length > 8) || (proof.thumb && proof.thumb.length > 8));
+            var attUrl = (proof.view || proof.thumb || '').replace(/'/g, '');
+            var inv = o.zoho_invoice_number || (_payIsChallan(o) ? 'Challan' : 'Invoice') || ('#'+o.id);
+            return '<div class="card" style="padding:14px;margin-bottom:10px">'+
+              '<div style="font-size:15px;font-weight:900;color:#4a2f14;line-height:1.3">'+esc(o.shop_name||o.shop_id||'Shop')+'</div>'+
+              '<div style="font-size:20px;font-weight:900;color:#c8382a;margin-top:6px">₹'+due.toLocaleString('en-IN',{maximumFractionDigits:2})+'</div>'+
+              '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:4px">'+esc(String(inv))+(o.delivery_date ? ' · '+esc(String(o.delivery_date)) : '')+'</div>'+
+              (utr ? '<div style="margin-top:8px;font-size:13px;font-weight:700;color:#1565c0">UTR / ref: '+esc(utr)+'</div>' : '')+
+              (note ? '<div style="margin-top:4px;font-size:12px;color:#546e7a">Note: '+esc(note)+'</div>' : '')+
+              '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center">'+
+                (hasAtt
+                  ? '<button type="button" class="btn-sm" style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;padding:8px 12px;font-weight:800" onclick="adminViewPaymentProof(\''+attUrl+'\')">View attachment</button>'
+                  : '<span style="font-size:11px;color:#8a7a6a">No attachment</span>')+
+                '<button type="button" class="btn-sm" style="background:#2d7a4f;color:#fff;border:none;padding:8px 14px;font-weight:800" onclick="payDeskConfirmReceived(\''+String(o.id)+'\')">Approve</button>'+
+                '<button type="button" class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0;padding:8px 14px;font-weight:800" onclick="payDeskRejectRequest(\''+String(o.id)+'\')">Reject</button>'+
+              '</div></div>';
+          }).join('');
+        }
       }
       if (elPaid) { var paidGroups = groupPaidByTransaction(listPaid); elPaid.innerHTML = paidGroups.length ? paidGroups.map(paidPaymentGroupHtml).join('') : ('<div style="text-align:center;padding:20px;color:#8a7a6a;font-size:12px">'+(showAllPaid?'No paid rows yet':'No paid invoices in the last 7 days.<br><span style="font-size:11px">Turn on “Show all paid” to see older.</span>')+'</div>'); }
       try { adminLazyLoadThumbs(document.getElementById('pay-desk-list-req')); adminLazyLoadThumbs(document.getElementById('pay-desk-list-paid')); adminLazyLoadThumbs(document.getElementById('pay-desk-list')); } catch (eLazy) {}
@@ -3311,14 +3381,30 @@ function payDeskMarkPaid(id) {
           var btnBg = (h.duplicate && h.confidence === 'low') ? '#fff3e0' : '#2d7a4f';
           var btnFg = (h.duplicate && h.confidence === 'low') ? '#e65100' : '#fff';
           var btnBorder = (h.duplicate && h.confidence === 'low') ? '1px solid #ffcc80' : 'none';
+          var row = (_payDeskRows || []).find(function(r){ return String(r.id) === String(h.id); });
+          var proof = row ? adminProofUrls(row) : { view:'', thumb:'' };
+          var claimNote = row && (row.customer_claim_note || row.payment_ref) ? String(row.customer_claim_note || row.payment_ref) : '';
+          var claimedAt = row && row.customer_claimed_at ? String(row.customer_claimed_at).slice(0,16).replace('T',' ') : '';
+          var proofBits = '';
+          if (proof.view || proof.thumb) {
+            var vUrl = (proof.view || proof.thumb).replace(/'/g,'');
+            proofBits = '<button type="button" class="btn-sm" style="margin-top:6px;background:#e3f2fd;color:#1565c0;border:1px solid #90caf9" onclick="event.stopPropagation();adminViewPaymentProof(\''+vUrl+'\')">📷 Screenshot</button>';
+          } else {
+            proofBits = '<span style="display:inline-block;margin-top:6px;font-size:10px;color:#8a7a6a;font-family:monospace">No screenshot uploaded</span>';
+          }
           return '<div style="background:'+bg+';border-radius:10px;padding:10px;margin-bottom:6px;border:'+border+'">'+
             '<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">'+
               '<div style="flex:1;min-width:0">'+
                 '<div style="font-weight:800;color:#4a2f14">'+esc(h.shop_name)+dupBadge+'</div>'+
-                '<div style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-top:2px">₹'+h.due.toLocaleString('en-IN',{maximumFractionDigits:2})+' · '+esc(h.inv)+'</div>'+
+                '<div style="font-size:11px;font-family:monospace;color:#8a7a6a;margin-top:2px">₹'+h.due.toLocaleString('en-IN',{maximumFractionDigits:2})+' · '+esc(h.inv)+(claimedAt?' · claimed '+esc(claimedAt):'')+'</div>'+
+                (claimNote ? '<div style="font-size:11px;color:#546e7a;margin-top:3px">Note / UTR: <b>'+esc(claimNote)+'</b></div>' : '')+
                 '<div style="font-size:11px;color:'+fg+';margin-top:4px;line-height:1.4"><b>'+h.confidence.toUpperCase()+'</b> — '+esc(h.reason)+'</div>'+
+                proofBits+
               '</div>'+
-              '<button type="button" class="btn-sm" style="background:'+btnBg+';color:'+btnFg+';border:'+btnBorder+';flex-shrink:0" onclick="payDeskConfirmReceived(\''+String(h.id)+'\')">'+btnLabel+'</button>'+
+              '<div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">'+
+                '<button type="button" class="btn-sm" style="background:'+btnBg+';color:'+btnFg+';border:'+btnBorder+'" onclick="payDeskConfirmReceived(\''+String(h.id)+'\')">'+btnLabel+'</button>'+
+                '<button type="button" class="btn-sm" style="background:#fff;color:#4a2f14;border:1px solid #e8dfd2" onclick="event.stopPropagation();openPayInvDetail(\''+String(h.id)+'\')">View</button>'+
+              '</div>'+
             '</div></div>';
         }).join('');
     }
@@ -3458,6 +3544,38 @@ function payDeskMarkPaid(id) {
           _payDeskMsg('Failed (Zoho or app): '+(e && e.message ? e.message : e), false);
         });
     }
+    
+    function payDeskRejectRequest(id) {
+      var o = _payDeskRows.find(function(r){ return String(r.id) === String(id); });
+      if (!o) return;
+      if (!confirm('Reject payment request for '+(o.shop_name||'')+'?\n\nCustomer claim will be cleared. Invoice stays unpaid.')) return;
+      _payDeskMsg('Rejecting…', null);
+      apiPost({
+        action: 'updateCustomerOrderStatus',
+        id: o.id,
+        customer_claimed_paid: false,
+        customer_claimed_at: null,
+        customer_claim_note: '',
+        payment_ref: o.payment_ref || ''
+      }).then(function(res){
+        if (res && res.ok === false) throw new Error(res.error || 'Failed');
+        o.customer_claimed_paid = false;
+        o.customer_claimed_at = null;
+        o.customer_claim_note = '';
+        if (o.shop_id) {
+          _payNotifyCustomer(
+            o.shop_id,
+            o.shop_name || '',
+            'Payment request not accepted for '+(o.zoho_invoice_number||'invoice')+'. Please check amount/UTR or contact bakery.'
+          ).catch(function(){});
+        }
+        _payDeskMsg('Request rejected · customer notified', true);
+        loadPaymentsDesk(_payDeskTab || 'pay-requests');
+      }).catch(function(e){
+        _payDeskMsg('Reject failed: '+(e && e.message ? e.message : e), false);
+      });
+    }
+
     function payDeskConfirmSelectedRequests() {
       var boxes = document.querySelectorAll('.pay-desk-cb:checked');
       var targets = [];
@@ -4371,7 +4489,7 @@ function payDeskLoadBlockSettings() {
         } else {
           loadPaymentsDesk(tab);
           try { payDeskLoadBlockSettings(); payDeskLoadUpi(); } catch(e) {}
-          if (tab === 'pay-requests') setTimeout(function(){ try { payDeskRunReconcile(); } catch(e) {} }, 500);
+          /* requests: simple list only */
         }
       };
 
@@ -4422,6 +4540,12 @@ function payDeskLoadBlockSettings() {
       window.payDeskSyncOne = typeof payDeskSyncOne === 'function' ? payDeskSyncOne : function(){};
       window.payDeskRemindOne = typeof payDeskRemindOne === 'function' ? payDeskRemindOne : function(){};
       window.payDeskConfirmReceived = typeof payDeskConfirmReceived === 'function' ? payDeskConfirmReceived : function(){};
+      window.payDeskRejectRequest = typeof payDeskRejectRequest === 'function' ? payDeskRejectRequest : function(){};
+      window.adminViewPaymentProof = typeof adminViewPaymentProof === 'function' ? adminViewPaymentProof : function(){};
+      window.adminProofUrls = typeof adminProofUrls === 'function' ? adminProofUrls : function(){ return {view:'',thumb:''}; };
+      window.openPayInvDetail = typeof openPayInvDetail === 'function' ? openPayInvDetail : function(){};
+      window.adminLazyLoadThumbs = typeof adminLazyLoadThumbs === 'function' ? adminLazyLoadThumbs : function(){};
+
 
       window.payDeskToggleCust = payDeskToggleCust;
       window.payDeskSyncShopStatuses = typeof payDeskSyncShopStatuses === 'function' ? payDeskSyncShopStatuses : function(){};
