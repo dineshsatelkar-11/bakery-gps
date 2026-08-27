@@ -528,6 +528,18 @@ body.dark .search-item:hover{background:#3d4a5c}
       <button class="btn-sm btn-grey" onclick="refreshDriverTab()" style="font-size:12px">🔄 Refresh</button>
     </div>
 
+    <!-- Quick pay advance — always on Drivers -->
+    <div class="card" id="quick-driver-pay" style="border:1.5px solid #bae6fd;background:#f0f9ff;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div class="card-title" style="margin:0;color:#0c4a6e">⚡ Quick pay advance</div>
+        <button class="btn-sm btn-grey" onclick="loadQuickDriverPayList()" style="font-size:11px">🔄</button>
+      </div>
+      <div style="font-size:11px;color:#0369a1;margin-bottom:8px">
+        <b>+</b> advance already given this month · <b>−</b> salary calculated but not paid yet. Tap <b>Pay</b> to open pay sheet.
+      </div>
+      <div id="quickDriverPayList"><div class="empty">Loading drivers…</div></div>
+    </div>
+
     <!-- All Transactions -->
     <div id="dsec-txns">
       <div class="card" style="padding:10px">
@@ -739,28 +751,6 @@ body.dark .search-item:hover{background:#3d4a5c}
         <div style="font-size:10px;color:#7a8fa6;margin-bottom:6px;font-family:monospace">Leave month blank to see all. Latest first.</div>
         <div id="advanceList"><div class="empty">Select driver</div></div>
       </div>
-      <!-- Balance Adjustment -->
-      <div class="card" style="border:1px solid #c7d2fe;background:#f8f7ff">
-        <div class="card-title" style="color:#4338ca">⚖️ Balance Adjustment</div>
-        <div style="font-size:11px;color:#6366f1;margin-bottom:10px">Use this when you can't enter all historical transactions. Sets an opening/adjustment balance for a driver.</div>
-        <label class="lbl">Driver</label>
-        <select id="adj-driver"></select>
-        <div class="row2">
-          <div><label class="lbl">Date</label>
-            <input type="date" id="adj-date"></div>
-          <div><label class="lbl">Amount (₹)</label>
-            <input type="number" id="adj-amount" placeholder="0"></div>
-        </div>
-        <label class="lbl">Adjustment Type</label>
-        <select id="adj-direction">
-          <option value="balance_adj_credit">💸 Owner owes Driver (historical dues unpaid)</option>
-          <option value="balance_adj_debit">⚠️ Driver owes Owner (advance / historical debt)</option>
-        </select>
-        <label class="lbl">Note / Reason</label>
-        <input type="text" id="adj-reason" placeholder="Opening balance, historical dues, etc.">
-        <button class="btn" style="background:#4338ca;color:#fff;width:100%;margin-top:8px" onclick="saveBalanceAdj()">⚖️ Save Adjustment</button>
-        <div id="adj-msg"></div>
-      </div>
     </div>
 
     <!-- Deductions -->
@@ -868,23 +858,6 @@ body.dark .search-item:hover{background:#3d4a5c}
     <!-- Manage Drivers -->
     <!-- ── Tempo Advance Rent ── -->
     <div id="dsec-tempopay" style="display:none">
-      <div style="display:flex;gap:8px;margin-bottom:8px">
-        <button class="btn btn-grey" style="flex:none;padding:10px 14px;font-size:13px" onclick="showCarryForwardCard()">↩ Carry Forward</button>
-      </div>
-      <div id="carry-fwd-card" style="display:none" class="card">
-        <div class="card-title">↩ Carry Forward Tempo Rent</div>
-        <div class="row2">
-          <div><label class="lbl">Driver</label>
-            <select id="cf-driver"><option value="">— select —</option></select></div>
-          <div><label class="lbl">From Month</label>
-            <input type="month" id="cf-month"></div>
-        </div>
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-blue" style="flex:1" onclick="carryForwardTempoRent()">Calculate &amp; Apply</button>
-          <button class="btn btn-grey" style="flex:none" onclick="document.getElementById('carry-fwd-card').style.display='none'">Cancel</button>
-        </div>
-        <div id="cf-msg"></div>
-      </div>
       <!-- Record payment -->
       <div class="card">
         <div class="card-title">🚐 Record Tempo Rent Payment</div>
@@ -2058,7 +2031,7 @@ function showTab(tab){
   if(tab==='bank'){ _currentBankAccount=''; loadBankAccounts(); showBankTab('accounts'); }
   if(tab==='expenses'){ populateExpCatSelects(); setExpenseFilter('month'); showExpenseTab('all'); }
   if(tab==='payments') loadPaymentList();
-  if(tab==='drivers') { showDriverTab('txns'); }
+  if(tab==='drivers') { showDriverTab('txns'); loadQuickDriverPayList(); }
   if(tab==='ledger') { showLedgerTab(_currentLedgerTab||'all'); }
   if(tab==='report') { showReportTab('pl'); }
 }
@@ -2101,9 +2074,158 @@ function refreshDriverTab(){
   var tabs=['txns','salary','money','tempopay','manage'];
   for(var i=0;i<tabs.length;i++){
     var btn=document.getElementById('dstab-'+tabs[i]);
-    if(btn&&btn.className.indexOf('btn-blue')>=0){showDriverTab(tabs[i]);return;}
+    if(btn&&btn.className.indexOf('btn-blue')>=0){showDriverTab(tabs[i]);loadQuickDriverPayList();return;}
   }
   showDriverTab('txns');
+  loadQuickDriverPayList();
+}
+
+// ── QUICK PAY ADVANCE ──
+function loadQuickDriverPayList(){
+  var el=document.getElementById('quickDriverPayList');
+  if(!el) return;
+  el.innerHTML='<div class="empty">Loading…</div>';
+  var mon=thisMonth();
+  var y=mon.slice(0,4); var m=mon.slice(5,7);
+  var last=new Date(parseInt(y,10),parseInt(m,10),0).getDate();
+  var from=mon+'-01'; var to=mon+'-'+String(last).padStart(2,'0');
+  Promise.all([
+    sbGetQ('fin_drivers','active=eq.true&order=name.asc'),
+    sbGetQ('driver_advances','type=eq.advance&date=gte.'+from+'&date=lte.'+to+'&order=date.desc'),
+    sbGetQ('driver_salaries','paid_date=is.null&order=month.desc')
+  ]).then(function(res){
+    var drivers=res[0]||[];
+    var advs=res[1]||[];
+    var unpaidSals=res[2]||[];
+    if(!drivers.length){el.innerHTML='<div class="empty">No active drivers</div>';return;}
+    el.innerHTML=drivers.map(function(d){
+      var name=d.name;
+      var advSum=advs.filter(function(a){return a.driver_name===name;})
+        .reduce(function(s,a){return s+(parseFloat(a.amount)||0);},0);
+      var salRows=unpaidSals.filter(function(s){return s.driver_name===name;});
+      var unpaidSal=salRows.reduce(function(s,r){return s+(parseFloat(r.net_paid)||0);},0);
+      // + advance given · − unpaid salary
+      var bal=+(advSum-unpaidSal).toFixed(2);
+      var balColor=bal>0.01?'#c8382a':bal<-0.01?'#1e7a4f':'#64748b';
+      var balTxt=(bal>0?'+':'')+fmt(bal);
+      var safe=String(name).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      var upi=getDriverUpi(name);
+      var bits=[];
+      if(advSum>0) bits.push('<span style="color:#c8382a">Adv '+fmt(advSum)+'</span>');
+      if(unpaidSal>0) bits.push('<span style="color:#1e7a4f">Unpaid sal '+fmt(unpaidSal)+'</span>');
+      if(!bits.length) bits.push('<span style="color:#94a3b8">No open items</span>');
+      return'<div class="item-card" style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px;padding:10px 12px">'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-weight:800;font-size:14px">'+esc(name)+(upi&&upi.upi_vpa?' <span class="badge b-green" style="font-size:9px">UPI</span>':'')+'</div>'+
+          '<div style="font-size:11px;margin-top:2px">'+bits.join(' · ')+'</div>'+
+        '</div>'+
+        '<div style="text-align:right;flex:none">'+
+          '<div style="font-weight:900;font-size:15px;color:'+balColor+'">'+balTxt+'</div>'+
+          '<button class="btn-sm btn-blue" style="margin-top:4px" onclick="openQuickAdvance(\''+safe+'\')">Pay</button>'+
+        '</div></div>';
+    }).join('');
+  });
+}
+function openQuickAdvance(driverName){
+  var defBank=getDefaultBank()||'';
+  var bankOpts=(_bankAccounts||[]).map(function(a){
+    return'<option value="'+esc(a.name)+'"'+(a.name===defBank?' selected':'')+'>'+esc(a.name)+'</option>';
+  }).join('');
+  if(!bankOpts) bankOpts='<option value="">— load banks —</option>';
+  var d=getDriverUpi(driverName)||{};
+  var vpa=d.upi_vpa||'';
+  var payee=d.upi_payee_name||driverName;
+  var desc='Advance — '+driverName+' · '+todayStr();
+  var html=
+    '<div style="font-size:12px;color:#64748b;margin-bottom:10px">Paying advance to <b>'+esc(driverName)+'</b></div>'+
+    '<label class="lbl">Amount (₹)</label>'+
+    '<input type="number" id="qa-amount" placeholder="0" inputmode="decimal" style="font-size:20px;font-weight:800" oninput="qaOnAmountChange()">'+
+    '<label class="lbl">Date</label>'+
+    '<input type="date" id="qa-date" value="'+todayStr()+'">'+
+    '<label class="lbl">Paid from bank</label>'+
+    '<select id="qa-bank"><option value="">— No bank entry —</option>'+bankOpts+'</select>'+
+    '<label class="lbl">Description</label>'+
+    '<input type="text" id="qa-desc" value="'+esc(desc)+'">'+
+    '<div id="qa-upi-panel" style="margin-top:10px;padding:10px;background:#f0fdfa;border:1px solid #99f6e4;border-radius:10px;display:none">'+
+      '<div style="font-size:12px;font-weight:700;color:#0f766e;margin-bottom:6px">📱 UPI</div>'+
+      '<div style="font-size:11px;color:#475569;margin-bottom:6px" id="qa-upi-info">'+(vpa?('Mapped: '+esc(vpa)):('No UPI mapped — type below or add in Manage'))+'</div>'+
+      '<input type="text" id="qa-upi-vpa" value="'+esc(vpa)+'" placeholder="name@upi / paste QR text">'+
+      '<div style="display:flex;gap:8px;margin-top:8px">'+
+        '<button type="button" class="btn btn-grey" style="flex:1" onclick="qaPayUpi(\'phonepe\')">PhonePe</button>'+
+        '<button type="button" class="btn btn-grey" style="flex:1" onclick="qaPayUpi(\'paytm\')">Paytm</button>'+
+        '<button type="button" class="btn btn-grey" style="flex:1" onclick="qaPayUpi(\'upi\')">UPI</button>'+
+      '</div>'+
+    '</div>'+
+    '<input type="hidden" id="qa-driver" value="'+esc(driverName)+'">'+
+    '<input type="hidden" id="qa-payee" value="'+esc(payee)+'">'+
+    '<div style="display:flex;gap:8px;margin-top:14px">'+
+      '<button class="btn btn-blue" style="flex:1" onclick="saveQuickAdvance()">💾 Save advance</button>'+
+      '<button class="btn btn-grey" style="flex:none" onclick="closeModal()">Cancel</button>'+
+    '</div>'+
+    '<div id="qa-msg" style="margin-top:8px"></div>';
+  openModal('📤 Pay advance — '+driverName, html);
+  if(!_bankAccounts||!_bankAccounts.length){
+    loadBankAccounts();
+    setTimeout(function(){
+      var sel=document.getElementById('qa-bank');
+      if(!sel) return;
+      var def=getDefaultBank()||'';
+      var opts=(_bankAccounts||[]).map(function(a){
+        return'<option value="'+a.name+'"'+(a.name===def?' selected':'')+'>'+a.name+'</option>';
+      }).join('');
+      sel.innerHTML='<option value="">— No bank entry —</option>'+opts;
+      if(def) sel.value=def;
+    },400);
+  }
+  setTimeout(function(){
+    var amt=document.getElementById('qa-amount');
+    if(amt) amt.focus();
+  },100);
+}
+function qaOnAmountChange(){
+  var amt=parseFloat(v('qa-amount'))||0;
+  var panel=document.getElementById('qa-upi-panel');
+  if(panel) panel.style.display=amt>0?'block':'none';
+}
+function qaPayUpi(app){
+  var drv=v('qa-driver');
+  var amt=parseFloat(v('qa-amount'));
+  if(!(amt>0)){showMsg('qa-msg','Enter amount first','er');return;}
+  var vpa=v('qa-upi-vpa');
+  var name=v('qa-payee')||drv;
+  var note=v('qa-desc')||('Advance '+drv);
+  if(app==='phonepe'||app==='paytm'){
+    var url=buildAppUpiUrl(app, vpa, name, amt, note);
+    if(!url){showMsg('qa-msg','Valid UPI ID required (name@bank)','er');return;}
+    try{ window.location.href=url; showMsg('qa-msg','App opened. After pay, tap Save advance.','ok'); }
+    catch(e){ showMsg('qa-msg','Could not open app','er'); }
+  } else {
+    if(openFinUpiPay(vpa, name, amt, note))
+      showMsg('qa-msg','UPI opened. After pay, tap Save advance.','ok');
+  }
+}
+function saveQuickAdvance(){
+  var drv=v('qa-driver');
+  var amt=parseFloat(v('qa-amount'));
+  var date=v('qa-date')||todayStr();
+  var bank=v('qa-bank');
+  var desc=v('qa-desc')||('Advance — '+drv);
+  if(!drv||!(amt>0)){showMsg('qa-msg','Enter amount','er');return;}
+  var body={driver_name:drv,date:date,amount:amt,type:'advance',reason:desc,bank_account:bank||''};
+  sbPost('driver_advances',body).then(function(r){
+    if(!r.ok){showMsg('qa-msg','Error saving','er');return;}
+    var done=function(){
+      showMsg('qa-msg','Saved ✓','ok');
+      loadQuickDriverPayList();
+      try{ loadAdvanceList(); }catch(e){}
+      try{ loadDriverTxns(); }catch(e){}
+      setTimeout(function(){closeModal();},600);
+    };
+    if(bank){
+      sbPost('bank_transactions',{account_name:bank,date:date,type:'debit',amount:amt,
+        description:desc,reference:drv}).then(done);
+    } else done();
+  });
 }
 function onSalLeaveDaysChange(){
   var days=parseFloat(v('sal-leave-days'))||0;
@@ -2358,13 +2480,13 @@ function loadDriverTxns(){
             srow('  ↳ Cash paid on salary day',cashPaid,'#1e7a4f',true)+
             (rentPaidByDriver>0?srow('  ↳ Rent paid by driver',rentPaidByDriver,'#1e7a4f',true):'')+
           '</div>'+
-          // Final balance — single clear answer
-          '<div style="background:'+(driverOwes?'#fef2f2':ownerOwes?'#f0fdf4':'#f0fdf4')+';border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center">'+
+          // Final balance — amount only (no “owes” wording)
+          '<div style="background:'+(Math.abs(balance)>0.01?'#f8fafc':'#f0fdf4')+';border-radius:10px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center">'+
             '<div>'+
-              '<div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px">Balance</div>'+
-              '<div style="font-size:14px;font-weight:800;color:'+(driverOwes?'#c8382a':ownerOwes?'#1e7a4f':'#1e7a4f')+'">'+(driverOwes?'⚠️ Driver owes owner':ownerOwes?'💸 Owner owes driver':'✅ Fully Settled')+'</div>'+
+              '<div style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px">Net balance</div>'+
+              '<div style="font-size:14px;font-weight:800;color:#1a3a5c">'+(Math.abs(balance)<0.01?'✅ Settled':'📊 Running total')+'</div>'+
             '</div>'+
-            (Math.abs(balance)>0.01?'<div style="font-size:26px;font-weight:900;color:'+(driverOwes?'#c8382a':'#1e7a4f')+'">'+fmt(Math.abs(balance))+'</div>':'')+
+            (Math.abs(balance)>0.01?'<div style="font-size:26px;font-weight:900;color:#1a3a5c">'+fmt(balance)+'</div>':'')+
           '</div>'+
         '</div>';
       }).join('');
@@ -2689,7 +2811,7 @@ var tempos=[];
 var DRIVERS=[];
 function populateDriverSelects(drivers){
   DRIVERS=drivers.map(function(d){return d.name;});
-  var driverSelects=['dtxn-driver','sal-driver','adv-driver','ded-driver','lv-driver','sal-list-driver','adv-list-driver','ded-list-driver','lv-list-driver','lv-del-driver','ex-driver','adj-driver','er-driver','er-list-driver'];
+  var driverSelects=['dtxn-driver','sal-driver','adv-driver','ded-driver','lv-driver','sal-list-driver','adv-list-driver','ded-list-driver','lv-list-driver','lv-del-driver','ex-driver','er-driver','er-list-driver'];
   driverSelects.forEach(function(id){
     var el=document.getElementById(id);
     if(!el) return;
@@ -4015,19 +4137,6 @@ function loadAdvanceList(){
 }
 function deleteAdvance(id){
   sbDelete('driver_advances',id).then(function(){loadAdvanceList();loadDriverTxns();});
-}
-function saveBalanceAdj(){
-  var drv=v('adj-driver'); var date=v('adj-date'); var amt=parseFloat(v('adj-amount'));
-  var dir=v('adj-direction'); var reason=v('adj-reason');
-  if(!drv){showMsg('adj-msg','Select driver','er');return;}
-  if(!amt||!date){showMsg('adj-msg','Enter date and amount','er');return;}
-  sbPost('driver_advances',{driver_name:drv,date:date,amount:amt,type:dir,
-    reason:reason||'Balance adjustment'}).then(function(r){
-    if(!r.ok){showMsg('adj-msg','Error saving','er');return;}
-    showMsg('adj-msg','Adjustment saved ✓','ok');
-    setV('adj-amount',''); setV('adj-reason','');
-    loadDriverTxns();
-  });
 }
 function editAdvanceInline(id){
   // close any previously open inline form
@@ -6699,53 +6808,6 @@ function generateAllSalaries(){
         loadSalaryList();
       });
     });
-  });
-}
-
-// ══════════════════════════════════════════════
-//  STEP 4: Carry Forward Tempo Rent
-// ══════════════════════════════════════════════
-function showCarryForwardCard(){
-  var el=document.getElementById('carry-fwd-card');
-  if(el){
-    el.style.display=el.style.display==='none'?'block':'none';
-    setV('cf-month',thisMonth());
-    // populate driver select
-    sbGetQ('fin_drivers','active=eq.true&has_tempo=eq.true&order=name.asc').then(function(rows){
-      var sel=document.getElementById('cf-driver');
-      if(sel) sel.innerHTML='<option value="">— select —</option>'+rows.map(function(d){return'<option value="'+d.name+'">'+d.name+'</option>';}).join('');
-    });
-  }
-}
-function carryForwardTempoRent(){
-  var drv=v('cf-driver'); var fromMon=v('cf-month');
-  if(!drv||!fromMon){showMsg('cf-msg','Select driver and month','er');return;}
-  var y=parseInt(fromMon.slice(0,4)); var m=parseInt(fromMon.slice(5,7));
-  var fromStart=fromMon+'-01'; var fromEnd=fromMon+'-'+new Date(y,m,0).getDate();
-  // next month
-  var nextDate=new Date(y,m,1);
-  var nextMon=nextDate.getFullYear()+'-'+String(nextDate.getMonth()+1).padStart(2,'0');
-  Promise.all([
-    sbGetQ('driver_tempo_rent','driver_name=eq.'+encodeURIComponent(drv)+'&month=eq.'+fromMon),
-    sbGetQ('driver_tempo_advance','driver_name=eq.'+encodeURIComponent(drv)+'&date=gte.'+fromStart+'&date=lte.'+fromEnd)
-  ]).then(function(res){
-    var rentRows=res[0]||[]; var advances=res[1]||[];
-    var monthlyRent=rentRows.reduce(function(a,r){return a+(parseFloat(r.rent_amount)||0);},0);
-    var totalPaid=advances.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
-    var diff=totalPaid-monthlyRent;
-    if(diff>0){
-      // excess paid — create carry forward credit in next month
-      sbPost('driver_tempo_advance',{driver_name:drv,tempo_name:rentRows.length?rentRows[0].tempo_name:'',
-        date:nextMon+'-01',amount:-diff,period:'carry_forward',days_covered:0,
-        note:'Carry forward from '+fromMon}).then(function(r){
-        if(r.ok) showMsg('cf-msg','Carry forward of '+fmt(diff)+' applied to '+nextMon,'ok');
-        else showMsg('cf-msg','Error saving carry forward','er');
-      });
-    } else if(diff<0){
-      showMsg('cf-msg','Balance due: '+fmt(Math.abs(diff))+' still unpaid for '+fromMon+'. No carry forward created.','in');
-    } else {
-      showMsg('cf-msg','Settled! No carry forward needed for '+fromMon,'ok');
-    }
   });
 }
 
