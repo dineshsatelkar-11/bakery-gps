@@ -197,11 +197,21 @@ body.dark #chatInputRow{border-color:#3d4a5c}
 #chatInput{flex:1;padding:10px 14px;border:1.5px solid #d8e4f0;border-radius:22px;font-size:14px;background:#f4f8fc;outline:none;font-family:-apple-system,sans-serif}
 body.dark #chatInput{background:#2d3748;color:#e2e8f0;border-color:#3d4a5c}
 #chatSend{background:#1a3a5c;color:#fff;border:none;border-radius:50%;width:40px;height:40px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-/* ── MODAL ── */
-#modalOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:flex-end;justify-content:center}
+/* ── MODAL (above bottom nav z-index:999) ── */
+#modalOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1100;align-items:flex-end;justify-content:center}
 #modalOverlay.open{display:flex}
-#modalBox{background:#fff;border-radius:20px 20px 0 0;padding:20px 16px 32px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto}
-#modalTitle{font-size:16px;font-weight:900;color:#1a3a5c;margin-bottom:14px}
+#modalBox{
+  background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:520px;
+  max-height:min(92vh, 100%);display:flex;flex-direction:column;
+  padding:0;overflow:hidden;
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+#modalTitle{font-size:16px;font-weight:900;color:#1a3a5c;padding:16px 16px 0;flex:none}
+#modalBody{padding:12px 16px 0;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch}
+#modalBody .qa-sticky-actions{
+  position:sticky;bottom:0;background:#fff;padding:12px 0 max(16px, calc(12px + var(--sab)));
+  margin-top:12px;border-top:1px solid #e2e8f0;z-index:2;
+}
 /* ── DARK MODE ── */
 body.dark{background:#1a1f2e;color:#e2e8f0}
 body.dark .card{background:#232b3e;border-color:#2d3748}
@@ -2128,53 +2138,48 @@ function loadQuickDriverPayList(){
 }
 function openQuickAdvance(driverName){
   var defBank=getDefaultBank()||'';
-  var bankOpts=(_bankAccounts||[]).map(function(a){
-    return'<option value="'+esc(a.name)+'"'+(a.name===defBank?' selected':'')+'>'+esc(a.name)+'</option>';
-  }).join('');
-  if(!bankOpts) bankOpts='<option value="">— load banks —</option>';
+  if(!defBank && _bankAccounts && _bankAccounts.length) defBank=_bankAccounts[0].name||'';
   var d=getDriverUpi(driverName)||{};
   var vpa=d.upi_vpa||'';
   var payee=d.upi_payee_name||driverName;
   var desc='Advance — '+driverName+' · '+todayStr();
+  var bankLabel=defBank?esc(defBank):'⚠️ Set default bank in Bank tab';
   var html=
     '<div style="font-size:12px;color:#64748b;margin-bottom:10px">Paying advance to <b>'+esc(driverName)+'</b></div>'+
     '<label class="lbl">Amount (₹)</label>'+
-    '<input type="number" id="qa-amount" placeholder="0" inputmode="decimal" style="font-size:20px;font-weight:800" oninput="qaOnAmountChange()">'+
+    '<input type="number" id="qa-amount" placeholder="0" inputmode="decimal" style="font-size:20px;font-weight:800">'+
     '<label class="lbl">Date</label>'+
     '<input type="date" id="qa-date" value="'+todayStr()+'">'+
     '<label class="lbl">Paid from bank</label>'+
-    '<select id="qa-bank"><option value="">— No bank entry —</option>'+bankOpts+'</select>'+
+    '<div style="padding:10px 12px;background:#f1f5f9;border:1.5px solid #cbd5e1;border-radius:10px;font-weight:800;color:#0f172a">🏦 '+bankLabel+'</div>'+
+    '<input type="hidden" id="qa-bank" value="'+esc(defBank)+'">'+
     '<label class="lbl">Description</label>'+
     '<input type="text" id="qa-desc" value="'+esc(desc)+'">'+
-    '<div id="qa-upi-panel" style="margin-top:10px;padding:10px;background:#f0fdfa;border:1px solid #99f6e4;border-radius:10px;display:none">'+
-      '<div style="font-size:12px;font-weight:700;color:#0f766e;margin-bottom:6px">📱 UPI</div>'+
-      '<div style="font-size:11px;color:#475569;margin-bottom:6px" id="qa-upi-info">'+(vpa?('Mapped: '+esc(vpa)):('No UPI mapped — type below or add in Manage'))+'</div>'+
-      '<input type="text" id="qa-upi-vpa" value="'+esc(vpa)+'" placeholder="name@upi / paste QR text">'+
-      '<div style="display:flex;gap:8px;margin-top:8px">'+
-        '<button type="button" class="btn btn-grey" style="flex:1" onclick="qaPayUpi(\'phonepe\')">PhonePe</button>'+
-        '<button type="button" class="btn btn-grey" style="flex:1" onclick="qaPayUpi(\'paytm\')">Paytm</button>'+
-        '<button type="button" class="btn btn-grey" style="flex:1" onclick="qaPayUpi(\'upi\')">UPI</button>'+
-      '</div>'+
+    '<div style="margin-top:12px;padding:12px;background:#f0fdfa;border:1px solid #99f6e4;border-radius:12px">'+
+      '<div style="font-size:12px;font-weight:800;color:#0f766e;margin-bottom:6px">📱 Driver UPI</div>'+
+      '<div style="font-size:12px;color:#334155;margin-bottom:8px" id="qa-upi-info">'+(vpa
+        ?('From driver mapping: <b>'+esc(vpa)+'</b>'+(payee&&payee!==driverName?' · '+esc(payee):''))
+        :'No UPI mapped for this driver — enter UPI ID or paste QR text below')+'</div>'+
+      '<label class="lbl">UPI ID (edit if different) / paste from QR</label>'+
+      '<input type="text" id="qa-upi-vpa" value="'+esc(vpa)+'" placeholder="name@ybl or paste upi://pay?pa=…" autocomplete="off" oninput="qaNormalizeUpi()">'+
+      '<div style="font-size:11px;color:#64748b;margin:6px 0 8px">Or open <b>PhonePe → Scan QR</b> on the phone if they show a QR. After payment, come back and Save.</div>'+
+      '<button type="button" class="btn btn-blue" style="width:100%;background:#5f259f" onclick="qaPayPhonePe()">💜 Pay on PhonePe</button>'+
     '</div>'+
     '<input type="hidden" id="qa-driver" value="'+esc(driverName)+'">'+
     '<input type="hidden" id="qa-payee" value="'+esc(payee)+'">'+
-    '<div style="display:flex;gap:8px;margin-top:14px">'+
-      '<button class="btn btn-blue" style="flex:1" onclick="saveQuickAdvance()">💾 Save advance</button>'+
-      '<button class="btn btn-grey" style="flex:none" onclick="closeModal()">Cancel</button>'+
-    '</div>'+
-    '<div id="qa-msg" style="margin-top:8px"></div>';
+    '<div id="qa-msg" style="margin-top:8px"></div>'+
+    '<div class="qa-sticky-actions">'+
+      '<div style="display:flex;gap:8px">'+
+        '<button class="btn btn-blue" style="flex:1" onclick="saveQuickAdvance()">💾 Save advance</button>'+
+        '<button class="btn btn-grey" style="flex:none" onclick="closeModal()">Cancel</button>'+
+      '</div>'+
+    '</div>';
   openModal('📤 Pay advance — '+driverName, html);
   if(!_bankAccounts||!_bankAccounts.length){
     loadBankAccounts();
     setTimeout(function(){
-      var sel=document.getElementById('qa-bank');
-      if(!sel) return;
-      var def=getDefaultBank()||'';
-      var opts=(_bankAccounts||[]).map(function(a){
-        return'<option value="'+a.name+'"'+(a.name===def?' selected':'')+'>'+a.name+'</option>';
-      }).join('');
-      sel.innerHTML='<option value="">— No bank entry —</option>'+opts;
-      if(def) sel.value=def;
+      var def=getDefaultBank()||((_bankAccounts[0]&&_bankAccounts[0].name)||'');
+      setV('qa-bank', def);
     },400);
   }
   setTimeout(function(){
@@ -2182,49 +2187,54 @@ function openQuickAdvance(driverName){
     if(amt) amt.focus();
   },100);
 }
-function qaOnAmountChange(){
-  var amt=parseFloat(v('qa-amount'))||0;
-  var panel=document.getElementById('qa-upi-panel');
-  if(panel) panel.style.display=amt>0?'block':'none';
+function qaNormalizeUpi(){
+  var el=document.getElementById('qa-upi-vpa');
+  if(!el) return;
+  var parsed=parseUpiVpa(el.value);
+  if(parsed && parsed!==el.value.trim()){
+    // keep as typed; parse used on pay
+  }
 }
-function qaPayUpi(app){
+function qaPayPhonePe(){
   var drv=v('qa-driver');
   var amt=parseFloat(v('qa-amount'));
   if(!(amt>0)){showMsg('qa-msg','Enter amount first','er');return;}
-  var vpa=v('qa-upi-vpa');
+  var raw=v('qa-upi-vpa');
+  var vpa=parseUpiVpa(raw)||raw;
   var name=v('qa-payee')||drv;
   var note=v('qa-desc')||('Advance '+drv);
-  if(app==='phonepe'||app==='paytm'){
-    var url=buildAppUpiUrl(app, vpa, name, amt, note);
-    if(!url){showMsg('qa-msg','Valid UPI ID required (name@bank)','er');return;}
-    try{ window.location.href=url; showMsg('qa-msg','App opened. After pay, tap Save advance.','ok'); }
-    catch(e){ showMsg('qa-msg','Could not open app','er'); }
-  } else {
-    if(openFinUpiPay(vpa, name, amt, note))
-      showMsg('qa-msg','UPI opened. After pay, tap Save advance.','ok');
+  if(!vpa||String(vpa).indexOf('@')<0){
+    showMsg('qa-msg','No UPI ID — type name@bank, paste QR text, or open PhonePe and Scan QR on phone','er');
+    return;
+  }
+  var url=buildAppUpiUrl('phonepe', vpa, name, amt, note);
+  if(!url){showMsg('qa-msg','Valid UPI ID required','er');return;}
+  try{
+    window.location.href=url;
+    showMsg('qa-msg','PhonePe opened. After payment, tap Save advance.','ok');
+  }catch(e){
+    showMsg('qa-msg','Could not open PhonePe. Open PhonePe and Scan QR instead.','er');
   }
 }
 function saveQuickAdvance(){
   var drv=v('qa-driver');
   var amt=parseFloat(v('qa-amount'));
   var date=v('qa-date')||todayStr();
-  var bank=v('qa-bank');
+  var bank=v('qa-bank')||getDefaultBank()||'';
   var desc=v('qa-desc')||('Advance — '+drv);
   if(!drv||!(amt>0)){showMsg('qa-msg','Enter amount','er');return;}
-  var body={driver_name:drv,date:date,amount:amt,type:'advance',reason:desc,bank_account:bank||''};
+  if(!bank){showMsg('qa-msg','Set a default bank in Bank tab first','er');return;}
+  var body={driver_name:drv,date:date,amount:amt,type:'advance',reason:desc+' · UPI',bank_account:bank};
   sbPost('driver_advances',body).then(function(r){
     if(!r.ok){showMsg('qa-msg','Error saving','er');return;}
-    var done=function(){
+    sbPost('bank_transactions',{account_name:bank,date:date,type:'debit',amount:amt,
+      description:desc,reference:drv}).then(function(){
       showMsg('qa-msg','Saved ✓','ok');
       loadQuickDriverPayList();
       try{ loadAdvanceList(); }catch(e){}
       try{ loadDriverTxns(); }catch(e){}
-      setTimeout(function(){closeModal();},600);
-    };
-    if(bank){
-      sbPost('bank_transactions',{account_name:bank,date:date,type:'debit',amount:amt,
-        description:desc,reference:drv}).then(done);
-    } else done();
+      setTimeout(function(){closeModal();},500);
+    });
   });
 }
 function onSalLeaveDaysChange(){
