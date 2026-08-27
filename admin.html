@@ -1257,6 +1257,7 @@
     <div class="pay-mobile-tools" id="payMobileTools">
         <div class="pay-seg" role="tablist">
             <button type="button" class="on" id="paySeg-challan" onclick="showTab('pay-challan')">📋 Challans</button>
+            <button type="button" id="paySeg-draft" onclick="showTab('pay-draft')">📝 Draft</button>
             <button type="button" id="paySeg-open" onclick="showTab('pay-open')">💸 Unpaid</button>
             <button type="button" id="paySeg-requests" onclick="showTab('pay-requests')">📨 Requests</button>
             <button type="button" id="paySeg-paid" onclick="showTab('pay-paid')">✅ Paid</button>
@@ -1267,6 +1268,7 @@
     <iframe id="payEmbedFrame" title="Payments" src="admin-payments.html?embed=1&tab=pay-challan"
             style="width:100%;border:0;display:block;min-height:calc(100dvh - 160px);height:calc(100dvh - 160px);background:#f8fafc;border-radius:14px"></iframe>
 </div>
+<div class="page" id="pg-pay-draft"></div>
 <div class="page" id="pg-pay-open"></div>
 <div class="page" id="pg-pay-requests"></div>
 <div class="page" id="pg-pay-paid"></div>
@@ -2119,7 +2121,7 @@
     function initTabVisibility(){
       var allTabKeys = ['dashboard','orders','approve','queue','summary','delivery','routes','customers',
 'cust-orders','manual-order','products','groups','ingredients','recipes','production','drivers','gps',
-'users','notify','zoho','cleanup','audit','attendance','my-brand','pay-challan','pay-open','pay-requests','pay-paid','pay-link','pay-zoho-list'];
+'users','notify','zoho','cleanup','audit','attendance','my-brand','pay-challan','pay-draft','pay-open','pay-requests','pay-paid','pay-link','pay-zoho-list'];
 allTabKeys.forEach(function(t){
         var show;
         if(t === 'users' || t === 'cleanup' || t === 'audit' || t === 'attendance' || t === 'drivers') {
@@ -2127,7 +2129,7 @@ allTabKeys.forEach(function(t){
         } else if(t === 'zoho') {
           // Zoho ops page for admin + super_admin; settings UI gated separately
           show = (_staffRole === 'super_admin' || _staffRole === 'admin');
-        } else if(t === 'notify' || t === 'manual-order' || t === 'pay-challan' || t === 'pay-open' || t === 'pay-requests' || t === 'pay-paid' || t === 'pay-link' || t === 'pay-zoho-list') {
+        } else if(t === 'notify' || t === 'manual-order' || t === 'pay-challan' || t === 'pay-draft' || t === 'pay-open' || t === 'pay-requests' || t === 'pay-paid' || t === 'pay-link' || t === 'pay-zoho-list') {
           show = (_staffRole === 'super_admin' || _staffRole === 'admin');
         } else if(t === 'dashboard') {
           show = (_staffRole === 'super_admin' || _staffRole === 'admin' || _staffRole === 'assistant');
@@ -2697,6 +2699,7 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
                   {key:'attendance',  label:'📊 Attendance'},
                   {key:'audit',       label:'🔍 Audit'}],
       payments:  [{key:'pay-challan',  label:'📋 Challans'},
+                  {key:'pay-draft',    label:'📝 Draft'},
                   {key:'pay-open',     label:'💸 Unpaid'},
                   {key:'pay-requests', label:'📨 Requests'},
                   {key:'pay-paid',     label:'✅ Paid'},
@@ -2745,11 +2748,11 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
         localStorage.setItem('adminLastTab', t);
         localStorage.setItem('adminLastTabRole', _staffRole || '');
       } catch(e){}
-      ['dashboard','orders','approve','queue','summary','delivery','routes','customers','cust-orders','manual-order','products','groups','ingredients','recipes','production','drivers','gps','users','notify','zoho','cleanup','audit', 'attendance', 'my-brand','pay-challan','pay-open','pay-requests','pay-paid','pay-link','pay-zoho-list'].forEach(function(x){
+      ['dashboard','orders','approve','queue','summary','delivery','routes','customers','cust-orders','manual-order','products','groups','ingredients','recipes','production','drivers','gps','users','notify','zoho','cleanup','audit', 'attendance', 'my-brand','pay-challan','pay-draft','pay-open','pay-requests','pay-paid','pay-link','pay-zoho-list'].forEach(function(x){
         var pg=document.getElementById('pg-'+x); if(!pg) return;
         var on = (x===t);
         // All payment subtabs share the embed frame on pg-pay-challan
-        if (t==='pay-challan'||t==='pay-open'||t==='pay-requests'||t==='pay-paid'||t==='pay-link'||t==='pay-zoho-list') {
+        if (t==='pay-challan'||t==='pay-draft'||t==='pay-open'||t==='pay-requests'||t==='pay-paid'||t==='pay-link'||t==='pay-zoho-list') {
           on = (x === 'pay-challan');
         }
         pg.classList.toggle('on', on);
@@ -2793,7 +2796,7 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
       }
       // Highlight payment segment buttons (mobile in-page header)
       try {
-        var segMap = {'pay-challan':'paySeg-challan','pay-open':'paySeg-open','pay-requests':'paySeg-requests','pay-paid':'paySeg-paid','pay-link':'paySeg-link','pay-zoho-list':'paySeg-zoho-list'};
+        var segMap = {'pay-challan':'paySeg-challan','pay-draft':'paySeg-draft','pay-open':'paySeg-open','pay-requests':'paySeg-requests','pay-paid':'paySeg-paid','pay-link':'paySeg-link','pay-zoho-list':'paySeg-zoho-list'};
         Object.keys(segMap).forEach(function(k){
           var b = document.getElementById(segMap[k]);
           if (b) b.classList.toggle('on', k === t);
@@ -2874,7 +2877,7 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
       if(t==='attendance')   initAttendanceTab();
       if(t==='my-brand')   initMyBrandTab();
       if(t==='pay-challan') loadChallanDesk();
-      if(t==='pay-challan' || t==='pay-open' || t==='pay-requests' || t==='pay-paid' || t==='pay-link' || t==='pay-zoho-list'){ ensurePayEmbed(t); }
+      if(t==='pay-challan' || t==='pay-draft' || t==='pay-open' || t==='pay-requests' || t==='pay-paid' || t==='pay-link' || t==='pay-zoho-list'){ ensurePayEmbed(t); }
     }
 
     /* ── DASHBOARD ── */
@@ -8401,7 +8404,7 @@ apiPost({
       var frame = document.getElementById('payEmbedFrame');
       if(!host) return;
       // Always show the challan page slot which holds the iframe (all pay subtabs share it)
-      ['pg-pay-challan','pg-pay-open','pg-pay-requests','pg-pay-paid','pg-pay-link','pg-pay-zoho-list'].forEach(function(id){
+      ['pg-pay-challan','pg-pay-draft','pg-pay-open','pg-pay-requests','pg-pay-paid','pg-pay-link','pg-pay-zoho-list'].forEach(function(id){
         var el = document.getElementById(id);
         if(el) el.classList.toggle('on', id === 'pg-pay-challan');
       });

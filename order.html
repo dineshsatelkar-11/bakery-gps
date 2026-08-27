@@ -624,7 +624,7 @@
                 </div>
             </div>
             <div id="pay-msg" style="display:none;padding:10px;border-radius:8px;font-size:12px;font-weight:700;margin-bottom:10px"></div>
-            <div style="font-size:11px;font-weight:800;color:#64748b;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Unpaid invoices &amp; challans</div>
+            <div style="font-size:11px;font-weight:800;color:#64748b;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Unpaid invoices</div>
             <div id="pay-list"><div style="text-align:center;color:#64748b;padding:20px;font-size:12px">Open this tab to load unpaid documents…</div></div>
         </div>
     </div>
@@ -1809,6 +1809,11 @@
           var d = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
           if(isNaN(d) || d <= 0) return;
           if(!(o.zoho_invoice_id || o.zoho_invoice_number || o.invoice_total != null)) return;
+          // Match Pay tab: ignore challans + draft invoices
+          var dt = String(o.zoho_doc_type || o.doc_type || '').toLowerCase().replace(/\s+/g, '_');
+          if(dt.indexOf('challan') >= 0 || dt === 'dc') return;
+          var zs = String(o.zoho_invoice_status || '').toLowerCase().replace(/\s+/g, '_');
+          if(zs === 'draft' || zs === 'pending_approval') return;
           due += d; n++;
         });
         var shopBlocked = blockedList.indexOf(String(session.shop_id)) >= 0;
@@ -3377,18 +3382,20 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
         if(!Array.isArray(list)) list = [];
         // If shop_id filter returns nothing, try broader fetch and match local ids
         var finish = function(rows){
-          // Pay tab: unpaid invoices + unpaid challans only (no paid docs)
+          // Pay tab: unpaid SENT invoices only (hide draft + challans — draft amounts change next day)
           _payInvoices = (rows||[]).filter(function(o){
             var st = String(o.payment_status||'').toLowerCase();
             if(st === 'void' || st === 'stale' || st === 'paid') return false;
             var hasDoc = !!(o.zoho_invoice_id || o.zoho_invoice_number || o.invoice_total != null || o.balance_due != null);
             if(!hasDoc) return false;
+            if(_payIsChallanDoc(o)) return false;
+            if(_payIsDraftInvoice(o)) return false;
             var due = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
             if(!isNaN(due) && due <= 0.009) return false;
             return true;
           });
           if(!_payInvoices.length){
-            document.getElementById('pay-list').innerHTML = '<div style="text-align:center;color:#64748b;padding:20px;font-size:12px;line-height:1.5">No unpaid invoices or challans.<br>When admin creates a document with a balance, it will show here.</div>';
+            document.getElementById('pay-list').innerHTML = '<div style="text-align:center;color:#64748b;padding:20px;font-size:12px;line-height:1.5">No unpaid invoices.<br>Drafts and delivery challans are hidden — only sent invoices appear here.</div>';
           }
           renderPaymentsTab();
         };
@@ -3402,20 +3409,31 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
         document.getElementById('pay-list').innerHTML = '<div style="color:#c8382a;padding:12px;font-size:12px">Failed to load: '+String(e.message||e)+'</div>';
       });
     }
+    function _payIsChallanDoc(o){
+      var dt = String(o.zoho_doc_type || o.doc_type || '').toLowerCase().replace(/\s+/g, '_');
+      if(dt.indexOf('challan') >= 0 || dt === 'dc' || dt === 'deliverychallan') return true;
+      var num = String(o.zoho_invoice_number || '');
+      if(/^dc[-_]/i.test(num) || /challan/i.test(num)) return true;
+      return false;
+    }
+    /** Draft / not-yet-sent — hide from customer Pay (amounts may change next day) */
+    function _payIsDraftInvoice(o){
+      var s = String(o.zoho_invoice_status || '').toLowerCase().replace(/\s+/g, '_');
+      return s === 'draft' || s === 'pending_approval';
+    }
     function _payUnpaidList(){
       return (_payInvoices||[]).filter(function(o){
         var st = String(o.payment_status||'').toLowerCase();
         if(st === 'paid' || st === 'void' || st === 'stale') return false;
+        if(_payIsChallanDoc(o)) return false;
+        if(_payIsDraftInvoice(o)) return false;
         var due = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
         if(!isNaN(due) && due <= 0.009) return false;
         return true;
       });
     }
     function _payDocLabel(o){
-      var dt = String(o.zoho_doc_type || o.doc_type || '').toLowerCase();
-      if(dt.indexOf('challan') >= 0 || dt === 'delivery_challan' || dt === 'dc') return 'Challan';
-      var num = String(o.zoho_invoice_number || '');
-      if(/^dc[-_]/i.test(num) || /challan/i.test(num)) return 'Challan';
+      if(_payIsChallanDoc(o)) return 'Challan';
       return 'Invoice';
     }
 
@@ -3441,13 +3459,27 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
      * UPI intent URL schemes (NPCI + app-specific)
      * QR always uses standard upi://pay — every app can scan it.
      * Buttons try app schemes, then generic upi://, then Android intent://
+     *
+     * PhonePe/banks often FAIL when:
+     *  - tn has commas, +, special chars
+     *  - tr is present / looks invalid
+     *  - amount has float noise
+     *  - pn is too long
      */
-    /** UPI `tn` (transaction note) max — keep ≤50 for PhonePe/GPay compatibility */
-    var UPI_TN_MAX = 50;
+    /** UPI `tn` max — keep short for PhonePe/GPay/bank compatibility */
+    var UPI_TN_MAX = 40;
+    /** Strip to bank-safe note text (letters, digits, space, hyphen only) */
+    function sanitizeUpiNote(s){
+      return String(s || '')
+        .replace(/[^\w\s\-]/gi, ' ')  // drop , + / @ etc.
+        .replace(/_/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, UPI_TN_MAX);
+    }
     /**
-     * Build payment description for UPI:
-     * Prefer invoice number(s); not always "Weekly payment" (may be 2–3 day bills).
-     * Fits within UPI_TN_MAX characters.
+     * Build payment description for UPI — short & bank-safe.
+     * Avoid commas / "+" (seen in failed PhonePe notes).
      */
     function buildPayTxnNote(unpaidList){
       var list = unpaidList;
@@ -3458,73 +3490,56 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
       var invNos = [];
       list.forEach(function(o){
         var n = String(o.zoho_invoice_number || '').trim();
+        // Keep only INV-style tokens
+        n = n.replace(/[^\w\-]/g, '');
         if (n && invNos.indexOf(n) < 0) invNos.push(n);
       });
-      var shop = '';
-      try {
-        shop = String((session && (session.shop_name || session.shop_id)) || '').trim();
-      } catch (e2) {}
-      // Short shop for note (drop common noise)
-      var shopShort = shop
-        .replace(/\s*-\s*/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-      if (shopShort.length > 22) shopShort = shopShort.slice(0, 20) + '…';
 
       var max = UPI_TN_MAX;
       var note = '';
-
       if (invNos.length === 1) {
-        // Single invoice: "INV-xxx Shop"
         note = invNos[0];
-        if (shopShort && (note + ' ' + shopShort).length <= max) note = note + ' ' + shopShort;
-        else if (shopShort && (note + ' ' + shopShort.slice(0, 12)).length <= max) note = note + ' ' + shopShort.slice(0, 12);
       } else if (invNos.length > 1) {
-        // Multiple: pack as many invoice nos as fit
-        var prefix = invNos.length + 'inv ';
+        // "3inv INV2633406 INV2633364" — spaces not commas; no +N suffix
+        var prefix = invNos.length + 'inv';
         var joined = '';
         for (var i = 0; i < invNos.length; i++) {
-          var next = joined ? (joined + ',' + invNos[i]) : invNos[i];
-          if ((prefix + next).length > max) {
-            if (!joined) {
-              // first inv alone still too long — hard slice
-              joined = invNos[i].slice(0, Math.max(8, max - prefix.length));
-            } else {
-              var left = invNos.length - i;
-              var plus = '+' + left;
-              if ((prefix + joined + plus).length <= max) joined = joined + plus;
-            }
-            break;
-          }
+          var token = invNos[i].replace(/^INV-/i, 'INV'); // slightly shorter
+          var next = joined ? (joined + ' ' + token) : token;
+          if ((prefix + ' ' + next).length > max) break;
           joined = next;
         }
-        note = (prefix + joined).slice(0, max);
+        note = joined ? (prefix + ' ' + joined) : prefix;
       } else {
-        // No invoice numbers on rows — neutral label (not "Weekly")
-        note = 'Payment';
-        if (shopShort && (note + ' ' + shopShort).length <= max) note = note + ' ' + shopShort;
-        else if (list.length) note = (list.length + ' inv ' + (shopShort || 'IBCAB')).slice(0, max);
+        note = list.length > 1 ? (list.length + ' inv IBCAB') : 'IBCAB Payment';
       }
-
-      return String(note || 'Payment').slice(0, max);
+      return sanitizeUpiNote(note) || 'IBCAB Payment';
     }
     function buildUpiQuery(amount, txnNote){
       if(!_upiVpa) return '';
-      var am = Number(amount);
-      if(isNaN(am) || am < 0) am = 0;
-      var note = txnNote != null && String(txnNote).trim()
-        ? String(txnNote).trim()
-        : buildPayTxnNote();
-      note = String(note).slice(0, UPI_TN_MAX);
-      var tr = 'IBCAB' + Date.now().toString(36).toUpperCase();
+      var vpa = String(_upiVpa).trim().replace(/\s+/g, '');
+      if(!vpa || vpa.indexOf('@') < 0) return '';
+      // Clean amount — banks reject odd float strings
+      var am = Math.round((Number(amount) || 0) * 100) / 100;
+      if(!(am > 0)) return '';
+      var amStr = am.toFixed(2);
+      var note = sanitizeUpiNote(
+        txnNote != null && String(txnNote).trim() ? txnNote : buildPayTxnNote()
+      ) || 'IBCAB Payment';
+      // Payee name: short, no special chars
+      var pn = String(_upiPayee || 'IBCAB')
+        .replace(/[^\w\s\-]/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 35) || 'IBCAB';
+      // Do NOT send `tr` — optional field; some apps fail payments when tr is set on collect QR
       var parts = [
-        'pa=' + encodeURIComponent(_upiVpa),
-        'pn=' + encodeURIComponent(_upiPayee || 'IBCAB'),
+        'pa=' + encodeURIComponent(vpa),
+        'pn=' + encodeURIComponent(pn),
+        'am=' + encodeURIComponent(amStr),
         'cu=INR',
-        'tn=' + encodeURIComponent(note),
-        'tr=' + encodeURIComponent(tr)
+        'tn=' + encodeURIComponent(note)
       ];
-      if(am > 0) parts.push('am=' + encodeURIComponent(am.toFixed(2)));
       return parts.join('&');
     }
     /** Standard NPCI scheme — use for QR + default open */
@@ -3940,7 +3955,7 @@ function _payUnpaidTotal(){
         amtEl.textContent = '₹' + total.toLocaleString('en-IN', {maximumFractionDigits:2});
         amtEl.style.color = total > 0 ? '#c8382a' : '#1a5a38';
       }
-      if(subEl) subEl.textContent = unpaid.length + ' unpaid document(s) · weekly total';
+      if(subEl) subEl.textContent = unpaid.length + ' unpaid invoice(s) · sent only';
       if(btn){
         btn.disabled = total <= 0;
         btn.style.opacity = total > 0 ? '1' : '0.5';
@@ -3974,11 +3989,11 @@ function _payUnpaidTotal(){
 
       var unpaidRows = _payUnpaidList();
       if(!unpaidRows.length){
-        document.getElementById('pay-list').innerHTML = '<div style="text-align:center;color:#64748b;padding:20px;font-size:12px;line-height:1.5">No unpaid invoices or challans.<br>Paid documents are not listed here — use <b>History</b> to open a past invoice.</div>';
+        document.getElementById('pay-list').innerHTML = '<div style="text-align:center;color:#64748b;padding:20px;font-size:12px;line-height:1.5">No unpaid invoices.<br>Drafts &amp; challans are hidden. Paid docs are in <b>History</b>.</div>';
         try { renderPayUpiBox(); } catch(e){}
         return;
       }
-      // Unpaid invoices + challans only
+      // Unpaid sent invoices only
       document.getElementById('pay-list').innerHTML = unpaidRows.map(function(o){
         var due = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
         if(isNaN(due)) due = 0;

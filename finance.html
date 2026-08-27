@@ -213,6 +213,15 @@ body.dark #chatInput{background:#2d3748;color:#e2e8f0;border-color:#3d4a5c}
   margin-top:12px;border-top:1px solid #e2e8f0;z-index:2;
 }
 #modalBody .qa-sticky-actions .btn{min-height:48px;font-size:15px;font-weight:800}
+/* ── In-app QR scanner ── */
+#qaQrOverlay{display:none;position:fixed;inset:0;z-index:1200;background:#0f172a;flex-direction:column;align-items:stretch}
+#qaQrOverlay.open{display:flex}
+#qaQrOverlay .qa-qr-top{padding:14px 16px;padding-top:max(14px,calc(10px + var(--sat)));display:flex;justify-content:space-between;align-items:center;gap:10px}
+#qaQrOverlay .qa-qr-top h3{color:#fff;font-size:16px;font-weight:900;margin:0}
+#qaQrOverlay .qa-qr-stage{flex:1;position:relative;min-height:0;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden}
+#qaQrOverlay video,#qaQrOverlay canvas{width:100%;height:100%;object-fit:cover}
+#qaQrOverlay .qa-qr-frame{position:absolute;inset:18% 12%;border:2px solid rgba(255,255,255,.85);border-radius:16px;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,.35)}
+#qaQrOverlay .qa-qr-hint{padding:12px 16px;padding-bottom:max(20px,calc(12px + var(--sab)));color:#e2e8f0;font-size:13px;text-align:center;background:#0f172a}
 /* ── DARK MODE ── */
 body.dark{background:#1a1f2e;color:#e2e8f0}
 body.dark .card{background:#232b3e;border-color:#2d3748}
@@ -239,6 +248,7 @@ body.dark #searchDropdown{background:#2d3748;border-color:#3d4a5c}
 body.dark .search-item:hover{background:#3d4a5c}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
 </head>
 <body>
 
@@ -1772,6 +1782,20 @@ body.dark .search-item:hover{background:#3d4a5c}
   </div>
 </div>
 
+<!-- In-app UPI QR scanner -->
+<div id="qaQrOverlay" aria-hidden="true">
+  <div class="qa-qr-top">
+    <h3>📷 Scan UPI QR</h3>
+    <button type="button" class="btn btn-grey" style="flex:none;min-height:40px" onclick="qaStopQrScan()">✕ Close</button>
+  </div>
+  <div class="qa-qr-stage">
+    <video id="qaQrVideo" playsinline muted autoplay></video>
+    <canvas id="qaQrCanvas" style="display:none"></canvas>
+    <div class="qa-qr-frame"></div>
+  </div>
+  <div class="qa-qr-hint" id="qaQrHint">Point camera at the driver’s UPI QR. We’ll read the UPI ID, then you can open PhonePe / Paytm.</div>
+</div>
+
 <script>
 // ══════════════════════════════════════════════
 //  FINANCE APP — Satelkar's Logistics
@@ -2170,17 +2194,18 @@ function openQuickAdvance(driverName){
       '<div style="font-size:12px;font-weight:800;color:#0f766e;margin-bottom:6px">📱 Pay via UPI</div>'+
       '<div style="font-size:12px;color:#334155;margin-bottom:8px" id="qa-upi-info">'+(vpa
         ?('Mapped for driver: <b>'+esc(vpa)+'</b>'+(payee&&payee!==driverName?' · '+esc(payee):'')+' — edit below if different')
-        :'No mapped UPI — paste UPI ID / QR text, or open app to <b>Scan QR</b>')+'</div>'+
-      '<label class="lbl">UPI ID / paste QR text (optional if scanning)</label>'+
+        :'No mapped UPI — use <b>Camera scan</b>, <b>Photo / WhatsApp QR</b>, or paste UPI ID')+'</div>'+
+      '<label class="lbl">UPI ID / paste QR text</label>'+
       '<input type="text" id="qa-upi-vpa" value="'+esc(vpa)+'" placeholder="name@ybl or paste upi://pay?pa=…" autocomplete="off">'+
-      '<div style="font-size:11px;color:#64748b;margin:8px 0">If driver shows a different QR, leave UPI blank and use <b>Scan QR</b> in the app.</div>'+
-      '<div style="display:flex;gap:8px;margin-bottom:8px">'+
+      '<input type="file" id="qa-qr-file" accept="image/*" style="display:none" onchange="qaOnQrImageSelected(this)">'+
+      '<div style="display:flex;gap:8px;margin:8px 0">'+
+        '<button type="button" class="btn btn-grey" style="flex:1;min-height:44px" onclick="qaStartQrScan()">📷 Camera scan</button>'+
+        '<button type="button" class="btn btn-grey" style="flex:1;min-height:44px" onclick="qaPickQrImage()">🖼️ Photo / WhatsApp QR</button>'+
+      '</div>'+
+      '<div style="font-size:11px;color:#64748b;margin:0 0 8px">Live QR or photo the driver sent → fills UPI → PhonePe / Paytm → Save.</div>'+
+      '<div style="display:flex;gap:8px">'+
         '<button type="button" class="btn" style="flex:1;background:#5f259f;color:#fff;min-height:44px" onclick="qaPayApp(\'phonepe\')">💜 PhonePe</button>'+
         '<button type="button" class="btn" style="flex:1;background:#00baf2;color:#fff;min-height:44px" onclick="qaPayApp(\'paytm\')">💙 Paytm</button>'+
-      '</div>'+
-      '<div style="display:flex;gap:8px">'+
-        '<button type="button" class="btn btn-grey" style="flex:1;min-height:42px" onclick="qaOpenScan(\'phonepe\')">📷 PhonePe Scan QR</button>'+
-        '<button type="button" class="btn btn-grey" style="flex:1;min-height:42px" onclick="qaOpenScan(\'paytm\')">📷 Paytm Scan QR</button>'+
       '</div>'+
     '</div>'+
     '<input type="hidden" id="qa-driver" value="'+esc(driverName)+'">'+
@@ -2235,10 +2260,156 @@ function qaPayApp(app){
     showMsg('qa-msg','Could not open app','er');
   }
 }
-/** Do not deep-link into QR scanner (causes Invalid QR). Tell user to scan in the app. */
-function qaOpenScan(app){
-  var name=app==='paytm'?'Paytm':'PhonePe';
-  showMsg('qa-msg','Open '+name+' on your phone → Scan QR on the driver\'s code → pay → return here and tap Save.','ok');
+var _qaQrStream=null;
+var _qaQrLoop=0;
+function qaExtractVpaFromRaw(raw){
+  raw=String(raw||'').trim();
+  if(!raw) return '';
+  var vpa=parseUpiVpa(raw)||'';
+  if(!vpa && raw.indexOf('@')>0){
+    // plain VPA or text containing VPA
+    var m=raw.match(/[a-zA-Z0-9.\-_]{2,}@[a-zA-Z0-9.\-_]{2,}/);
+    vpa=m?m[0]:raw.replace(/\s+/g,'');
+  }
+  return (vpa&&vpa.indexOf('@')>0)?vpa:'';
+}
+function qaApplyFoundVpa(vpa, source){
+  if(!vpa) return false;
+  setV('qa-upi-vpa', vpa);
+  var info=document.getElementById('qa-upi-info');
+  if(info) info.innerHTML=(source||'Found')+' UPI: <b>'+esc(vpa)+'</b>';
+  showMsg('qa-msg','UPI found: '+vpa+' — open PhonePe / Paytm to pay','ok');
+  return true;
+}
+function qaDecodeImageData(imgData){
+  if(typeof jsQR!=='function'||!imgData) return null;
+  try{
+    return jsQR(imgData.data, imgData.width, imgData.height, {inversionAttempts:'attemptBoth'});
+  }catch(e){ return null; }
+}
+function qaStartQrScan(){
+  var ov=document.getElementById('qaQrOverlay');
+  var video=document.getElementById('qaQrVideo');
+  var hint=document.getElementById('qaQrHint');
+  if(!ov||!video){showMsg('qa-msg','Scanner not available','er');return;}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    showMsg('qa-msg','Camera not supported. Use Photo / WhatsApp QR instead.','er');
+    return;
+  }
+  qaStopQrScan();
+  ov.classList.add('open');
+  ov.setAttribute('aria-hidden','false');
+  if(hint) hint.textContent='Starting camera… Allow camera permission if asked.';
+  navigator.mediaDevices.getUserMedia({
+    audio:false,
+    video:{facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:720}}
+  }).then(function(stream){
+    _qaQrStream=stream;
+    video.srcObject=stream;
+    var playP=video.play();
+    if(playP&&playP.catch) playP.catch(function(){});
+    if(hint) hint.textContent='Point camera at UPI QR. We will read the UPI ID automatically.';
+    _qaQrLoop=requestAnimationFrame(qaQrTick);
+  }).catch(function(){
+    if(hint) hint.textContent='Camera blocked. Close and use Photo / WhatsApp QR instead.';
+    showMsg('qa-msg','Camera permission needed — or use Photo / WhatsApp QR','er');
+  });
+}
+function qaStopQrScan(){
+  if(_qaQrLoop){cancelAnimationFrame(_qaQrLoop);_qaQrLoop=0;}
+  if(_qaQrStream){
+    try{_qaQrStream.getTracks().forEach(function(t){t.stop();});}catch(e){}
+    _qaQrStream=null;
+  }
+  var video=document.getElementById('qaQrVideo');
+  if(video){try{video.srcObject=null;}catch(e){}}
+  var ov=document.getElementById('qaQrOverlay');
+  if(ov){ov.classList.remove('open');ov.setAttribute('aria-hidden','true');}
+}
+function qaQrTick(){
+  var video=document.getElementById('qaQrVideo');
+  var canvas=document.getElementById('qaQrCanvas');
+  if(!video||!canvas||!_qaQrStream) return;
+  if(video.readyState>=2){
+    var w=video.videoWidth||0, h=video.videoHeight||0;
+    if(w>0&&h>0){
+      canvas.width=w; canvas.height=h;
+      var ctx=canvas.getContext('2d');
+      ctx.drawImage(video,0,0,w,h);
+      var code=qaDecodeImageData(ctx.getImageData(0,0,w,h));
+      if(code&&code.data){
+        var vpa=qaExtractVpaFromRaw(code.data);
+        if(vpa){
+          qaStopQrScan();
+          qaApplyFoundVpa(vpa,'Scanned');
+          return;
+        }
+        var hint=document.getElementById('qaQrHint');
+        if(hint) hint.textContent='QR read but no UPI ID found. Use a UPI payment QR.';
+      }
+    }
+  }
+  _qaQrLoop=requestAnimationFrame(qaQrTick);
+}
+/** Driver sent QR photo (WhatsApp / gallery) */
+function qaPickQrImage(){
+  var inp=document.getElementById('qa-qr-file');
+  if(!inp){
+    // file input lives inside modal HTML — recreate if missing
+    inp=document.createElement('input');
+    inp.type='file'; inp.accept='image/*'; inp.id='qa-qr-file';
+    inp.style.display='none';
+    inp.onchange=function(){qaOnQrImageSelected(inp);};
+    document.body.appendChild(inp);
+  }
+  try{ inp.value=''; }catch(e){}
+  inp.click();
+}
+function qaOnQrImageSelected(input){
+  var file=input&&input.files&&input.files[0];
+  if(!file) return;
+  if(typeof jsQR!=='function'){
+    showMsg('qa-msg','QR reader not loaded. Refresh page and try again.','er');
+    return;
+  }
+  showMsg('qa-msg','Reading QR from photo…','ok');
+  var reader=new FileReader();
+  reader.onload=function(){
+    var img=new Image();
+    img.onload=function(){
+      try{
+        // scale large screenshots for better decode
+        var maxSide=1600;
+        var w=img.naturalWidth||img.width;
+        var h=img.naturalHeight||img.height;
+        var scale=Math.min(1, maxSide/Math.max(w,h));
+        var cw=Math.max(1, Math.round(w*scale));
+        var ch=Math.max(1, Math.round(h*scale));
+        var canvas=document.createElement('canvas');
+        canvas.width=cw; canvas.height=ch;
+        var ctx=canvas.getContext('2d');
+        ctx.drawImage(img,0,0,cw,ch);
+        var code=qaDecodeImageData(ctx.getImageData(0,0,cw,ch));
+        // retry at full-ish resolution if scaled failed
+        if((!code||!code.data) && scale<1){
+          canvas.width=w; canvas.height=h;
+          ctx.drawImage(img,0,0,w,h);
+          code=qaDecodeImageData(ctx.getImageData(0,0,w,h));
+        }
+        if(code&&code.data){
+          var vpa=qaExtractVpaFromRaw(code.data);
+          if(vpa){ qaApplyFoundVpa(vpa,'Photo'); return; }
+        }
+        showMsg('qa-msg','Could not read UPI from this photo. Try a clearer QR or paste UPI ID.','er');
+      }catch(e){
+        showMsg('qa-msg','Could not read that image','er');
+      }
+    };
+    img.onerror=function(){ showMsg('qa-msg','Could not open image','er'); };
+    img.src=reader.result;
+  };
+  reader.onerror=function(){ showMsg('qa-msg','Could not read file','er'); };
+  reader.readAsDataURL(file);
 }
 function saveQuickAdvance(){
   var drv=v('qa-driver');
