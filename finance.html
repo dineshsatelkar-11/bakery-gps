@@ -520,10 +520,7 @@ body.dark .search-item:hover{background:#3d4a5c}
     <div style="display:flex;gap:8px;margin-bottom:8px;overflow-x:auto;padding-bottom:4px">
       <button class="btn-sm btn-blue" id="dstab-txns" onclick="showDriverTab('txns')">📋 All Txns</button>
       <button class="btn-sm btn-grey" id="dstab-salary" onclick="showDriverTab('salary')">💰 Salary</button>
-      <button class="btn-sm btn-grey" id="dstab-parttime" onclick="showDriverTab('parttime')">🕐 Part-time</button>
-      <button class="btn-sm btn-grey" id="dstab-advance" onclick="showDriverTab('advance')">📤 Advance</button>
-      <button class="btn-sm btn-grey" id="dstab-deduct" onclick="showDriverTab('deduct')">⚠️ Deductions</button>
-      <button class="btn-sm btn-grey" id="dstab-leaves" onclick="showDriverTab('leaves')">🏖 Leaves</button>
+      <button class="btn-sm btn-grey" id="dstab-money" onclick="showDriverTab('money')">💸 Money</button>
       <button class="btn-sm btn-grey" id="dstab-tempopay" onclick="showDriverTab('tempopay')">🚐 Tempo Rent</button>
       <button class="btn-sm btn-grey" id="dstab-manage" onclick="showDriverTab('manage')">👤 Manage</button>
     </div>
@@ -600,11 +597,12 @@ body.dark .search-item:hover{background:#3d4a5c}
           <div style="font-size:11px;color:#7a8fa6;margin-top:4px">Base Salary = Days × Rate <span id="sal-pt-computed" style="font-weight:700;color:#1a3a5c"></span></div>
         </div>
         <div class="row2">
-          <div><label class="lbl">Leave Days <span style="font-size:10px;color:#7a8fa6">(from leave tab)</span></label>
-            <input type="number" id="sal-leave-days" placeholder="0" readonly style="background:#f5f7fa;color:#7a8fa6"></div>
-          <div><label class="lbl">Leave Deduction (₹) <span style="font-size:10px;color:#7a8fa6">(from leave tab)</span></label>
-            <input type="number" id="sal-leave-deduct" placeholder="0" readonly style="background:#f5f7fa;color:#7a8fa6"></div>
+          <div><label class="lbl">Leave Days</label>
+            <input type="number" id="sal-leave-days" placeholder="0" min="0" oninput="onSalLeaveDaysChange()"></div>
+          <div><label class="lbl">Leave Deduction (₹)</label>
+            <input type="number" id="sal-leave-deduct" placeholder="0" min="0" oninput="calcNetSalary()"></div>
         </div>
+        <div style="font-size:10px;color:#64748b;margin:-4px 0 8px">Enter leave days here for this month. Deduction auto-fills from daily rate (base ÷ days in month). Editable.</div>
         <!-- Tempo Rent Section -->
         <div id="sal-tempo-section" style="display:none;background:#f0f4f8;border-radius:8px;padding:10px;margin:8px 0">
           <div style="font-weight:700;font-size:12px;color:#1a3a5c;margin-bottom:6px">🚛 Tempo Rent Deduction</div>
@@ -698,7 +696,7 @@ body.dark .search-item:hover{background:#3d4a5c}
         <div class="card-title" id="adv-form-title">📤 Give Advance</div>
         <input type="hidden" id="adv-edit-id" value="0">
         <label class="lbl">Driver</label>
-        <select id="adv-driver"></select>
+        <select id="adv-driver" onchange="refreshAdvUpiBox()"></select>
         <div class="row2">
           <div><label class="lbl">Date</label>
             <input type="date" id="adv-date"></div>
@@ -709,8 +707,22 @@ body.dark .search-item:hover{background:#3d4a5c}
         <select id="adv-bank-account">
           <option value="">— No bank entry —</option>
         </select>
+        <label class="lbl">Payment mode</label>
+        <select id="adv-pay-mode">
+          <option value="cash">💵 Cash</option>
+          <option value="upi">📱 UPI</option>
+          <option value="bank">🏦 Bank</option>
+        </select>
         <label class="lbl">Reason</label>
         <input type="text" id="adv-reason" placeholder="Medical, personal…">
+        <div id="adv-upi-box" style="margin:8px 0;padding:10px;background:#f0fdfa;border:1px solid #99f6e4;border-radius:10px">
+          <div style="font-size:12px;font-weight:700;color:#0f766e">📱 Pay now via UPI (optional)</div>
+          <div id="adv-upi-info" style="font-size:11px;color:#475569;margin:4px 0 8px">Enter UPI ID, or paste text/link from a QR. If already paid, skip and just Record.</div>
+          <label class="lbl">UPI ID / paste from QR</label>
+          <input type="text" id="adv-upi-vpa" placeholder="name@ybl or upi://pay?pa=…" autocomplete="off" oninput="document.getElementById('adv-pay-mode').value='upi'">
+          <button type="button" class="btn btn-blue" style="width:100%;margin-top:8px" onclick="payAdvanceViaUpi()">📱 Open UPI app → pay</button>
+          <div style="font-size:10px;color:#64748b;margin-top:6px">After PhonePe/GPay, return here and tap <b>Record Advance</b>.</div>
+        </div>
         <div style="display:flex;gap:8px">
           <button class="btn btn-yellow" id="adv-save-btn" style="flex:1" onclick="saveAdvance()">📤 Record Advance</button>
           <button class="btn btn-grey" id="adv-cancel-btn" style="display:none;flex:none" onclick="cancelEditAdvance()">✕ Cancel</button>
@@ -786,7 +798,8 @@ body.dark .search-item:hover{background:#3d4a5c}
     <!-- Leaves -->
     <div id="dsec-leaves" style="display:none">
       <div class="card">
-        <div class="card-title">🏖 Record Leave</div>
+        <div class="card-title">🏖 Leave log (optional detail)</div>
+        <div style="font-size:11px;color:#64748b;margin-bottom:8px">For salary, set <b>Leave Days</b> on the form above. Use this only if you need date-range / substitute details.</div>
         <div class="row2">
           <div><label class="lbl">Driver</label>
             <select id="lv-driver" onchange="autoFillLeaveDeduction()"></select></div>
@@ -932,6 +945,53 @@ body.dark .search-item:hover{background:#3d4a5c}
       <div id="tempoPayList"><div class="empty">Loading…</div></div>
     </div>
 
+    <!-- Extra Route payout (NOT part of salary) -->
+    <div id="dsec-extraroute" style="display:none">
+      <div class="card" style="border:1.5px solid #a7f3d0;background:#f0fdf4">
+        <div class="card-title" style="color:#065f46">🛣 Extra Route Pay</div>
+        <div style="font-size:12px;color:#047857;margin-bottom:10px">One-time payout when driver covers an extra route. <b>Not included in salary</b>. Same day or later.</div>
+        <label class="lbl">Date</label>
+        <input type="date" id="er-date">
+        <label class="lbl">Driver</label>
+        <select id="er-driver" onchange="refreshExtraRouteUpi()"></select>
+        <div class="row2">
+          <div><label class="lbl">Amount (₹)</label>
+            <input type="number" id="er-amount" value="250" placeholder="250"></div>
+          <div><label class="lbl">Paid From Account</label>
+            <select id="er-bank-account">
+              <option value="">— No bank entry —</option>
+            </select></div>
+        </div>
+        <label class="lbl">Note (optional)</label>
+        <input type="text" id="er-note" placeholder="e.g. Baner extra / Sunday cover">
+        <div id="er-upi-box" style="margin:10px 0;padding:10px;background:#fff;border:1px solid #99f6e4;border-radius:10px">
+          <div style="font-size:12px;font-weight:700;color:#0f766e;margin-bottom:4px">📱 Driver UPI</div>
+          <div id="er-upi-info" style="font-size:11px;color:#64748b;margin-bottom:8px">Select a driver to load saved UPI.</div>
+          <label class="lbl">UPI ID (edit if needed)</label>
+          <input type="text" id="er-upi-vpa" placeholder="name@ybl" autocomplete="off">
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button type="button" class="btn btn-blue" style="flex:1;background:#5f259f;margin-bottom:0" onclick="payExtraRouteApp('phonepe')">📱 PhonePe</button>
+            <button type="button" class="btn btn-blue" style="flex:1;background:#00baf2;margin-bottom:0" onclick="payExtraRouteApp('paytm')">📱 Paytm</button>
+          </div>
+          <div style="font-size:10px;color:#64748b;margin-top:6px">Opens only PhonePe or Paytm. After paying, tap <b>Mark Paid & Save</b>.</div>
+        </div>
+        <button class="btn btn-green" style="width:100%" onclick="saveExtraRoutePay()">✅ Mark Paid & Save</button>
+        <div id="er-msg"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📋 Extra Route History</div>
+        <div class="row2" style="margin-bottom:8px">
+          <div><label class="lbl">Driver</label>
+            <select id="er-list-driver" onchange="loadExtraRouteList()">
+              <option value="">All drivers</option>
+            </select></div>
+          <div><label class="lbl">Month</label>
+            <input type="month" id="er-list-month" onchange="loadExtraRouteList()"></div>
+        </div>
+        <div id="extraRouteList"><div class="empty">Loading…</div></div>
+      </div>
+    </div>
+
     <div id="dsec-manage" style="display:none">
       <div class="card">
         <div class="card-title">➕ Add / Edit Driver</div>
@@ -975,6 +1035,16 @@ body.dark .search-item:hover{background:#3d4a5c}
             <div><label class="lbl">Current Monthly Rent (₹)</label>
               <input type="number" id="drv-tempo-rent" placeholder="0"></div>
           </div>
+        </div>
+        <div style="margin:8px 0;padding:10px;background:#f0fdfa;border:1px solid #99f6e4;border-radius:10px">
+          <div style="font-size:12px;font-weight:700;color:#0f766e;margin-bottom:6px">📱 UPI for driver payments</div>
+          <div class="row2">
+            <div><label class="lbl">UPI ID (VPA)</label>
+              <input type="text" id="drv-upi-vpa" placeholder="name@ybl / mobile@pnb" autocomplete="off"></div>
+            <div><label class="lbl">Payee name on UPI</label>
+              <input type="text" id="drv-upi-name" placeholder="Same as bank name" autocomplete="off"></div>
+          </div>
+          <div style="font-size:10px;color:#64748b;margin-top:4px">Saved on this phone for this driver. Used when paying salary / advance via UPI from the app.</div>
         </div>
         <label class="lbl">Note</label>
         <input type="text" id="drv-note" placeholder="">
@@ -1290,9 +1360,26 @@ body.dark .search-item:hover{background:#3d4a5c}
         <select id="ex-bank-account">
           <option value="">— No bank entry —</option>
         </select>
+        <label class="lbl">Payment mode</label>
+        <select id="ex-pay-mode">
+          <option value="cash">💵 Cash</option>
+          <option value="upi">📱 UPI</option>
+          <option value="bank">🏦 Bank / transfer</option>
+          <option value="cheque">📄 Cheque</option>
+        </select>
         <label class="lbl">Note</label>
         <input type="text" id="ex-note" placeholder="Description">
-        <div style="display:flex;gap:8px">
+        <div style="margin-top:8px;padding:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px">
+          <div style="font-size:12px;font-weight:700;color:#334155;margin-bottom:6px">📱 Pay vendor via UPI / QR (optional)</div>
+          <div style="font-size:11px;color:#64748b;margin-bottom:8px">Got only a QR? Open your UPI app, scan QR, or paste UPI ID / <code>upi://…</code> text below. If you already paid, skip this and just Save.</div>
+          <label class="lbl">Vendor UPI ID or paste from QR</label>
+          <input type="text" id="ex-upi-vpa" placeholder="shop@ybl or paste upi://pay?pa=…" autocomplete="off" oninput="document.getElementById('ex-pay-mode').value='upi'">
+          <label class="lbl">Payee name (optional)</label>
+          <input type="text" id="ex-upi-name" placeholder="Name shown on UPI" autocomplete="off">
+          <button type="button" class="btn btn-blue" style="width:100%;margin-top:8px" onclick="payExpenseViaUpi()">📱 Open UPI app → pay</button>
+          <div style="font-size:10px;color:#64748b;margin-top:6px">After paying, return and tap <b>Save Expense</b> to record in books.</div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px">
           <button class="btn btn-yellow" id="ex-save-btn" style="flex:1" onclick="saveExpense()">💾 Save Expense</button>
           <button class="btn btn-grey" id="ex-cancel-btn" style="display:none;flex:none" onclick="cancelEditExpense()">✕ Cancel</button>
         </div>
@@ -1500,15 +1587,16 @@ body.dark .search-item:hover{background:#3d4a5c}
       <div class="card">
         <div class="card-title">➕ New Loan / OD Account</div>
         <!-- Type selector -->
-        <div style="display:flex;gap:8px;margin-bottom:12px">
-          <button id="lntype-term" class="btn btn-blue" style="flex:1" onclick="setLoanType('term')">🏦 Term Loan</button>
-          <button id="lntype-od" class="btn btn-grey" style="flex:1" onclick="setLoanType('od')">🔄 Overdraft (OD)</button>
+        <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">
+          <button id="lntype-term" class="btn btn-blue" style="flex:1;min-width:90px" onclick="setLoanType('term')">🏦 Term Loan</button>
+          <button id="lntype-od" class="btn btn-grey" style="flex:1;min-width:90px" onclick="setLoanType('od')">🔄 Overdraft</button>
+          <button id="lntype-cc" class="btn btn-grey" style="flex:1;min-width:90px" onclick="setLoanType('cc')">💳 Credit Card</button>
         </div>
         <input type="hidden" id="ln-type" value="term">
         <label class="lbl">Lender / Bank Name</label>
-        <input type="text" id="ln-lender" placeholder="Bank / Person">
+        <input type="text" id="ln-lender" placeholder="Bank / Card issuer">
         <label class="lbl">Purpose / Account Name</label>
-        <input type="text" id="ln-purpose" placeholder="Vehicle, Business, CC OD…">
+        <input type="text" id="ln-purpose" placeholder="Vehicle, HDFC CC, Business OD…">
         <!-- Term loan only fields -->
         <div id="ln-term-fields">
           <div class="row2">
@@ -1529,8 +1617,24 @@ body.dark .search-item:hover{background:#3d4a5c}
             <div><label class="lbl">Total EMIs</label>
               <input type="number" id="ln-total-emis" placeholder="0"></div>
           </div>
+          <div style="margin-top:8px;padding:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px">
+            <div style="font-size:12px;font-weight:700;color:#334155;margin-bottom:6px">📅 Map existing loan (optional)</div>
+            <div style="font-size:11px;color:#64748b;margin-bottom:8px">For loans already running: set first EMI date + how many EMIs already paid. Schedule is created with past EMIs marked paid.</div>
+            <div class="row2">
+              <div><label class="lbl">First EMI due date</label>
+                <input type="date" id="ln-first-emi"></div>
+              <div><label class="lbl">EMIs already paid</label>
+                <input type="number" id="ln-emis-paid" placeholder="0" min="0" value="0"></div>
+            </div>
+            <div class="row2">
+              <div><label class="lbl">Outstanding balance (₹)</label>
+                <input type="number" id="ln-outstanding" placeholder="Optional — for your reference"></div>
+              <div><label class="lbl">EMI day of month</label>
+                <input type="number" id="ln-emi-day" placeholder="e.g. 5" min="1" max="28"></div>
+            </div>
+          </div>
         </div>
-        <!-- OD only fields -->
+        <!-- OD / Credit Card fields -->
         <div id="ln-od-fields" style="display:none">
           <div class="row2">
             <div><label class="lbl">Credit Limit (₹)</label>
@@ -1538,11 +1642,18 @@ body.dark .search-item:hover{background:#3d4a5c}
             <div><label class="lbl">Interest % p.a.</label>
               <input type="number" id="ln-od-rate" placeholder="0"></div>
           </div>
+          <div class="row2">
+            <div><label class="lbl">Current outstanding (₹)</label>
+              <input type="number" id="ln-od-outstanding" placeholder="What you owe now"></div>
+            <div><label class="lbl">Bill due day (1–28)</label>
+              <input type="number" id="ln-od-due-day" placeholder="e.g. 10" min="1" max="28"></div>
+          </div>
+          <div style="font-size:11px;color:#64748b;margin-top:4px">For CC/OD already in use: set outstanding = current statement balance. Track spends & bill pays after that.</div>
         </div>
         <label class="lbl">Start Date</label>
         <input type="date" id="ln-start">
         <label class="lbl">Note</label>
-        <input type="text" id="ln-note" placeholder="">
+        <input type="text" id="ln-note" placeholder="e.g. Existing tempo loan / HDFC CC">
         <button class="btn btn-blue" onclick="saveLoan()">💾 Save</button>
         <div id="ln-msg"></div>
       </div>
@@ -1702,7 +1813,12 @@ function sbGetQ(table,qs){
 }
 function sbPost(table,body){
   return fetch(BASE+'/'+table,{method:'POST',headers:hdrs({'Prefer':'return=representation'}),body:JSON.stringify(body)})
-    .then(function(r){return r.ok?{ok:true}:{ok:false};}).catch(function(){return{ok:false};});
+    .then(function(r){
+      if(!r.ok) return {ok:false};
+      return r.json().then(function(rows){
+        return {ok:true, data:Array.isArray(rows)?rows:(rows?[rows]:[])};
+      }).catch(function(){return {ok:true, data:[]};});
+    }).catch(function(){return{ok:false};});
 }
 function sbPatch(table,qs,body){
   return fetch(BASE+'/'+table+'?'+qs,{method:'PATCH',headers:hdrs({'Prefer':'return=minimal'}),body:JSON.stringify(body)})
@@ -1729,6 +1845,7 @@ function setV(id,val){var el=document.getElementById(id);if(el)el.value=val;}
 var EXP_BUILTIN=[
   {value:'tempo_fuel',label:'⛽ Tempo Fuel'},
   {value:'tempo_repair',label:'🔧 Tempo Repair'},
+  {value:'tempo_purchase',label:'🚛 Tempo Purchase / Setup'},
   {value:'driver',label:'👷 Driver Cost'},
   {value:'delivery',label:'📦 Delivery'},
   {value:'office',label:'🏢 Office'},
@@ -1755,6 +1872,112 @@ function populateExpCatSelects(){
   var listEl=document.getElementById('ex-list-cat'); if(listEl) listEl.innerHTML=filterOpts;
 }
 function modeLabel(m){return{cash:'💵 Cash',upi:'📱 UPI',cheque:'📄 Cheque',bank:'🏦 Bank'}[m]||m;}
+
+// ── UPI PAY (open PhonePe/GPay from VPA or pasted QR text) ──
+function parseUpiVpa(raw){
+  var s=String(raw||'').trim();
+  if(!s) return '';
+  // Full UPI intent / QR payload: upi://pay?pa=name@ybl&am=...
+  if(/upi:\/\//i.test(s) || /pa=/i.test(s)){
+    try{
+      var q=s.indexOf('?')>=0?s.slice(s.indexOf('?')+1):s;
+      var params=new URLSearchParams(q.replace(/&amp;/g,'&'));
+      var pa=params.get('pa')||params.get('PA')||'';
+      if(pa) return pa.trim();
+    }catch(e){}
+    var m=s.match(/pa=([^&]+)/i);
+    if(m) return decodeURIComponent(m[1]).trim();
+  }
+  // Plain VPA
+  if(s.indexOf('@')>=0) return s.replace(/\s+/g,'');
+  return '';
+}
+function buildFinUpiUrl(vpa, payeeName, amount, note){
+  var pa=parseUpiVpa(vpa);
+  if(!pa||pa.indexOf('@')<0) return '';
+  var am=parseFloat(amount);
+  if(!(am>0)) return '';
+  var params=new URLSearchParams();
+  params.set('pa', pa);
+  params.set('pn', String(payeeName||'Payee').slice(0,50));
+  params.set('am', am.toFixed(2));
+  params.set('cu', 'INR');
+  if(note) params.set('tn', String(note).slice(0,80));
+  params.set('tr', 'FIN'+Date.now().toString(36).toUpperCase());
+  return 'upi://pay?'+params.toString();
+}
+function openFinUpiPay(vpa, payeeName, amount, note){
+  var url=buildFinUpiUrl(vpa, payeeName, amount, note);
+  if(!url){ alert('Enter a valid UPI ID (must include @) or paste upi:// from QR, and amount > 0'); return false; }
+  try{ window.location.href=url; }catch(e){ alert('Could not open UPI app'); return false; }
+  return true;
+}
+function getDriverUpiLocal(name){
+  try{
+    var all=JSON.parse(localStorage.getItem('fin_driver_upi')||'{}');
+    return all[name]||null;
+  }catch(e){ return null; }
+}
+function setDriverUpiLocal(name, vpa, payeeName){
+  try{
+    var all=JSON.parse(localStorage.getItem('fin_driver_upi')||'{}');
+    if(vpa) all[name]={upi_vpa:vpa, upi_payee_name:payeeName||name};
+    else delete all[name];
+    localStorage.setItem('fin_driver_upi', JSON.stringify(all));
+  }catch(e){}
+}
+function getDriverUpi(name){
+  return getDriverUpiLocal(name);
+}
+function refreshAdvUpiBox(){
+  var drv=v('adv-driver');
+  var info=document.getElementById('adv-upi-info');
+  var input=document.getElementById('adv-upi-vpa');
+  if(!info) return;
+  var d=getDriverUpi(drv);
+  if(d&&d.upi_vpa){
+    info.textContent='Saved UPI for '+drv+': '+d.upi_vpa+(d.upi_payee_name?' ('+d.upi_payee_name+')':'')+'. Change below if needed.';
+    if(input && !input.value) input.value=d.upi_vpa;
+  } else {
+    info.textContent='No saved UPI for this driver. Paste UPI ID / QR text, or add UPI under Drivers → Manage.';
+  }
+}
+function payAdvanceViaUpi(){
+  var drv=v('adv-driver'); var amt=parseFloat(v('adv-amount'));
+  if(!drv||!(amt>0)){showMsg('adv-msg','Select driver and amount first','er');return;}
+  var vpa=v('adv-upi-vpa')||'';
+  var d=getDriverUpi(drv);
+  if(!vpa && d) vpa=d.upi_vpa;
+  var name=(d&&d.upi_payee_name)||drv;
+  var reason=v('adv-reason')||'Advance';
+  if(openFinUpiPay(vpa, name, amt, 'Advance '+drv+(reason?' '+reason:''))){
+    setV('adv-pay-mode','upi');
+    showMsg('adv-msg','UPI app opened. After payment, tap Record Advance.','ok');
+  }
+}
+function payExpenseViaUpi(){
+  var amt=parseFloat(v('ex-amount'));
+  if(!(amt>0)){showMsg('ex-msg','Enter amount first','er');return;}
+  var vpa=v('ex-upi-vpa');
+  var name=v('ex-upi-name')||'Vendor';
+  var note=v('ex-note')||expCatLabel(v('ex-cat'))||'Expense';
+  if(openFinUpiPay(vpa, name, amt, note)){
+    setV('ex-pay-mode','upi');
+    showMsg('ex-msg','UPI app opened. After payment, tap Save Expense.','ok');
+  }
+}
+function paySalaryViaUpi(id, driverName, amount){
+  var d=getDriverUpi(driverName);
+  if(!d||!d.upi_vpa){ alert('No UPI saved for '+driverName+'. Add UPI in Drivers → Manage.'); return; }
+  var amtEl=document.getElementById('sal-pay-amount-'+id);
+  var amt=amtEl&&amtEl.value?parseFloat(amtEl.value):amount;
+  if(!(amt>0)) amt=amount;
+  var modeEl=document.getElementById('sal-pay-mode-'+id);
+  if(modeEl) modeEl.value='UPI';
+  if(openFinUpiPay(d.upi_vpa, d.upi_payee_name||driverName, amt, 'Salary '+driverName)){
+    alert('UPI app opened. After paying, confirm Mark Paid / Update on this screen.');
+  }
+}
 
 // ── LOGIN ──
 function doLogin(){
@@ -1840,27 +2063,57 @@ function showTab(tab){
   if(tab==='report') { showReportTab('pl'); }
 }
 function showDriverTab(t){
-  ['txns','salary','parttime','advance','deduct','leaves','tempopay','manage'].forEach(function(s){
-    var el=document.getElementById('dsec-'+s); if(el) el.style.display=s===t?'block':'none';
+  // Hide all driver sections first
+  ['txns','salary','parttime','advance','extraroute','deduct','leaves','tempopay','manage'].forEach(function(s){
+    var el=document.getElementById('dsec-'+s); if(el) el.style.display='none';
+  });
+  // Top-level nav buttons (reduced set)
+  ['txns','salary','money','tempopay','manage'].forEach(function(s){
     var btn=document.getElementById('dstab-'+s);
     if(btn){btn.className='btn-sm '+(s===t?'btn-blue':'btn-grey');}
   });
-  if(t==='txns'){if(!v('dtxn-from')&&!v('dtxn-to'))setDriverTxnFilter('all');else loadDriverTxns();}
-  if(t==='advance'){loadAdvanceList();}
-  if(t==='deduct'){loadDeductionList();}
-  if(t==='leaves'){loadLeaveList();}
-  if(t==='salary'){loadSalaryList();}
-  if(t==='manage'){loadDriverManageList();}
-  if(t==='parttime'){setV('pt-month',thisMonth());loadParttimeList();}
-  if(t==='tempopay'){initTempoPayTab();}
+  if(t==='txns'){
+    var el=document.getElementById('dsec-txns'); if(el) el.style.display='block';
+    if(!v('dtxn-from')&&!v('dtxn-to')) setDriverTxnFilter('all'); else loadDriverTxns();
+  } else if(t==='salary'){
+    var sEl=document.getElementById('dsec-salary'); if(sEl) sEl.style.display='block';
+    // Leaves managed on salary (leave days field); keep leave log available below
+    var lEl=document.getElementById('dsec-leaves'); if(lEl) lEl.style.display='block';
+    loadSalaryList();
+    loadLeaveList();
+  } else if(t==='money'){
+    // Advance + Extra route + Deductions in one place
+    ['advance','extraroute','deduct'].forEach(function(s){
+      var el=document.getElementById('dsec-'+s); if(el) el.style.display='block';
+    });
+    loadAdvanceList();
+    initExtraRouteTab();
+    loadDeductionList();
+  } else if(t==='tempopay'){
+    var el=document.getElementById('dsec-tempopay'); if(el) el.style.display='block';
+    initTempoPayTab();
+  } else if(t==='manage'){
+    var el=document.getElementById('dsec-manage'); if(el) el.style.display='block';
+    loadDriverManageList();
+  }
 }
 function refreshDriverTab(){
-  // Reload whichever sub-tab is currently visible
-  var tabs=['txns','salary','parttime','advance','deduct','leaves','tempopay','manage'];
+  var tabs=['txns','salary','money','tempopay','manage'];
   for(var i=0;i<tabs.length;i++){
-    var el=document.getElementById('dsec-'+tabs[i]);
-    if(el&&el.style.display!=='none'){showDriverTab(tabs[i]);break;}
+    var btn=document.getElementById('dstab-'+tabs[i]);
+    if(btn&&btn.className.indexOf('btn-blue')>=0){showDriverTab(tabs[i]);return;}
   }
+  showDriverTab('txns');
+}
+function onSalLeaveDaysChange(){
+  var days=parseFloat(v('sal-leave-days'))||0;
+  var base=parseFloat(v('sal-base'))||0;
+  var dim=parseFloat(v('sal-days-in-month'))||30;
+  if(dim>0 && days>=0){
+    var daily=base/dim;
+    setV('sal-leave-deduct', Math.round(daily*days));
+  }
+  calcNetSalary();
 }
 function setDriverTxnFilter(range){
   var now=new Date(); var y=now.getFullYear(); var m=now.getMonth();
@@ -2255,11 +2508,14 @@ function openLoanDetail(loanId,loanName){
     sbGetQ('loan_charges','loan_id=eq.'+loanId+'&order=date.asc')
   ]).then(function(res){
     var loan=res[0]&&res[0][0]; var emis=res[1]; var charges=res[2];
-    var isOD=loan&&(loan.loan_type==='overdraft'||loan.loan_type==='od');
+    var isOD=isRevolvingLoan(loan);
+    var isCC=loan&&(loan.loan_type==='cc'||loan.loan_type==='credit_card');
     var safeId=loanId; var safeName=loanName.replace(/'/g,"\\'");
+    var spendLbl=isCC?'🛒 Spend':'📤 Draw';
+    var payLbl=isCC?'💳 Pay bill':'📥 Repay';
 
     if(isOD){
-      // ── OD DETAIL ──
+      // ── OD / CREDIT CARD DETAIL ──
       var draws=emis.filter(function(e){return e.status==='draw';});
       var repays=emis.filter(function(e){return e.status==='repay';});
       var totalDrawn=draws.reduce(function(a,e){return a+(parseFloat(e.amount)||0);},0);
@@ -2268,25 +2524,28 @@ function openLoanDetail(loanId,loanName){
       var limit=parseFloat(loan.od_limit)||0;
       var available=limit-outstanding;
       var usedPct=limit>0?Math.min(100,Math.round(outstanding/limit*100)):0;
+      var dueDayMatch=(loan.note||'').match(/Due day:\s*(\d+)/i);
+      var dueDay=dueDayMatch?dueDayMatch[1]:'';
 
       sumEl.style.display='block';
       sumBody.innerHTML=
-        '<div class="sum-row"><span class="sum-lbl">Credit Limit</span><span class="sum-val">'+fmt(limit)+'</span></div>'+
+        '<div class="sum-row"><span class="sum-lbl">'+(isCC?'Card limit':'Credit Limit')+'</span><span class="sum-val">'+fmt(limit)+'</span></div>'+
+        (dueDay?'<div class="sum-row"><span class="sum-lbl">Bill due day</span><span class="sum-val">'+dueDay+' of month</span></div>':'')+
         '<div style="background:#e5e7eb;border-radius:6px;height:8px;margin:4px 0 8px;overflow:hidden">'+
           '<div style="height:8px;border-radius:6px;width:'+usedPct+'%;background:'+(usedPct>85?'#ef4444':usedPct>60?'#f59e0b':'#22c55e')+'"></div></div>'+
-        '<div class="sum-row"><span class="sum-lbl">Total Drawn</span><span class="sum-val" style="color:#c8382a">'+fmt(totalDrawn)+'</span></div>'+
-        '<div class="sum-row"><span class="sum-lbl">Total Repaid</span><span class="sum-val" style="color:#1e7a4f">'+fmt(totalRepaid)+'</span></div>'+
+        '<div class="sum-row"><span class="sum-lbl">'+(isCC?'Total spends':'Total Drawn')+'</span><span class="sum-val" style="color:#c8382a">'+fmt(totalDrawn)+'</span></div>'+
+        '<div class="sum-row"><span class="sum-lbl">'+(isCC?'Total paid':'Total Repaid')+'</span><span class="sum-val" style="color:#1e7a4f">'+fmt(totalRepaid)+'</span></div>'+
         '<hr class="divider">'+
         '<div class="sum-row" style="font-weight:900"><span class="sum-lbl">Outstanding</span><span class="sum-val" style="color:#c8382a">'+fmt(outstanding)+'</span></div>'+
         '<div class="sum-row" style="font-weight:900"><span class="sum-lbl">Available</span><span class="sum-val" style="color:#1e7a4f">'+fmt(available)+'</span></div>';
 
-      // OD draw/repay form
+      // OD / CC form
       var today=new Date().toISOString().slice(0,10);
       var formHtml='<div class="card" style="margin-top:8px">'+
-        '<div class="card-title">💸 New Transaction</div>'+
+        '<div class="card-title">'+(isCC?'💳 Card transaction':'💸 New Transaction')+'</div>'+
         '<div style="display:flex;gap:8px;margin-bottom:10px">'+
-          '<button id="odtype-draw" class="btn btn-blue" style="flex:1" onclick="setODTxnType(\'draw\')">📤 Draw</button>'+
-          '<button id="odtype-repay" class="btn btn-grey" style="flex:1" onclick="setODTxnType(\'repay\')">📥 Repay</button>'+
+          '<button id="odtype-draw" class="btn btn-blue" style="flex:1" onclick="setODTxnType(\'draw\')">'+spendLbl+'</button>'+
+          '<button id="odtype-repay" class="btn btn-grey" style="flex:1" onclick="setODTxnType(\'repay\')">'+payLbl+'</button>'+
         '</div>'+
         '<input type="hidden" id="od-txn-type" value="draw">'+
         '<div class="row2">'+
@@ -2294,7 +2553,7 @@ function openLoanDetail(loanId,loanName){
           '<div><label class="lbl">Amount (₹)</label><input type="number" id="od-txn-amount" placeholder="0"></div>'+
         '</div>'+
         '<label class="lbl">Note</label>'+
-        '<input type="text" id="od-txn-note" placeholder="Reason / reference…">'+
+        '<input type="text" id="od-txn-note" placeholder="'+(isCC?'Merchant / bill ref…':'Reason / reference…')+'">'+
         '<button class="btn btn-blue" style="margin-top:6px" onclick="saveODTxn('+safeId+',\''+safeName+'\')">💾 Save</button>'+
         '<div id="od-txn-msg"></div></div>';
 
@@ -2308,7 +2567,7 @@ function openLoanDetail(loanId,loanName){
           running+=isDraw?parseFloat(e.amount||0):-parseFloat(e.amount||0);
           return'<div class="item-card" style="border-left:3px solid '+(isDraw?'#ef4444':'#22c55e')+'">'+
             '<div style="display:flex;justify-content:space-between;align-items:center">'+
-            '<div><div style="font-weight:700">'+(isDraw?'📤 Draw':'📥 Repay')+'</div>'+
+            '<div><div style="font-weight:700">'+(isDraw?spendLbl:payLbl)+'</div>'+
             '<div style="font-size:11px;color:#7a8fa6">'+e.due_date+(e.note?' · '+e.note:'')+'</div></div>'+
             '<div style="text-align:right">'+
             '<div style="font-weight:900;color:'+(isDraw?'#c8382a':'#1e7a4f')+'">'+fmt(e.amount)+'</div>'+
@@ -2430,11 +2689,12 @@ var tempos=[];
 var DRIVERS=[];
 function populateDriverSelects(drivers){
   DRIVERS=drivers.map(function(d){return d.name;});
-  var driverSelects=['dtxn-driver','sal-driver','adv-driver','ded-driver','lv-driver','sal-list-driver','adv-list-driver','ded-list-driver','lv-list-driver','lv-del-driver','ex-driver','adj-driver'];
+  var driverSelects=['dtxn-driver','sal-driver','adv-driver','ded-driver','lv-driver','sal-list-driver','adv-list-driver','ded-list-driver','lv-list-driver','lv-del-driver','ex-driver','adj-driver','er-driver','er-list-driver'];
   driverSelects.forEach(function(id){
     var el=document.getElementById(id);
     if(!el) return;
-    var placeholder=id==='dtxn-driver'?'— All Drivers —':'— Driver —';
+    var allOk=id==='dtxn-driver'||id==='er-list-driver';
+    var placeholder=allOk?(id==='er-list-driver'?'All drivers':'— All Drivers —'):'— Driver —';
     el.innerHTML='<option value="">'+placeholder+'</option>'+drivers.map(function(d){
       return'<option value="'+d.name+'">'+d.name+(d.active?'':' (inactive)')+'</option>';
     }).join('');
@@ -2714,12 +2974,14 @@ function loadDriverManageList(){
     var el=document.getElementById('driverManageList');
     if(!rows.length){el.innerHTML='<div class="empty">No drivers yet</div>';return;}
     el.innerHTML=rows.map(function(d){
+      var upi=getDriverUpiLocal(d.name);
       return'<div class="item-card"><div style="display:flex;justify-content:space-between;align-items:center">'+
         '<div><div style="font-weight:700">'+d.name+'</div>'+
         '<div style="font-size:11px;color:#7a8fa6">'+
         (d.mobile?d.mobile+' · ':'')+
         (d.is_parttime?'<span class="badge b-grey">Part-time</span> ₹'+d.daily_rate+'/day':'Base: '+fmt(d.base_salary))+
         (d.has_tempo?' · 🚛 '+d.tempo_name+' '+fmt(d.tempo_rent)+'/mo':'')+
+        (upi&&upi.upi_vpa?' · <span class="badge b-green">UPI</span>':'')+
         (d.note?' · '+d.note:'')+
         ' <span class="badge '+(d.active?'b-green':'b-red')+'">'+(d.active?'Active':'Inactive')+'</span>'+
         '</div></div>'+
@@ -2750,6 +3012,8 @@ function editDriver(id,name,base,mobile,note,hasTempo,tempoName,tempoRent,isPart
   document.getElementById('drv-has-tempo').checked=ht;
   toggleTempoFields(ht);
   setV('drv-tempo-name',tempoName||''); setV('drv-tempo-rent',tempoRent||0);
+  var upi=getDriverUpiLocal(name)||{};
+  setV('drv-upi-vpa',upi.upi_vpa||''); setV('drv-upi-name',upi.upi_payee_name||'');
   document.getElementById('drv-msg').textContent='';
   showDriverTab('manage');
   window.scrollTo(0,0);
@@ -2757,6 +3021,7 @@ function editDriver(id,name,base,mobile,note,hasTempo,tempoName,tempoRent,isPart
 function clearDriverForm(){
   setV('drv-edit-id',''); setV('drv-name',''); setV('drv-base-sal',''); setV('drv-daily-rate','');
   setV('drv-mobile',''); setV('drv-note','');
+  setV('drv-upi-vpa',''); setV('drv-upi-name','');
   document.getElementById('drv-type-full').checked=true;
   toggleParttimeFields(false);
   document.getElementById('drv-has-tempo').checked=false;
@@ -2768,6 +3033,9 @@ function saveDriver(){
   if(!name){showMsg('drv-msg','Name required','er');return;}
   var isPart=document.getElementById('drv-type-part').checked;
   var hasTempo=document.getElementById('drv-has-tempo').checked;
+  var upi=String(v('drv-upi-vpa')||'').trim();
+  var upiParsed=parseUpiVpa(upi);
+  if(upi && !upiParsed){showMsg('drv-msg','UPI ID must include @ (e.g. name@ybl) or paste upi:// from QR','er');return;}
   var body={name:name,mobile:v('drv-mobile'),
     is_parttime:isPart,
     base_salary:isPart?0:parseFloat(v('drv-base-sal'))||0,
@@ -2779,7 +3047,11 @@ function saveDriver(){
     ? fetch(BASE+'/fin_drivers?id=eq.'+id,{method:'PATCH',headers:hdrs({'Prefer':'return=minimal'}),body:JSON.stringify(body)}).then(function(r){return{ok:r.ok};})
     : sbPost('fin_drivers',body);
   promise.then(function(r){
-    if(r.ok){showMsg('drv-msg',(id?'Updated':'Added')+' ✓','ok');clearDriverForm();loadDriverManageList();loadDriversFromDB(loadPartiesFromDB);}
+    if(r.ok){
+      setDriverUpiLocal(name, upiParsed||'', v('drv-upi-name')||name);
+      showMsg('drv-msg',(id?'Updated':'Added')+(upiParsed?' · UPI saved':'')+' ✓','ok');
+      clearDriverForm();loadDriverManageList();loadDriversFromDB(loadPartiesFromDB);
+    }
     else showMsg('drv-msg','Error (name may already exist)','er');
   });
 }
@@ -3220,6 +3492,7 @@ function loadSalaryList(){
         '</select>'+
         (isPaid?
           '<button class="btn-sm btn-edit" onclick="updateActualPaid('+s.id+','+s.net_paid+',\''+s.driver_name.replace(/'/g,"\\'")+'\',\''+s.month+'\')">💾 Update</button>':
+          '<button class="btn-sm btn-green" type="button" onclick="paySalaryViaUpi('+s.id+',\''+s.driver_name.replace(/'/g,"\\'")+'\','+s.net_paid+')">📱 UPI</button>'+
           '<button class="btn-sm btn-blue" onclick="markSalaryPaidV2('+s.id+',\''+s.driver_name.replace(/'/g,"\\'")+'\','+s.net_paid+',\''+s.month+'\')">✅ Mark Paid</button>')+
         '</div></div>'
         +'</div>';
@@ -3367,6 +3640,7 @@ function loadParttimeList(){
           '</select>'+
           (isPaid?
             '<button class="btn-sm btn-edit" onclick="updateActualPaid('+s.id+','+s.net_paid+',\''+s.driver_name.replace(/'/g,"\\'")+'\',\''+s.month+'\')">💾 Update</button>':
+            '<button class="btn-sm btn-green" type="button" onclick="paySalaryViaUpi('+s.id+',\''+s.driver_name.replace(/'/g,"\\'")+'\','+s.net_paid+')">📱 UPI</button>'+
             '<button class="btn-sm btn-blue" onclick="markSalaryPaidV2('+s.id+',\''+s.driver_name.replace(/'/g,"\\'")+'\','+s.net_paid+',\''+s.month+'\')">✅ Mark Paid</button>')+
         '</div></div>'+
       '</div>';
@@ -3566,8 +3840,10 @@ function updateActualPaid(id,netPaid,driverName,month){
 function saveAdvance(){
   var drv=v('adv-driver'); var amt=parseFloat(v('adv-amount'));
   var date=v('adv-date'); var reason=v('adv-reason'); var bankAcct=v('adv-bank-account');
+  var mode=v('adv-pay-mode')||'cash';
   if(!drv||!amt){showMsg('adv-msg','Fill driver and amount','er');return;}
-  var body={driver_name:drv,date:date,amount:amt,type:'advance',reason:reason,bank_account:bankAcct||''};
+  var reasonFull=(reason||'')+(reason?' · ':'')+modeLabel(mode);
+  var body={driver_name:drv,date:date,amount:amt,type:'advance',reason:reasonFull,bank_account:bankAcct||''};
   var editId=parseInt(v('adv-edit-id'))||0;
   var promise=editId>0 ? sbPatch('driver_advances','id=eq.'+editId,body) : sbPost('driver_advances',body);
   promise.then(function(r){
@@ -3575,13 +3851,139 @@ function saveAdvance(){
     // also create bank transaction if account selected
     if(bankAcct&&!editId){
       sbPost('bank_transactions',{account_name:bankAcct,date:date,type:'debit',amount:amt,
-        description:'Advance — '+drv+(reason?' ('+reason+')':''),reference:drv});
+        description:'Advance — '+drv+(reason?' ('+reason+')':'')+' · '+modeLabel(mode),reference:drv});
     }
     showMsg('adv-msg',(editId>0?'Updated':'Advance recorded'+(bankAcct?' + bank entry':''))+' ✓','ok');
-    setV('adv-amount','');setV('adv-reason','');setV('adv-bank-account','');
+    setV('adv-amount','');setV('adv-reason','');setV('adv-bank-account','');setV('adv-upi-vpa','');
     cancelEditAdvance();loadAdvanceList();
   });
 }
+
+// ── EXTRA ROUTE PAY (standalone — not salary) ──
+function initExtraRouteTab(){
+  setV('er-date',todayStr());
+  if(!v('er-amount')) setV('er-amount','250');
+  else if(v('er-amount')==='') setV('er-amount','250');
+  // bank options + default
+  var erBank=document.getElementById('er-bank-account');
+  if(erBank && _bankAccounts && _bankAccounts.length){
+    var opts=_bankAccounts.map(function(a){return'<option value="'+a.name+'">'+a.name+'</option>';}).join('');
+    var cur=erBank.value;
+    erBank.innerHTML='<option value="">— No bank entry —</option>'+opts;
+    var def=getDefaultBank();
+    erBank.value=cur||def||'';
+  } else if(!_bankAccounts||!_bankAccounts.length){
+    loadBankAccounts();
+  }
+  refreshExtraRouteUpi();
+  loadExtraRouteList();
+}
+function refreshExtraRouteUpi(){
+  var drv=v('er-driver');
+  var info=document.getElementById('er-upi-info');
+  var input=document.getElementById('er-upi-vpa');
+  if(!info) return;
+  if(!drv){
+    info.textContent='Select a driver to load saved UPI.';
+    if(input) input.value='';
+    return;
+  }
+  var d=getDriverUpi(drv);
+  if(d&&d.upi_vpa){
+    info.innerHTML='Mapped UPI for <b>'+esc(drv)+'</b>: '+esc(d.upi_vpa)+(d.upi_payee_name?' ('+esc(d.upi_payee_name)+')':'');
+    if(input) input.value=d.upi_vpa;
+  } else {
+    info.textContent='No UPI saved for '+drv+'. Add under Drivers → Manage, or type UPI ID below.';
+    if(input) input.value='';
+  }
+}
+function buildAppUpiUrl(app, vpa, payeeName, amount, note){
+  var pa=parseUpiVpa(vpa);
+  if(!pa||pa.indexOf('@')<0) return '';
+  var am=parseFloat(amount);
+  if(!(am>0)) return '';
+  var pn=encodeURIComponent(String(payeeName||'Driver').slice(0,50));
+  var tn=encodeURIComponent(String(note||'Extra route').slice(0,80));
+  var ams=am.toFixed(2);
+  var q='pa='+encodeURIComponent(pa)+'&pn='+pn+'&am='+ams+'&cu=INR&tn='+tn;
+  if(app==='phonepe') return 'phonepe://pay?'+q;
+  if(app==='paytm') return 'paytmmp://pay?'+q;
+  return 'upi://pay?'+q;
+}
+function payExtraRouteApp(app){
+  var drv=v('er-driver'); var amt=parseFloat(v('er-amount'))||250;
+  if(!drv){showMsg('er-msg','Select driver first','er');return;}
+  var vpa=v('er-upi-vpa');
+  var d=getDriverUpi(drv);
+  if(!vpa && d) vpa=d.upi_vpa;
+  var name=(d&&d.upi_payee_name)||drv;
+  var note='Extra route '+drv+(v('er-note')?' '+v('er-note'):'');
+  var url=buildAppUpiUrl(app, vpa, name, amt, note);
+  if(!url){showMsg('er-msg','Valid UPI ID required (name@bank)','er');return;}
+  try{
+    window.location.href=url;
+    showMsg('er-msg',(app==='phonepe'?'PhonePe':'Paytm')+' opened. After payment, tap Mark Paid & Save.','ok');
+  }catch(e){
+    showMsg('er-msg','Could not open '+(app==='phonepe'?'PhonePe':'Paytm')+'. Is the app installed?','er');
+  }
+}
+function saveExtraRoutePay(){
+  var drv=v('er-driver');
+  var amt=parseFloat(v('er-amount'));
+  var date=v('er-date')||todayStr();
+  var note=v('er-note')||'';
+  var bankAcct=v('er-bank-account');
+  if(!drv){showMsg('er-msg','Select driver','er');return;}
+  if(!(amt>0)){showMsg('er-msg','Enter amount','er');return;}
+  var reason='Extra route'+(note?' — '+note:'')+' · 📱 UPI paid';
+  var body={driver_name:drv,date:date,amount:amt,type:'extra_route',reason:reason,bank_account:bankAcct||''};
+  sbPost('driver_advances',body).then(function(r){
+    if(!r.ok){showMsg('er-msg','Error saving','er');return;}
+    if(bankAcct){
+      sbPost('bank_transactions',{
+        account_name:bankAcct,date:date,type:'debit',amount:amt,
+        description:'Extra route — '+drv+(note?' ('+note+')':''),
+        reference:'ExtraRoute'
+      });
+    }
+    showMsg('er-msg','Extra route paid & saved'+(bankAcct?' + bank entry':'')+' ✓','ok');
+    setV('er-amount','250'); setV('er-note',''); setV('er-date',todayStr());
+    refreshExtraRouteUpi();
+    loadExtraRouteList();
+  });
+}
+function loadExtraRouteList(){
+  var el=document.getElementById('extraRouteList');
+  if(!el) return;
+  var drv=v('er-list-driver');
+  var mon=v('er-list-month');
+  var parts=['type=eq.extra_route','order=date.desc'];
+  if(drv) parts.push('driver_name=eq.'+encodeURIComponent(drv));
+  if(mon){
+    var y=mon.slice(0,4); var m=mon.slice(5,7);
+    var days=new Date(parseInt(y),parseInt(m),0).getDate();
+    parts.push('date=gte.'+y+'-'+m+'-01');
+    parts.push('date=lte.'+y+'-'+m+'-'+days);
+  }
+  sbGetQ('driver_advances',parts.join('&')).then(function(rows){
+    if(!rows||!rows.length){el.innerHTML='<div class="empty">No extra route payments yet</div>';return;}
+    var total=rows.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
+    el.innerHTML='<div class="msg in" style="margin-bottom:8px">Total: '+fmt(total)+' ('+rows.length+' pays)</div>'+
+      rows.map(function(r){
+        return'<div class="item-card"><div style="display:flex;justify-content:space-between;align-items:center">'+
+          '<div><div style="font-weight:800">'+fmt(r.amount)+' · '+esc(r.driver_name)+'</div>'+
+          '<div style="font-size:11px;color:#7a8fa6">'+r.date+(r.reason?' · '+esc(r.reason):'')+'</div>'+
+          (r.bank_account?'<span class="badge b-blue" style="font-size:9px">🏦 '+esc(r.bank_account)+'</span>':'')+
+          '</div>'+
+          '<button class="btn-sm btn-del" onclick="delGuard(this,function(){deleteExtraRoute('+r.id+');})">Del</button>'+
+          '</div></div>';
+      }).join('');
+  });
+}
+function deleteExtraRoute(id){
+  sbDelete('driver_advances',id).then(function(){loadExtraRouteList();});
+}
+
 function loadAdvanceList(){
   var drv=v('adv-list-driver');
   var mon=v('adv-list-month');
@@ -4001,7 +4403,7 @@ function editLeaveById(id){
     setV('lv-edit-id',l.id);
     var saveBtn=document.getElementById('lv-save-btn');if(saveBtn)saveBtn.textContent='✏ Update Leave';
     var cancelBtn=document.getElementById('lv-cancel-edit-btn');if(cancelBtn)cancelBtn.style.display='inline-block';
-    showDriverTab('leaves');
+    showDriverTab('salary');
     window.scrollTo(0,0);
   });
 }
@@ -4197,19 +4599,23 @@ function saveExpense(){
   var tid=v('ex-tempo');
   var tempo=tid?tempos.find(function(t){return String(t.id)===String(tid);}):null;
   var cat=v('ex-cat'); var bankAcct=v('ex-bank-account');
-  var body={date:date,category:cat,amount:amt,tempo_name:tempo?tempo.name:'',driver_name:v('ex-driver'),note:v('ex-note'),bank_account:bankAcct};
+  var mode=v('ex-pay-mode')||'cash';
+  var noteBase=v('ex-note')||'';
+  var note=noteBase+(noteBase?' · ':'')+modeLabel(mode);
+  var body={date:date,category:cat,amount:amt,tempo_name:tempo?tempo.name:'',driver_name:v('ex-driver'),note:note,bank_account:bankAcct};
   var editId=parseInt(v('ex-edit-id'))||0;
   var promise=editId>0
     ? sbPatch('fin_expenses','id=eq.'+editId,body)
     : sbPost('fin_expenses',body);
   promise.then(function(r){
     if(r.ok){
-      var desc='Expense — '+expCatLabel(cat)+(v('ex-note')?' ('+v('ex-note')+')':'');
+      var desc='Expense — '+expCatLabel(cat)+(noteBase?' ('+noteBase+')':'')+' · '+modeLabel(mode);
       if(bankAcct&&editId===0){
         sbPost('bank_transactions',{account_name:bankAcct,date:date,type:'debit',amount:amt,description:desc,reference:'Expense'});
       }
       showMsg('ex-msg',(editId>0?'Updated':'Expense saved'+(bankAcct?' + bank entry':''))+' ✓','ok');
       setV('ex-amount','');setV('ex-note','');setV('ex-bank-account',getDefaultBank()||'');
+      setV('ex-upi-vpa','');setV('ex-upi-name','');
       cancelEditExpense();showExpenseTab('all');
     }
     else showMsg('ex-msg','Error','er');
@@ -4322,6 +4728,11 @@ function loadBankAccounts(){
     if(advBank){
       advBank.innerHTML='<option value="">— No bank entry —</option>'+opts;
       if(def) advBank.value=def;
+    }
+    var erBank=document.getElementById('er-bank-account');
+    if(erBank){
+      erBank.innerHTML='<option value="">— No bank entry —</option>'+opts;
+      if(def) erBank.value=def;
     }
     var cpBank=document.getElementById('cp-bank-account');
     if(cpBank){
@@ -4682,30 +5093,82 @@ function loadBankList(){
 var loans=[];
 function setLoanType(t){
   setV('ln-type',t);
-  document.getElementById('lntype-term').className='btn '+(t==='term'?'btn-blue':'btn-grey');
-  document.getElementById('lntype-od').className='btn '+(t==='od'?'btn-blue':'btn-grey');
+  var term=document.getElementById('lntype-term');
+  var od=document.getElementById('lntype-od');
+  var cc=document.getElementById('lntype-cc');
+  if(term) term.className='btn '+(t==='term'?'btn-blue':'btn-grey');
+  if(od) od.className='btn '+(t==='od'?'btn-blue':'btn-grey');
+  if(cc) cc.className='btn '+(t==='cc'?'btn-blue':'btn-grey');
   document.getElementById('ln-term-fields').style.display=t==='term'?'block':'none';
-  document.getElementById('ln-od-fields').style.display=t==='od'?'block':'none';
+  document.getElementById('ln-od-fields').style.display=(t==='od'||t==='cc')?'block':'none';
+  var lender=document.getElementById('ln-lender');
+  var purpose=document.getElementById('ln-purpose');
+  if(t==='cc'){
+    if(lender&&!lender.placeholder) lender.placeholder='Bank / Card issuer';
+    if(purpose) purpose.placeholder='e.g. HDFC Millennia CC';
+  }
+}
+function isRevolvingLoan(l){
+  if(!l) return false;
+  var t=l.loan_type||'';
+  return t==='overdraft'||t==='od'||t==='cc'||t==='credit_card';
 }
 function loadLoanList(){
-  sbGetQ('loans','order=created_at.desc').then(function(rows){
-    loans=rows||[];
+  Promise.all([
+    sbGetQ('loans','order=created_at.desc'),
+    sbGetQ('loan_emis','order=due_date.asc')
+  ]).then(function(res){
+    var rows=res[0]||[];
+    var allEmis=res[1]||[];
+    loans=rows;
     var el=document.getElementById('loanList');
-    if(!rows.length){el.innerHTML='<div class="empty">No loans yet</div>';return;}
+    if(!rows.length){el.innerHTML='<div class="empty">No loans yet — add existing loans under ➕ New Loan</div>';return;}
+    var emisByLoan={};
+    allEmis.forEach(function(e){
+      if(!emisByLoan[e.loan_id]) emisByLoan[e.loan_id]=[];
+      emisByLoan[e.loan_id].push(e);
+    });
     el.innerHTML=rows.map(function(l){
-      var isOD=(l.loan_type==='overdraft'||l.loan_type==='od');
+      var isOD=isRevolvingLoan(l);
+      var isCC=l.loan_type==='cc'||l.loan_type==='credit_card';
       var lname=l.lender_name.replace(/'/g,"\\'");
       var pname=(l.purpose||'').replace(/'/g,"\\'");
       var detailLabel=isOD?'📊 View Transactions':'📅 View EMIs';
-      var typeTag=isOD
-        ?'<span class="badge" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d">OD</span>'
-        :'<span class="badge b-grey">Term</span>';
-      var bodyHtml=isOD
-        ?'<div class="sum-row"><span class="sum-lbl">Credit Limit</span><span class="sum-val">'+fmt(l.od_limit||0)+'</span></div>'+
-          '<div class="sum-row"><span class="sum-lbl">Interest Rate</span><span class="sum-val">'+(l.interest_rate||0)+'% p.a.</span></div>'
-        :'<div class="sum-row"><span class="sum-lbl">Principal</span><span class="sum-val">'+fmt(l.principal||0)+'</span></div>'+
+      var typeTag=isCC
+        ?'<span class="badge" style="background:#ede9fe;color:#5b21b6;border:1px solid #c4b5fd">CC</span>'
+        :(isOD
+          ?'<span class="badge" style="background:#fef3c7;color:#92400e;border:1px solid #fcd34d">OD</span>'
+          :'<span class="badge b-grey">Term</span>');
+      var emis=emisByLoan[l.id]||[];
+      var paidN=emis.filter(function(e){return e.status==='paid';}).length;
+      var pending=emis.filter(function(e){return e.status!=='paid'&&e.status!=='draw'&&e.status!=='repay';});
+      var nextEmi=pending.length?pending[0]:null;
+      var paidAmt=emis.filter(function(e){return e.status==='paid';}).reduce(function(a,e){return a+(parseFloat(e.amount)||0);},0);
+      var balLeft=Math.max(0,(parseFloat(l.principal)||0)-paidAmt);
+      // prefer outstanding stored in note marker
+      var noteOut=(l.note||'').match(/Outstanding:\s*₹?([\d,.]+)/i);
+      if(noteOut) balLeft=parseFloat(noteOut[1].replace(/,/g,''))||balLeft;
+      var bodyHtml;
+      if(isOD){
+        var draws=emis.filter(function(e){return e.status==='draw';});
+        var repays=emis.filter(function(e){return e.status==='repay';});
+        var drawn=draws.reduce(function(a,e){return a+(parseFloat(e.amount)||0);},0);
+        var repaid=repays.reduce(function(a,e){return a+(parseFloat(e.amount)||0);},0);
+        var oust=drawn-repaid;
+        var dueM=(l.note||'').match(/Due day:\s*(\d+)/i);
+        bodyHtml='<div class="sum-row"><span class="sum-lbl">'+(isCC?'Card limit':'Credit Limit')+'</span><span class="sum-val">'+fmt(l.od_limit||0)+'</span></div>'+
+          (dueM?'<div class="sum-row"><span class="sum-lbl">Bill due day</span><span class="sum-val">'+dueM[1]+' of month</span></div>':'')+
+          '<div class="sum-row"><span class="sum-lbl">Outstanding</span><span class="sum-val" style="color:#c8382a">'+fmt(oust)+'</span></div>'+
+          '<div class="sum-row"><span class="sum-lbl">Available</span><span class="sum-val" style="color:#1e7a4f">'+fmt(Math.max(0,(parseFloat(l.od_limit)||0)-oust))+'</span></div>'+
+          '<div class="sum-row"><span class="sum-lbl">Interest Rate</span><span class="sum-val">'+(l.interest_rate||0)+'% p.a.</span></div>';
+      } else {
+        bodyHtml='<div class="sum-row"><span class="sum-lbl">Principal</span><span class="sum-val">'+fmt(l.principal||0)+'</span></div>'+
           '<div class="sum-row"><span class="sum-lbl">EMI</span><span class="sum-val">'+fmt(l.emi_amount||0)+' × '+(l.total_emis||0)+'</span></div>'+
-          '<div class="sum-row"><span class="sum-lbl">Interest Rate</span><span class="sum-val">'+l.interest_rate+'% p.a.</span></div>';
+          '<div class="sum-row"><span class="sum-lbl">EMIs paid</span><span class="sum-val" style="color:#1e7a4f">'+paidN+' / '+(l.total_emis||emis.length||0)+'</span></div>'+
+          (nextEmi?'<div class="sum-row"><span class="sum-lbl">Next EMI date</span><span class="sum-val" style="color:#c07000">'+nextEmi.due_date+' · '+fmt(nextEmi.amount)+'</span></div>':'')+
+          '<div class="sum-row"><span class="sum-lbl">Balance (approx)</span><span class="sum-val" style="color:#c8382a">'+fmt(balLeft)+'</span></div>'+
+          '<div class="sum-row"><span class="sum-lbl">Interest Rate</span><span class="sum-val">'+(l.interest_rate||0)+'% p.a.</span></div>';
+      }
       return'<div class="card">'+
         '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
         '<div style="cursor:pointer;flex:1" onclick="openLoanDetail('+l.id+',\''+lname+' — '+pname+'\')">'+
@@ -4724,34 +5187,72 @@ function populateLoanSelect(){
     var sel=document.getElementById('emi-loan-select');
     if(!sel) return;
     sel.innerHTML='<option value="">Select Loan</option>'+
-      rows.filter(function(l){return l.loan_type!=='overdraft'&&l.loan_type!=='od';})
+      rows.filter(function(l){return !isRevolvingLoan(l);})
         .map(function(l){return'<option value="'+l.id+'">'+l.lender_name+' ('+fmt(l.emi_amount)+'/mo)</option>';}).join('');
   });
 }
 function saveLoan(){
   var lender=v('ln-lender').trim(); var ltype=v('ln-type');
-  var isOD=ltype==='od';
+  var isOD=ltype==='od'||ltype==='cc';
+  var isCC=ltype==='cc';
   if(!lender||!v('ln-start')){showMsg('ln-msg','Fill all required fields','er');return;}
   if(!isOD&&(!v('ln-emi')||!v('ln-total-emis'))){showMsg('ln-msg','Fill EMI and total EMIs','er');return;}
   if(isOD&&!v('ln-od-limit')){showMsg('ln-msg','Fill credit limit','er');return;}
+  var note=v('ln-note')||'';
+  var outstanding=parseFloat(v('ln-outstanding'))||0;
+  if(outstanding>0 && note.indexOf('Outstanding:')<0) note=(note?note+' · ':'')+'Outstanding: ₹'+outstanding.toLocaleString('en-IN');
   var body={lender_name:lender,purpose:v('ln-purpose'),start_date:v('ln-start'),
-    note:v('ln-note'),active:true,loan_type:isOD?'overdraft':'term'};
+    note:note,active:true,loan_type:isCC?'cc':(isOD?'overdraft':'term')};
+  var firstEmi=v('ln-first-emi')||'';
+  var emisPaid=parseInt(v('ln-emis-paid'),10)||0;
+  var emiDay=parseInt(v('ln-emi-day'),10)||0;
+  var emiAmt=0, totalEmis=0;
+  var odOutstanding=0, odDueDay=0;
   if(isOD){
     body.od_limit=parseFloat(v('ln-od-limit'))||0;
     body.interest_rate=parseFloat(v('ln-od-rate'))||0;
     body.principal=0; body.emi_amount=0; body.total_emis=0;
     body.vehicle_cost=0; body.down_payment=0;
+    odOutstanding=parseFloat(v('ln-od-outstanding'))||0;
+    odDueDay=parseInt(v('ln-od-due-day'),10)||0;
+    if(odDueDay>0 && note.indexOf('Due day:')<0){
+      body.note=(note?note+' · ':'')+'Due day: '+odDueDay;
+    }
   } else {
     body.vehicle_cost=parseFloat(v('ln-vehicle-cost'))||0;
     body.down_payment=parseFloat(v('ln-down-payment'))||0;
     body.principal=parseFloat(v('ln-principal'))||0;
     body.interest_rate=parseFloat(v('ln-rate'))||0;
-    body.emi_amount=parseFloat(v('ln-emi'));
-    body.total_emis=parseInt(v('ln-total-emis'));
+    emiAmt=parseFloat(v('ln-emi'))||0;
+    totalEmis=parseInt(v('ln-total-emis'),10)||0;
+    body.emi_amount=emiAmt;
+    body.total_emis=totalEmis;
   }
   sbPost('loans',body).then(function(r){
-    if(r.ok){showMsg('ln-msg','Saved ✓','ok');loadLoanList();populateLoanSelect();showLoanTab('list');}
-    else showMsg('ln-msg','Error','er');
+    if(!r.ok){showMsg('ln-msg','Error','er');return;}
+    var loanId=r.data&&r.data[0]&&r.data[0].id;
+    var after=function(){
+      showMsg('ln-msg',(isCC?'Credit card':(isOD?'OD':'Loan'))+' saved'+(loanId&&!isOD?' · EMI schedule created':'')+' ✓','ok');
+      setV('ln-lender','');setV('ln-purpose','');setV('ln-vehicle-cost','');setV('ln-down-payment','');
+      setV('ln-principal','');setV('ln-rate','');setV('ln-emi','');setV('ln-total-emis','');
+      setV('ln-first-emi','');setV('ln-emis-paid','0');setV('ln-outstanding','');setV('ln-emi-day','');
+      setV('ln-od-limit','');setV('ln-od-rate','');setV('ln-od-outstanding','');setV('ln-od-due-day','');
+      setV('ln-note','');
+      loadLoanList();populateLoanSelect();showLoanTab('list');
+    };
+    if(isOD && loanId && odOutstanding>0){
+      // Opening balance as a draw so outstanding shows correctly
+      sbPost('loan_emis',{
+        loan_id:loanId,
+        due_date:v('ln-start')||todayStr(),
+        amount:odOutstanding,
+        status:'draw',
+        note:'Opening outstanding'
+      }).then(after);
+    } else if(!isOD && loanId && totalEmis>0 && emiAmt>0){
+      var anchor=firstEmi||v('ln-start');
+      generateEMIs(loanId, emiAmt, anchor, totalEmis, emisPaid, emiDay).then(after);
+    } else after();
   });
 }
 function deleteLoan(id){sbDelete('loans',id).then(function(){loadLoanList();});}
@@ -4766,18 +5267,26 @@ function loadEMIList(){
   ]).then(function(res){
     var emis=res[0]; var loan=res[1][0];
     if(!emis.length&&loan){
-      el.innerHTML='<div class="empty">No EMIs yet</div>'+
-        '<button class="btn btn-blue" onclick="generateEMIs('+loan.id+','+loan.emi_amount+',\''+loan.start_date+'\','+loan.total_emis+')">📅 Generate EMI Schedule</button>';
+      el.innerHTML='<div class="empty">No EMIs yet — map this existing loan</div>'+
+        '<div class="card" style="margin-top:8px">'+
+        '<label class="lbl">First EMI due date</label><input type="date" id="emi-gen-first" value="'+(loan.start_date||'')+'">'+
+        '<div class="row2"><div><label class="lbl">EMIs already paid</label><input type="number" id="emi-gen-paid" value="0" min="0"></div>'+
+        '<div><label class="lbl">EMI day (1–28)</label><input type="number" id="emi-gen-day" placeholder="optional" min="1" max="28"></div></div>'+
+        '<button class="btn btn-blue" onclick="generateEMIsFromForm('+loan.id+','+loan.emi_amount+','+loan.total_emis+')">📅 Generate EMI Schedule</button>'+
+        '</div>';
       return;
     }
     var paid=emis.filter(function(e){return e.status==='paid';}).length;
     var remaining=emis.filter(function(e){return e.status!=='paid';}).length;
     var totalPaid=emis.filter(function(e){return e.status==='paid';}).reduce(function(a,e){return a+parseFloat(e.amount);},0);
+    var balLeft=Math.max(0,(parseFloat(loan&&loan.principal)||0)-totalPaid);
+    var next=emis.find(function(e){return e.status!=='paid';});
     el.innerHTML='<div class="stats-grid" style="margin-bottom:10px">'+
       '<div class="stat"><div class="stat-n">'+paid+'</div><div class="stat-l">Paid</div></div>'+
       '<div class="stat"><div class="stat-n">'+remaining+'</div><div class="stat-l">Pending</div></div>'+
       '<div class="stat"><div class="stat-n" style="font-size:14px">'+fmt(totalPaid)+'</div><div class="stat-l">Paid Amt</div></div>'+
       '</div>'+
+      (next?'<div class="msg in" style="margin-bottom:8px">Next EMI: <b>'+next.due_date+'</b> · '+fmt(next.amount)+' · Balance ~ '+fmt(balLeft)+'</div>':'')+
       emis.map(function(e,i){
         var isPaid=e.status==='paid';
         var isLate=!isPaid&&new Date(e.due_date)<new Date();
@@ -4793,15 +5302,38 @@ function loadEMIList(){
       }).join('');
   });
 }
-function generateEMIs(loanId,emiAmt,startDate,totalEmis){
-  var dt=new Date(startDate);
+function generateEMIsFromForm(loanId,emiAmt,totalEmis){
+  var first=v('emi-gen-first');
+  var paid=parseInt(v('emi-gen-paid'),10)||0;
+  var day=parseInt(v('emi-gen-day'),10)||0;
+  if(!first){alert('Set first EMI due date');return;}
+  generateEMIs(loanId,emiAmt,first,totalEmis,paid,day).then(function(){loadEMIList();});
+}
+/** Generate EMI rows. firstDate = first due date; alreadyPaid marks first N as paid; emiDay forces day-of-month if set */
+function generateEMIs(loanId,emiAmt,firstDate,totalEmis,alreadyPaid,emiDay){
+  alreadyPaid=parseInt(alreadyPaid,10)||0;
+  emiDay=parseInt(emiDay,10)||0;
+  var base=new Date(firstDate);
+  if(isNaN(base.getTime())) base=new Date();
   var tasks=[];
   for(var i=0;i<totalEmis;i++){
-    var due=new Date(dt.getFullYear(),dt.getMonth()+i+1,dt.getDate());
+    var due=new Date(base.getFullYear(), base.getMonth()+i, emiDay>0?emiDay:base.getDate());
+    // clamp day for short months
+    if(emiDay>0){
+      var last=new Date(due.getFullYear(), due.getMonth()+1, 0).getDate();
+      due.setDate(Math.min(emiDay, last));
+    }
     var dueStr=due.toISOString().slice(0,10);
-    tasks.push(sbPost('loan_emis',{loan_id:loanId,due_date:dueStr,amount:emiAmt,status:'pending'}));
+    var paid=i<alreadyPaid;
+    tasks.push(sbPost('loan_emis',{
+      loan_id:loanId,
+      due_date:dueStr,
+      amount:emiAmt,
+      status:paid?'paid':'pending',
+      paid_date:paid?dueStr:null
+    }));
   }
-  Promise.all(tasks).then(function(){loadEMIList();});
+  return Promise.all(tasks);
 }
 function markEMIPaid(id){
   sbPatch('loan_emis','id=eq.'+id,{status:'paid',paid_date:todayStr()}).then(function(){loadEMIList();});
@@ -5358,7 +5890,7 @@ function editAdvanceById(id){
     var titleEl=document.getElementById('adv-form-title'); if(titleEl) titleEl.textContent='✏ Edit Advance';
     var saveBtn=document.getElementById('adv-save-btn'); if(saveBtn) saveBtn.textContent='✏ Update Advance';
     var cancelBtn=document.getElementById('adv-cancel-btn'); if(cancelBtn) cancelBtn.style.display='inline-block';
-    showDriverTab('advance');
+    showDriverTab('money');
   });
 }
 function cancelEditAdvance(){
@@ -5482,7 +6014,7 @@ function editDeductionById(id){
     var titleEl=document.getElementById('ded-form-title'); if(titleEl) titleEl.textContent='✏ Edit Deduction';
     var saveBtn=document.getElementById('ded-save-btn'); if(saveBtn) saveBtn.textContent='✏ Update Charge';
     var cancelBtn=document.getElementById('ded-cancel-btn'); if(cancelBtn) cancelBtn.style.display='inline-block';
-    showDriverTab('deduct');
+    showDriverTab('money');
   });
 }
 function cancelEditDeduction(){
