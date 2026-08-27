@@ -6,13 +6,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Satelkar Logistics — Finance</title>
 <script src="config.js"></script>
-<meta name="theme-color" content="#1a3a5c">
+<meta name="theme-color" content="#1e293b">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}:root{--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);--sal:env(safe-area-inset-left,0px);--sar:env(safe-area-inset-right,0px)}
-body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#eef2f7;color:#1a2535;max-width:520px;margin:0 auto;min-height:100vh}
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#eef2f7;color:#1a2535;max-width:520px;margin:0 auto;min-height:100vh;min-height:100dvh}
 
 /* ── LOGIN ── */
 #loginScreen{position:fixed;inset:0;background:#1a3a5c;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;padding:24px;padding-top:max(24px,calc(16px + var(--sat)));padding-bottom:max(24px,calc(16px + var(--sab)));padding-left:max(24px,var(--sal));padding-right:max(24px,var(--sar))}
@@ -23,16 +23,117 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#eef2f7;
 #loginErr{color:#ff8080;font-size:12px;margin-top:10px;font-family:monospace}
 
 /* ── TOPBAR ── */
-.topbar{background:#1a3a5c;padding:13px 14px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:99}
-.topbar-title{color:#fff;font-size:15px;font-weight:900}
-.topbar-sub{color:#8ab4d8;font-size:10px;font-family:monospace}
-.tbtn{background:rgba(255,255,255,.15);border:none;color:#fff;padding:6px 11px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif}
+.topbar{
+  background:#1e293b;color:#fff;
+  padding:max(12px, calc(10px + var(--sat))) 14px 12px;
+  padding-left:max(14px, var(--sal));
+  padding-right:max(14px, var(--sar));
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  position:fixed;top:0;left:0;right:0;z-index:300;
+  box-shadow:0 1px 0 rgba(15,23,42,.12);
+  transform:translateZ(0);-webkit-transform:translateZ(0);
+}
+.topbar-title{color:#fff;font-size:16px;font-weight:900;letter-spacing:-0.2px}
+.topbar-sub{color:#94a3b8;font-size:10px;font-family:monospace;margin-top:2px}
+.tbtn{background:rgba(255,255,255,.12);border:none;color:#fff;padding:8px 12px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;min-height:36px}
 
-/* ── TABS ── */
-.tabs{display:flex;background:#fff;border-bottom:2px solid #d8e4f0;position:sticky;top:50px;z-index:98;overflow-x:auto;scrollbar-width:none}
+/* Desktop top tabs */
+.tabs{
+  display:none;
+  background:#fff;border-bottom:1px solid #e2e8f0;
+  position:fixed;left:0;right:0;z-index:290;
+  overflow-x:auto;scrollbar-width:none;
+  padding:0 max(8px, var(--sal));
+  box-shadow:0 1px 0 rgba(15,23,42,.06);
+}
 .tabs::-webkit-scrollbar{display:none}
-.tab{flex:none;min-width:72px;padding:11px 8px;border:none;background:none;font-size:10px;font-weight:700;cursor:pointer;color:#7a8fa6;font-family:-apple-system,sans-serif;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap;text-align:center}
-.tab.on{color:#1a3a5c;border-bottom-color:#1a3a5c}
+.tab{
+  flex:none;min-width:76px;padding:12px 10px;border:none;background:none;
+  font-size:11px;font-weight:700;cursor:pointer;color:#64748b;font-family:inherit;
+  border-bottom:3px solid transparent;margin-bottom:-1px;white-space:nowrap;text-align:center;
+}
+.tab.on{color:#0f766e;border-bottom-color:#0f766e;background:#f0fdfa}
+
+/* Search under chrome */
+#searchBar{position:relative;z-index:50}
+
+/* Mobile bottom nav */
+.fin-bnav{
+  display:none;
+  position:fixed;left:0;right:0;bottom:0;z-index:999;
+  background:#fff;border-top:1px solid #e2e8f0;
+  padding:6px 0 max(8px, var(--sab));
+  padding-left:var(--sal);padding-right:var(--sar);
+  box-shadow:0 -4px 20px rgba(15,23,42,.06);
+  transform:translate3d(0,0,0);-webkit-transform:translate3d(0,0,0);
+}
+.fin-bnav-inner{display:flex;width:100%;align-items:stretch}
+.fin-bnav-item{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;padding:8px 2px;min-height:56px;border:none;background:transparent;
+  color:#64748b;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;
+  -webkit-tap-highlight-color:transparent;border-radius:12px;margin:0 2px;
+}
+.fin-bnav-item .ico{font-size:24px;line-height:1}
+.fin-bnav-item.on{color:#0f766e;background:#f0fdfa;font-weight:800}
+
+/* More sheet */
+.fin-more-sheet{
+  display:none;position:fixed;inset:0;z-index:1000;background:rgba(15,23,42,.45);
+  padding:0;align-items:flex-end;justify-content:center;
+}
+.fin-more-sheet.open{display:flex}
+.fin-more-panel{
+  width:100%;max-width:520px;background:#fff;border-radius:18px 18px 0 0;
+  padding:14px 14px max(20px, calc(16px + var(--sab)));
+  box-shadow:0 -8px 30px rgba(15,23,42,.15);
+}
+.fin-more-panel h3{font-size:15px;font-weight:900;color:#1e293b;margin-bottom:10px}
+.fin-more-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fin-more-item{
+  display:flex;align-items:center;gap:10px;padding:14px 12px;border-radius:12px;
+  border:1px solid #e2e8f0;background:#f8fafc;font-size:13px;font-weight:700;
+  color:#1e293b;cursor:pointer;font-family:inherit;text-align:left;
+}
+.fin-more-item .mi{font-size:20px}
+
+/* Mobile layout */
+@media (max-width:767px){
+  #app{max-width:none;width:100%}
+  .tabs{display:none !important}
+  .fin-bnav{display:block}
+  .topbar{position:fixed}
+  body.fin-app #app{padding-top:calc(58px + var(--sat));padding-bottom:calc(72px + var(--sab))}
+  .page{padding:12px 14px calc(24px + var(--sab)) !important}
+  #searchBar{padding-left:12px;padding-right:12px}
+  #chatBtn{bottom:calc(78px + var(--sab)) !important}
+}
+
+/* Desktop / browser wide */
+@media (min-width:768px){
+  body{background:#e8eef5}
+  #app{
+    max-width:1100px;margin:0 auto;
+    background:#f1f5f9;min-height:100dvh;
+    box-shadow:0 0 0 1px rgba(15,23,42,.06);
+  }
+  .fin-bnav{display:none !important}
+  .tabs{
+    display:flex !important;
+    top:calc(56px + var(--sat));
+    max-width:1100px;left:50%;transform:translateX(-50%);
+    width:100%;
+  }
+  .topbar{
+    max-width:1100px;left:50%;transform:translateX(-50%);
+    width:100%;padding-top:max(14px, calc(12px + var(--sat)));padding-bottom:14px;
+  }
+  body.fin-app #app{padding-top:calc(56px + 48px + var(--sat));padding-bottom:40px}
+  .page{padding:16px 20px 40px !important;max-width:100%}
+  .stats-grid{grid-template-columns:repeat(4,1fr) !important}
+  .card{max-width:100%}
+}
+
 .page{display:none;padding:12px 14px 90px}.page.on{display:block}
 
 /* ── CARDS / FORMS ── */
@@ -1662,6 +1763,7 @@ function doLogin(){
     document.getElementById('loginScreen').style.display='none';
     document.getElementById('app').style.display='block';
     sessionStorage.setItem('fin_auth','1');
+    document.body.classList.add('fin-app');
     initApp();
   } else {
     document.getElementById('loginErr').textContent='Wrong PIN. Try again.';
@@ -1670,25 +1772,63 @@ function doLogin(){
 }
 function doLogout(){
   sessionStorage.removeItem('fin_auth');
+  document.body.classList.remove('fin-app');
   document.getElementById('loginScreen').style.display='flex';
   document.getElementById('app').style.display='none';
   document.getElementById('pinInput').value='';
 }
 if(sessionStorage.getItem('fin_auth')==='1'){
+  document.body.classList.add('fin-app');
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('app').style.display='block';
 }
 
 // ── TABS ──
 var currentTab='dashboard';
+function finSetBottomNav(tab){
+  var primary={dashboard:1,drivers:1,expenses:1,bank:1};
+  ['dashboard','drivers','expenses','bank','more'].forEach(function(k){
+    var el=document.getElementById('fbn-'+k);
+    if(!el) return;
+    var on = (k==='more') ? !primary[tab] : (k===tab);
+    if(on) el.classList.add('on'); else el.classList.remove('on');
+  });
+}
+function finMobileNav(tab){
+  finCloseMore();
+  showTab(tab);
+}
+function finOpenMore(){
+  var s=document.getElementById('finMoreSheet');
+  if(s) s.classList.add('open');
+  finSetBottomNav('ledger'); // highlight More
+  var more=document.getElementById('fbn-more');
+  if(more){ more.classList.add('on'); }
+  ['dashboard','drivers','expenses','bank'].forEach(function(k){
+    var el=document.getElementById('fbn-'+k); if(el) el.classList.remove('on');
+  });
+}
+function finCloseMore(){
+  var s=document.getElementById('finMoreSheet');
+  if(s) s.classList.remove('open');
+}
+function finMoreGo(tab){
+  finCloseMore();
+  showTab(tab);
+}
 function showTab(tab){
   currentTab=tab;
   document.querySelectorAll('.page').forEach(function(p){p.classList.remove('on');});
-  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('on');});
+  document.querySelectorAll('#mainTabs .tab').forEach(function(t){t.classList.remove('on');});
   var pg=document.getElementById('tab-'+tab);
   if(pg) pg.classList.add('on');
-  var tabs=document.querySelectorAll('.tab');
-  tabs.forEach(function(t){if(t.getAttribute('onclick').includes("'"+tab+"'")){t.classList.add('on');}});
+  var tabs=document.querySelectorAll('#mainTabs .tab');
+  tabs.forEach(function(t){
+    var oc=t.getAttribute('onclick')||'';
+    if(oc.indexOf("'"+tab+"'")>=0) t.classList.add('on');
+  });
+  finSetBottomNav(tab);
+  try{ window.scrollTo(0,0); }catch(e){}
   if(tab==='dashboard') loadDashboard();
   if(tab==='fleet') { loadTempoList(); loadKMAlerts(); }
   if(tab==='loans'){ loadLoanList(); populateLoanSelect(); }
@@ -6610,6 +6750,29 @@ function matchExpCat(raw){
   return 'other';
 }
 </script>
+
+<!-- Mobile bottom nav -->
+<nav class="fin-bnav" id="finBottomNav" aria-label="Main">
+  <div class="fin-bnav-inner">
+    <button type="button" class="fin-bnav-item on" id="fbn-dashboard" onclick="finMobileNav('dashboard')"><span class="ico">📊</span>Summary</button>
+    <button type="button" class="fin-bnav-item" id="fbn-drivers" onclick="finMobileNav('drivers')"><span class="ico">👷</span>Drivers</button>
+    <button type="button" class="fin-bnav-item" id="fbn-expenses" onclick="finMobileNav('expenses')"><span class="ico">💸</span>Expenses</button>
+    <button type="button" class="fin-bnav-item" id="fbn-bank" onclick="finMobileNav('bank')"><span class="ico">🏦</span>Bank</button>
+    <button type="button" class="fin-bnav-item" id="fbn-more" onclick="finOpenMore()"><span class="ico">☰</span>More</button>
+  </div>
+</nav>
+<div class="fin-more-sheet" id="finMoreSheet" onclick="if(event.target===this)finCloseMore()">
+  <div class="fin-more-panel">
+    <h3>More</h3>
+    <div class="fin-more-grid">
+      <button type="button" class="fin-more-item" onclick="finMoreGo('ledger')"><span class="mi">📒</span>Ledger</button>
+      <button type="button" class="fin-more-item" onclick="finMoreGo('fleet')"><span class="mi">🚛</span>Fleet</button>
+      <button type="button" class="fin-more-item" onclick="finMoreGo('loans')"><span class="mi">📋</span>Loans</button>
+      <button type="button" class="fin-more-item" onclick="finMoreGo('payments')"><span class="mi">💰</span>Payments</button>
+      <button type="button" class="fin-more-item" onclick="finMoreGo('report')"><span class="mi">📊</span>Report</button>
+    </div>
+  </div>
+</div>
 
 <!-- ── CHAT WIDGET ── -->
 <button id="chatBtn" onclick="toggleChat()">💬</button>
