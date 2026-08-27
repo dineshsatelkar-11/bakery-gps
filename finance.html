@@ -209,9 +209,10 @@ body.dark #chatInput{background:#2d3748;color:#e2e8f0;border-color:#3d4a5c}
 #modalTitle{font-size:16px;font-weight:900;color:#1a3a5c;padding:16px 16px 0;flex:none}
 #modalBody{padding:12px 16px 0;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch}
 #modalBody .qa-sticky-actions{
-  position:sticky;bottom:0;background:#fff;padding:12px 0 max(16px, calc(12px + var(--sab)));
+  position:sticky;bottom:0;background:#fff;padding:12px 0 max(18px, calc(14px + var(--sab)));
   margin-top:12px;border-top:1px solid #e2e8f0;z-index:2;
 }
+#modalBody .qa-sticky-actions .btn{min-height:48px;font-size:15px;font-weight:800}
 /* ── DARK MODE ── */
 body.dark{background:#1a1f2e;color:#e2e8f0}
 body.dark .card{background:#232b3e;border-color:#2d3748}
@@ -642,11 +643,12 @@ body.dark .search-item:hover{background:#3d4a5c}
           </div>
         </div>
         <div class="row2">
-          <div><label class="lbl">Advance Given</label>
+          <div><label class="lbl">Advance given (gross)</label>
             <input type="number" id="sal-adv-given" placeholder="0" oninput="calcNetSalary()"></div>
-          <div><label class="lbl">Advance Deducted</label>
+          <div><label class="lbl">Advance deducted (net)</label>
             <input type="number" id="sal-adv-deduct" placeholder="0" oninput="calcNetSalary()"></div>
         </div>
+        <div style="font-size:11px;color:#64748b;margin:-4px 0 8px" id="sal-adv-net-note">Net = advances given − returns in this month (till last day).</div>
         <div class="row2">
           <div><label class="lbl">Other Deductions (₹) <span style="font-size:10px;color:#7a8fa6">(auto)</span></label>
             <input type="number" id="sal-other-deduct" placeholder="0" oninput="calcNetSalary()"></div>
@@ -671,8 +673,9 @@ body.dark .search-item:hover{background:#3d4a5c}
           <div id="sal-carry-fwd-note" style="font-size:11px;color:#7a8fa6;margin-top:3px"></div>
         </div>
         <div id="sal-adv-excess-note" style="display:none;font-size:11px;padding:5px 8px;border-radius:6px;background:#fde8e8;margin-bottom:4px"></div>
-        <div><label class="lbl">Net Payable (₹)</label>
+        <div><label class="lbl">Salary to pay (₹)</label>
           <input type="number" id="sal-net" placeholder="0" style="background:#e8f5e9;font-weight:800;color:#1e7a4f;width:100%"></div>
+        <div style="font-size:11px;color:#64748b;margin:-4px 0 8px">Base − net advance − leave − tempo (after rent already paid) − other + bonus.</div>
         <label class="lbl">Note</label>
         <textarea id="sal-note" rows="2"></textarea>
         <div style="display:flex;gap:8px">
@@ -715,8 +718,13 @@ body.dark .search-item:hover{background:#3d4a5c}
     <!-- Advance -->
     <div id="dsec-advance" style="display:none">
       <div class="card">
-        <div class="card-title" id="adv-form-title">📤 Give Advance</div>
+        <div class="card-title" id="adv-form-title">📤 Give / Return Advance</div>
         <input type="hidden" id="adv-edit-id" value="0">
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <button type="button" id="adv-dir-give" class="btn btn-blue" style="flex:1" onclick="setAdvDirection('give')">📤 Give advance</button>
+          <button type="button" id="adv-dir-return" class="btn btn-grey" style="flex:1" onclick="setAdvDirection('return')">↩️ Driver returns</button>
+        </div>
+        <input type="hidden" id="adv-direction" value="give">
         <label class="lbl">Driver</label>
         <select id="adv-driver" onchange="refreshAdvUpiBox()"></select>
         <div class="row2">
@@ -725,7 +733,7 @@ body.dark .search-item:hover{background:#3d4a5c}
           <div><label class="lbl">Amount (₹)</label>
             <input type="number" id="adv-amount" placeholder="0"></div>
         </div>
-        <label class="lbl">Paid From Account</label>
+        <label class="lbl" id="adv-bank-lbl">Paid From Account</label>
         <select id="adv-bank-account">
           <option value="">— No bank entry —</option>
         </select>
@@ -2136,6 +2144,14 @@ function loadQuickDriverPayList(){
     }).join('');
   });
 }
+function qaBankOptionsHtml(selected){
+  var list=_bankAccounts||[];
+  if(!list.length) return '<option value="">Loading accounts…</option>';
+  var def=selected||getDefaultBank()||list[0].name||'';
+  return list.map(function(a){
+    return '<option value="'+esc(a.name)+'"'+(a.name===def?' selected':'')+'>'+esc(a.name)+'</option>';
+  }).join('');
+}
 function openQuickAdvance(driverName){
   var defBank=getDefaultBank()||'';
   if(!defBank && _bankAccounts && _bankAccounts.length) defBank=_bankAccounts[0].name||'';
@@ -2143,59 +2159,66 @@ function openQuickAdvance(driverName){
   var vpa=d.upi_vpa||'';
   var payee=d.upi_payee_name||driverName;
   var desc='Advance — '+driverName+' · '+todayStr();
-  var bankLabel=defBank?esc(defBank):'⚠️ Set default bank in Bank tab';
   var html=
     '<div style="font-size:12px;color:#64748b;margin-bottom:10px">Paying advance to <b>'+esc(driverName)+'</b></div>'+
     '<label class="lbl">Amount (₹)</label>'+
     '<input type="number" id="qa-amount" placeholder="0" inputmode="decimal" style="font-size:20px;font-weight:800">'+
     '<label class="lbl">Date</label>'+
     '<input type="date" id="qa-date" value="'+todayStr()+'">'+
-    '<label class="lbl">Paid from bank</label>'+
-    '<div style="padding:10px 12px;background:#f1f5f9;border:1.5px solid #cbd5e1;border-radius:10px;font-weight:800;color:#0f172a">🏦 '+bankLabel+'</div>'+
-    '<input type="hidden" id="qa-bank" value="'+esc(defBank)+'">'+
+    '<label class="lbl">Paid from account</label>'+
+    '<select id="qa-bank">'+qaBankOptionsHtml(defBank)+'</select>'+
+    '<div style="font-size:10px;color:#64748b;margin:-2px 0 8px">Default account pre-selected — change if you pay from another account.</div>'+
     '<label class="lbl">Description</label>'+
     '<input type="text" id="qa-desc" value="'+esc(desc)+'">'+
     '<div style="margin-top:12px;padding:12px;background:#f0fdfa;border:1px solid #99f6e4;border-radius:12px">'+
-      '<div style="font-size:12px;font-weight:800;color:#0f766e;margin-bottom:6px">📱 Driver UPI</div>'+
+      '<div style="font-size:12px;font-weight:800;color:#0f766e;margin-bottom:6px">📱 Pay via UPI</div>'+
       '<div style="font-size:12px;color:#334155;margin-bottom:8px" id="qa-upi-info">'+(vpa
-        ?('From driver mapping: <b>'+esc(vpa)+'</b>'+(payee&&payee!==driverName?' · '+esc(payee):''))
-        :'No UPI mapped for this driver — enter UPI ID or paste QR text below')+'</div>'+
-      '<label class="lbl">UPI ID (edit if different) / paste from QR</label>'+
-      '<input type="text" id="qa-upi-vpa" value="'+esc(vpa)+'" placeholder="name@ybl or paste upi://pay?pa=…" autocomplete="off" oninput="qaNormalizeUpi()">'+
-      '<div style="font-size:11px;color:#64748b;margin:6px 0 8px">Or open <b>PhonePe → Scan QR</b> on the phone if they show a QR. After payment, come back and Save.</div>'+
-      '<button type="button" class="btn btn-blue" style="width:100%;background:#5f259f" onclick="qaPayPhonePe()">💜 Pay on PhonePe</button>'+
+        ?('Mapped for driver: <b>'+esc(vpa)+'</b>'+(payee&&payee!==driverName?' · '+esc(payee):'')+' — edit below if different')
+        :'No mapped UPI — paste UPI ID / QR text, or open app to <b>Scan QR</b>')+'</div>'+
+      '<label class="lbl">UPI ID / paste QR text (optional if scanning)</label>'+
+      '<input type="text" id="qa-upi-vpa" value="'+esc(vpa)+'" placeholder="name@ybl or paste upi://pay?pa=…" autocomplete="off">'+
+      '<div style="font-size:11px;color:#64748b;margin:8px 0">If driver shows a different QR, leave UPI blank and use <b>Scan QR</b> in the app.</div>'+
+      '<div style="display:flex;gap:8px;margin-bottom:8px">'+
+        '<button type="button" class="btn" style="flex:1;background:#5f259f;color:#fff;min-height:44px" onclick="qaPayApp(\'phonepe\')">💜 PhonePe</button>'+
+        '<button type="button" class="btn" style="flex:1;background:#00baf2;color:#fff;min-height:44px" onclick="qaPayApp(\'paytm\')">💙 Paytm</button>'+
+      '</div>'+
+      '<div style="display:flex;gap:8px">'+
+        '<button type="button" class="btn btn-grey" style="flex:1;min-height:42px" onclick="qaOpenScan(\'phonepe\')">📷 PhonePe Scan QR</button>'+
+        '<button type="button" class="btn btn-grey" style="flex:1;min-height:42px" onclick="qaOpenScan(\'paytm\')">📷 Paytm Scan QR</button>'+
+      '</div>'+
     '</div>'+
     '<input type="hidden" id="qa-driver" value="'+esc(driverName)+'">'+
     '<input type="hidden" id="qa-payee" value="'+esc(payee)+'">'+
     '<div id="qa-msg" style="margin-top:8px"></div>'+
     '<div class="qa-sticky-actions">'+
-      '<div style="display:flex;gap:8px">'+
-        '<button class="btn btn-blue" style="flex:1" onclick="saveQuickAdvance()">💾 Save advance</button>'+
-        '<button class="btn btn-grey" style="flex:none" onclick="closeModal()">Cancel</button>'+
+      '<div style="display:flex;gap:10px;width:100%">'+
+        '<button type="button" class="btn btn-blue" style="flex:2;min-height:48px" onclick="saveQuickAdvance()">💾 Save</button>'+
+        '<button type="button" class="btn btn-grey" style="flex:1;min-height:48px" onclick="closeModal()">Cancel</button>'+
       '</div>'+
     '</div>';
-  openModal('📤 Pay advance — '+driverName, html);
+  openModal('📤 Pay — '+driverName, html);
+  function fillBanks(){
+    var sel=document.getElementById('qa-bank');
+    if(!sel) return;
+    var def=getDefaultBank()||((_bankAccounts[0]&&_bankAccounts[0].name)||'');
+    sel.innerHTML=qaBankOptionsHtml(def);
+    if(def) sel.value=def;
+  }
   if(!_bankAccounts||!_bankAccounts.length){
-    loadBankAccounts();
-    setTimeout(function(){
-      var def=getDefaultBank()||((_bankAccounts[0]&&_bankAccounts[0].name)||'');
-      setV('qa-bank', def);
-    },400);
+    sbGetQ('bank_accounts','active=eq.true&order=name.asc').then(function(rows){
+      _bankAccounts=rows||[];
+      fillBanks();
+    });
+  } else {
+    fillBanks();
   }
   setTimeout(function(){
     var amt=document.getElementById('qa-amount');
     if(amt) amt.focus();
   },100);
 }
-function qaNormalizeUpi(){
-  var el=document.getElementById('qa-upi-vpa');
-  if(!el) return;
-  var parsed=parseUpiVpa(el.value);
-  if(parsed && parsed!==el.value.trim()){
-    // keep as typed; parse used on pay
-  }
-}
-function qaPayPhonePe(){
+/** Pay to UPI ID (mapped or pasted). Opens PhonePe / Paytm with amount. */
+function qaPayApp(app){
   var drv=v('qa-driver');
   var amt=parseFloat(v('qa-amount'));
   if(!(amt>0)){showMsg('qa-msg','Enter amount first','er');return;}
@@ -2204,16 +2227,27 @@ function qaPayPhonePe(){
   var name=v('qa-payee')||drv;
   var note=v('qa-desc')||('Advance '+drv);
   if(!vpa||String(vpa).indexOf('@')<0){
-    showMsg('qa-msg','No UPI ID — type name@bank, paste QR text, or open PhonePe and Scan QR on phone','er');
+    showMsg('qa-msg','Enter UPI ID or paste QR text — or use Scan QR if they show a code','er');
     return;
   }
-  var url=buildAppUpiUrl('phonepe', vpa, name, amt, note);
+  var url=buildAppUpiUrl(app, vpa, name, amt, note);
   if(!url){showMsg('qa-msg','Valid UPI ID required','er');return;}
   try{
     window.location.href=url;
-    showMsg('qa-msg','PhonePe opened. After payment, tap Save advance.','ok');
+    showMsg('qa-msg',(app==='phonepe'?'PhonePe':'Paytm')+' opened. After pay, tap Save.','ok');
   }catch(e){
-    showMsg('qa-msg','Could not open PhonePe. Open PhonePe and Scan QR instead.','er');
+    showMsg('qa-msg','Could not open app','er');
+  }
+}
+/** Open app only — user scans driver’s QR (any account). No predefined UPI. */
+function qaOpenScan(app){
+  // Deep links that land in the app; user uses in-app Scan QR
+  var url=app==='paytm'?'paytmmp://cash_wallet':'phonepe://';
+  try{
+    window.location.href=url;
+    showMsg('qa-msg','App opened — use Scan QR, then come back and Save.','ok');
+  }catch(e){
+    showMsg('qa-msg','Open '+(app==='paytm'?'Paytm':'PhonePe')+' manually → Scan QR','er');
   }
 }
 function saveQuickAdvance(){
@@ -2223,8 +2257,8 @@ function saveQuickAdvance(){
   var bank=v('qa-bank')||getDefaultBank()||'';
   var desc=v('qa-desc')||('Advance — '+drv);
   if(!drv||!(amt>0)){showMsg('qa-msg','Enter amount','er');return;}
-  if(!bank){showMsg('qa-msg','Set a default bank in Bank tab first','er');return;}
-  var body={driver_name:drv,date:date,amount:amt,type:'advance',reason:desc+' · UPI',bank_account:bank};
+  if(!bank){showMsg('qa-msg','Select an account','er');return;}
+  var body={driver_name:drv,date:date,amount:amt,type:'advance',reason:desc,bank_account:bank};
   sbPost('driver_advances',body).then(function(r){
     if(!r.ok){showMsg('qa-msg','Error saving','er');return;}
     sbPost('bank_transactions',{account_name:bank,date:date,type:'debit',amount:amt,
@@ -3287,12 +3321,12 @@ function salaryAutoFill(){
     sbGetQ('fin_drivers','name=eq.'+encodeURIComponent(drv)),
     sbGetQ('driver_leaves','driver_name=eq.'+encodeURIComponent(drv)+'&date=gte.'+monthStart+'&date=lte.'+monthEnd),
     sbGetQ('driver_tempo_rent','driver_name=eq.'+encodeURIComponent(drv)+'&month=eq.'+mon),
-    sbGetQ('driver_advances','driver_name=eq.'+encodeURIComponent(drv)+'&type=eq.advance&date=gte.'+monthStart+'&date=lte.'+monthEnd+'&order=date.asc'),
+    sbGetQ('driver_advances','driver_name=eq.'+encodeURIComponent(drv)+'&type=in.(advance,return)&date=gte.'+monthStart+'&date=lte.'+monthEnd+'&order=date.asc'),
     sbGetQ('driver_advances','driver_name=eq.'+encodeURIComponent(drv)+'&type=eq.deduction&date=gte.'+monthStart+'&date=lte.'+monthEnd+'&order=date.asc'),
     sbGetQ('driver_tempo_advance','driver_name=eq.'+encodeURIComponent(drv)+'&date=gte.'+monthStart+'&date=lte.'+monthEnd+'&order=date.asc'),
     sbGetQ('driver_advances','driver_name=eq.'+encodeURIComponent(drv)+'&type=in.(salary_cf_debit,salary_cf_credit,salary_cf_adv_excess)&date=gte.'+monthStart+'&date=lte.'+monthEnd+'&order=date.asc')
   ]).then(function(res){
-    var driverRows=res[0]||[]; var leaves=res[1]||[]; var tempoRows=res[2]||[]; var advances=res[3]||[]; var deductions=res[4]||[]; var tempoPaid=res[5]||[]; var cfRows=res[6]||[];
+    var driverRows=res[0]||[]; var leaves=res[1]||[]; var tempoRows=res[2]||[]; var advRows=res[3]||[]; var deductions=res[4]||[]; var tempoPaid=res[5]||[]; var cfRows=res[6]||[];
     var d=driverRows[0]; if(!d) return;
     _salDriverData=d;
     // show/hide part-time vs regular section
@@ -3317,10 +3351,23 @@ function salaryAutoFill(){
     // substitute cost from leave records
     var totalSubCost=leaves.reduce(function(s,l){return s+(parseFloat(l.substitute_cost)||0);},0);
     setV('sal-sub-cost', totalSubCost);
-    // advances given this month
-    var totalAdvance=advances.reduce(function(s,a){return s+(parseFloat(a.amount)||0);},0);
-    setV('sal-adv-given', totalAdvance);
-    setV('sal-adv-deduct', totalAdvance);  // default: deduct full advance this month (user can edit)
+    // Net advance this month (till last day): given − returned
+    var advances=advRows.filter(function(a){return a.type==='advance';});
+    var returns=advRows.filter(function(a){return a.type==='return';});
+    var totalAdvanceGiven=advances.reduce(function(s,a){return s+(parseFloat(a.amount)||0);},0);
+    var totalAdvanceReturn=returns.reduce(function(s,a){return s+(parseFloat(a.amount)||0);},0);
+    var netAdvance=Math.max(0, totalAdvanceGiven - totalAdvanceReturn);
+    setV('sal-adv-given', totalAdvanceGiven);
+    setV('sal-adv-deduct', netAdvance);
+    var advNoteEl=document.getElementById('sal-adv-net-note');
+    if(advNoteEl){
+      advNoteEl.innerHTML=totalAdvanceReturn>0
+        ?('Given '+fmt(totalAdvanceGiven)+' − returned '+fmt(totalAdvanceReturn)+' = <b>net '+fmt(netAdvance)+'</b> (this month till last day)')
+        :(totalAdvanceGiven>0
+          ?('Given '+fmt(totalAdvanceGiven)+' · no returns · net '+fmt(netAdvance))
+          :'Net = advances given − returns in this month (till last day).');
+    }
+    var totalAdvance=netAdvance;
     // deductions this month (damage, material, etc.)
     var totalDeduction=deductions.reduce(function(s,a){return s+(parseFloat(a.amount)||0);},0);
     setV('sal-other-deduct', totalDeduction);
@@ -3969,23 +4016,45 @@ function updateActualPaid(id,netPaid,driverName,month){
 }
 
 // ── ADVANCE ──
+function setAdvDirection(dir){
+  setV('adv-direction', dir==='return'?'return':'give');
+  var giveBtn=document.getElementById('adv-dir-give');
+  var retBtn=document.getElementById('adv-dir-return');
+  if(giveBtn) giveBtn.className='btn '+(dir==='return'?'btn-grey':'btn-blue');
+  if(retBtn) retBtn.className='btn '+(dir==='return'?'btn-blue':'btn-grey');
+  var title=document.getElementById('adv-form-title');
+  var saveBtn=document.getElementById('adv-save-btn');
+  var bankLbl=document.getElementById('adv-bank-lbl');
+  var upiBox=document.getElementById('adv-upi-box');
+  if(dir==='return'){
+    if(title) title.textContent='↩️ Driver returns advance';
+    if(saveBtn) saveBtn.textContent='↩️ Record return';
+    if(bankLbl) bankLbl.textContent='Credited to account';
+    if(upiBox) upiBox.style.display='none';
+  } else {
+    if(title) title.textContent='📤 Give Advance';
+    if(saveBtn) saveBtn.textContent='📤 Record Advance';
+    if(bankLbl) bankLbl.textContent='Paid From Account';
+    if(upiBox) upiBox.style.display='block';
+  }
+}
 function saveAdvance(){
   var drv=v('adv-driver'); var amt=parseFloat(v('adv-amount'));
   var date=v('adv-date'); var reason=v('adv-reason'); var bankAcct=v('adv-bank-account');
   var mode=v('adv-pay-mode')||'cash';
+  var isReturn=v('adv-direction')==='return';
   if(!drv||!amt){showMsg('adv-msg','Fill driver and amount','er');return;}
-  var reasonFull=(reason||'')+(reason?' · ':'')+modeLabel(mode);
-  var body={driver_name:drv,date:date,amount:amt,type:'advance',reason:reasonFull,bank_account:bankAcct||''};
+  var reasonFull=(reason||'')+(reason?' · ':'')+(isReturn?'Return':'')+(isReturn?'':modeLabel(mode));
+  var body={driver_name:drv,date:date,amount:amt,type:isReturn?'return':'advance',reason:reasonFull,bank_account:bankAcct||''};
   var editId=parseInt(v('adv-edit-id'))||0;
   var promise=editId>0 ? sbPatch('driver_advances','id=eq.'+editId,body) : sbPost('driver_advances',body);
   promise.then(function(r){
     if(!r.ok){showMsg('adv-msg','Error saving','er');return;}
-    // also create bank transaction if account selected
     if(bankAcct&&!editId){
-      sbPost('bank_transactions',{account_name:bankAcct,date:date,type:'debit',amount:amt,
-        description:'Advance — '+drv+(reason?' ('+reason+')':'')+' · '+modeLabel(mode),reference:drv});
+      sbPost('bank_transactions',{account_name:bankAcct,date:date,type:isReturn?'credit':'debit',amount:amt,
+        description:(isReturn?'Advance return — ':'Advance — ')+drv+(reason?' ('+reason+')':'')+(isReturn?'':' · '+modeLabel(mode)),reference:drv});
     }
-    showMsg('adv-msg',(editId>0?'Updated':'Advance recorded'+(bankAcct?' + bank entry':''))+' ✓','ok');
+    showMsg('adv-msg',(editId>0?'Updated':(isReturn?'Return recorded':'Advance recorded')+(bankAcct?' + bank entry':''))+' ✓','ok');
     setV('adv-amount','');setV('adv-reason','');setV('adv-bank-account','');setV('adv-upi-vpa','');
     cancelEditAdvance();loadAdvanceList();
   });
@@ -4121,7 +4190,7 @@ function loadAdvanceList(){
   var mon=v('adv-list-month');
   var el=document.getElementById('advanceList');
   if(!drv){if(el)el.innerHTML='<div class="empty">Select driver</div>';return;}
-  var q='driver_name=eq.'+encodeURIComponent(drv)+'&type=eq.advance&order=date.desc';
+  var q='driver_name=eq.'+encodeURIComponent(drv)+'&type=in.(advance,return)&order=date.desc';
   if(mon){
     var y=mon.slice(0,4);var m=mon.slice(5,7);
     var days=new Date(parseInt(y),parseInt(m),0).getDate();
@@ -4129,12 +4198,15 @@ function loadAdvanceList(){
   }
   sbGetQ('driver_advances',q).then(function(rows){
     if(!rows.length){el.innerHTML='<div class="empty">No advances found'+(mon?' for '+mon:'')+'</div>';return;}
-    var total=rows.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
-    el.innerHTML='<div class="msg in" style="margin-bottom:8px">Total Advances: '+fmt(total)+(mon?' for '+mon:' (all time)')+'</div>'+
+    var given=rows.filter(function(r){return r.type==='advance';}).reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
+    var ret=rows.filter(function(r){return r.type==='return';}).reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
+    var net=Math.max(0,given-ret);
+    el.innerHTML='<div class="msg in" style="margin-bottom:8px">Given '+fmt(given)+(ret?' · Returned '+fmt(ret):'')+' · <b>Net '+fmt(net)+'</b>'+(mon?' for '+mon:'')+'</div>'+
       rows.map(function(a){
+        var isRet=a.type==='return';
         var bankInfo=a.bank_account?'<span class="badge b-blue" style="font-size:9px;margin-top:2px">🏦 '+a.bank_account+'</span>':'<span class="badge b-grey" style="font-size:9px;margin-top:2px">💵 Cash</span>';
         return'<div class="item-card" id="adv-item-'+a.id+'"><div style="display:flex;justify-content:space-between;align-items:center">'+
-          '<div><div style="font-weight:700">'+fmt(a.amount)+'</div>'+
+          '<div><div style="font-weight:700;color:'+(isRet?'#1e7a4f':'#c8382a')+'">'+(isRet?'↩️ ':'📤 ')+fmt(a.amount)+'</div>'+
           '<div style="font-size:11px;color:#7a8fa6">'+a.date+(a.reason?' · '+a.reason:'')+'</div>'+
           bankInfo+
           '</div>'+
@@ -6794,14 +6866,15 @@ function generateAllSalaries(){
       var tasks=toGenerate.map(function(d){
         return Promise.all([
           sbGetQ('driver_leaves','driver_name=eq.'+encodeURIComponent(d.name)+'&date=gte.'+monthStart+'&date=lte.'+monthEnd),
-          sbGetQ('driver_advances','driver_name=eq.'+encodeURIComponent(d.name)+'&type=eq.advance&date=gte.'+monthStart+'&date=lte.'+monthEnd),
+          sbGetQ('driver_advances','driver_name=eq.'+encodeURIComponent(d.name)+'&type=in.(advance,return)&date=gte.'+monthStart+'&date=lte.'+monthEnd),
           sbGetQ('driver_advances','driver_name=eq.'+encodeURIComponent(d.name)+'&type=eq.deduction&date=gte.'+monthStart+'&date=lte.'+monthEnd)
         ]).then(function(res){
-          var leaves=res[0]||[]; var advances=res[1]||[]; var deductions=res[2]||[];
+          var leaves=res[0]||[]; var advRows=res[1]||[]; var deductions=res[2]||[];
           var leaveDays=leaves.length;
           var leaveDeduct=leaves.reduce(function(s,l){return s+(parseFloat(l.deduction_amount)||0);},0);
-          var advGiven=advances.reduce(function(s,a){return s+(parseFloat(a.amount)||0);},0);
-          var advDeduct=advGiven;
+          var advGiven=advRows.filter(function(a){return a.type==='advance';}).reduce(function(s,a){return s+(parseFloat(a.amount)||0);},0);
+          var advRet=advRows.filter(function(a){return a.type==='return';}).reduce(function(s,a){return s+(parseFloat(a.amount)||0);},0);
+          var advDeduct=Math.max(0,advGiven-advRet);
           var otherDeduct=deductions.reduce(function(s,a){return s+(parseFloat(a.amount)||0);},0);
           var base=parseFloat(d.base_salary)||0;
           var net=Math.max(0,base-leaveDeduct-advDeduct-otherDeduct);
