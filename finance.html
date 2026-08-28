@@ -650,7 +650,7 @@ body.dark .search-item:hover{background:#3d4a5c}
         </div>
         <div style="font-size:11px;color:#64748b;margin:-4px 0 8px" id="sal-adv-net-note">Net = advances given − returns in this month (till last day).</div>
         <div class="row2">
-          <div><label class="lbl">Other Deductions (₹) <span style="font-size:10px;color:#7a8fa6">(auto)</span></label>
+          <div><label class="lbl">Fine / charges (₹) <span style="font-size:10px;color:#7a8fa6">(auto from Fine)</span></label>
             <input type="number" id="sal-other-deduct" placeholder="0" oninput="calcNetSalary()"></div>
           <div><label class="lbl">Substitute Cost (₹) <span style="font-size:10px;color:#e09000">reference only</span></label>
             <input type="number" id="sal-sub-cost" placeholder="0" readonly style="background:#fffbe6;color:#9a6700"></div>
@@ -2164,7 +2164,7 @@ function loadQuickDriverPayList(){
   var from=mon+'-01'; var to=mon+'-'+String(last).padStart(2,'0');
   Promise.all([
     sbGetQ('fin_drivers','active=eq.true&order=name.asc'),
-    sbGetQ('driver_advances','type=in.(advance,return)&date=gte.'+from+'&date=lte.'+to+'&order=date.desc'),
+    sbGetQ('driver_advances','type=in.(advance,return,deduction)&date=gte.'+from+'&date=lte.'+to+'&order=date.desc'),
     sbGetQ('driver_salary','paid_date=is.null&order=month.desc')
   ]).then(function(res){
     var drivers=res[0]||[];
@@ -2177,34 +2177,39 @@ function loadQuickDriverPayList(){
         .reduce(function(s,a){return s+(parseFloat(a.amount)||0);},0);
       var advRet=advs.filter(function(a){return a.driver_name===name&&a.type==='return';})
         .reduce(function(s,a){return s+(parseFloat(a.amount)||0);},0);
+      var fines=advs.filter(function(a){return a.driver_name===name&&a.type==='deduction';})
+        .reduce(function(s,a){return s+(parseFloat(a.amount)||0);},0);
       var netAdv=Math.max(0,advGiven-advRet);
       var unpaidSal=unpaidSals.filter(function(s){return s.driver_name===name;})
         .reduce(function(s,r){return s+(parseFloat(r.net_paid)||0);},0);
-      // Net only: unpaid salary − advances
-      var net=+(unpaidSal-netAdv).toFixed(2);
+      // Net: unpaid salary − advance out − fines (driver debit)
+      var net=+(unpaidSal-netAdv-fines).toFixed(2);
       var netColor=net>0.01?'#1e7a4f':net<-0.01?'#c8382a':'#64748b';
       var netTxt=(net>0?'+':'')+fmt(net);
       var safe=String(name).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
       var upi=getDriverUpi(name);
-      var btn='padding:6px 8px;font-size:11px;border-radius:8px;font-weight:700;border:none;cursor:pointer;white-space:nowrap';
+      var btn='flex:1;min-width:calc(50% - 4px);min-height:40px;padding:8px 10px;font-size:13px;border-radius:10px;font-weight:800;border:none;cursor:pointer;';
       var histId='qhist-'+String(name).replace(/[^a-zA-Z0-9]/g,'_');
+      var debitBits=[];
+      if(netAdv>0) debitBits.push('Adv '+fmt(netAdv));
+      if(fines>0) debitBits.push('Fine '+fmt(fines));
       return'<div class="item-card" style="margin-bottom:8px;padding:12px">'+
         '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px">'+
           '<div style="flex:1;min-width:0">'+
             '<div style="font-weight:800;font-size:15px">'+esc(name)+(upi&&upi.upi_vpa?' <span class="badge b-green" style="font-size:9px">UPI</span>':'')+'</div>'+
-            (netAdv>0?'<div style="font-size:11px;color:#b45309;margin-top:2px">Advance out: '+fmt(netAdv)+'</div>':'')+
+            (debitBits.length?'<div style="font-size:11px;color:#b45309;margin-top:2px">Debit: '+debitBits.join(' · ')+'</div>':'')+
           '</div>'+
           '<div style="text-align:right;flex:none">'+
             '<div style="font-size:10px;color:#94a3b8;font-weight:700">NET</div>'+
             '<div style="font-weight:900;font-size:16px;color:'+netColor+'">'+netTxt+'</div>'+
           '</div>'+
         '</div>'+
-        '<div style="display:flex;flex-wrap:wrap;gap:6px">'+
+        '<div style="display:flex;flex-wrap:wrap;gap:8px">'+
           '<button type="button" style="'+btn+'background:#1e3a5f;color:#fff" onclick="openQuickAdvance(\''+safe+'\')">Advance</button>'+
-          '<button type="button" style="'+btn+'background:#065f46;color:#fff" onclick="openQuickExtraRoute(\''+safe+'\')">Extra route</button>'+
-          '<button type="button" style="'+btn+'background:#e0f2fe;color:#0369a1" onclick="openQuickReturn(\''+safe+'\')">Return</button>'+
-          '<button type="button" style="'+btn+'background:#fef2f2;color:#b91c1c" onclick="openQuickFine(\''+safe+'\')">Fine</button>'+
-          '<button type="button" style="'+btn+'background:#f1f5f9;color:#475569" onclick="toggleQuickHistory(\''+safe+'\',\''+histId+'\')">History</button>'+
+          '<button type="button" style="'+btn+'background:#047857;color:#fff" onclick="openQuickExtraRoute(\''+safe+'\')">Extra route</button>'+
+          '<button type="button" style="'+btn+'background:#0284c7;color:#fff" onclick="openQuickReturn(\''+safe+'\')">Return</button>'+
+          '<button type="button" style="'+btn+'background:#dc2626;color:#fff" onclick="openQuickFine(\''+safe+'\')">Fine</button>'+
+          '<button type="button" style="'+btn+'background:#64748b;color:#fff;min-width:100%" onclick="toggleQuickHistory(\''+safe+'\',\''+histId+'\')">History</button>'+
         '</div>'+
         '<div id="'+histId+'" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0"></div>'+
         '</div>';
@@ -3754,8 +3759,8 @@ function salaryAutoFill(){
     setV('sal-other-deduct', totalDeduction);
     var noteEl=document.getElementById('sal-other-deduct-note');
     if(noteEl) noteEl.textContent=deductions.length>0
-      ? deductions.map(function(a){return a.reason||'Deduction';}).join(', ')+' ('+deductions.length+' item'+(deductions.length>1?'s':'')+')'
-      : '';
+      ? ('Driver debit from Fine: '+fmt(totalDeduction)+' — '+deductions.map(function(a){return a.reason||'Fine';}).join(', '))
+      : 'No fines this month (Fine button on Pay tab → salary debit)';
     // Driver-paid rent field removed from UI — keep 0 (tempo rent handled on Tempo Rent tab)
     setV('sal-driver-paid','0');
     var totalDriverPaid=0;
