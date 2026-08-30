@@ -370,13 +370,13 @@
 
     <!-- Today delivery stats — only when no tomorrow orders placed yet -->
     <div id="dash-deliv-block">
-      <div class="dash-deliv-lbl" style="font-size:10px;font-weight:800;color:#64748b;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Deliveries · Today</div>
-      <div class="stats-grid" id="dash-stats" style="margin-bottom:14px"></div>
-      <div id="dash-alerts" style="margin-bottom:10px"></div>
-      <div id="dash-tp-row" style="display:none;margin-bottom:14px">
-          <div style="font-size:10px;font-weight:800;color:#7a4800;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">🍵 Tea Post · Today</div>
-          <div class="stats-grid" id="dash-tp-stats"></div>
-      </div>
+        <div class="dash-deliv-lbl" style="font-size:10px;font-weight:800;color:#64748b;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Deliveries · Today</div>
+        <div class="stats-grid" id="dash-stats" style="margin-bottom:14px"></div>
+        <div id="dash-alerts" style="margin-bottom:10px"></div>
+        <div id="dash-tp-row" style="display:none;margin-bottom:14px">
+            <div style="font-size:10px;font-weight:800;color:#7a4800;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">🍵 Tea Post · Today</div>
+            <div class="stats-grid" id="dash-tp-stats"></div>
+        </div>
     </div>
 
     <!-- Tomorrow customer order pipeline — counts only -->
@@ -1089,15 +1089,13 @@
             </div>
             <div id="custNotifSelected" style="display:none;background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:10px;padding:9px 12px;margin-bottom:8px;font-size:12px;font-weight:700;color:#1a5a38;font-family:monospace;line-height:1.6"></div>
 
-            <!-- Customer SMS Templates -->
+            <!-- Customer order-window templates -->
             <div class="lbl" style="margin-bottom:6px">Quick Templates</div>
             <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
-                <button class="btn-sm" style="background:#f1f5f9;color:#1e293b;border:1.5px solid #e2e8f0;text-align:left;padding:9px 12px" onclick="custNotifTemplate('🛒 Please place your order for tomorrow. Order window closes soon!')">🛒 Please place your order for tomorrow. Order window closes soon!</button>
-                <button class="btn-sm" style="background:#e8f5e9;color:#1a5a38;border:1.5px solid #a5d6a7;text-align:left;padding:9px 12px" onclick="custNotifTemplate('✅ Your order has been approved and will be delivered tomorrow.')">✅ Your order has been approved and will be delivered tomorrow.</button>
-                <button class="btn-sm" style="background:#e8f0ff;color:#1a3a8a;border:1.5px solid #b0c4f0;text-align:left;padding:9px 12px" onclick="custNotifTemplate('🚚 Your order is out for delivery today. Please be available.')">🚚 Your order is out for delivery today. Please be available.</button>
-                <button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082;text-align:left;padding:9px 12px" onclick="custNotifTemplate('💰 Kindly clear your outstanding payment at the earliest.')">💰 Kindly clear your outstanding payment at the earliest.</button>
-                <button class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1.5px solid #f0b0b0;text-align:left;padding:9px 12px" onclick="custNotifTemplate('⚠️ We could not deliver your order today. Please contact us.')">⚠️ We could not deliver your order today. Please contact us.</button>
-                <button class="btn-sm" style="background:#f1f5f9;color:#1e293b;border:1.5px solid #e2e8f0;text-align:left;padding:9px 12px" onclick="custNotifTemplate('🎉 Special offer! Contact us for details.')">🎉 Special offer! Contact us for details.</button>
+                <button type="button" class="btn-sm" style="background:#e8f5e9;color:#1a5a38;border:1.5px solid #a5d6a7;text-align:left;padding:9px 12px" onclick="custNotifTemplateOrderOpen()">1 · Order window open for <span id="custTplDateHint">tomorrow</span></button>
+                <button type="button" class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1.5px solid #ffe082;text-align:left;padding:9px 12px" onclick="custNotifTemplate('Order Reminder.')">2 · Order Reminder.</button>
+                <button type="button" class="btn-sm" style="background:#e8f0ff;color:#1a3a8a;border:1.5px solid #b0c4f0;text-align:left;padding:9px 12px" onclick="custNotifTemplate('Please place orders ASAP.')">3 · Please place orders ASAP.</button>
+                <button type="button" class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1.5px solid #f0b0b0;text-align:left;padding:9px 12px;line-height:1.35" onclick="custNotifTemplate('Final Call for orders\nThe order window will close at 5 pm.')">4 · Final Call for orders — window closes at 5 pm</button>
             </div>
 
             <textarea id="custNotifMsg" rows="2" placeholder="Type your message or pick a template above…" style="resize:vertical;margin-bottom:8px"></textarea>
@@ -10562,8 +10560,23 @@ onStaffRoleChange();
       el.innerHTML = lines.join('');
     }
 
+    function _custNotifTomorrowDDMMYY(){
+      var d = new Date();
+      d.setDate(d.getDate() + 1);
+      var dd = String(d.getDate()).padStart(2, '0');
+      var mm = String(d.getMonth() + 1).padStart(2, '0');
+      var yy = String(d.getFullYear()).slice(-2);
+      return dd + '.' + mm + '.' + yy;
+    }
+    function custNotifTemplateOrderOpen(){
+      var dt = _custNotifTomorrowDDMMYY();
+      var hint = document.getElementById('custTplDateHint');
+      if (hint) hint.textContent = dt;
+      custNotifTemplate('Order window open for ' + dt);
+    }
     function custNotifTemplate(msg){
-      document.getElementById('custNotifMsg').value = msg;
+      var el = document.getElementById('custNotifMsg');
+      if (el) el.value = msg;
     }
 
     // ── ADMIN BACKGROUND WEB PUSH (works when app closed) ──
