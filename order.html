@@ -3523,14 +3523,13 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
       var am = Math.round((Number(amount) || 0) * 100) / 100;
       if(!(am > 0)) return '';
       var amStr = am.toFixed(2);
-      // No `tn` (note) — user asked to omit remark when opening PhonePe / GPay / QR
       // Payee name: short, no special chars
       var pn = String(_upiPayee || 'IBCAB')
         .replace(/[^\w\s\-]/gi, ' ')
         .replace(/\s+/g, ' ')
         .trim()
         .slice(0, 35) || 'IBCAB';
-      // Do NOT send `tr` or `tn` — keeps UPI redirect simple (amount + VPA only)
+      // No `tn` — note must NOT appear in PhonePe / GPay / Paytm / any UPI / QR
       var parts = [
         'pa=' + encodeURIComponent(vpa),
         'pn=' + encodeURIComponent(pn),
