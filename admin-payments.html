@@ -4623,6 +4623,7 @@ function payDeskLoadBlockSettings() {
       el.style.background = ok === true ? '#e8f5e9' : ok === false ? '#fde8e8' : '#fff8e1';
       el.style.color = ok === true ? '#1a5a38' : ok === false ? '#c8382a' : '#7a4800';
     }
+    window._zohoListMsg = _zohoListMsg;
     function zohoListFillShops() {
       var sel = document.getElementById('zoho-list-shop');
       if (!sel) return;
@@ -4884,6 +4885,11 @@ function payDeskLoadBlockSettings() {
       window.payDeskUndoPaid = typeof payDeskUndoPaid === 'function' ? payDeskUndoPaid : function(){};
       window.payDeskConfirmRequest = typeof payDeskConfirmRequest === 'function' ? payDeskConfirmRequest : function(){};
       window.payDeskOpenInvoices = typeof payDeskOpenInvoices === 'function' ? payDeskOpenInvoices : function(){};
+
+      // TEMP Zoho list tab (onclick handlers)
+      window._zohoListMsg = typeof _zohoListMsg === 'function' ? _zohoListMsg : function(){};
+      window.zohoListLoadForShop = typeof zohoListLoadForShop === 'function' ? zohoListLoadForShop : function(){};
+      window.zohoListFillShops = typeof zohoListFillShops === 'function' ? zohoListFillShops : function(){};
 
       var params = new URLSearchParams(location.search||'');
       var startTab = params.get('tab') || start || 'pay-challan';

@@ -592,7 +592,7 @@
         <div style="padding:12px 14px 8px">
             <div style="font-size:13px;font-weight:800;color:#1e293b;margin-bottom:6px">Payments</div>
             <div style="font-size:11px;color:#64748b;line-height:1.45;margin-bottom:10px">
-                Pay the total overdue (any period — weekly or a few days), then tap <b>send request</b>. UPI note includes invoice no. when it fits. Admin confirms from the bank (usually within <b>~24 working hours</b>).
+                Pay the total overdue (any period — weekly or a few days), then tap <b>send request</b>. Admin confirms from the bank (usually within <b>~24 working hours</b>).
             </div>
             <div id="pay-total-card" style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:12px;text-align:center">
                 <div style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase">Total overdue</div>
@@ -3523,22 +3523,19 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
       var am = Math.round((Number(amount) || 0) * 100) / 100;
       if(!(am > 0)) return '';
       var amStr = am.toFixed(2);
-      var note = sanitizeUpiNote(
-        txnNote != null && String(txnNote).trim() ? txnNote : buildPayTxnNote()
-      ) || 'IBCAB Payment';
+      // No `tn` (note) — user asked to omit remark when opening PhonePe / GPay / QR
       // Payee name: short, no special chars
       var pn = String(_upiPayee || 'IBCAB')
         .replace(/[^\w\s\-]/gi, ' ')
         .replace(/\s+/g, ' ')
         .trim()
         .slice(0, 35) || 'IBCAB';
-      // Do NOT send `tr` — optional field; some apps fail payments when tr is set on collect QR
+      // Do NOT send `tr` or `tn` — keeps UPI redirect simple (amount + VPA only)
       var parts = [
         'pa=' + encodeURIComponent(vpa),
         'pn=' + encodeURIComponent(pn),
         'am=' + encodeURIComponent(amStr),
-        'cu=INR',
-        'tn=' + encodeURIComponent(note)
+        'cu=INR'
       ];
       return parts.join('&');
     }
