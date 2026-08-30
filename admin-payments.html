@@ -1420,7 +1420,9 @@
           (skipped ? (' · ' + skipped + ' skipped') : '') +
           ', ' + fail + ' failed of ' + totalFound + '.';
         if (_challanSyncStop) msg += ' (stopped early)';
-        if (failSamples.length) msg += ' e.g. ' + failSamples.slice(0, 2).join('; ');
+        if (failSamples.length) {
+          msg += ' Failed order id(s): ' + failSamples.join(' · ');
+        }
         if (rateHits) msg += ' Zoho rate limit — wait 2–3 min, then Sync all again.';
         _challanMsg(msg, fail && !ok && !converted ? false : true);
       }
@@ -1463,7 +1465,13 @@
             } else {
               consecutiveRate = 0;
             }
-            if (failSamples.length < 5) failSamples.push((o.zoho_invoice_number || o.id) + ': ' + em);
+            if (failSamples.length < 12) {
+              failSamples.push(
+                'Order ' + (o && o.id != null ? o.id : '?') +
+                (o && o.zoho_invoice_number ? (' (' + o.zoho_invoice_number + ')') : '') +
+                ': ' + em
+              );
+            }
             console.warn('[challan sync all]', o && o.id, e);
           })
           .then(function(){
@@ -2130,7 +2138,9 @@
         stopBtns.forEach(function(b){ b.style.display = 'none'; });
         var msg = 'Bulk Zoho sync done: ' + ok + ' updated' + (linesOk ? (' (' + linesOk + ' order lines matched from Zoho)') : '') + ', ' + fail + ' failed of ' + targets.length + '.';
         if (_paySyncStop) msg += ' (stopped early)';
-        if (failSamples.length) msg += ' e.g. ' + failSamples.slice(0, 2).join('; ');
+        if (failSamples.length) {
+          msg += ' Failed order id(s): ' + failSamples.join(' · ');
+        }
         if (rateHits) msg += ' Zoho rate limit — wait 2–3 min, then continue with Selected.';
         _payDeskMsg(msg, fail && !ok ? false : true);
         renderPaymentsDesk();
@@ -2170,7 +2180,13 @@
             } else {
               consecutiveRate = 0;
             }
-            if (failSamples.length < 5) failSamples.push((o.zoho_invoice_number || o.id) + ': ' + em);
+            if (failSamples.length < 12) {
+              failSamples.push(
+                'Order ' + o.id +
+                (o.zoho_invoice_number ? (' (' + o.zoho_invoice_number + ')') : '') +
+                ': ' + em
+              );
+            }
             console.warn('[bulk status sync]', o.id, err);
           })
           .then(function(){
