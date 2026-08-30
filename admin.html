@@ -8441,20 +8441,44 @@ apiPost({
   async function zohoSyncCustomerReal(customer) {
   const token = await zohoGetAccessToken();
 
+  // To = Bluegrass / shop email (primary) · CC = Tea Post head (email2)
+  // Zoho Email Address + primary contact person = To
+  // Contact Person "Head Office" = email2 → CC dropdown in Zoho Send Email
+  var shopEmail = String(customer.email || customer.customer_email || '').trim();
+  var headEmail = String(customer.email2 || '').trim();
+  if (headEmail && shopEmail && headEmail.toLowerCase() === shopEmail.toLowerCase()) headEmail = '';
+
+  var toEmail = shopEmail;
+  var ccEmail = headEmail;
+
+  var persons = [];
+  if (customer.mobile || toEmail) {
+    persons.push({
+      first_name: customer.name ? String(customer.name).slice(0, 40) : 'Store',
+      phone: customer.mobile || '',
+      email: toEmail || '',
+      is_primary_contact: true
+    });
+  }
+  if (ccEmail) {
+    persons.push({
+      first_name: 'Head Office',
+      email: ccEmail,
+      is_primary_contact: false
+    });
+  }
+
   const contact = {
     contact_name: customer.name,
     contact_type: 'customer',
     customer_sub_type: 'individual',
+    email: toEmail || undefined,
     billing_address: {
       address: customer.address || '',
       city: customer.area || '',
       country: 'India'
     },
-    contact_persons: (customer.mobile || customer.email) ? [{
-      phone: customer.mobile || '',
-      email: customer.email || '',
-      is_primary_contact: true
-    }] : [],
+    contact_persons: persons,
     currency_code: 'INR'
   };
 
@@ -9386,44 +9410,54 @@ onStaffRoleChange();
 
 
 
-    // Strict: payment notifies only if customer Pay tab enabled (match order.html)
-    var PAY_TAB_ALLOWED_USERNAMES = ['xyz111', 'xyx2323'];
-    function _adminPayTabEnabled(shopId){
-      if (!shopId) return false;
-      var list = PAY_TAB_ALLOWED_USERNAMES.map(function(u){ return String(u).toLowerCase(); });
-      var shops = (typeof allCustomers !== 'undefined' && allCustomers) ? allCustomers : [];
-      var sid = String(shopId);
-      for (var i=0;i<shops.length;i++){
-        var s = shops[i];
-        if (String(s.shop_id||'')===sid || String(s.customer_id||'')===sid){
-          var un = String(s.login_username||s.username||'').trim().toLowerCase();
-          if (un && list.indexOf(un)>=0) return true;
-          return false;
-        }
-      }
-      return false;
+    // Payment reminders follow Manage → Customer Payments (customer_payments_enabled)
+    var _adminPayEnabledCache = null;
+    function _adminPayTabEnabled(){
+      if (_adminPayEnabledCache !== null) return Promise.resolve(_adminPayEnabledCache);
+      return api({ action:'getSetting', key:'customer_payments_enabled' }).then(function(row){
+        var v = row && row.value != null ? String(row.value).trim().toLowerCase() : '';
+        _adminPayEnabledCache = (v !== 'false' && v !== '0' && v !== 'off' && v !== 'disabled');
+        return _adminPayEnabledCache;
+      }).catch(function(){ _adminPayEnabledCache = true; return true; });
     }
 
     function sendInvoicePaymentReminder(id){
       var o = allCustOrders.find(function(x){ return String(x.id) === String(id); });
       if(!o){ alert('Order not found'); return; }
-      var bal = o.balance_due != null ? o.balance_due : o.invoice_total;
-      var inv = o.zoho_invoice_number || o.zoho_invoice_id || '';
-      var msg = 'Payment reminder: Invoice ' + inv + (bal != null ? (' · Amount due ₹' + bal) : '') + '. Please pay at the earliest.';
-      if(!confirm('Send payment reminder to ' + (o.shop_name||'shop') + '?\n\n' + msg)) return;
-      if (!_adminPayTabEnabled(o.shop_id)) {
-        alert('Pay tab is disabled for this customer — payment reminder not sent.');
-        return;
+      var shopDue = 0;
+      var invCount = 0;
+      try {
+        (allCustOrders||[]).forEach(function(r){
+          if (String(r.shop_id) !== String(o.shop_id)) return;
+          if (String(r.payment_status||'').toLowerCase() === 'paid') return;
+          if (String(r.payment_status||'').toLowerCase() === 'void') return;
+          var d = r.balance_due != null ? parseFloat(r.balance_due) : parseFloat(r.invoice_total);
+          if (!isNaN(d) && d > 0) { shopDue += d; invCount++; }
+        });
+      } catch(e){}
+      if (!shopDue) {
+        shopDue = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total)||0;
+        invCount = 1;
       }
-      apiPost({ action:'sendCustomerNotification', shop_id: o.shop_id, shop_name: o.shop_name, message: msg })
-        .then(function(){
-          try {
-            if (typeof sendCustomerPush === 'function') sendCustomerPush([o.shop_id], msg);
-          } catch(e){}
-          return apiPost({ action:'updateCustomerOrderStatus', id: o.id, status: o.status, payment_reminder_sent_at: new Date().toISOString() });
-        })
-        .then(function(){ alert('✅ Payment reminder sent'); loadCustOrders(); })
-        .catch(function(){ alert('Failed to send reminder'); });
+      var msg = 'Payment reminder: Total due ₹' + (shopDue||0).toLocaleString('en-IN',{maximumFractionDigits:2});
+      if (invCount > 1) msg += ' (' + invCount + ' invoices)';
+      msg += '. Open Pay tab → UPI → Request payment. Thank you.';
+      if(!confirm('Send payment reminder to ' + (o.shop_name||'shop') + '?\n\n' + msg)) return;
+      _adminPayTabEnabled().then(function(on){
+        if (!on) {
+          alert('Customer Payments is DISABLED in Manage — reminder not sent.');
+          return;
+        }
+        return apiPost({ action:'sendCustomerNotification', shop_id: o.shop_id, shop_name: o.shop_name, message: msg })
+          .then(function(){
+            try {
+              if (typeof sendCustomerPush === 'function') sendCustomerPush([o.shop_id], msg);
+            } catch(e){}
+            return apiPost({ action:'updateCustomerOrderStatus', id: o.id, status: o.status, payment_reminder_sent_at: new Date().toISOString() });
+          })
+          .then(function(){ alert('Payment reminder sent (total shop balance)'); loadCustOrders(); })
+          .catch(function(){ alert('Failed to send reminder'); });
+      });
     }
 
     function openMarkPaymentReceived(id){
@@ -13320,37 +13354,55 @@ function zohoFetchContactDetail(token, contactId) {
   });
 }
 
-function zohoBuildEmailCommFields(contact) {
+/**
+ * Invoice Email Communications — primary (To) + Head Office email2 so both
+ * are pre-selected when admin opens Send Email in Zoho (CC was manual after
+ * integration because we only attached primary).
+ * Order: To (shop/Bluegrass) first, then email2 (Tea Post head).
+ */
+function zohoBuildEmailCommFields(contact, preferredEmail) {
   var persons = (contact && (contact.contact_persons || contact.contact_person)) || [];
   if (!Array.isArray(persons)) persons = [];
-  var ids = [];
   var withEmail = persons.filter(function(p){ return p && p.contact_person_id && String(p.email || '').trim(); });
-  var useList = withEmail.length ? withEmail : persons.filter(function(p){ return p && p.contact_person_id; });
-  useList.forEach(function(p){
-    var pid = String(p.contact_person_id);
-    if (ids.indexOf(pid) >= 0) return;
-    ids.push(pid);
-  });
+  if (!withEmail.length) {
+    var any = persons.filter(function(p){ return p && p.contact_person_id; });
+    return { ids: any.length ? [String(any[0].contact_person_id)] : [] };
+  }
+  var pref = String(preferredEmail || '').trim().toLowerCase();
+  var ids = [];
+  function add(p) {
+    if (!p || !p.contact_person_id) return;
+    var id = String(p.contact_person_id);
+    if (ids.indexOf(id) >= 0) return;
+    ids.push(id);
+  }
+  // 1) To = preferred shop email or primary contact
+  var primary = withEmail.filter(function(p){ return p.is_primary_contact === true || p.is_primary_contact === 'true'; });
+  var match = pref
+    ? withEmail.filter(function(p){ return String(p.email || '').trim().toLowerCase() === pref; })
+    : [];
+  add(match[0] || primary[0] || withEmail[0]);
+  // 2) Rest (email2 / Head Office) — so Zoho pre-fills second recipient (was CC before)
+  withEmail.forEach(function(p){ add(p); });
   return { ids: ids };
 }
 
-function zohoAttachEmailCommunication(payload, token, zohoCustomerId) {
+function zohoAttachEmailCommunication(payload, token, zohoCustomerId, preferredEmail) {
   if (!payload || !zohoCustomerId) return Promise.resolve(payload);
   return zohoFetchContactDetail(token, zohoCustomerId).then(function(contact){
     if (!contact) {
       console.warn('[zoho] email checkbox: contact not loaded — deploy edge get_contact?');
       return payload;
     }
-    var fields = zohoBuildEmailCommFields(contact);
-    // Only contact_persons (array of IDs). Do NOT send contact_persons_associated —
-    // Zoho challan/invoice rejects it ("less than 100 characters").
+    var fields = zohoBuildEmailCommFields(contact, preferredEmail);
+    // Only PRIMARY contact_person id — keeps Zoho bulk "Email" as one-click
     if (fields.ids.length) {
       payload.contact_persons = fields.ids;
       payload._email_comm_ids = fields.ids;
       try {
         delete payload.contact_persons_associated;
       } catch(e){}
-      console.log('[zoho] email communication persons:', fields.ids.length, fields.ids);
+      console.log('[zoho] email communication (primary only):', fields.ids);
     } else {
       console.warn('[zoho] no contact_person_id on contact — Email Communications stays unchecked');
     }
@@ -13419,10 +13471,13 @@ async function zohoCreateInvoiceReal(order) {
       var isDeliveryChallan = docType === 'delivery_challan';
       _createCtx.docType = docType;
       _createCtx.shopName = (shop && shop.name) || order.shop_name || '';
-      _createCtx.shopEmail = String(
-        (shop && (shop.email || shop.customer_email)) || order.email || order.customer_email || ''
-      ).trim();
-      console.log('[zoho] docType=', docType, 'shop=', _createCtx.shopName, 'email=', _createCtx.shopEmail || '(none)');
+      // To = shop/Bluegrass email · CC = email2 (Tea Post head)
+      var _em1 = String((shop && (shop.email || shop.customer_email)) || order.email || order.customer_email || '').trim();
+      var _em2 = String((shop && shop.email2) || '').trim();
+      if (_em2 && _em1 && _em2.toLowerCase() === _em1.toLowerCase()) _em2 = '';
+      _createCtx.shopEmail = _em1;
+      _createCtx.shopEmailCc = _em2;
+      console.log('[zoho] docType=', docType, 'shop=', _createCtx.shopName, 'to=', _createCtx.shopEmail || '(none)', 'cc=', _createCtx.shopEmailCc || '(none)');
 
       var lineItems = buildZohoLineItems(order);
 
@@ -13466,7 +13521,6 @@ async function zohoCreateInvoiceReal(order) {
       }));
 
       // Skip sync_contact when we already have a Zoho contact id (avoids "already exists" + ~1s)
-      // Skip get_contact / email attach on create (saves ~2s) — draft invoices do not need it
       var ensureContact = Promise.resolve();
       var hasZohoContactId = !!(zohoCustomerId && String(zohoCustomerId).length >= 10);
       if (!hasZohoContactId && _createCtx.shopEmail && shop) {
@@ -13477,6 +13531,7 @@ async function zohoCreateInvoiceReal(order) {
           area: shop.area || '',
           mobile: shop.mobile || order.mobile || '',
           email: _createCtx.shopEmail,
+          email2: shop.email2 || '',
           shop_id: shop.shop_id || shop.customer_id,
           customer_id: shop.customer_id || shop.shop_id
         }).catch(function(e){
@@ -13487,9 +13542,22 @@ async function zohoCreateInvoiceReal(order) {
       }
 
       return ensureContact.then(function(){
-        // Fast path: create without get_contact / contact_persons (Email Communications optional in Zoho UI)
-        var finalPayload = payload;
+        // Attach PRIMARY email person only (not email2) so Zoho bulk Email stays one-click
+        if (hasZohoContactId) {
+          return zohoAttachEmailCommunication(payload, token, zohoCustomerId, _createCtx.shopEmail)
+            .then(function(p){
+              _createCtx.emailCommIds = (p && p._email_comm_ids) || [];
+              try { delete p._email_comm_ids; } catch(e){}
+              return p;
+            })
+            .catch(function(){
+              _createCtx.emailCommIds = [];
+              return payload;
+            });
+        }
         _createCtx.emailCommIds = [];
+        return payload;
+      }).then(function(finalPayload){
         try {
           delete finalPayload._email_comm_ids;
           delete finalPayload.contact_persons_associated;
@@ -13521,7 +13589,7 @@ async function zohoCreateInvoiceReal(order) {
         || data.delivery_challan || data.deliveryschedule || {};
       var isChallanResp = !!(data.deliverychallan || data.deliverychallans || data.delivery_challan
         || doc.deliverychallan_id || doc.deliverychallans_id || doc.challan_status);
-      // Draft only — do not email or mark sent. Staff sends from Zoho when ready.
+      // Draft only — do not auto-send email. Staff emails from Zoho bulk or our Email button.
       var result = {
         invoice_id:     doc.invoice_id || doc.deliverychallan_id || doc.deliverychallans_id
                           || doc.deliveryschedule_id || '',
@@ -13533,7 +13601,7 @@ async function zohoCreateInvoiceReal(order) {
         email_sent:     false,
         email_to:       _createCtx.shopEmail || ''
       };
-      // Force Email Communications checkbox (Zoho often ignores this on create alone)
+      // Patch Email Communications = primary only (enables Zoho single-button bulk email)
       var personIds = _createCtx.emailCommIds || [];
       if (result.invoice_id && personIds.length) {
         return zohoPatchEmailCommunication(
