@@ -139,7 +139,52 @@ function normalizeProducts(list) {
   }
 
   // ── GET handler ──────────────────────────────────────────────────────────────
+  /** Block place/update order if shop is in order_blocked_shops or global unpaid block */
+  function _checkShopOrderBlock(shopId) {
+    if (!shopId) return Promise.resolve({ blocked: false });
+    var sid = String(shopId);
+    return Promise.all([
+      sbGet('settings', { key: 'order_blocked_shops' }).catch(function(){ return []; }),
+      sbGet('settings', { key: 'block_orders_when_unpaid' }).catch(function(){ return []; })
+    ]).then(function(res) {
+      var blockedRow = Array.isArray(res[0]) && res[0][0] ? res[0][0] : (res[0] && res[0].value != null ? res[0] : null);
+      var allRow = Array.isArray(res[1]) && res[1][0] ? res[1][0] : (res[1] && res[1].value != null ? res[1] : null);
+      var list = [];
+      try {
+        var raw = blockedRow ? String(blockedRow.value || '') : '[]';
+        list = JSON.parse(raw || '[]');
+      } catch (e) { list = []; }
+      if (!Array.isArray(list)) list = [];
+      var listNorm = list.map(function(x){ return String(x); });
+      if (listNorm.indexOf(sid) >= 0) {
+        return { blocked: true, reason: 'This shop is blocked from placing orders. Clear dues with the bakery.' };
+      }
+      var blockAll = allRow && String(allRow.value || '').toLowerCase() === 'true';
+      if (!blockAll) return { blocked: false };
+      // Global: any unpaid non-draft invoice with balance
+      return sbGet('customer_orders', { shop_id: sid }, 'delivery_date.desc').then(function(rows) {
+        rows = Array.isArray(rows) ? rows : [];
+        var due = 0;
+        rows.forEach(function(o) {
+          var st = String(o.payment_status || '').toLowerCase();
+          if (st === 'paid' || st === 'void') return;
+          var zs = String(o.zoho_invoice_status || '').toLowerCase().replace(/\s+/g, '_');
+          if (zs === 'draft' || zs === 'pending_approval') return;
+          var dt = String(o.zoho_doc_type || '').toLowerCase();
+          if (dt.indexOf('challan') >= 0) return;
+          var d = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
+          if (!isNaN(d) && d > 0.01) due += d;
+        });
+        if (due > 0.01) {
+          return { blocked: true, reason: 'Ordering on hold — unpaid balance ₹' + due.toFixed(0) + '. Pay from the Pay tab.' };
+        }
+        return { blocked: false };
+      }).catch(function(){ return { blocked: false }; });
+    }).catch(function(){ return { blocked: false }; });
+  }
+
   window.api = function (p) {
+
     switch (p.action) {
 
       case 'getShops': {
@@ -1040,6 +1085,10 @@ function normalizeProducts(list) {
            // Customer places order
            case 'placeCustomerOrder':
          if (!b.item_ids) console.warn('[api] placeCustomerOrder: item_ids missing');
+             return _checkShopOrderBlock(b.shop_id).then(function(blk) {
+               if (blk && blk.blocked) {
+                 return { ok: false, error: blk.reason || 'Ordering blocked for this shop' };
+               }
              // Resolve doc type: explicit body → shop master → invoice
              // NOTE: sbGet/filters already adds eq. — pass raw ids, never 'eq.'+id
              var placeDocType = function() {
@@ -1087,6 +1136,7 @@ function normalizeProducts(list) {
                  }).catch(function(){ return { ok: true }; });
                }).catch(function(){ return { ok: false, error: 'Network error' }; });
              });
+             }); // end _checkShopOrderBlock
 
       // Customer marks "no order" for a delivery date (explicit skip)
       case 'markNoOrder': {
@@ -1147,7 +1197,17 @@ function normalizeProducts(list) {
           // Order changed after approve — hold invoice until re-approve
           upd2.payment_status = 'stale';
         }
-        return sbPatch('customer_orders', { id: b.id }, upd2);
+        // Enforce block on edits too (client can be bypassed)
+        return sbGet('customer_orders', { id: b.id }).then(function(rows) {
+          var o = Array.isArray(rows) && rows[0] ? rows[0] : null;
+          var sid = o && o.shop_id ? o.shop_id : b.shop_id;
+          return _checkShopOrderBlock(sid).then(function(blk) {
+            if (blk && blk.blocked) {
+              return { ok: false, error: blk.reason || 'Ordering blocked for this shop' };
+            }
+            return sbPatch('customer_orders', { id: b.id }, upd2);
+          });
+        });
       }
 
       // Admin: mark shop-order delivery sticker printed / not printed

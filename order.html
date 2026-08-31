@@ -1814,8 +1814,14 @@
           if(zs === 'draft' || zs === 'pending_approval') return;
           due += d; n++;
         });
-        var shopBlocked = blockedList.indexOf(String(session.shop_id)) >= 0;
+        var sid = String(session.shop_id || '');
+        var cid = String(session.customer_id || session.shop_id || '');
+        var shopBlocked = blockedList.some(function(x){
+          var bx = String(x || '');
+          return bx === sid || bx === cid || bx.toLowerCase() === sid.toLowerCase();
+        });
         _paymentHoldActive = shopBlocked || (blockAll && due > 0.01);
+        try { console.log('[order-block] shop', sid, 'blockedList', blockedList, 'shopBlocked', shopBlocked, 'blockAll', blockAll, 'due', due); } catch(e){}
         _paymentHoldMsg = _paymentHoldActive
           ? ('🔒 Ordering on hold — unpaid balance ₹' + due.toLocaleString('en-IN',{maximumFractionDigits:0})
              + (n ? (' on '+n+' invoice(s)') : '') + '. Please clear dues from the Pay tab.')
@@ -2296,8 +2302,16 @@
           return;
         }
 
-        // Orders still open — proceed
+        // Orders still open — re-check payment/shop block (server also enforces)
         btn.textContent = isEdit ? '⏳ Updating…' : '⏳ Placing…';
+        return (typeof checkPaymentOrderHold === 'function' ? checkPaymentOrderHold() : Promise.resolve(false)).then(function(){
+          if (_paymentHoldActive) {
+            btn.disabled = false; btn.textContent = '✅ Confirm';
+            closePreview();
+            var msgEl = document.getElementById('orderMsg');
+            if(msgEl){ msgEl.textContent = _paymentHoldMsg || 'Ordering on hold.'; msgEl.className='msg er'; msgEl.style.display='block'; }
+            return;
+          }
 
         // Rejected row for tomorrow: reuse same row → pending (avoids duplicate + unlocks after group change)
         var apiCall = isEdit
@@ -2343,6 +2357,7 @@
             pvMsg.className='msg er'; pvMsg.style.display='block';
           }
         });
+        }); // end checkPaymentOrderHold
       }).catch(function(){
         btn.disabled = false; btn.textContent = '✅ Confirm';
         pvMsg.textContent = '❌ Network error. Check connection and try again.';
@@ -3553,14 +3568,17 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
       var upi = 'upi://pay?' + q;
       return {
         upi: upi,
-        // PhonePe
-        phonepe: 'phonepe://pay?' + q,
+        // PhonePe — prefer Android intent into PhonePe package, then phonepe://, then generic upi://
+        phonepe: 'intent://pay?' + q + '#Intent;scheme=upi;package=com.phonepe.app;end',
+        phonepeAlt: 'phonepe://pay?' + q,
+        phonepeAlt2: 'ppe://pay?' + q,
         // Google Pay
-        gpay: 'gpay://upi/pay?' + q,
+        gpay: 'intent://pay?' + q + '#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end',
+        gpayAlt: 'gpay://upi/pay?' + q,
         // Paytm
-        paytm: 'paytmmp://cash_wallet?featuretype=money_transfer&' + q,
-        paytmAlt: 'paytmmp://pay?' + q,
-        // Android Chrome intent fallback (opens chooser if app handles upi)
+        paytm: 'paytmmp://pay?' + q,
+        paytmAlt: 'paytmmp://cash_wallet?featuretype=money_transfer&' + q,
+        paytmIntent: 'intent://pay?' + q + '#Intent;scheme=upi;package=net.one97.paytm;end',
         androidIntent: 'intent://pay?' + q + '#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end'
       };
     }
@@ -3698,7 +3716,7 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
     });
 
     function openUpiIntent(preferred){
-      // Re-load payee name from server right before open (avoid stale memory / SW)
+      // Re-load payee name from server right before open
       var go = function(){
         var total = typeof _payUnpaidTotal === 'function' ? _payUnpaidTotal() : 0;
         var urls = buildUpiAppUrls(total);
@@ -3706,32 +3724,50 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
           alert('UPI not configured. Ask bakery for UPI ID.');
           return;
         }
+        // Ordered fallbacks — QR uses standard upi:// (works). Buttons need app intent + fallbacks.
         var order = [];
-        if(preferred === 'phonepe') order = [urls.phonepe, urls.upi];
-        else if(preferred === 'gpay') order = [urls.gpay, urls.upi, urls.androidIntent];
-        else if(preferred === 'paytm') order = [urls.paytmAlt, urls.paytm, urls.upi];
-        else order = [urls.upi, urls.phonepe, urls.gpay, urls.paytmAlt];
+        if(preferred === 'phonepe') {
+          order = [urls.phonepe, urls.phonepeAlt, urls.phonepeAlt2, urls.upi];
+        } else if(preferred === 'gpay') {
+          order = [urls.gpay, urls.gpayAlt, urls.upi];
+        } else if(preferred === 'paytm') {
+          order = [urls.paytmIntent, urls.paytm, urls.paytmAlt, urls.upi];
+        } else {
+          order = [urls.upi, urls.phonepe, urls.gpay, urls.paytm];
+        }
 
         var tried = 0;
+        function launch(u){
+          if(!u) return;
+          try {
+            // location works more reliably for custom schemes / intent:// on Android Chrome
+            window.location.href = u;
+          } catch(e){
+            try {
+              var a = document.createElement('a');
+              a.href = u;
+              a.rel = 'noopener';
+              a.style.display = 'none';
+              document.body.appendChild(a);
+              a.click();
+              setTimeout(function(){ try { document.body.removeChild(a); } catch(e2){} }, 400);
+            } catch(e3){}
+          }
+        }
         function tryNext(){
           if(tried >= order.length) return;
           var u = order[tried++];
           if(!u) return tryNext();
-          try {
-            var a = document.createElement('a');
-            a.href = u;
-            a.style.display = 'none';
-            document.body.appendChild(a);
-            a.click();
-            setTimeout(function(){ try { document.body.removeChild(a); } catch(e){} }, 500);
-          } catch(e){
-            try { window.location.href = u; } catch(e2){}
+          launch(u);
+          // If scheme is ignored, try next after a short delay
+          if(tried < order.length) {
+            setTimeout(tryNext, 900);
           }
         }
         tryNext();
         setTimeout(function(){
           if(typeof startPaymentStatusPoll === 'function') startPaymentStatusPoll('upi');
-        }, 1200);
+        }, 1500);
       };
       if (typeof loadUpiSettings === 'function') {
         loadUpiSettings().then(go).catch(go);
@@ -3777,9 +3813,19 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
       var pp = document.getElementById('payUpiPhonepe');
       var gp = document.getElementById('payUpiGpay');
       var pt = document.getElementById('payUpiPaytm');
-      if(pp){ pp.href = urls.phonepe || '#'; pp.onclick = function(e){ e.preventDefault(); openUpiIntent('phonepe'); return false; }; }
-      if(gp){ gp.href = urls.gpay || '#'; gp.onclick = function(e){ e.preventDefault(); openUpiIntent('gpay'); return false; }; }
-      if(pt){ pt.href = urls.paytmAlt || '#'; pt.onclick = function(e){ e.preventDefault(); openUpiIntent('paytm'); return false; }; }
+      // href = working upi:// so long-press / fallback still works; click opens preferred app chain
+      if(pp){
+        pp.href = urls.upi || '#';
+        pp.onclick = function(e){ e.preventDefault(); e.stopPropagation(); openUpiIntent('phonepe'); return false; };
+      }
+      if(gp){
+        gp.href = urls.upi || '#';
+        gp.onclick = function(e){ e.preventDefault(); e.stopPropagation(); openUpiIntent('gpay'); return false; };
+      }
+      if(pt){
+        pt.href = urls.upi || '#';
+        pt.onclick = function(e){ e.preventDefault(); e.stopPropagation(); openUpiIntent('paytm'); return false; };
+      }
       var wrap = document.getElementById('payQrWrap');
       if(wrap){
         wrap.innerHTML = '';

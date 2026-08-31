@@ -370,13 +370,13 @@
 
     <!-- Today delivery stats — only when no tomorrow orders placed yet -->
     <div id="dash-deliv-block">
-        <div class="dash-deliv-lbl" style="font-size:10px;font-weight:800;color:#64748b;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Deliveries · Today</div>
-        <div class="stats-grid" id="dash-stats" style="margin-bottom:14px"></div>
-        <div id="dash-alerts" style="margin-bottom:10px"></div>
-        <div id="dash-tp-row" style="display:none;margin-bottom:14px">
-            <div style="font-size:10px;font-weight:800;color:#7a4800;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">🍵 Tea Post · Today</div>
-            <div class="stats-grid" id="dash-tp-stats"></div>
-        </div>
+      <div class="dash-deliv-lbl" style="font-size:10px;font-weight:800;color:#64748b;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Deliveries · Today</div>
+      <div class="stats-grid" id="dash-stats" style="margin-bottom:14px"></div>
+      <div id="dash-alerts" style="margin-bottom:10px"></div>
+      <div id="dash-tp-row" style="display:none;margin-bottom:14px">
+          <div style="font-size:10px;font-weight:800;color:#7a4800;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">🍵 Tea Post · Today</div>
+          <div class="stats-grid" id="dash-tp-stats"></div>
+      </div>
     </div>
 
     <!-- Tomorrow customer order pipeline — counts only -->
@@ -13468,6 +13468,16 @@ function zohoFetchContactDetail(token, contactId) {
  * integration because we only attached primary).
  * Order: To (shop/Bluegrass) first, then email2 (Tea Post head).
  */
+function zohoUniquePersonIds(ids) {
+  var out = [];
+  (ids || []).forEach(function(id) {
+    id = String(id || '').trim();
+    if (!id) return;
+    if (out.indexOf(id) >= 0) return;
+    out.push(id);
+  });
+  return out;
+}
 function zohoBuildEmailCommFields(contact, preferredEmail) {
   var persons = (contact && (contact.contact_persons || contact.contact_person)) || [];
   if (!Array.isArray(persons)) persons = [];
@@ -13484,20 +13494,22 @@ function zohoBuildEmailCommFields(contact, preferredEmail) {
     if (ids.indexOf(id) >= 0) return;
     ids.push(id);
   }
-  // 1) To = preferred shop email or primary contact
+  // 1) preferred shop email or primary
   var primary = withEmail.filter(function(p){ return p.is_primary_contact === true || p.is_primary_contact === 'true'; });
   var match = pref
     ? withEmail.filter(function(p){ return String(p.email || '').trim().toLowerCase() === pref; })
     : [];
   add(match[0] || primary[0] || withEmail[0]);
-  // 2) Rest (email2 / Head Office) — so Zoho pre-fills second recipient (was CC before)
+  // 2) second email only (email2) — never the same person twice
   withEmail.forEach(function(p){ add(p); });
+  // Zoho: "Some contacts have been provided more than once" if duplicates or both arrays clash
+  ids = zohoUniquePersonIds(ids).slice(0, 2);
   return { ids: ids };
 }
 
 /**
  * Map shops.email → Zoho contact_person_id (primary).
- * Puts contact_persons + contact_persons_associated so Email Communications checkbox is ticked.
+ * Puts unique contact_persons ids so Email Communications checkbox is ticked.
  */
 function zohoAttachEmailCommunication(payload, token, zohoCustomerId, preferredEmail) {
   if (!payload || !zohoCustomerId) return Promise.resolve(payload);
@@ -13508,17 +13520,12 @@ function zohoAttachEmailCommunication(payload, token, zohoCustomerId, preferredE
     }
     var fields = zohoBuildEmailCommFields(contact, preferredEmail);
     if (fields.ids.length) {
-      // API: array of contact_person_ids (required for Email Communications)
-      payload.contact_persons = fields.ids;
-      // Newer Zoho UI: explicit email-enabled flag per person
-      payload.contact_persons_associated = fields.ids.map(function(id){
-        return {
-          contact_person_id: String(id),
-          communication_preference: { is_email_enabled: true }
-        };
-      });
-      payload._email_comm_ids = fields.ids;
-      console.log('[zoho] Email Communications mapped person ids:', fields.ids);
+      // Only contact_persons (unique ids). Do NOT also send contact_persons_associated —
+      // Zoho returns "Some contacts have been provided more than once" when both list the same people.
+      payload.contact_persons = zohoUniquePersonIds(fields.ids).slice(0, 2);
+      try { delete payload.contact_persons_associated; } catch (eDel) {}
+      payload._email_comm_ids = payload.contact_persons.slice();
+      console.log('[zoho] Email Communications mapped person ids:', payload.contact_persons);
     } else {
       console.warn('[zoho] no contact_person_id — open Zoho customer → Contact Persons must have primary email');
     }
@@ -13541,14 +13548,10 @@ function zohoAttachEmailCommunication(payload, token, zohoCustomerId, preferredE
 function zohoPatchEmailCommunication(token, docType, docId, personIds) {
   if (!token || !docId || !personIds || !personIds.length) return Promise.resolve({ skipped: true });
   var action = (docType === 'delivery_challan') ? 'update_delivery_challan' : 'update_invoice';
+  var uniq = (typeof zohoUniquePersonIds === 'function' ? zohoUniquePersonIds(personIds) : personIds.map(String)).slice(0, 2);
+  // Only contact_persons — associated + same ids → Zoho "provided more than once"
   var body = {
-    contact_persons: personIds.map(String),
-    contact_persons_associated: personIds.map(function(id){
-      return {
-        contact_person_id: String(id),
-        communication_preference: { is_email_enabled: true }
-      };
-    })
+    contact_persons: uniq
   };
   console.log('[zoho] patch Email Communications on', action, docId, personIds);
   return fetch(CONFIG.SUPABASE_URL + '/functions/v1/zoho-token', {
@@ -13719,13 +13722,9 @@ async function zohoCreateInvoiceReal(order) {
           cachedIds.push(String(sNow.zoho_person_id2));
         }
         if (cachedIds.length) {
+          cachedIds = zohoUniquePersonIds(cachedIds).slice(0, 2);
           payload.contact_persons = cachedIds;
-          payload.contact_persons_associated = cachedIds.map(function(id){
-            return {
-              contact_person_id: id,
-              communication_preference: { is_email_enabled: true }
-            };
-          });
+          try { delete payload.contact_persons_associated; } catch (eDel2) {}
           _createCtx.emailCommIds = cachedIds;
           console.log('[zoho] Email Communications from cache (no get_contact):', cachedIds);
           return payload;
@@ -13764,7 +13763,11 @@ async function zohoCreateInvoiceReal(order) {
           });
       }).then(function(finalPayload){
         try { delete finalPayload._email_comm_ids; } catch(e){}
-        // Keep contact_persons + contact_persons_associated on create
+        // Final guard: unique person ids only, drop associated (duplicate → Zoho error)
+        if (finalPayload.contact_persons) {
+          finalPayload.contact_persons = zohoUniquePersonIds(finalPayload.contact_persons).slice(0, 2);
+        }
+        try { delete finalPayload.contact_persons_associated; } catch (eAss) {}
         console.log('[zoho] create payload contact_persons=', finalPayload.contact_persons || null);
         return fetch(CONFIG.SUPABASE_URL + '/functions/v1/zoho-token', {
           method: 'POST',
