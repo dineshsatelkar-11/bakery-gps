@@ -3517,21 +3517,15 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
       if(!_upiVpa) return '';
       var vpa = String(_upiVpa).trim().replace(/\s+/g, '');
       if(!vpa || vpa.indexOf('@') < 0) return '';
-      // Clean amount — banks reject odd float strings
-      var am = Math.round((Number(amount) || 0) * 100) / 100;
-      if(!(am > 0)) return '';
-      var amStr = am.toFixed(2);
-      // Payee name: short, no special chars
+      // Do NOT send am/mam — amount blank so user types it in PhonePe / GPay / Paytm
       var pn = String(_upiPayee || 'IBCAB')
         .replace(/[^\w\s\-]/gi, ' ')
         .replace(/\s+/g, ' ')
         .trim()
         .slice(0, 35) || 'IBCAB';
-      // No `tn`. Amount (am) is pre-filled but left editable — do not send mam.
       var parts = [
         'pa=' + encodeURIComponent(vpa),
         'pn=' + encodeURIComponent(pn),
-        'am=' + encodeURIComponent(amStr),
         'cu=INR'
       ];
       return parts.join('&');
