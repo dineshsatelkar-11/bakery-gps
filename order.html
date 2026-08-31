@@ -592,7 +592,7 @@
         <div style="padding:12px 14px 8px">
             <div style="font-size:13px;font-weight:800;color:#1e293b;margin-bottom:6px">Payments</div>
             <div style="font-size:11px;color:#64748b;line-height:1.45;margin-bottom:10px">
-                Pay the total overdue (any period — weekly or a few days), then tap <b>send request</b>. Admin confirms from the bank (usually within <b>~24 working hours</b>).
+                Scan QR or open PhonePe / GPay / Paytm → pay → then <b>send request</b>. Admin confirms from the bank (usually within <b>~24 working hours</b>).
             </div>
             <div id="pay-total-card" style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:12px;text-align:center">
                 <div style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase">Total overdue</div>
@@ -604,13 +604,11 @@
                 <div id="payQrWrap" style="display:inline-block;padding:10px;background:#fff;border-radius:12px;border:1px solid #e2e8f0;min-height:160px;min-width:160px"></div>
                 <div id="payUpiAmtLbl" style="font-size:14px;font-weight:800;font-family:monospace;color:#c8382a;margin:10px 0 4px">₹0</div>
                 <div id="payUpiMeta" style="font-size:11px;color:#64748b;font-family:monospace;margin-bottom:10px"></div>
-                <a id="payUpiLink" href="#" style="display:block;background:#5f259f;color:#fff;text-decoration:none;font-weight:800;padding:12px;border-radius:12px;margin-bottom:8px">💜 Pay with UPI (any app)</a>
                 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
                     <a id="payUpiPhonepe" href="#" style="display:block;background:#5f259f;color:#fff;text-decoration:none;font-weight:700;padding:10px 4px;border-radius:10px;font-size:11px;text-align:center">PhonePe</a>
                     <a id="payUpiGpay" href="#" style="display:block;background:#1a73e8;color:#fff;text-decoration:none;font-weight:700;padding:10px 4px;border-radius:10px;font-size:11px;text-align:center">GPay</a>
                     <a id="payUpiPaytm" href="#" style="display:block;background:#00baf2;color:#fff;text-decoration:none;font-weight:700;padding:10px 4px;border-radius:10px;font-size:11px;text-align:center">Paytm</a>
                 </div>
-                <button type="button" onclick="copyUpiLink()" style="width:100%;background:#f1f5f9;border:1.5px solid #e2e8f0;border-radius:10px;padding:8px;font-size:11px;font-weight:700;color:#1e293b;margin-bottom:6px;cursor:pointer">Copy UPI link</button>
                 <div style="font-size:10px;color:#64748b;line-height:1.4">Scan QR or open PhonePe / GPay / Paytm → pay → then send request. Admin confirms within ~24 working hours.</div>
             </div>
             <button type="button" class="btn" id="payRequestBtn" style="width:100%;background:#1e293b;color:#fff;font-weight:800;padding:14px;margin-bottom:10px;border:none;border-radius:14px;font-size:15px" onclick="openPayRequestSheet()">📨 After paying — send request to admin</button>
@@ -3760,22 +3758,11 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
       var url = urls.upi;
       var amtLbl = document.getElementById('payUpiAmtLbl');
       var meta = document.getElementById('payUpiMeta');
-      var link = document.getElementById('payUpiLink');
       if(amtLbl) amtLbl.textContent = '₹' + total.toLocaleString('en-IN', {maximumFractionDigits:2});
       if(meta) {
-        var tn = '';
-        try { tn = buildPayTxnNote(); } catch (eTn) {}
-        meta.innerHTML = esc(_upiPayee + ' · ' + _upiVpa) +
-          (tn ? '<div style="margin-top:4px;color:#334155">Note: <b>'+esc(tn)+'</b></div>' : '');
+        meta.innerHTML = esc(_upiPayee + ' · ' + _upiVpa);
       }
-      if(link){
-        link.href = url;
-        link.onclick = function(e){
-          e.preventDefault();
-          openUpiIntent('upi');
-          return false;
-        };
-      }
+      // "Pay with UPI (any app)" removed — only QR + PhonePe / GPay / Paytm
       var pp = document.getElementById('payUpiPhonepe');
       var gp = document.getElementById('payUpiGpay');
       var pt = document.getElementById('payUpiPaytm');
