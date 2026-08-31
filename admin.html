@@ -3002,9 +3002,9 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
             });
             tpTmrStats.innerHTML = STATUS_CFG.map(function(s){
               var n = tpCounts[s.key]||0;
-              return '<div class="stat" style="background:'+s.bg+';border-color:'+s.color+'20">'
+              return '<div class="stat" style="background:'+s.bg+';border-color:'+s.color+'20;cursor:pointer" onclick="dashGoCustOrders(\''+s.key+'\')" title="Open Orders · '+s.label+'">'
                 +'<div class="stat-n" style="color:'+s.color+';font-size:18px">'+n+'</div>'
-                +'<div class="stat-l" style="font-size:8px">'+s.label+'</div>'
+                +'<div class="stat-l" style="font-size:8px">'+s.label+' ↗</div>'
                 +'</div>';
             }).join('');
           } else {
@@ -3268,6 +3268,29 @@ function renderMyBrandList(){
       _custExtraFilter = extraFilter || '';
       showTab('customers');
     }
+    /** Dashboard pipeline card (Pending / Kitchen / Packaging…) → Orders tab */
+    function dashGoCustOrders(status){
+      var st = status || '';
+      if (st === 'kitchen') st = 'approved';
+      // Set filter before showTab so loadCustOrders picks it up
+      try {
+        var sel = document.getElementById('co-status');
+        if (sel) sel.value = st;
+        if (typeof _coStatusFilter !== 'undefined') _coStatusFilter = st;
+      } catch (e0) {}
+      try {
+        var dateEl = document.getElementById('co-date');
+        if (dateEl) dateEl.value = tomorrowStr();
+      } catch (e1) {}
+      showTab('cust-orders');
+      // Re-apply after list loads (async)
+      setTimeout(function(){
+        try {
+          if (typeof setCoStatusFilter === 'function') setCoStatusFilter(st);
+        } catch (e2) {}
+      }, 400);
+    }
+    window.dashGoCustOrders = dashGoCustOrders;
 
     /* ── CUSTOMER MASTER (replaces allShops) ──
        Fields: customer_id (= shop_id for API compat), name, address, area,
@@ -8498,12 +8521,57 @@ apiPost({
   const data = await res.json();
   if (data.code !== 0) throw data.message || 'Zoho contact sync failed';
 
-  // Save Zoho contact_id back to your DB
+  var contact = data.contact || {};
+  var contactId = contact.contact_id || '';
+  // Cache contact_person_id so invoice create skips live get_contact (~1–2s saved)
+  var personId = '';
+  var personId2 = '';
+  var persons = contact.contact_persons || contact.contact_person || [];
+  if (!Array.isArray(persons)) persons = [];
+  var shopEm = String(toEmail || '').toLowerCase();
+  var headEm = String(ccEmail || '').toLowerCase();
+  persons.forEach(function(p){
+    if (!p || !p.contact_person_id) return;
+    var pe = String(p.email || '').trim().toLowerCase();
+    var isPrimary = p.is_primary_contact === true || p.is_primary_contact === 'true';
+    if (!personId && (isPrimary || (shopEm && pe === shopEm))) {
+      personId = String(p.contact_person_id);
+    } else if (!personId2 && headEm && pe === headEm) {
+      personId2 = String(p.contact_person_id);
+    } else if (!personId2 && !isPrimary && pe && pe !== shopEm) {
+      personId2 = String(p.contact_person_id);
+    }
+  });
+  if (!personId && persons[0] && persons[0].contact_person_id) {
+    personId = String(persons[0].contact_person_id);
+  }
+
+  // If sync response has no persons, one get_contact to fill cache (once per sync, not per invoice)
+  if (contactId && !personId) {
+    try {
+      var full = await zohoFetchContactDetail(token, contactId);
+      var fp = (full && (full.contact_persons || full.contact_person)) || [];
+      if (!Array.isArray(fp)) fp = [];
+      fp.forEach(function(p){
+        if (!p || !p.contact_person_id) return;
+        var pe = String(p.email || '').trim().toLowerCase();
+        var isPrimary = p.is_primary_contact === true || p.is_primary_contact === 'true';
+        if (!personId && (isPrimary || (shopEm && pe === shopEm))) personId = String(p.contact_person_id);
+        else if (!personId2 && headEm && pe === headEm) personId2 = String(p.contact_person_id);
+        else if (!personId2 && !isPrimary && pe && pe !== shopEm) personId2 = String(p.contact_person_id);
+      });
+      if (!personId && fp[0] && fp[0].contact_person_id) personId = String(fp[0].contact_person_id);
+    } catch (eFetch) {
+      console.warn('[zoho] cache person id after sync failed', eFetch);
+    }
+  }
+
   await apiPost({
     action: 'updateShop',
     shop_id: customer.customer_id || customer.shop_id,
-    zoho_contact_id: data.contact.contact_id,
-    // include required fields to avoid overwriting:
+    zoho_contact_id: contactId || null,
+    zoho_person_id: personId || null,
+    zoho_person_id2: personId2 || null,
     name: customer.name,
     address: customer.address || '',
     area: customer.area || '',
@@ -8516,7 +8584,23 @@ apiPost({
     last_updated_at: new Date().toLocaleString('en-IN')
   });
 
-  return data.contact;
+  // Keep in-memory shop cache warm for immediate create
+  try {
+    if (typeof allCustomers !== 'undefined' && Array.isArray(allCustomers)) {
+      allCustomers.forEach(function(c){
+        if (String(c.shop_id||'') === String(customer.customer_id||customer.shop_id||'') ||
+            String(c.customer_id||'') === String(customer.customer_id||customer.shop_id||'')) {
+          if (contactId) c.zoho_contact_id = String(contactId);
+          if (personId) c.zoho_person_id = String(personId);
+          if (personId2) c.zoho_person_id2 = String(personId2);
+        }
+      });
+    }
+  } catch (eMem) {}
+
+  console.log('[zoho] sync customer cached contact=', contactId, 'person=', personId, 'person2=', personId2);
+  contact.contact_id = contactId;
+  return contact;
 }
 
 async function zohoSyncItemReal(product) {
@@ -12800,23 +12884,30 @@ function buildZohoLineItems(order){
   }
   return lineItems;
 }
-/** Local GST totals (same-state: CGST+SGST split). Rates are exclusive of tax. */
+/**
+ * Local GST totals (same-state: CGST+SGST split). Rates exclusive of tax.
+ * Round-off is on TOTAL only (same as Zoho Books Round Off) — not line-level.
+ */
 function computeInvoiceGst(lines, shipping){
   var subtotal = 0, tax = 0;
   (lines||[]).forEach(function(l){
     var lineAmt = (Number(l.rate)||0) * (Number(l.quantity)||0);
     subtotal += lineAmt;
     var pct = Number(l.tax_percent)||0;
-    if(pct > 0) tax += lineAmt * (pct / 100);
+    if (pct > 0) tax += lineAmt * (pct / 100);
   });
+  // Paise rounding on components only
   subtotal = Math.round(subtotal * 100) / 100;
   tax = Math.round(tax * 100) / 100;
   var cgst = Math.round((tax / 2) * 100) / 100;
   var sgst = Math.round((tax - cgst) * 100) / 100;
   var ship = Number(shipping)||0;
-  if(isNaN(ship) || ship < 0) ship = 0;
+  if (isNaN(ship) || ship < 0) ship = 0;
   ship = Math.round(ship * 100) / 100;
-  var grand = Math.round((subtotal + tax + ship) * 100) / 100;
+  var raw = Math.round((subtotal + tax + ship) * 100) / 100;
+  // Zoho Round Off is on TOTAL (often nearest ₹1) — not on each line
+  var rounded = Math.round(raw);
+  var roundOff = Math.round((rounded - raw) * 100) / 100;
   return {
     subtotal: subtotal,
     tax_amount: tax,
@@ -12824,7 +12915,11 @@ function computeInvoiceGst(lines, shipping){
     tax_sgst: sgst,
     tax_igst: 0,
     shipping: ship,
-    grand_total: grand
+    /** Before total round-off */
+    grand_total: raw,
+    /** After total round-off (nearest ₹1) */
+    grand_total_rounded: rounded,
+    round_off: roundOff
   };
 }
 function findZohoShippingItemId(){
@@ -13400,31 +13495,38 @@ function zohoBuildEmailCommFields(contact, preferredEmail) {
   return { ids: ids };
 }
 
+/**
+ * Map shops.email → Zoho contact_person_id (primary).
+ * Puts contact_persons + contact_persons_associated so Email Communications checkbox is ticked.
+ */
 function zohoAttachEmailCommunication(payload, token, zohoCustomerId, preferredEmail) {
   if (!payload || !zohoCustomerId) return Promise.resolve(payload);
   return zohoFetchContactDetail(token, zohoCustomerId).then(function(contact){
     if (!contact) {
-      console.warn('[zoho] email checkbox: contact not loaded — deploy edge get_contact?');
+      console.warn('[zoho] email checkbox: contact not loaded — ensure zoho-token supports get_contact');
       return payload;
     }
     var fields = zohoBuildEmailCommFields(contact, preferredEmail);
-    // Only PRIMARY contact_person id — keeps Zoho bulk "Email" as one-click
     if (fields.ids.length) {
+      // API: array of contact_person_ids (required for Email Communications)
       payload.contact_persons = fields.ids;
+      // Newer Zoho UI: explicit email-enabled flag per person
+      payload.contact_persons_associated = fields.ids.map(function(id){
+        return {
+          contact_person_id: String(id),
+          communication_preference: { is_email_enabled: true }
+        };
+      });
       payload._email_comm_ids = fields.ids;
-      try {
-        delete payload.contact_persons_associated;
-      } catch(e){}
-      console.log('[zoho] email communication (primary only):', fields.ids);
+      console.log('[zoho] Email Communications mapped person ids:', fields.ids);
     } else {
-      console.warn('[zoho] no contact_person_id on contact — Email Communications stays unchecked');
+      console.warn('[zoho] no contact_person_id — open Zoho customer → Contact Persons must have primary email');
     }
     // Prefer live Zoho contact payment_terms when present (source of truth)
     var cDays = typeof zohoParsePaymentTermsDays === 'function' ? zohoParsePaymentTermsDays(contact) : null;
     if (cDays != null) {
       payload.payment_terms = cDays;
       payload.payment_terms_label = cDays === 0 ? 'Due on Receipt' : ('Net ' + cDays);
-      // Only recompute due_date when this payload is an invoice (already has due_date)
       if (payload.due_date != null && typeof zohoAddDaysToDate === 'function') {
         var base = payload.date || payload.due_date;
         payload.due_date = zohoAddDaysToDate(base, cDays);
@@ -13435,13 +13537,20 @@ function zohoAttachEmailCommunication(payload, token, zohoCustomerId, preferredE
   });
 }
 
-/** Zoho often applies Email Communications only on update — patch after create (still Draft, no send). */
+/** After create: patch draft so Email Communications checkbox is selected (still Draft, no send). */
 function zohoPatchEmailCommunication(token, docType, docId, personIds) {
   if (!token || !docId || !personIds || !personIds.length) return Promise.resolve({ skipped: true });
   var action = (docType === 'delivery_challan') ? 'update_delivery_challan' : 'update_invoice';
-  // IDs only — matches Zoho Books / community guidance
-  var body = { contact_persons: personIds };
-  console.log('[zoho] patch email communication on', action, docId, personIds);
+  var body = {
+    contact_persons: personIds.map(String),
+    contact_persons_associated: personIds.map(function(id){
+      return {
+        contact_person_id: String(id),
+        communication_preference: { is_email_enabled: true }
+      };
+    })
+  };
+  console.log('[zoho] patch Email Communications on', action, docId, personIds);
   return fetch(CONFIG.SUPABASE_URL + '/functions/v1/zoho-token', {
     method: 'POST',
     headers: {
@@ -13457,7 +13566,26 @@ function zohoPatchEmailCommunication(token, docType, docId, personIds) {
       invoice_payload: body
     })
   }).then(function(r){ return r.json(); }).then(function(data){
-    console.log('[zoho] patch email communication result', data && (data.code !== undefined ? data.code : data));
+    // If associated format rejected (some orgs / challan), retry ids only
+    if (data && data.code !== undefined && data.code !== 0) {
+      console.warn('[zoho] patch with associated failed, retry ids only', data.message || data);
+      return fetch(CONFIG.SUPABASE_URL + '/functions/v1/zoho-token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + CONFIG.SUPABASE_ANON_KEY
+        },
+        body: JSON.stringify({
+          action: action,
+          access_token: token,
+          org_id: _zohoCreds.org_id,
+          dc: _zohoCreds.dc || 'in',
+          invoice_id: String(docId),
+          invoice_payload: { contact_persons: personIds.map(String) }
+        })
+      }).then(function(r2){ return r2.json(); });
+    }
+    console.log('[zoho] patch Email Communications result', data && (data.code !== undefined ? data.code : data));
     return data;
   }).catch(function(e){
     console.warn('[zoho] patch email communication failed', e);
@@ -13533,48 +13661,111 @@ async function zohoCreateInvoiceReal(order) {
         payload: payload
       }));
 
-      // Skip sync_contact when we already have a Zoho contact id (avoids "already exists" + ~1s)
-      var ensureContact = Promise.resolve();
+      // Ensure Zoho contact exists (sync maps email + email2 → contact persons)
+      // Then map primary contact_person_id onto invoice/challan Email Communications
+      var ensureContact = Promise.resolve(zohoCustomerId);
       var hasZohoContactId = !!(zohoCustomerId && String(zohoCustomerId).length >= 10);
-      if (!hasZohoContactId && _createCtx.shopEmail && shop) {
-        console.log('[zoho] no contact id — syncing contact before create');
+      if (!hasZohoContactId && shop) {
+        console.log('[zoho] no contact id — sync customer (email + contact persons) before create');
         ensureContact = zohoSyncCustomerReal({
           name: shop.name || order.shop_name,
           address: shop.address || '',
           area: shop.area || '',
           mobile: shop.mobile || order.mobile || '',
-          email: _createCtx.shopEmail,
+          email: _createCtx.shopEmail || shop.email || '',
           email2: shop.email2 || '',
           shop_id: shop.shop_id || shop.customer_id,
           customer_id: shop.customer_id || shop.shop_id
+        }).then(function(contact){
+          var id2 = (contact && contact.contact_id) || null;
+          if (id2) {
+            shop.zoho_contact_id = String(id2);
+            try {
+              if (typeof allCustomers !== 'undefined' && Array.isArray(allCustomers)) {
+                allCustomers.forEach(function(c){
+                  if (String(c.shop_id||'') === String(shop.shop_id||'') ||
+                      String(c.customer_id||'') === String(shop.customer_id||shop.shop_id||'')) {
+                    c.zoho_contact_id = String(id2);
+                  }
+                });
+              }
+            } catch (eMem) {}
+            payload.customer_id = String(id2);
+            zohoCustomerId = String(id2);
+          }
+          return zohoCustomerId;
         }).catch(function(e){
-          console.warn('[zoho] contact email sync before create failed:', e);
+          console.warn('[zoho] contact sync before create failed:', e);
+          return zohoCustomerId;
         });
       } else {
-        console.log('[zoho] skip contact sync (id=', zohoCustomerId || 'none', ')');
+        console.log('[zoho] using contact id=', zohoCustomerId || 'none');
       }
 
-      return ensureContact.then(function(){
-        // Attach PRIMARY email person only (not email2) so Zoho bulk Email stays one-click
-        if (hasZohoContactId) {
-          return zohoAttachEmailCommunication(payload, token, zohoCustomerId, _createCtx.shopEmail)
-            .then(function(p){
-              _createCtx.emailCommIds = (p && p._email_comm_ids) || [];
-              try { delete p._email_comm_ids; } catch(e){}
-              return p;
-            })
-            .catch(function(){
-              _createCtx.emailCommIds = [];
-              return payload;
-            });
+      return ensureContact.then(function(cid){
+        var contactId = cid || zohoCustomerId || payload.customer_id;
+        if (!contactId || String(contactId).length < 5) {
+          console.warn('[zoho] no Zoho contact id — Email Communications will be empty');
+          _createCtx.emailCommIds = [];
+          return payload;
         }
-        _createCtx.emailCommIds = [];
-        return payload;
+        payload.customer_id = String(contactId);
+
+        // Fast path: use cached zoho_person_id from shop (no live get_contact)
+        var sNow = findShopForZoho(order) || shop;
+        var cachedIds = [];
+        if (sNow && sNow.zoho_person_id) cachedIds.push(String(sNow.zoho_person_id));
+        if (sNow && sNow.zoho_person_id2 && cachedIds.indexOf(String(sNow.zoho_person_id2)) < 0) {
+          cachedIds.push(String(sNow.zoho_person_id2));
+        }
+        if (cachedIds.length) {
+          payload.contact_persons = cachedIds;
+          payload.contact_persons_associated = cachedIds.map(function(id){
+            return {
+              contact_person_id: id,
+              communication_preference: { is_email_enabled: true }
+            };
+          });
+          _createCtx.emailCommIds = cachedIds;
+          console.log('[zoho] Email Communications from cache (no get_contact):', cachedIds);
+          return payload;
+        }
+
+        // Fallback: live get_contact only if cache empty
+        console.log('[zoho] no cached person id — get_contact once');
+        return zohoAttachEmailCommunication(payload, token, contactId, _createCtx.shopEmail)
+          .then(function(p){
+            _createCtx.emailCommIds = (p && p._email_comm_ids) || [];
+            try { delete p._email_comm_ids; } catch(e){}
+            // Backfill cache for next creates
+            if (_createCtx.emailCommIds.length && sNow) {
+              sNow.zoho_person_id = _createCtx.emailCommIds[0];
+              if (_createCtx.emailCommIds[1]) sNow.zoho_person_id2 = _createCtx.emailCommIds[1];
+              try {
+                apiPost({
+                  action: 'updateShop',
+                  shop_id: sNow.shop_id || sNow.customer_id,
+                  name: sNow.name,
+                  address: sNow.address || '',
+                  area: sNow.area || '',
+                  zoho_person_id: _createCtx.emailCommIds[0] || null,
+                  zoho_person_id2: _createCtx.emailCommIds[1] || null,
+                  last_updated_by: 'Zoho person cache',
+                  last_updated_at: new Date().toLocaleString('en-IN')
+                });
+              } catch (eSave) {}
+            }
+            return p;
+          })
+          .catch(function(e){
+            console.warn('[zoho] attach Email Communications failed', e);
+            _createCtx.emailCommIds = [];
+            return payload;
+          });
       }).then(function(finalPayload){
-        try {
-          delete finalPayload._email_comm_ids;
-          delete finalPayload.contact_persons_associated;
-        } catch(e){}
+        try { delete finalPayload._email_comm_ids; } catch(e){}
+        // Keep contact_persons + contact_persons_associated on create
+        console.log('[zoho] create payload contact_persons=', finalPayload.contact_persons || null);
         return fetch(CONFIG.SUPABASE_URL + '/functions/v1/zoho-token', {
           method: 'POST',
           headers: {
@@ -13602,7 +13793,7 @@ async function zohoCreateInvoiceReal(order) {
         || data.delivery_challan || data.deliveryschedule || {};
       var isChallanResp = !!(data.deliverychallan || data.deliverychallans || data.delivery_challan
         || doc.deliverychallan_id || doc.deliverychallans_id || doc.challan_status);
-      // Draft only — do not auto-send email. Staff emails from Zoho bulk or our Email button.
+      // Draft only — do not auto-send email to customer
       var result = {
         invoice_id:     doc.invoice_id || doc.deliverychallan_id || doc.deliverychallans_id
                           || doc.deliveryschedule_id || '',
@@ -13614,7 +13805,7 @@ async function zohoCreateInvoiceReal(order) {
         email_sent:     false,
         email_to:       _createCtx.shopEmail || ''
       };
-      // Patch Email Communications = primary only (enables Zoho single-button bulk email)
+      // Patch after create so Email Communications checkbox is selected on draft
       var personIds = _createCtx.emailCommIds || [];
       if (result.invoice_id && personIds.length) {
         return zohoPatchEmailCommunication(
@@ -13623,6 +13814,9 @@ async function zohoCreateInvoiceReal(order) {
           result.invoice_id,
           personIds
         ).then(function(){ return result; });
+      }
+      if (result.invoice_id && !personIds.length) {
+        console.warn('[zoho] draft created without Email Communications — sync customer first so contact persons exist');
       }
       return result;
     });

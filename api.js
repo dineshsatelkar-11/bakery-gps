@@ -524,6 +524,8 @@ function normalizeProducts(list) {
            brand: b.brand || null,
           zoho_doc_type: b.zoho_doc_type || 'invoice',
           zoho_contact_id: b.zoho_contact_id || null,
+          zoho_person_id: b.zoho_person_id || null,
+          zoho_person_id2: b.zoho_person_id2 || null,
           shipping_charge: b.shipping_charge !== undefined && b.shipping_charge !== '' && b.shipping_charge != null
             ? parseFloat(b.shipping_charge) : null,
           payment_terms_days: b.payment_terms_days !== undefined && b.payment_terms_days !== '' && b.payment_terms_days != null
@@ -554,6 +556,8 @@ function normalizeProducts(list) {
           lng: b.lng !== '' && b.lng != null ? parseFloat(b.lng) : null,
           zoho_doc_type:   b.zoho_doc_type,
           zoho_contact_id: b.zoho_contact_id !== undefined ? (b.zoho_contact_id || null) : undefined,
+          zoho_person_id: b.zoho_person_id !== undefined ? (b.zoho_person_id || null) : undefined,
+          zoho_person_id2: b.zoho_person_id2 !== undefined ? (b.zoho_person_id2 || null) : undefined,
           shipping_charge: b.shipping_charge !== undefined
             ? (b.shipping_charge === '' || b.shipping_charge == null ? null : parseFloat(b.shipping_charge))
             : undefined,

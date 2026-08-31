@@ -169,6 +169,17 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { status: 200, headers: corsHeaders });
   }
+  // Health check — open in browser to confirm deploy
+  if (req.method === "GET") {
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        service: "zoho-status-webhook",
+        usage: "POST from Zoho Workflow when invoice status changes",
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "POST only" }), {
       status: 405,
@@ -287,6 +298,13 @@ Deno.serve(async (req) => {
     totalRaw !== "" && !isNaN(Number(String(totalRaw).replace(/,/g, "")))
       ? Number(String(totalRaw).replace(/,/g, ""))
       : null;
+
+  // Zoho sometimes keeps status text but balance hits 0 after payment
+  if (balance != null && balance <= 0.01 && !mapped.markPaid && mapped.payment_status !== "void") {
+    mapped.markPaid = true;
+    mapped.payment_status = "paid";
+    mapped.zoho_invoice_status = mapped.zoho_invoice_status === "void" ? "void" : "paid";
+  }
 
   const supabase = createClient(supabaseUrl, serviceKey);
 

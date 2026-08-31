@@ -782,6 +782,10 @@
         if (!q) return true;
         var hay = [o.shop_name, o.shop_id, o.zoho_invoice_number, o.zoho_invoice_id].join(' ').toLowerCase();
         return hay.indexOf(q) >= 0;
+      }).sort(function(a,b){
+        // Alphabetical by shop name
+        return String(a.shop_name || a.shop_id || '').toLowerCase()
+          .localeCompare(String(b.shop_name || b.shop_id || '').toLowerCase());
       });
       var nSent = rows.filter(function(o){ return !!o.zoho_invoice_id; }).length;
       var nDel = rows.filter(function(o){ return o._delivered; }).length;
@@ -1955,6 +1959,7 @@
       if (!doc.invoice_id && !doc.deliverychallan_id && data && data.code && data.code !== 0) {
         return Promise.reject(new Error(data.message || ('Zoho code ' + data.code)));
       }
+      // Zoho total already includes Round Off / adjustment — always trust it
       var total = parseFloat(doc.total);
       var balance = doc.balance != null ? parseFloat(doc.balance) : total;
       if (isNaN(total)) total = null;
@@ -1965,6 +1970,8 @@
       if (isNaN(taxTotal)) taxTotal = null;
       var shipping = parseFloat(doc.shipping_charge != null ? doc.shipping_charge : doc.shipping_charge_total);
       if (isNaN(shipping)) shipping = null;
+      var adjustment = parseFloat(doc.adjustment);
+      if (isNaN(adjustment)) adjustment = null;
       var zStatus = _payNormalizeZohoStatus(doc.status || doc.challan_status || doc.current_sub_status || '');
       var paySt = _payMapZohoStatus(zStatus, balance);
       if (paySt === 'paid') balance = 0;
@@ -1978,6 +1985,7 @@
         payment_status: paySt === 'void' ? 'void' : paySt,
         zoho_invoice_status: zStatus || ''
       };
+      // Source of truth = Zoho (includes round-off) — overwrites local calc mismatch
       if (total != null) body.invoice_total = total;
       if (balance != null) body.balance_due = balance;
       if (subtotal != null) body.invoice_subtotal = subtotal;
@@ -1991,6 +1999,7 @@
         body.tax_igst = 0;
       }
       if (shipping != null) body.shipping_amount = shipping;
+      if (adjustment != null) body.round_off = adjustment;
       if (isDc) body.zoho_doc_type = 'delivery_challan';
       else if (data && data.invoice) body.zoho_doc_type = 'invoice';
 
@@ -2057,20 +2066,10 @@
       }
       var targets = [];
       if (mode === 'selected') {
-        var boxes = document.querySelectorAll('.pay-desk-cb:checked');
-        if (!boxes.length) {
-          _zohoSyncRelease();
-          _payDeskMsg('Select one or more invoices first (expand customer → tick boxes).', false);
-          return;
-        }
-        boxes.forEach(function(cb) {
-          var id = cb.getAttribute('data-id');
-          var o = _payDeskRows.find(function(r){ return String(r.id) === String(id); });
-          if (o && o.zoho_invoice_id) targets.push(o);
-        });
+        targets = payDeskSelectedShopRows(function(o){ return !!o.zoho_invoice_id; });
         if (!targets.length) {
           _zohoSyncRelease();
-          _payDeskMsg('Selected rows have no Zoho document id.', false);
+          _payDeskMsg('Select shop(s) first (parent checkbox). No Zoho docs in selection.', false);
           return;
         }
       } else if (mode === 'unpaid') {
@@ -2372,9 +2371,11 @@
         if (o.payment_proof_file_id && !g.payment_proof_file_id) g.payment_proof_file_id = o.payment_proof_file_id;
       });
       return Object.keys(map).map(function(k){ return map[k]; }).sort(function(a,b){
-        var da = String(a.paid_at || '');
-        var db = String(b.paid_at || '');
-        return db.localeCompare(da);
+        // Alphabetical by shop name
+        var na = String(a.shop_name || a.shop_id || '').toLowerCase();
+        var nb = String(b.shop_name || b.shop_id || '').toLowerCase();
+        if (na !== nb) return na.localeCompare(nb);
+        return String(b.paid_at || '').localeCompare(String(a.paid_at || ''));
       });
     }
     function paidPaymentGroupHtml(g) {
@@ -2677,8 +2678,10 @@
         return hay.indexOf(q) >= 0;
       }
       var listOpen = unpaid.filter(matchQ).sort(function(a,b){
-        var ca = a.customer_claimed_paid ? 0 : 1, cb = b.customer_claimed_paid ? 0 : 1;
-        if (ca !== cb) return ca - cb;
+        // Alphabetical by shop name
+        var na = String(a.shop_name || a.shop_id || '').toLowerCase();
+        var nb = String(b.shop_name || b.shop_id || '').toLowerCase();
+        if (na !== nb) return na.localeCompare(nb);
         return String(b.delivery_date||'').localeCompare(String(a.delivery_date||''));
       });
       var qDraft = ((document.getElementById('pay-desk-q-draft') || {}).value || '').toLowerCase().trim();
@@ -2688,10 +2691,19 @@
         return hay.indexOf(qDraft) >= 0;
       }
       var listDraft = drafts.filter(matchQDraft).sort(function(a,b){
+        var na = String(a.shop_name || a.shop_id || '').toLowerCase();
+        var nb = String(b.shop_name || b.shop_id || '').toLowerCase();
+        if (na !== nb) return na.localeCompare(nb);
         return String(b.delivery_date||'').localeCompare(String(a.delivery_date||''));
       });
-      var listReq = claims.filter(matchQ);
+      var listReq = claims.filter(matchQ).sort(function(a,b){
+        return String(a.shop_name || a.shop_id || '').toLowerCase()
+          .localeCompare(String(b.shop_name || b.shop_id || '').toLowerCase());
+      });
       var listPaid = paid.filter(matchQ).sort(function(a,b){
+        var na = String(a.shop_name || a.shop_id || '').toLowerCase();
+        var nb = String(b.shop_name || b.shop_id || '').toLowerCase();
+        if (na !== nb) return na.localeCompare(nb);
         return String(b.paid_at||b.delivery_date||'').localeCompare(String(a.paid_at||a.delivery_date||''));
       });
 
@@ -2716,7 +2728,7 @@
           actions += '<button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1px solid #ffe082" onclick="event.stopPropagation();payDeskSyncOne(\''+o.id+'\')">↻ Status</button> ';
         }
         if (st2 !== 'paid') {
-          actions += '<button class="btn-sm" style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9" onclick="payDeskRemindOne(\''+o.id+'\')">📨 Remind</button> ';
+          // Remind is on parent shop row only (sends overall balance)
           actions += '<button class="btn-sm" style="background:#e8f5e9;color:#1a5a38;border:1px solid #a5d6a7" onclick="payDeskMarkPaid(\''+o.id+'\')">✓ Mark paid</button>';
           if (o.customer_claimed_paid) actions += ' <button class="btn-sm" style="background:#2d7a4f;color:#fff;border:none" onclick="event.stopPropagation();payDeskConfirmReceived(\''+o.id+'\')">✓ Confirm received</button>';
         } else {
@@ -2724,10 +2736,9 @@
         }
         // View / Edit for unpaid and paid (qty edit → save order → optional Update Zoho)
         actions += ' <button class="btn-sm" style="background:#f5ede0;color:#4a2f14;border:1px solid #d0c0aa" onclick="event.stopPropagation();openPayInvDetail(\''+String(o.id).replace(/'/g,'')+'\')">📄 View / Edit</button>';
-        var canSelect = st2 !== 'paid';
+        // Selection is parent shop only — no child checkbox
         return '<div class="card" style="margin-bottom:8px;padding:12px">'+
           '<div style="display:flex;gap:10px;align-items:flex-start">'+
-          (canSelect ? '<input type="checkbox" class="pay-desk-cb" data-id="'+esc(String(o.id))+'" data-shop="'+esc(String(o.shop_id||''))+'" onclick="event.stopPropagation()" onchange="payDeskUpdateSelCount()" style="margin-top:4px;width:18px;height:18px;accent-color:#c8864a;flex-shrink:0">' : '<span style="width:18px;flex-shrink:0"></span>')+
           '<div style="flex:1;min-width:0">'+
           '<div style="font-size:13px;font-weight:800;margin-bottom:4px">'+esc(o.shop_name||o.shop_id||'Shop')+'</div>'+
           '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;line-height:1.5">'+badges+'<br>'+
@@ -2785,9 +2796,9 @@
           if (o.shop_name) map[k].shop_name = o.shop_name;
         });
         return Object.keys(map).map(function(k){ return map[k]; }).sort(function(a,b){
-          var da = a.rows.reduce(function(s,o){ return s + _payDue(o); }, 0);
-          var db = b.rows.reduce(function(s,o){ return s + _payDue(o); }, 0);
-          return db - da;
+          // Alphabetical by shop name
+          return String(a.shop_name || a.shop_id || '').toLowerCase()
+            .localeCompare(String(b.shop_name || b.shop_id || '').toLowerCase());
         });
       }
       function customerGroupHtml(g) {
@@ -2814,7 +2825,7 @@
         var idList = g.rows.map(function(r){ return String(r.id); }).join(',');
         return '<div class="card" style="margin-bottom:10px;padding:0;overflow:hidden">'+
           '<div style="padding:12px 14px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px">'+
-            '<input type="checkbox" class="pay-desk-shop-cb" data-ids="'+esc(idList)+'" title="Select all invoices for this shop" onclick="event.stopPropagation()" onchange="payDeskSelectShop(this)" style="margin-top:4px;width:18px;height:18px;accent-color:#c8864a;flex-shrink:0">'+
+            '<input type="checkbox" class="pay-desk-shop-cb" data-ids="'+esc(idList)+'" data-shop="'+esc(String(g.shop_id||''))+'" title="Select this shop" onclick="event.stopPropagation()" onchange="payDeskUpdateSelCount()" style="margin-top:4px;width:18px;height:18px;accent-color:#c8864a;flex-shrink:0">'+
             '<div style="flex:1;min-width:0;cursor:pointer" onclick="payDeskToggleCust(\''+sid+'\')">'+
               '<div style="font-size:14px;font-weight:900;color:#4a2f14;margin-bottom:4px">'+esc(g.shop_name)+'</div>'+
               '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;line-height:1.5">'+
@@ -2823,7 +2834,10 @@
                 ' due · <b>'+n+'</b> invoice'+(n===1?'':'s')+'</div>'+
               '</div>'+
             '</div>'+
-            '<div style="font-size:18px;color:#8a7a6a;flex-shrink:0;cursor:pointer" id="pay-cust-chev-'+sid+'" onclick="payDeskToggleCust(\''+sid+'\')">'+(open?'▾':'▸')+'</div>'+
+            '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">'+
+              '<div style="font-size:18px;color:#8a7a6a;cursor:pointer" id="pay-cust-chev-'+sid+'" onclick="payDeskToggleCust(\''+sid+'\')">'+(open?'▾':'▸')+'</div>'+
+              '<button type="button" class="btn-sm" style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;font-weight:800;white-space:nowrap" onclick="event.stopPropagation();payDeskRemindShop(\''+sid+'\')">📨 Remind</button>'+
+            '</div>'+
           '</div>'+
           '<div id="pay-cust-'+sid+'" style="display:'+(open?'block':'none')+';border-top:1.5px solid #e8dfd2;background:#faf7f2;padding:10px">'+
             '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">'+
@@ -3001,45 +3015,38 @@
       else if (typeof challanDeskEdit === 'function') challanDeskEdit(id);
     }
     
+    /** Parent shop selection only — no child invoice checkboxes */
     function payDeskUpdateSelCount() {
-      var n = document.querySelectorAll('.pay-desk-cb:checked').length;
+      var n = document.querySelectorAll('.pay-desk-shop-cb:checked').length;
       var el = document.getElementById('pay-desk-selcount');
-      if (el) el.textContent = n ? (n + ' selected') : '';
+      if (el) el.textContent = n ? (n + ' shop' + (n === 1 ? '' : 's') + ' selected') : '';
     }
     function payDeskSelect(mode) {
-      var boxes = document.querySelectorAll('.pay-desk-cb');
-      boxes.forEach(function(cb) {
-        var id = cb.getAttribute('data-id');
-        var o = _payDeskRows.find(function(r){ return String(r.id) === String(id); });
-        if (!o) { cb.checked = false; return; }
-        if (mode === 'none') cb.checked = false;
-        else if (mode === 'unpaid') cb.checked = !_payIsPaid(o) && !_payIsVoid(o);
-        else if (mode === 'visible') cb.checked = true;
-      });
-      // keep shop-level boxes in sync
       document.querySelectorAll('.pay-desk-shop-cb').forEach(function(scb){
-        var ids = String(scb.getAttribute('data-ids')||'').split(',').filter(Boolean);
-        if (!ids.length) { scb.checked = false; return; }
         if (mode === 'none') { scb.checked = false; return; }
-        var allOn = ids.every(function(id){
-          var cb = document.querySelector('.pay-desk-cb[data-id="'+id+'"]');
-          return cb && cb.checked;
-        });
-        scb.checked = allOn;
+        if (mode === 'visible' || mode === 'unpaid') scb.checked = true;
       });
       payDeskUpdateSelCount();
     }
-    /** Tick/untick all invoice checkboxes for one shop (multi-select). */
-    function payDeskSelectShop(scb) {
-      if (!scb) return;
-      var ids = String(scb.getAttribute('data-ids')||'').split(',').filter(Boolean);
-      var on = !!scb.checked;
-      ids.forEach(function(id){
-        var cb = document.querySelector('.pay-desk-cb[data-id="'+CSS.escape(id)+'"]');
-        // CSS.escape may not exist on older WebViews
-        if (!cb) cb = document.querySelector('.pay-desk-cb[data-id="'+id.replace(/"/g,'')+'"]');
-        if (cb) cb.checked = on;
+    /** Collect order rows for all checked parent shops */
+    function payDeskSelectedShopRows(filterFn) {
+      var rows = [];
+      var seen = {};
+      document.querySelectorAll('.pay-desk-shop-cb:checked').forEach(function(scb){
+        var ids = String(scb.getAttribute('data-ids') || '').split(',').filter(Boolean);
+        ids.forEach(function(id){
+          if (seen[id]) return;
+          var o = (_payDeskRows || []).find(function(r){ return String(r.id) === String(id); });
+          if (!o) return;
+          if (typeof filterFn === 'function' && !filterFn(o)) return;
+          seen[id] = 1;
+          rows.push(o);
+        });
       });
+      return rows;
+    }
+    function payDeskSelectShop(scb) {
+      // Parent-only: checkbox already toggled; just refresh count
       payDeskUpdateSelCount();
     }
     function _payReminderMessage(o) {
@@ -3086,7 +3093,7 @@
       var o = _payDeskRows.find(function(r){ return String(r.id) === String(id); });
       if (!o) return;
       if (_payIsPaid(o)) { _payDeskMsg('Already paid.', false); return; }
-      if (!confirm('Send payment reminder to ' + (o.shop_name || o.shop_id) + '?')) return;
+      if (!confirm('Send payment reminder to ' + (o.shop_name || o.shop_id) + '?\n\nMessage includes complete unpaid total for this shop.')) return;
       _payDeskMsg('Sending reminder…', null);
       _paySendReminder(o).then(function() {
         _payDeskMsg('Reminder sent to ' + (o.shop_name || ''), true);
@@ -3095,43 +3102,123 @@
         _payDeskMsg('Failed: ' + (e.message || e), false);
       });
     }
-    function payDeskSendReminders() {
-      var boxes = document.querySelectorAll('.pay-desk-cb:checked');
-      if (!boxes.length) {
-        _payDeskMsg('Select one or more unpaid invoices first.', false);
-        return;
-      }
-      var targets = [];
-      var seenShop = {};
-      boxes.forEach(function(cb) {
-        var id = cb.getAttribute('data-id');
-        var o = _payDeskRows.find(function(r){ return String(r.id) === String(id); });
-        if (!o || _payIsPaid(o) || !o.shop_id) return;
-        // One reminder per shop — message already includes complete shop balance
-        var sk = String(o.shop_id);
-        if (seenShop[sk]) return;
-        seenShop[sk] = 1;
-        targets.push(o);
+    /** Parent-level remind — one message with shop overall unpaid balance */
+    function payDeskRemindShop(sid) {
+      var key = String(sid || '');
+      var rows = (_payDeskRows || []).filter(function(r){
+        var k = String(r.shop_id || r.shop_name || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+        return k === key && !_payIsPaid(r) && !_payIsVoid(r) && !_payIsDraft(r) && !_payIsChallan(r);
       });
-      if (!targets.length) {
-        _payDeskMsg('No valid unpaid rows selected.', false);
+      if (!rows.length) {
+        _payDeskMsg('No unpaid invoices for this shop.', false);
         return;
       }
-      if (!confirm('Send payment reminder to ' + targets.length + ' shop(s)?\n\nEach message shows that shop\'s complete unpaid total (not one invoice only).')) return;
-      _payDeskMsg('Sending 0/' + targets.length + '…', null);
-      var ok = 0, fail = 0, i = 0;
+      var o = rows[0];
+      var total = rows.reduce(function(s,r){ return s + _payDue(r); }, 0);
+      if (!confirm(
+        'Send payment reminder to ' + (o.shop_name || o.shop_id) + '?\n\n' +
+        'Total due: ₹' + total.toLocaleString('en-IN', { maximumFractionDigits: 2 }) +
+        ' (' + rows.length + ' invoice' + (rows.length === 1 ? '' : 's') + ')'
+      )) return;
+      _payDeskMsg('Sending reminder…', null);
+      _paySendReminder(o).then(function() {
+        // Mark reminded on all open invoices for this shop
+        var now = new Date().toISOString();
+        return Promise.all(rows.map(function(r){
+          r.payment_reminder_sent_at = now;
+          return apiPost({
+            action: 'updateCustomerOrderStatus',
+            id: r.id,
+            status: r.status || 'approved',
+            payment_reminder_sent_at: now
+          }).catch(function(){});
+        }));
+      }).then(function() {
+        _payDeskMsg('Reminder sent to ' + (o.shop_name || '') + ' (₹' + total.toLocaleString('en-IN', { maximumFractionDigits: 0 }) + ')', true);
+        renderPaymentsDesk();
+      }).catch(function(e) {
+        _payDeskMsg('Failed: ' + (e.message || e), false);
+      });
+    }
+    /**
+   * Bulk remind — one push per selected shop with that shop's full unpaid balance.
+   * Parent shop checkbox only.
+   */
+    function payDeskSendReminders() {
+      var shopIds = {};
+      payDeskSelectedShopRows(function(o){
+        return o.shop_id && !_payIsPaid(o) && !_payIsVoid(o) && !_payIsDraft(o) && !_payIsChallan(o);
+      }).forEach(function(o){
+        shopIds[String(o.shop_id)] = o;
+      });
+      var targets = Object.keys(shopIds).map(function(k){ return shopIds[k]; });
+      if (!targets.length) {
+        _payDeskMsg('Select shop(s) first (parent checkbox) — one reminder per shop (full balance).', false);
+        return;
+      }
+      // Build preview totals
+      var previewLines = [];
+      var grand = 0;
+      targets.forEach(function(o){
+        var rows = (_payDeskRows || []).filter(function(r){
+          return String(r.shop_id) === String(o.shop_id)
+            && !_payIsPaid(r) && !_payIsVoid(r) && !_payIsDraft(r) && !_payIsChallan(r);
+        });
+        var tot = rows.reduce(function(s,r){ return s + _payDue(r); }, 0);
+        grand += tot;
+        previewLines.push((o.shop_name || o.shop_id) + ': ₹' + tot.toLocaleString('en-IN', { maximumFractionDigits: 0 }) + ' (' + rows.length + ' inv)');
+      });
+      if (!confirm(
+        'Send payment reminder to ' + targets.length + ' shop(s)?\n\n' +
+        previewLines.slice(0, 12).join('\n') +
+        (previewLines.length > 12 ? '\n… +' + (previewLines.length - 12) + ' more' : '') +
+        '\n\nTotal: ₹' + grand.toLocaleString('en-IN', { maximumFractionDigits: 0 }) +
+        '\n\nEach shop gets ONE message with their complete unpaid balance.'
+      )) return;
+
+      _payDeskMsg('Reminders 0/' + targets.length + '…', null);
+      var ok = 0, fail = 0, skipped = 0, i = 0;
+      function markShopReminded(o) {
+        var now = new Date().toISOString();
+        var rows = (_payDeskRows || []).filter(function(r){
+          return String(r.shop_id) === String(o.shop_id)
+            && !_payIsPaid(r) && !_payIsVoid(r) && !_payIsDraft(r) && !_payIsChallan(r);
+        });
+        return Promise.all(rows.map(function(r){
+          r.payment_reminder_sent_at = now;
+          return apiPost({
+            action: 'updateCustomerOrderStatus',
+            id: r.id,
+            status: r.status || 'approved',
+            payment_reminder_sent_at: now
+          }).catch(function(){});
+        }));
+      }
       function next() {
         if (i >= targets.length) {
-          _payDeskMsg('Reminders: ' + ok + ' sent, ' + fail + ' failed.', fail && !ok ? false : true);
+          var msg = 'Reminders: ' + ok + ' sent';
+          if (fail) msg += ', ' + fail + ' failed';
+          if (skipped) msg += ', ' + skipped + ' skipped (Pay tab off)';
+          _payDeskMsg(msg + '.', fail && !ok ? false : true);
           renderPaymentsDesk();
           return;
         }
         var o = targets[i++];
-        _payDeskMsg('Sending ' + i + '/' + targets.length + ' — ' + (o.shop_name || ''), null);
+        _payDeskMsg('Reminder ' + i + '/' + targets.length + ' — ' + (o.shop_name || o.shop_id), null);
+        if (!_payShopPayTabEnabled(o.shop_id)) {
+          skipped++;
+          setTimeout(next, 100);
+          return;
+        }
         _paySendReminder(o)
+          .then(function(){ return markShopReminded(o); })
           .then(function(){ ok++; })
-          .catch(function(e){ fail++; console.warn(e); })
-          .then(function(){ setTimeout(next, 200); });
+          .catch(function(e){
+            var em = (e && e.message) ? e.message : String(e);
+            if (/Pay tab disabled/i.test(em)) skipped++;
+            else { fail++; console.warn('[bulk remind]', o.shop_id, e); }
+          })
+          .then(function(){ setTimeout(next, 250); });
       }
       next();
     }
@@ -3186,25 +3273,16 @@
       });
     }
 
-    /** Bulk: one click — To=email, CC=email2 — no per-customer email picker */
+    /** Bulk: email all invoices for selected shops — To=email, CC=email2 */
     function payDeskEmailSelected() {
-      var boxes = document.querySelectorAll('.pay-desk-cb:checked');
-      if (!boxes.length) {
-        _payDeskMsg('Select one or more invoices first.', false);
-        return;
-      }
-      var targets = [];
-      boxes.forEach(function(cb) {
-        var id = cb.getAttribute('data-id');
-        var o = _payDeskRows.find(function(r){ return String(r.id) === String(id); });
-        if (!o || !o.zoho_invoice_id || _payIsChallan(o) || _payIsVoid(o)) return;
-        targets.push(o);
+      var targets = payDeskSelectedShopRows(function(o){
+        return o.zoho_invoice_id && !_payIsChallan(o) && !_payIsVoid(o);
       });
       if (!targets.length) {
-        _payDeskMsg('No invoices with Zoho id selected (challans skipped).', false);
+        _payDeskMsg('Select shop(s) first. No invoices with Zoho id in selection (challans skipped).', false);
         return;
       }
-      if (!confirm('Email ' + targets.length + ' invoice(s) from Zoho?\n\nTo = primary email\nCC = Email 2 (if set)\n\nNo need to pick email per customer.')) return;
+      if (!confirm('Email ' + targets.length + ' invoice(s) for selected shop(s)?\n\nTo = primary email\nCC = Email 2 (if set)')) return;
       _payDeskMsg('Emailing 0/' + targets.length + '…', null);
       var ok = 0, fail = 0, i = 0, lastErr = '';
       function next() {
@@ -3913,12 +3991,8 @@ function payDeskMarkPaid(id) {
     }
 
     function payDeskConfirmSelectedRequests() {
-      var boxes = document.querySelectorAll('.pay-desk-cb:checked');
-      var targets = [];
-      boxes.forEach(function(cb) {
-        var id = cb.getAttribute('data-id');
-        var o = _payDeskRows.find(function(r){ return String(r.id) === String(id); });
-        if (o && o.customer_claimed_paid && !_payIsPaid(o)) targets.push(o);
+      var targets = payDeskSelectedShopRows(function(o){
+        return o.customer_claimed_paid && !_payIsPaid(o);
       });
       if (!targets.length) {
         // if none selected, take all open claims
@@ -4033,14 +4107,21 @@ function payDeskLoadBlockSettings() {
         }).catch(function(e){ _payDeskMsg('Failed: '+(e.message||e), false); });
     }
     function payDeskBlockSelected(block) {
-      var boxes = document.querySelectorAll('.pay-desk-cb:checked');
       var shopIds = [];
-      boxes.forEach(function(cb){
-        var sid = cb.getAttribute('data-shop');
-        if(sid && shopIds.indexOf(String(sid))<0) shopIds.push(String(sid));
+      document.querySelectorAll('.pay-desk-shop-cb:checked').forEach(function(scb){
+        var sid = scb.getAttribute('data-shop');
+        if (!sid) {
+          // fallback: first order id → shop_id
+          var ids = String(scb.getAttribute('data-ids')||'').split(',').filter(Boolean);
+          if (ids[0]) {
+            var o = (_payDeskRows||[]).find(function(r){ return String(r.id)===String(ids[0]); });
+            if (o) sid = o.shop_id;
+          }
+        }
+        if (sid && shopIds.indexOf(String(sid)) < 0) shopIds.push(String(sid));
       });
       if(!shopIds.length){
-        _payDeskMsg('Select invoices for the shops to block/unblock.', false);
+        _payDeskMsg('Select shop(s) first (parent checkbox) to block/unblock.', false);
         return;
       }
       var cur = window._orderBlockedShops || [];
@@ -4877,6 +4958,7 @@ function payDeskLoadBlockSettings() {
       };
       window.payDeskSyncOne = typeof payDeskSyncOne === 'function' ? payDeskSyncOne : function(){};
       window.payDeskRemindOne = typeof payDeskRemindOne === 'function' ? payDeskRemindOne : function(){};
+      window.payDeskRemindShop = typeof payDeskRemindShop === 'function' ? payDeskRemindShop : function(){};
       window.payDeskConfirmReceived = typeof payDeskConfirmReceived === 'function' ? payDeskConfirmReceived : function(){};
       window.payDeskRejectRequest = typeof payDeskRejectRequest === 'function' ? payDeskRejectRequest : function(){};
       window.adminViewPaymentProof = typeof adminViewPaymentProof === 'function' ? adminViewPaymentProof : function(){};
