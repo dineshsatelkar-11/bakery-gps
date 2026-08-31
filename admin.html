@@ -13151,7 +13151,7 @@ function renderZohoInvPreviewHtml(order, shop, isDC){
   var shipAmt = (!isNaN(ship) && ship > 0) ? ship : 0;
   var gst = computeInvoiceGst(lines, shipAmt);
   var sub = gst.subtotal;
-  var total = gst.grand_total;
+  var total = gst.grand_total_rounded != null ? gst.grand_total_rounded : gst.grand_total;
 
   var addr = (shop && (shop.address||'')) || '';
   var area = (shop && (shop.area||'')) || '';
@@ -13198,10 +13198,13 @@ function renderZohoInvPreviewHtml(order, shop, isDC){
       (gst.tax_sgst>0?'<div style="display:flex;justify-content:space-between"><span>SGST</span><b>₹'+gst.tax_sgst.toFixed(2)+'</b></div>':'')+
       (gst.tax_amount>0 && !gst.tax_cgst?'<div style="display:flex;justify-content:space-between"><span>GST</span><b>₹'+gst.tax_amount.toFixed(2)+'</b></div>':'')+
       (shipAmt>0?'<div style="display:flex;justify-content:space-between"><span>Shipping</span><b>₹'+shipAmt.toFixed(2)+'</b></div>':'')+
-      '<div style="display:flex;justify-content:space-between;border-top:1.5px solid #e2e8f0;margin-top:6px;padding-top:6px;font-size:14px"><span>Grand Total</span><b>₹'+gst.grand_total.toFixed(2)+'</b></div>'+
+      (Math.abs(gst.round_off||0)>=0.005
+        ? '<div style="display:flex;justify-content:space-between"><span>Round Off</span><b>₹'+(gst.round_off>=0?'+':'')+gst.round_off.toFixed(2)+'</b></div>'
+        : '')+
+      '<div style="display:flex;justify-content:space-between;border-top:1.5px solid #e2e8f0;margin-top:6px;padding-top:6px;font-size:14px"><span>Grand Total</span><b>₹'+(gst.grand_total_rounded!=null?gst.grand_total_rounded:gst.grand_total).toFixed(2)+'</b></div>'+
     '</div>'+
     '<div style="margin-top:10px;padding:8px 10px;background:#e8f5e9;border-radius:8px;font-size:11px;color:#2d7a4f;font-family:monospace;line-height:1.55">'+
-      'GST calculated in app from product <b>GST %</b> (CGST+SGST split). Saved for customer due. Zoho still applies tax via tax_id on the PDF.'+
+      'GST from product <b>GST %</b> (CGST+SGST). Total rounded to nearest ₹1 (Round Off). Zoho tax_id still applies on PDF.'+
     '</div>'+
   '</div>';
 }
@@ -13354,8 +13357,8 @@ function confirmZohoInvPreviewSend(){
     var zohoBal = parseFloat(inv && inv.balance);
     if (isNaN(zohoTotal)) zohoTotal = null;
     if (isNaN(zohoBal)) zohoBal = null;
-    // Prefer Zoho totals (source of truth); app GST only if Zoho did not return amounts
-    var total = zohoTotal != null ? zohoTotal : (gst.grand_total > 0 ? gst.grand_total : null);
+    // Prefer Zoho totals; else app GST with round-off (nearest ₹1)
+    var total = zohoTotal != null ? zohoTotal : (gst.grand_total_rounded > 0 ? gst.grand_total_rounded : (gst.grand_total > 0 ? gst.grand_total : null));
     var balance = zohoBal != null ? zohoBal : total;
     var body = {
       action: 'updateCustomerOrderStatus',
@@ -13648,6 +13651,18 @@ async function zohoCreateInvoiceReal(order) {
       order.shipping_charge = shipAmt; // keep on order for local save
       applyZohoShipping(payload, shipAmt, isDeliveryChallan);
       console.log('[zoho] create shipping=', shipAmt, 'isDC=', isDeliveryChallan, 'payload.shipping_charge=', payload.shipping_charge);
+
+      // Round Off (nearest ₹1) on invoices — Zoho adjustment field (not used on DC; DC uses adjustment for shipping)
+      if (!isDeliveryChallan && typeof computeInvoiceGst === 'function') {
+        try {
+          var _gstR = computeInvoiceGst(lineItems, shipAmt);
+          if (_gstR && Math.abs(_gstR.round_off || 0) >= 0.005) {
+            payload.adjustment = _gstR.round_off;
+            payload.adjustment_description = 'Round Off';
+            console.log('[zoho] round_off=', _gstR.round_off, 'grand=', _gstR.grand_total_rounded);
+          }
+        } catch (eRo) {}
+      }
 
       // Payment terms (days) + due_date (invoice only)
       applyZohoPaymentTerms(payload, shop, order, isDeliveryChallan);

@@ -145,10 +145,13 @@ function normalizeProducts(list) {
     var sid = String(shopId);
     return Promise.all([
       sbGet('settings', { key: 'order_blocked_shops' }).catch(function(){ return []; }),
-      sbGet('settings', { key: 'block_orders_when_unpaid' }).catch(function(){ return []; })
+      sbGet('settings', { key: 'block_orders_when_unpaid' }).catch(function(){ return []; }),
+      sbGet('shops', { shop_id: sid }).catch(function(){ return []; }),
+      sbGet('shops', { customer_id: sid }).catch(function(){ return []; })
     ]).then(function(res) {
       var blockedRow = Array.isArray(res[0]) && res[0][0] ? res[0][0] : (res[0] && res[0].value != null ? res[0] : null);
       var allRow = Array.isArray(res[1]) && res[1][0] ? res[1][0] : (res[1] && res[1].value != null ? res[1] : null);
+      var shop = (Array.isArray(res[2]) && res[2][0]) || (Array.isArray(res[3]) && res[3][0]) || null;
       var list = [];
       try {
         var raw = blockedRow ? String(blockedRow.value || '') : '[]';
@@ -156,13 +159,25 @@ function normalizeProducts(list) {
       } catch (e) { list = []; }
       if (!Array.isArray(list)) list = [];
       var listNorm = list.map(function(x){ return String(x); });
-      if (listNorm.indexOf(sid) >= 0) {
+      // Match shop_id OR customer_id (admin may block either)
+      var alts = [sid];
+      if (shop) {
+        if (shop.shop_id) alts.push(String(shop.shop_id));
+        if (shop.customer_id) alts.push(String(shop.customer_id));
+      }
+      var hit = listNorm.some(function(bx) {
+        return alts.some(function(a) {
+          return a === bx || String(a).toLowerCase() === String(bx).toLowerCase();
+        });
+      });
+      if (hit) {
         return { blocked: true, reason: 'This shop is blocked from placing orders. Clear dues with the bakery.' };
       }
       var blockAll = allRow && String(allRow.value || '').toLowerCase() === 'true';
       if (!blockAll) return { blocked: false };
-      // Global: any unpaid non-draft invoice with balance
-      return sbGet('customer_orders', { shop_id: sid }, 'delivery_date.desc').then(function(rows) {
+      // Global unpaid block — use resolved shop_id for order lookup
+      var orderSid = (shop && shop.shop_id) ? String(shop.shop_id) : sid;
+      return sbGet('customer_orders', { shop_id: orderSid }, 'delivery_date.desc').then(function(rows) {
         rows = Array.isArray(rows) ? rows : [];
         var due = 0;
         rows.forEach(function(o) {

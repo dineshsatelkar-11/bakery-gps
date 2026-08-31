@@ -2353,8 +2353,25 @@
             loadHistory();
             window.scrollTo({ top: 0, behavior: 'smooth' });
           } else {
-            pvMsg.textContent = '❌ Failed: '+(res&&res.error||'try again');
+            var errTxt = (res && res.error) ? String(res.error) : 'try again';
+            var isBlock = /block|hold|unpaid|dues/i.test(errTxt);
+            pvMsg.textContent = '❌ ' + errTxt;
             pvMsg.className='msg er'; pvMsg.style.display='block';
+            if (isBlock) {
+              closePreview();
+              var msgEl = document.getElementById('orderMsg');
+              if (msgEl) {
+                msgEl.textContent = '🔒 ' + errTxt;
+                msgEl.className = 'msg er';
+                msgEl.style.display = 'block';
+              }
+              try {
+                _paymentHoldActive = true;
+                _paymentHoldMsg = '🔒 ' + errTxt;
+                var banner = document.getElementById('orderClosedBanner');
+                if (banner) { banner.textContent = _paymentHoldMsg; banner.style.display = 'block'; }
+              } catch (eB) {}
+            }
           }
         });
         }); // end checkPaymentOrderHold
