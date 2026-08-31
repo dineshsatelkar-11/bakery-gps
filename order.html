@@ -3084,6 +3084,7 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
       }
       if(t==='payments'){
         if(!_customerPayEnabled){ showTab('order'); return; }
+        // Force fresh UPI VPA + payee name every time Pay tab is opened
         loadUpiSettings().then(function(){ loadPaymentsTab(); }).catch(function(){ loadPaymentsTab(); });
       }
       if(t==='track') loadTrack();
@@ -3440,17 +3441,26 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
     var _payQrObj = null;
     function _settingVal(row){
       if(!row) return '';
-      if(Array.isArray(row)) return row[0] ? String(row[0].value||'') : '';
-      return String(row.value||'');
+      if(Array.isArray(row)) return row[0] ? _settingVal(row[0]) : '';
+      if(typeof row === 'string' || typeof row === 'number') return String(row);
+      // { value: '...' } or nested
+      if(row.value != null && row.value !== '') return String(row.value);
+      if(row.data != null) return _settingVal(row.data);
+      return '';
     }
     function loadUpiSettings(){
+      // Always re-fetch from server (no local cache of payee name)
       return Promise.all([
         api({action:'getSetting', key:'upi_vpa'}).catch(function(){return null;}),
         api({action:'getSetting', key:'upi_payee_name'}).catch(function(){return null;})
       ]).then(function(res){
-        _upiVpa = _settingVal(res[0]).trim();
-        _upiPayee = _settingVal(res[1]).trim() || 'IBCAB';
+        var vpa = _settingVal(res[0]).trim();
+        var name = _settingVal(res[1]).trim();
+        _upiVpa = vpa;
+        _upiPayee = name || 'IBCAB';
+        try { console.log('[upi] loaded VPA=', _upiVpa, 'payee=', _upiPayee); } catch(e){}
         renderPayUpiBox();
+        return { vpa: _upiVpa, payee: _upiPayee };
       });
     }
     /**
