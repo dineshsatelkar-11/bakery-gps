@@ -3449,13 +3449,14 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
       return '';
     }
     function loadUpiSettings(){
-      // Always re-fetch from server (no local cache of payee name)
+      // Always re-fetch from server — try primary key + fallback key
       return Promise.all([
         api({action:'getSetting', key:'upi_vpa'}).catch(function(){return null;}),
-        api({action:'getSetting', key:'upi_payee_name'}).catch(function(){return null;})
+        api({action:'getSetting', key:'upi_payee_name'}).catch(function(){return null;}),
+        api({action:'getSetting', key:'upi_payee'}).catch(function(){return null;})
       ]).then(function(res){
         var vpa = _settingVal(res[0]).trim();
-        var name = _settingVal(res[1]).trim();
+        var name = _settingVal(res[1]).trim() || _settingVal(res[2]).trim();
         _upiVpa = vpa;
         _upiPayee = name || 'IBCAB';
         try { console.log('[upi] loaded VPA=', _upiVpa, 'payee=', _upiPayee); } catch(e){}
@@ -3528,11 +3529,13 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
       var vpa = String(_upiVpa).trim().replace(/\s+/g, '');
       if(!vpa || vpa.indexOf('@') < 0) return '';
       // Do NOT send am/mam — amount blank so user types it in PhonePe / GPay / Paytm
+      // pn is sent but many UPI apps show bank-registered name for the VPA instead
       var pn = String(_upiPayee || 'IBCAB')
-        .replace(/[^\w\s\-]/gi, ' ')
+        .replace(/[
+]+/g, ' ')
         .replace(/\s+/g, ' ')
         .trim()
-        .slice(0, 35) || 'IBCAB';
+        .slice(0, 50) || 'IBCAB';
       var parts = [
         'pa=' + encodeURIComponent(vpa),
         'pn=' + encodeURIComponent(pn),
@@ -3697,41 +3700,46 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
     });
 
     function openUpiIntent(preferred){
-      var total = typeof _payUnpaidTotal === 'function' ? _payUnpaidTotal() : 0;
-      var urls = buildUpiAppUrls(total);
-      if(!urls.upi){
-        alert('UPI not configured. Ask bakery for UPI ID.');
-        return;
-      }
-      var order = [];
-      if(preferred === 'phonepe') order = [urls.phonepe, urls.upi];
-      else if(preferred === 'gpay') order = [urls.gpay, urls.upi, urls.androidIntent];
-      else if(preferred === 'paytm') order = [urls.paytmAlt, urls.paytm, urls.upi];
-      else order = [urls.upi, urls.phonepe, urls.gpay, urls.paytmAlt];
-
-      // Try navigation to scheme; browsers ignore unknown schemes quietly on some devices
-      var tried = 0;
-      function tryNext(){
-        if(tried >= order.length) return;
-        var u = order[tried++];
-        if(!u) return tryNext();
-        try {
-          // iframe trick helps some Android browsers
-          var a = document.createElement('a');
-          a.href = u;
-          a.style.display = 'none';
-          document.body.appendChild(a);
-          a.click();
-          setTimeout(function(){ try { document.body.removeChild(a); } catch(e){} }, 500);
-        } catch(e){
-          try { window.location.href = u; } catch(e2){}
+      // Re-load payee name from server right before open (avoid stale memory / SW)
+      var go = function(){
+        var total = typeof _payUnpaidTotal === 'function' ? _payUnpaidTotal() : 0;
+        var urls = buildUpiAppUrls(total);
+        if(!urls.upi){
+          alert('UPI not configured. Ask bakery for UPI ID.');
+          return;
         }
+        var order = [];
+        if(preferred === 'phonepe') order = [urls.phonepe, urls.upi];
+        else if(preferred === 'gpay') order = [urls.gpay, urls.upi, urls.androidIntent];
+        else if(preferred === 'paytm') order = [urls.paytmAlt, urls.paytm, urls.upi];
+        else order = [urls.upi, urls.phonepe, urls.gpay, urls.paytmAlt];
+
+        var tried = 0;
+        function tryNext(){
+          if(tried >= order.length) return;
+          var u = order[tried++];
+          if(!u) return tryNext();
+          try {
+            var a = document.createElement('a');
+            a.href = u;
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(function(){ try { document.body.removeChild(a); } catch(e){} }, 500);
+          } catch(e){
+            try { window.location.href = u; } catch(e2){}
+          }
+        }
+        tryNext();
+        setTimeout(function(){
+          if(typeof startPaymentStatusPoll === 'function') startPaymentStatusPoll('upi');
+        }, 1200);
+      };
+      if (typeof loadUpiSettings === 'function') {
+        loadUpiSettings().then(go).catch(go);
+      } else {
+        go();
       }
-      tryNext();
-      // After opening UPI app, poll our invoice status when user comes back
-      setTimeout(function(){
-        if(typeof startPaymentStatusPoll === 'function') startPaymentStatusPoll('upi');
-      }, 1200);
     }
     function copyUpiLink(){
       var total = typeof _payUnpaidTotal === 'function' ? _payUnpaidTotal() : 0;
@@ -3764,7 +3772,8 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
       var meta = document.getElementById('payUpiMeta');
       if(amtLbl) amtLbl.textContent = '₹' + total.toLocaleString('en-IN', {maximumFractionDigits:2});
       if(meta) {
-        meta.innerHTML = esc(_upiPayee + ' · ' + _upiVpa);
+        meta.innerHTML = '<div style="font-size:13px;font-weight:800;color:#1a5a38">Pay to: '+esc(_upiPayee)+'</div>'+
+          '<div style="margin-top:2px">'+esc(_upiVpa)+'</div>';
       }
       // "Pay with UPI (any app)" removed — only QR + PhonePe / GPay / Paytm
       var pp = document.getElementById('payUpiPhonepe');
