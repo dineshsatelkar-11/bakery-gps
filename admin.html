@@ -370,13 +370,13 @@
 
     <!-- Today delivery stats — only when no tomorrow orders placed yet -->
     <div id="dash-deliv-block">
-      <div class="dash-deliv-lbl" style="font-size:10px;font-weight:800;color:#64748b;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Deliveries · Today</div>
-      <div class="stats-grid" id="dash-stats" style="margin-bottom:14px"></div>
-      <div id="dash-alerts" style="margin-bottom:10px"></div>
-      <div id="dash-tp-row" style="display:none;margin-bottom:14px">
-          <div style="font-size:10px;font-weight:800;color:#7a4800;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">🍵 Tea Post · Today</div>
-          <div class="stats-grid" id="dash-tp-stats"></div>
-      </div>
+        <div class="dash-deliv-lbl" style="font-size:10px;font-weight:800;color:#64748b;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Deliveries · Today</div>
+        <div class="stats-grid" id="dash-stats" style="margin-bottom:14px"></div>
+        <div id="dash-alerts" style="margin-bottom:10px"></div>
+        <div id="dash-tp-row" style="display:none;margin-bottom:14px">
+            <div style="font-size:10px;font-weight:800;color:#7a4800;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">🍵 Tea Post · Today</div>
+            <div class="stats-grid" id="dash-tp-stats"></div>
+        </div>
     </div>
 
     <!-- Tomorrow customer order pipeline — counts only -->
@@ -8489,7 +8489,7 @@ apiPost({
     });
   }
 
-  const contact = {
+  const contactPayload = {
     contact_name: customer.name,
     contact_type: 'customer',
     customer_sub_type: 'individual',
@@ -8514,7 +8514,7 @@ apiPost({
       access_token: token,
       org_id: _zohoCreds.org_id,
       dc: _zohoCreds.dc || 'in',
-      contact
+      contact: contactPayload
     })
   });
 
@@ -8526,7 +8526,7 @@ apiPost({
   // Cache contact_person_id so invoice create skips live get_contact (~1–2s saved)
   var personId = '';
   var personId2 = '';
-  var persons = contact.contact_persons || contact.contact_person || [];
+  persons = contact.contact_persons || contact.contact_person || [];
   if (!Array.isArray(persons)) persons = [];
   var shopEm = String(toEmail || '').toLowerCase();
   var headEm = String(ccEmail || '').toLowerCase();
