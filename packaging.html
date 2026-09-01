@@ -245,6 +245,7 @@
     var kitchenOrders  = []; // status=approved (still in kitchen)
     var dispatchOrders = []; // status=dispatched
     var shopMap        = {};
+    var driverByShop = {};
     var packedIds      = new Set();
     var confirmOrderId = null;
 
@@ -328,6 +329,46 @@
     function tomorrowStr(){ var d=new Date(); d.setDate(d.getDate()+1); return d.getFullYear()+'-'+zp(d.getMonth()+1)+'-'+zp(d.getDate()); }
     function zp(n){ return String(n).padStart(2,'0'); }
 
+
+    /** Driver for packaging UI: shops master → day's orders table → Unassigned */
+    var driverByShop = driverByShop || {};
+    function getPackDriver(shopId, order){
+      var sid = String(shopId || (order && order.shop_id) || '');
+      var shop = shopMap[sid] || {};
+      var d = String(shop.assigned_driver || '').trim();
+      if(d && d.toLowerCase() !== 'unassigned') return d;
+      d = String(driverByShop[sid] || '').trim();
+      if(d && d.toLowerCase() !== 'unassigned') return d;
+      // customer_id alias on shopMap
+      if(shop.customer_id && shop.customer_id !== sid){
+        d = String(driverByShop[String(shop.customer_id)] || '').trim();
+        if(d && d.toLowerCase() !== 'unassigned') return d;
+      }
+      if(order && order.driver){
+        d = String(order.driver).trim();
+        if(d && d.toLowerCase() !== 'unassigned') return d;
+      }
+      return 'Unassigned';
+    }
+    function loadDriverFallbacks(date){
+      driverByShop = {};
+      // 1) Seed from shops master
+      Object.keys(shopMap).forEach(function(sid){
+        var s = shopMap[sid];
+        if(s && s.assigned_driver) driverByShop[sid] = String(s.assigned_driver).trim();
+      });
+      // 2) Overlay drivers from logistics `orders` for this delivery date (and fill gaps)
+      return api({ action:'getOrders', date: date }).then(function(rows){
+        (Array.isArray(rows)?rows:[]).forEach(function(o){
+          var sid = String(o.shop_id || o.customer_id || '');
+          var drv = String(o.driver || '').trim();
+          if(!sid || !drv || drv.toLowerCase()==='unassigned') return;
+          // Prefer non-empty day assignment
+          driverByShop[sid] = drv;
+        });
+      }).catch(function(){ /* ignore — keep shop master only */ });
+    }
+
     // ── LOAD ALL ORDERS ──
     function loadAllOrders(){
       var date = document.getElementById('packDate').value;
@@ -369,7 +410,8 @@
       Promise.all([
         api({action:'getCustomerOrders', delivery_date:date, status:'packaging'}),
         api({action:'getCustomerOrders', delivery_date:date, status:'approved'}),
-        api({action:'getCustomerOrders', delivery_date:date, status:'dispatched'})
+        api({action:'getCustomerOrders', delivery_date:date, status:'dispatched'}),
+        loadDriverFallbacks(date)
       ]).then(function(results){
         try {
           localStorage.setItem('packOrdersCache_'+date, JSON.stringify({
@@ -498,8 +540,8 @@
 
       // Sort by driver name so staff can pack route-wise
       var sorted = packOrders.slice().sort(function(a,b){
-        var da = (shopMap[a.shop_id]||{}).assigned_driver || 'Unassigned';
-        var db = (shopMap[b.shop_id]||{}).assigned_driver || 'Unassigned';
+        var da = getPackDriver(a.shop_id, a);
+        var db = getPackDriver(b.shop_id, b);
         if(da !== db) return da.localeCompare(db);
         return (a.shop_name||'').localeCompare(b.shop_name||'');
       });
@@ -509,7 +551,7 @@
       sorted.forEach(function(o){
         var isPacked = packedIds.has(o.id);
         var shop = shopMap[o.shop_id] || {};
-        var driver = shop.assigned_driver || 'Unassigned';
+        var driver = getPackDriver((o&&o.shop_id)||(shop&&shop.shop_id), o);
         var pairs=[];
         var items=(o.items||'').split(','), qtys=(o.qty||'').split(',');
         items.forEach(function(item,i){ if(item.trim()) pairs.push('<b>'+esc((qtys[i]||'')+'×')+'</b> '+esc(item.trim())); });
@@ -518,7 +560,7 @@
         if(driver !== lastDriver){
           lastDriver = driver;
           var drvCount = sorted.filter(function(x){
-            return ((shopMap[x.shop_id]||{}).assigned_driver || 'Unassigned') === driver;
+            return getPackDriver(x.shop_id, x) === driver;
           }).length;
           html += '<div style="font-size:11px;font-weight:900;color:#6e3da8;font-family:monospace;letter-spacing:1px;text-transform:uppercase;padding:8px 4px 6px;margin-top:4px">🚗 '+esc(driver)+' · '+drvCount+' order'+(drvCount!==1?'s':'')+'</div>';
         }
@@ -554,7 +596,7 @@
       document.getElementById('kitchenSection').style.display='block';
       el.innerHTML = kitchenOrders.map(function(o){
         var shop = shopMap[o.shop_id] || {};
-        var driver = shop.assigned_driver || 'Unassigned';
+        var driver = getPackDriver((o&&o.shop_id)||(shop&&shop.shop_id), o);
         var pairs=[];
         var items=(o.items||'').split(','), qtys=(o.qty||'').split(',');
         items.forEach(function(item,i){ if(item.trim()) pairs.push('<b>'+esc((qtys[i]||'')+'×')+'</b> '+esc(item.trim())); });
@@ -609,7 +651,7 @@
       var byDriver = {};
       all.forEach(function(o){
         var shop = shopMap[o.shop_id] || {};
-        var drv = shop.assigned_driver || o.driver || 'Unassigned';
+        var drv = getPackDriver(o.shop_id, o);
         if(!byDriver[drv]) byDriver[drv] = [];
         byDriver[drv].push(o);
       });
@@ -867,7 +909,7 @@
         var byDriver = {};
         orders.forEach(function(o){
           var shop = shopMap[o.shop_id] || {};
-          var drv = shop.assigned_driver || o.driver || 'Unassigned';
+          var drv = getPackDriver(o.shop_id, o);
           if(!byDriver[drv]) byDriver[drv] = [];
           byDriver[drv].push(o);
         });
@@ -1023,7 +1065,7 @@
       // Shop-wise order list grouped by status
       function orderCard(o, statusLabel, headClass, badgeClass){
         var shop=shopMap[o.shop_id]||{};
-        var driver=shop.assigned_driver||'Unassigned';
+        var driver=getPackDriver(o.shop_id, o);
         var items=(o.items||'').split(','), qtys=(o.qty||'').split(',');
         var lines=[];
         items.forEach(function(item,i){ if(item.trim()) lines.push(esc((qtys[i]||'')+'× '+item.trim())); });
@@ -1055,7 +1097,7 @@
       var order = packOrders.find(function(o){ return o.id===orderId; });
       if (!order) return;
       var shop = shopMap[order.shop_id]||{};
-      var driver = shop.assigned_driver||'Unassigned';
+      var driver = getPackDriver(order.shop_id, order);
       var pairs=[];
       var items=(order.items||'').split(','), qtys=(order.qty||'').split(',');
       items.forEach(function(item,i){ if(item.trim()) pairs.push((qtys[i]||'')+'× '+item.trim()); });
@@ -1077,7 +1119,7 @@
       apiPost({
         action:'dispatchCustomerOrder',
         id: order.id, shop_id: order.shop_id, shop_name: order.shop_name,
-        driver: shop.assigned_driver||'', items: order.items, qty: order.qty,
+        driver: (function(){ var d=getPackDriver(order.shop_id, order); return d==='Unassigned'?'':d; })(), items: order.items, qty: order.qty,
         item_ids: order.item_ids||'', note: order.note, delivery_date: order.delivery_date
       }).then(function(res){
         if (res&&res.ok){
@@ -1109,7 +1151,7 @@
         return apiPost({
           action:'dispatchCustomerOrder',
           id:o.id, shop_id:o.shop_id, shop_name:o.shop_name,
-          driver:shop.assigned_driver||'', items:o.items, qty:o.qty,
+          driver:getPackDriver(o.shop_id, o)==='Unassigned'?'':getPackDriver(o.shop_id, o), items:o.items, qty:o.qty,
           item_ids:o.item_ids||'', note:o.note, delivery_date:o.delivery_date
         }).then(function(res){ if(res&&res.ok) packedIds.add(o.id); });
       });

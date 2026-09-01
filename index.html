@@ -65,6 +65,12 @@ input:focus{border-color:#29b6f6;background:rgba(41,182,246,.06)}
 .btn-login:disabled{opacity:.6;cursor:not-allowed;transform:none}
 .err{color:#ef9a9a;font-size:12px;font-family:monospace;text-align:center;margin-top:10px;display:none;line-height:1.6;background:rgba(198,40,40,.15);border:1px solid rgba(198,40,40,.25);border-radius:8px;padding:8px 12px}
 .checking{color:#90caf9;font-size:12px;font-family:monospace;text-align:center;margin-top:10px;display:none}
+.pass-wrap{position:relative;margin-bottom:12px}
+.pass-wrap input{margin-bottom:0;padding-right:52px}
+.pass-toggle{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#90caf9;font-size:11px;font-weight:800;font-family:monospace;padding:6px 8px;border-radius:8px;cursor:pointer}
+.pass-toggle:active{opacity:.8}
+.err b{color:#ffcdd2;font-weight:800}
+.err .entered{display:block;margin-top:6px;color:#ef9a9a;font-size:11px;word-break:break-all}
 
 .user-types{display:flex;gap:8px;margin-top:16px;justify-content:center}
 .utype{display:flex;align-items:center;gap:4px;font-size:10px;color:#546e7a;font-family:monospace;letter-spacing:.5px}
@@ -130,10 +136,13 @@ input:focus{border-color:#29b6f6;background:rgba(41,182,246,.06)}
     <label class="lbl">Username / Name / Mobile</label>
     <input type="text" id="loginId" placeholder="Enter your credentials" autocomplete="off" autocorrect="off" autocapitalize="off">
     <label class="lbl">Password</label>
-    <input type="password" id="loginPass" placeholder="Password" autocomplete="current-password">
+    <div class="pass-wrap">
+      <input type="password" id="loginPass" placeholder="Password" autocomplete="current-password">
+      <button type="button" class="pass-toggle" id="passToggle" onclick="toggleLoginPass()" aria-label="Show password">Show</button>
+    </div>
     <button class="btn-login" id="loginBtn" onclick="doLogin()">Login →</button>
     <div class="checking" id="checkingMsg"></div>
-    <div class="err" id="errMsg">Wrong credentials. Please check and try again.</div>
+    <div class="err" id="errMsg"></div>
 
     <div class="user-types">
       <div class="utype"><div class="dot dot-staff"></div>Staff</div>
@@ -250,11 +259,92 @@ function tryCustomerLogin(variants, idx, pass){
   });
 }
 
+function toggleLoginPass(){
+  var el = document.getElementById('loginPass');
+  var btn = document.getElementById('passToggle');
+  if(!el) return;
+  if(el.type === 'password'){
+    el.type = 'text';
+    if(btn) btn.textContent = 'Hide';
+  } else {
+    el.type = 'password';
+    if(btn) btn.textContent = 'Show';
+  }
+}
+
+function showLoginError(kind, idEntered, passEntered){
+  setChecking('');
+  loginBtn.disabled = false;
+  var idEsc = String(idEntered||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  var passEsc = String(passEntered||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  var html = '';
+  if(kind === 'username'){
+    html = 'Username not found.<br>You entered: <b>'+idEsc+'</b>'+
+      '<span class="entered">Check spelling / mobile number. Contact bakery if you forgot your login id.</span>';
+  } else if(kind === 'password'){
+    html = 'Password is wrong.<br>Username <b>'+idEsc+'</b> exists.'+
+      '<span class="entered">You entered password: <b>'+passEsc+'</b><br>Tap <b>Show</b> above to verify, or ask bakery to reset.</span>';
+  } else {
+    html = 'Login failed.<br>Username: <b>'+idEsc+'</b>'+
+      '<span class="entered">Password tried: <b>'+passEsc+'</b><br>Check both fields and try again.</span>';
+  }
+  errMsg.innerHTML = html;
+  errMsg.style.display = 'block';
+}
+
+/** After failed login: figure out username-missing vs password-wrong */
+function diagnoseLoginFailure(id, pass){
+  var staffHit = exactName(id, staffNames);
+  var driverHit = exactName(id, driverNames);
+  if(staffHit || driverHit){
+    showLoginError('password', id, pass);
+    return Promise.resolve();
+  }
+  return api({ action:'lookupLoginUser', username: id }).then(function(res){
+    if(res && res.found){
+      showLoginError('password', id, pass);
+    } else {
+      // also try phone variants for lookup
+      var variants = phoneVariants(id);
+      if(variants.length <= 1){
+        showLoginError('username', id, pass);
+        return;
+      }
+      var chain = Promise.resolve({ found: false });
+      variants.slice(1).forEach(function(v){
+        chain = chain.then(function(prev){
+          if(prev && prev.found) return prev;
+          return api({ action:'lookupLoginUser', username: v }).catch(function(){ return { found:false }; });
+        });
+      });
+      return chain.then(function(res2){
+        if(res2 && res2.found) showLoginError('password', id, pass);
+        else showLoginError('username', id, pass);
+      });
+    }
+  }).catch(function(){
+    showLoginError('unknown', id, pass);
+  });
+}
+
 function doLogin(){
   var id   = loginId.value.trim();
-  var pass = loginPass.value.trim();
-  if(!id){ loginId.focus(); return; }
-  if(!pass){ loginPass.focus(); return; }
+  var pass = loginPass.value; // keep spaces if any; do not trim password chars user typed intentionally except edges
+  pass = pass.replace(/^\s+|\s+$/g, '');
+  if(!id){
+    setChecking('');
+    errMsg.innerHTML = 'Please enter <b>username / name / mobile</b>.';
+    errMsg.style.display = 'block';
+    loginId.focus();
+    return;
+  }
+  if(!pass){
+    setChecking('');
+    errMsg.innerHTML = 'Please enter <b>password</b>.';
+    errMsg.style.display = 'block';
+    loginPass.focus();
+    return;
+  }
 
   loginBtn.disabled=true;
   errMsg.style.display='none';
@@ -286,6 +376,42 @@ function doLogin(){
   }
   return;
 }
+
+      return api({action:'driverLogin', name:driverExact||id, password:pass}).then(function(data){
+        var d = Array.isArray(data)&&data.length ? data[0] : null;
+        if(d && d.name){
+          sessionStorage.setItem('role','driver');
+          sessionStorage.setItem('driver', d.name);
+          localStorage.setItem('driverRole','driver');
+          localStorage.setItem('driverName', d.name);
+          goto('driver');
+          return;
+        }
+
+        return tryCustomerLogin(phoneVariants(id), 0, pass).then(function(c){
+          if(c && c.shop_id){
+            // Keep the login id so feature flags (e.g. Pay tab) can target a username
+            c.login_username = c.login_username || c.username || id;
+            c.username = c.username || c.login_username || id;
+            localStorage.setItem('custSession', JSON.stringify(c));
+            sessionStorage.setItem('role','customer');
+            goto('order');
+            return;
+          }
+          // Failed — diagnose username vs password
+          return diagnoseLoginFailure(id, pass);
+        });
+      });
+    }).catch(function(){
+      diagnoseLoginFailure(id, pass);
+    });
+  }).catch(function(){
+    loginBtn.disabled=false;
+    setChecking('');
+    showLoginError('unknown', id, pass);
+  });
+}
+
 
       return api({action:'driverLogin', name:driverExact||id, password:pass}).then(function(data){
         var d = Array.isArray(data)&&data.length ? data[0] : null;

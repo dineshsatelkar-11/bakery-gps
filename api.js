@@ -100,10 +100,17 @@ function normalizeProducts(list) {
 
   function sbPatch(table, where, body) {
     var url = BASE + '/' + table + '?' + filters(where);
+    // Drop undefined keys so callers can omit fields (e.g. Zoho must not wipe assigned_driver)
+    var clean = {};
+    if (body && typeof body === 'object') {
+      Object.keys(body).forEach(function(k){
+        if (body[k] !== undefined) clean[k] = body[k];
+      });
+    }
     return fetch(url, {
       method: 'PATCH',
       headers: hdrs({ 'Prefer': 'return=minimal' }),
-      body: JSON.stringify(body)
+      body: JSON.stringify(clean)
     })
     .then(function (r) {
       return r.ok ? { ok: true } : r.json().then(function (e) { return { ok: false, error: e.message || 'Error' }; });
@@ -198,6 +205,24 @@ function normalizeProducts(list) {
     }).catch(function(){ return { blocked: false }; });
   }
 
+  // Global order window (admin Notify → Open/Close Orders). Missing setting = open (matches client).
+  function _checkOrdersOpen() {
+    return sbGet('settings', { key: 'order_enabled' }).then(function(rows) {
+      var row = Array.isArray(rows) && rows[0] ? rows[0] : null;
+      var enabled = !row || String(row.value) !== 'false';
+      if (!enabled) {
+        return {
+          open: false,
+          reason: 'Orders are currently closed. Please try again when orders reopen.'
+        };
+      }
+      return { open: true };
+    }).catch(function() {
+      // Settings unreachable — allow (same default as missing key) so a DB blip does not hard-stop ordering
+      return { open: true };
+    });
+  }
+
   window.api = function (p) {
 
     switch (p.action) {
@@ -287,6 +312,38 @@ function normalizeProducts(list) {
         return fetch(url, { headers: hdrs() })
           .then(function(r){ return r.ok ? r.json() : []; })
           .catch(function(){ return []; });
+      }
+
+      // Check if username / mobile exists (no password) — for clearer login errors
+      case 'lookupLoginUser': {
+        var u = String(p.username || '').trim();
+        if (!u) return Promise.resolve({ found: false, type: null });
+        var results = [];
+        function addShop(rows, type) {
+          (Array.isArray(rows) ? rows : []).forEach(function(r) {
+            if (r && (r.shop_id || r.name)) results.push({ type: type || 'customer', shop_id: r.shop_id, name: r.name || r.login_username || '' });
+          });
+        }
+        var q1 = BASE + '/shops?login_username=eq.' + encodeURIComponent(u) + '&select=shop_id,name,login_username&limit=3';
+        return fetch(q1, { headers: hdrs() })
+          .then(function(r){ return r.ok ? r.json() : []; })
+          .then(function(rows){
+            addShop(rows, 'customer');
+            // mobile last-10 digits match
+            var digits = u.replace(/\D/g, '');
+            if (digits.length >= 10) {
+              var ten = digits.slice(-10);
+              var q2 = BASE + '/shops?mobile=like.*' + encodeURIComponent(ten) + '&select=shop_id,name,login_username,mobile&limit=5';
+              return fetch(q2, { headers: hdrs() }).then(function(r2){ return r2.ok ? r2.json() : []; });
+            }
+            return [];
+          })
+          .then(function(rows2){
+            addShop(rows2, 'customer');
+            if (results.length) return { found: true, type: 'customer', name: results[0].name, shop_id: results[0].shop_id };
+            return { found: false, type: null };
+          })
+          .catch(function(){ return { found: false, type: null }; });
       }
 
       case 'customerLogin':
@@ -608,12 +665,14 @@ function normalizeProducts(list) {
           customer_id: b.customer_id || b.shop_id,
           name: b.name, address: b.address || '', area: b.area || '',
            brand: b.brand !== undefined ? (b.brand || null) : undefined,
-          assigned_driver: b.assigned_driver || '', mobile: b.mobile || '',
+          // Only change driver when caller sends assigned_driver — Zoho Pull must not wipe it
+          assigned_driver: b.assigned_driver !== undefined ? (b.assigned_driver || '') : undefined,
+          mobile: b.mobile !== undefined ? (b.mobile || '') : undefined,
           email: b.email !== undefined ? (b.email || '') : undefined,
           email2: b.email2 !== undefined ? (b.email2 || '') : undefined,
-          flag: b.flag || '',
-          lat: b.lat !== '' && b.lat != null ? parseFloat(b.lat) : null,
-          lng: b.lng !== '' && b.lng != null ? parseFloat(b.lng) : null,
+          flag: b.flag !== undefined ? (b.flag || '') : undefined,
+          lat: b.lat !== undefined ? (b.lat !== '' && b.lat != null ? parseFloat(b.lat) : null) : undefined,
+          lng: b.lng !== undefined ? (b.lng !== '' && b.lng != null ? parseFloat(b.lng) : null) : undefined,
           zoho_doc_type:   b.zoho_doc_type,
           zoho_contact_id: b.zoho_contact_id !== undefined ? (b.zoho_contact_id || null) : undefined,
           zoho_person_id: b.zoho_person_id !== undefined ? (b.zoho_person_id || null) : undefined,
@@ -1100,6 +1159,10 @@ function normalizeProducts(list) {
            // Customer places order
            case 'placeCustomerOrder':
          if (!b.item_ids) console.warn('[api] placeCustomerOrder: item_ids missing');
+             return _checkOrdersOpen().then(function(ow) {
+               if (!ow || !ow.open) {
+                 return { ok: false, error: (ow && ow.reason) || 'Orders are currently closed.' };
+               }
              return _checkShopOrderBlock(b.shop_id).then(function(blk) {
                if (blk && blk.blocked) {
                  return { ok: false, error: blk.reason || 'Ordering blocked for this shop' };
@@ -1152,6 +1215,7 @@ function normalizeProducts(list) {
                }).catch(function(){ return { ok: false, error: 'Network error' }; });
              });
              }); // end _checkShopOrderBlock
+             }); // end _checkOrdersOpen
 
       // Customer marks "no order" for a delivery date (explicit skip)
       case 'markNoOrder': {
@@ -1212,15 +1276,20 @@ function normalizeProducts(list) {
           // Order changed after approve — hold invoice until re-approve
           upd2.payment_status = 'stale';
         }
-        // Enforce block on edits too (client can be bypassed)
-        return sbGet('customer_orders', { id: b.id }).then(function(rows) {
-          var o = Array.isArray(rows) && rows[0] ? rows[0] : null;
-          var sid = o && o.shop_id ? o.shop_id : b.shop_id;
-          return _checkShopOrderBlock(sid).then(function(blk) {
-            if (blk && blk.blocked) {
-              return { ok: false, error: blk.reason || 'Ordering blocked for this shop' };
-            }
-            return sbPatch('customer_orders', { id: b.id }, upd2);
+        // Enforce order window + shop block on edits too (client can be bypassed)
+        return _checkOrdersOpen().then(function(ow) {
+          if (!ow || !ow.open) {
+            return { ok: false, error: (ow && ow.reason) || 'Orders are currently closed.' };
+          }
+          return sbGet('customer_orders', { id: b.id }).then(function(rows) {
+            var o = Array.isArray(rows) && rows[0] ? rows[0] : null;
+            var sid = o && o.shop_id ? o.shop_id : b.shop_id;
+            return _checkShopOrderBlock(sid).then(function(blk) {
+              if (blk && blk.blocked) {
+                return { ok: false, error: blk.reason || 'Ordering blocked for this shop' };
+              }
+              return sbPatch('customer_orders', { id: b.id }, upd2);
+            });
           });
         });
       }

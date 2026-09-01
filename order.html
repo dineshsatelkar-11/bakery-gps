@@ -2283,8 +2283,9 @@
       pvMsg.style.display = 'none';
 
       // Re-verify from DB that orders are still open (catches race where admin closes while modal is open)
-      api({ action:'getSetting', key:'order_enabled' }).then(function(rows){
-        var enabled = !rows.length || rows[0].value !== 'false';
+      // getSetting returns a single row object (or null), NOT an array
+      api({ action:'getSetting', key:'order_enabled' }).then(function(row){
+        var enabled = !row || row.value !== 'false';
         if(!enabled){
           _orderClosed = true;
           btn.disabled = false; btn.textContent = '✅ Confirm';
@@ -2354,10 +2355,31 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
           } else {
             var errTxt = (res && res.error) ? String(res.error) : 'try again';
+            var isClosed = /orders are currently closed|order window/i.test(errTxt);
             var isBlock = /block|hold|unpaid|dues/i.test(errTxt);
             pvMsg.textContent = '❌ ' + errTxt;
             pvMsg.className='msg er'; pvMsg.style.display='block';
-            if (isBlock) {
+            if (isClosed) {
+              _orderClosed = true;
+              closePreview();
+              try {
+                document.getElementById('productsCard').style.display = 'none';
+                document.getElementById('orderNoteCard').style.display = 'none';
+                document.getElementById('orderBar').style.display = 'none';
+                var closedEl = document.getElementById('orderClosedBanner');
+                if (closedEl) {
+                  closedEl.textContent = '🔒 Orders have been closed by admin. Your order was not placed.';
+                  closedEl.style.display = 'block';
+                }
+              } catch (eC) {}
+              var msgElC = document.getElementById('orderMsg');
+              if (msgElC) {
+                msgElC.textContent = '🔒 ' + errTxt;
+                msgElC.className = 'msg er';
+                msgElC.style.display = 'block';
+              }
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else if (isBlock) {
               closePreview();
               var msgEl = document.getElementById('orderMsg');
               if (msgEl) {

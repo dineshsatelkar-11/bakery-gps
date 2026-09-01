@@ -2928,7 +2928,11 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
           var activeDrivers = Object.keys(orders.reduce(function(m,o){
             if(o.driver && o.driver!=='—' && o.driver!=='Logistics') m[o.driver]=1; return m;
           },{})).length;
-          var noDriver = orders.filter(function(o){return !o.driver||o.driver==='—';}).length;
+          // Same rules as Queue tab: empty, dash, or Logistics
+          var noDriver = orders.filter(function(o){
+            var d = String(o.driver || '').trim().toLowerCase();
+            return !d || d === '—' || d === '-' || d.indexOf('logistic') === 0;
+          }).length;
 
           // No GPS / no mobile counts removed from dashboard
           var S = 'cursor:pointer;transition:box-shadow .15s';
@@ -2939,7 +2943,10 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
             '<div class="stat" style="'+S+'" onclick="dashGoDelivery(\'pending\')" title="View pending"><div class="stat-n" style="color:'+(pending>0?'#c8382a':'#2d7a4f')+'">'+pending+'</div><div class="stat-l">Pending ↗</div></div>';
 
           var alertHtml = '';
-          if(noDriver>0) alertHtml+='<div class="msg warn" style="margin-bottom:6px">⚠️ '+noDriver+' order'+(noDriver>1?'s have':' has')+' no driver — go to Queue tab.</div>';
+          if(noDriver>0){
+            alertHtml += '<div class="msg warn" style="margin-bottom:6px;cursor:pointer" onclick="dashGoQueue()" title="Open Queue">'
+              + '⚠️ '+noDriver+' order'+(noDriver>1?'s have':' has')+' no driver — <b>tap to open Queue</b> ↗</div>';
+          }
           if(pending>0)  alertHtml+='<div class="msg in"   style="margin-bottom:6px">🚚 '+delivered+' of '+totalOrders+' delivered · '+pending+' still pending.</div>';
           if (alerts) alerts.innerHTML = alertHtml;
 
@@ -3269,6 +3276,15 @@ function renderMyBrandList(){
       showTab('customers');
     }
     /** Dashboard pipeline card (Pending / Kitchen / Packaging…) → Orders tab */
+    function dashGoQueue(){
+      try {
+        var df = document.getElementById('f-ord-date');
+        if (df) df.value = todayStr();
+      } catch (e) {}
+      showTab('queue');
+      try { loadQueue(); } catch (e2) {}
+    }
+    window.dashGoQueue = dashGoQueue;
     function dashGoCustOrders(status){
       var st = status || '';
       if (st === 'kitchen') st = 'approved';
@@ -4057,13 +4073,19 @@ if(tbApprove) tbApprove.textContent = newCustQueue.length ? '⏳ New ('+newCustQ
     function loadQueue(){
       var el=document.getElementById('queueList');
       el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#64748b;font-family:monospace">Loading…</div>';
-      api({action:'getQueueOrders',date:document.getElementById('f-ord-date').value||todayStr()})
+      // Prefer order-date filter; if empty, use today (dashboard deep-link sets this)
+      var qDate = (document.getElementById('f-ord-date') && document.getElementById('f-ord-date').value) || todayStr();
+      try {
+        var qdf = document.getElementById('f-ord-date');
+        if (qdf && !qdf.value) qdf.value = qDate;
+      } catch (e) {}
+      api({action:'getQueueOrders', date: qDate})
       .then(function(data){
-        // Keep only unassigned: driver null, empty, or any case of "logistic..."
+        // Keep only unassigned: driver null, empty, dash, or any case of "logistic..."
         if(Array.isArray(data)){
           data=data.filter(function(o){
             var d=(o.driver||'').trim().toLowerCase();
-            return !d || d.indexOf('logistic')===0;
+            return !d || d==='—' || d==='-' || d.indexOf('logistic')===0;
           });
         }
         var stats=document.getElementById('queueStats');
@@ -8157,6 +8179,7 @@ apiPost({
           });
         }
         var loc = row.local;
+        // Do NOT send assigned_driver — Zoho has no driver; sending '' was wiping Karan etc.
         return apiPost({
           action:'updateShop',
           shop_id: loc.shop_id || loc.customer_id,
@@ -8167,7 +8190,6 @@ apiPost({
           mobile: row.zmobile || loc.mobile || '',
           email: row.zemail || loc.email || '',
           email2: row.zemail2 || loc.email2 || '',
-          assigned_driver: loc.assigned_driver || '',
           zoho_contact_id: row.zid || loc.zoho_contact_id || '',
           zoho_doc_type: loc.zoho_doc_type || 'invoice',
           payment_terms_days: (row.payment_terms_days != null ? row.payment_terms_days : (zohoParsePaymentTermsDays(z) != null ? zohoParsePaymentTermsDays(z) : loc.payment_terms_days)),
@@ -8575,7 +8597,7 @@ apiPost({
     name: customer.name,
     address: customer.address || '',
     area: customer.area || '',
-    assigned_driver: customer.assigned_driver || '',
+    // never send assigned_driver — Zoho has no driver field; '' was wiping app assignment
     mobile: customer.mobile || '',
     flag: customer.flag || '',
     lat: customer.lat || '',
