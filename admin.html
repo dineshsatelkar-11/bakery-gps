@@ -370,13 +370,13 @@
 
     <!-- Today delivery stats — only when no tomorrow orders placed yet -->
     <div id="dash-deliv-block">
-      <div class="dash-deliv-lbl" style="font-size:10px;font-weight:800;color:#64748b;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Deliveries · Today</div>
-      <div class="stats-grid" id="dash-stats" style="margin-bottom:14px"></div>
-      <div id="dash-alerts" style="margin-bottom:10px"></div>
-      <div id="dash-tp-row" style="display:none;margin-bottom:14px">
-          <div style="font-size:10px;font-weight:800;color:#7a4800;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">🍵 Tea Post · Today</div>
-          <div class="stats-grid" id="dash-tp-stats"></div>
-      </div>
+        <div class="dash-deliv-lbl" style="font-size:10px;font-weight:800;color:#64748b;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Deliveries · Today</div>
+        <div class="stats-grid" id="dash-stats" style="margin-bottom:14px"></div>
+        <div id="dash-alerts" style="margin-bottom:10px"></div>
+        <div id="dash-tp-row" style="display:none;margin-bottom:14px">
+            <div style="font-size:10px;font-weight:800;color:#7a4800;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">🍵 Tea Post · Today</div>
+            <div class="stats-grid" id="dash-tp-stats"></div>
+        </div>
     </div>
 
     <!-- Tomorrow customer order pipeline — counts only -->
@@ -895,6 +895,7 @@
         <button class="btn-sm" style="background:#e8f5e9;color:#2d7a4f;border:1.5px solid #a5d6a7;font-weight:800" onclick="openGroupAssignModal()">📋 Assign Groups</button>
         <button class="btn-sm" style="background:#fff3e0;color:#0f766e;border:1.5px solid #ffcc80;font-weight:800" onclick="openBrandAssignModal()">🏷 Assign Brand</button>
         <button class="btn-sm" style="background:#e3f2fd;color:#1565c0;border:1.5px solid #90caf9;font-weight:800" onclick="openMobileAssignModal()">📱 Update Mobiles</button>
+        <button class="btn-sm" style="background:#f3e8ff;color:#6b21a8;border:1.5px solid #d8b4fe;font-weight:800" onclick="openDriverAssignModal()">🚗 Assign Drivers</button>
     </div>
 
     <!-- Zoho sync bar — shown only when Zoho enabled & admin/super_admin -->
@@ -911,39 +912,6 @@
         <div id="zoho-cust-msg" style="display:none;margin-top:8px;font-size:11px;font-family:monospace;padding:6px 10px;border-radius:8px"></div>
     </div>
     <div id="customersList"></div>
-</div>
-
-<!-- ASSIGN DRIVER (Customers sub-tab) -->
-<div class="page" id="pg-assign-driver">
-    <div style="font-size:13px;font-weight:900;color:#1e293b;margin-bottom:4px">🚗 Assign Driver to Customers</div>
-    <div style="font-size:11px;color:#64748b;margin-bottom:10px;font-family:monospace">Filter shops missing driver or GPS, then assign a permanent driver (saved on customer master).</div>
-    <div class="stats-grid" id="adStats" style="margin-bottom:10px"></div>
-    <div class="filter-row" style="margin-bottom:8px">
-        <input type="text" id="ad-search" placeholder="🔍 Search name / brand / area…" oninput="renderAssignDriverList()" style="margin-bottom:0;flex:1">
-    </div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
-        <button type="button" class="btn-sm ad-filter on" data-ad-filter="all" onclick="setAdFilter('all')" style="background:#e8f5e9;color:#1a5a38;border:1.5px solid #a5d6a7;font-weight:800">All</button>
-        <button type="button" class="btn-sm ad-filter" data-ad-filter="nodriver" onclick="setAdFilter('nodriver')" style="background:#fde8e8;color:#c8382a;border:1.5px solid #f0b0b0;font-weight:800">⚠ No Driver</button>
-        <button type="button" class="btn-sm ad-filter" data-ad-filter="nogps" onclick="setAdFilter('nogps')" style="background:#fff3e0;color:#e65100;border:1.5px solid #ffcc80;font-weight:800">📍 No GPS</button>
-        <button type="button" class="btn-sm ad-filter" data-ad-filter="hasdriver" onclick="setAdFilter('hasdriver')" style="background:#e0f2fe;color:#0369a1;border:1.5px solid #7dd3fc;font-weight:800">✓ Has Driver</button>
-    </div>
-    <div class="filter-row" style="margin-bottom:8px">
-        <select id="ad-brand" onchange="renderAssignDriverList()" style="margin-bottom:0;flex:1">
-            <option value="">All Brands</option>
-        </select>
-        <select id="ad-bulk-driver" style="margin-bottom:0;flex:1">
-            <option value="">Bulk assign…</option>
-        </select>
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
-        <label style="font-size:11px;font-weight:700;color:#64748b;display:flex;align-items:center;gap:6px;cursor:pointer">
-            <input type="checkbox" id="ad-select-all" onchange="adToggleSelectAll(this.checked)" style="width:15px;height:15px;accent-color:#0f766e"> Select all shown
-        </label>
-        <button type="button" class="btn-sm" style="background:#6e3da8;color:#fff;border:none;font-weight:800;padding:8px 12px" onclick="adBulkAssign()">🔀 Assign to selected</button>
-        <button type="button" class="btn-sm" style="background:#e2e8f0;color:#1e293b;border:1.5px solid #cbd5e1;font-weight:700;padding:8px 12px" onclick="loadAssignDriverTab()">↻ Refresh</button>
-    </div>
-    <div id="ad-msg" style="display:none;margin-bottom:8px;font-size:12px;font-family:monospace;padding:8px 10px;border-radius:8px"></div>
-    <div id="adList"></div>
 </div>
 
 <!-- PRODUCTS -->
@@ -1728,6 +1696,32 @@
         <div style="flex-shrink:0">
             <button class="btn" id="ma-save-btn" style="background:#1565c0;color:#fff;margin-bottom:0;padding:13px" onclick="saveAllMobileAssign()">💾 Save All Changes</button>
             <div id="ma-msg" style="display:none;margin-top:8px" class="msg ok"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Driver Assign Modal (same style as Update Mobiles) -->
+<div class="modal-bg" id="driverAssignModal" style="display:none" onclick="if(event.target===this)closeDriverAssignModal()">
+    <div class="modal" style="max-width:560px;width:96%;max-height:90vh;display:flex;flex-direction:column">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-shrink:0">
+            <div>
+                <div class="modal-title" style="margin-bottom:0">🚗 Assign Drivers</div>
+                <div style="font-size:10px;color:#64748b;font-family:monospace;margin-top:2px">Filter No Driver / No GPS, set driver, then Save All</div>
+            </div>
+            <button type="button" onclick="closeDriverAssignModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#64748b;padding:0 4px">✖</button>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;flex-shrink:0">
+            <button type="button" class="btn-sm da-filter on" data-da-filter="all" onclick="setDaFilter('all')" style="background:#e8f5e9;color:#1a5a38;border:1.5px solid #a5d6a7;font-weight:800">All</button>
+            <button type="button" class="btn-sm da-filter" data-da-filter="nodriver" onclick="setDaFilter('nodriver')" style="background:#fde8e8;color:#c8382a;border:1.5px solid #f0b0b0;font-weight:800">⚠ No Driver</button>
+            <button type="button" class="btn-sm da-filter" data-da-filter="nogps" onclick="setDaFilter('nogps')" style="background:#fff3e0;color:#e65100;border:1.5px solid #ffcc80;font-weight:800">📍 No GPS</button>
+            <button type="button" class="btn-sm da-filter" data-da-filter="hasdriver" onclick="setDaFilter('hasdriver')" style="background:#e0f2fe;color:#0369a1;border:1.5px solid #7dd3fc;font-weight:800">✓ Has Driver</button>
+        </div>
+        <div id="da-stats" style="font-size:11px;font-family:monospace;color:#64748b;margin-bottom:8px;flex-shrink:0"></div>
+        <input type="text" id="da-search" placeholder="🔍 Search customer / brand / area…" oninput="renderDAList()" style="margin-bottom:10px;flex-shrink:0">
+        <div id="da-list" style="flex:1;overflow-y:auto;border:1.5px solid #e2e8f0;border-radius:10px;background:#fafaf8;margin-bottom:12px"></div>
+        <div style="flex-shrink:0">
+            <button class="btn" id="da-save-btn" style="background:#6b21a8;color:#fff;margin-bottom:0;padding:13px" onclick="saveAllDriverAssign()">💾 Save All Changes</button>
+            <div id="da-msg" style="display:none;margin-top:8px" class="msg ok"></div>
         </div>
     </div>
 </div>
@@ -2741,8 +2735,7 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
                   {key:'pay-paid',     label:'✅ Paid'},
                   {key:'pay-link',     label:'🔗 Link Zoho'},
                   {key:'pay-zoho-list',label:'🔎 Zoho list'}],
-      customers: [{key:'customers',   label:'🏪 Customers'},
-                  {key:'assign-driver',label:'🚗 Assign Driver'}],
+      customers: [{key:'customers',   label:'🏪 Customers'}],
       /* notify lives under Orders group */
       notify:    [],
       zoho:      [{key:'zoho',        label:'🔗 Zoho'}],
@@ -2895,7 +2888,6 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
       if(t==='approve')      renderApproveQueue();
       if(t==='queue')        { var _qd=document.getElementById('f-queue-date'); if(_qd && !_qd.value) _qd.value=tomorrowStr(); loadQueue(); }
       if(t==='customers')    loadCustomers();
-      if(t==='assign-driver') loadAssignDriverTab();
       if(t==='products')     loadProducts();
       if(t==='cust-orders')  { document.getElementById('co-date').value=tomorrowStr(); loadCustomerMaster().then(loadCustOrders); }
       if(t==='manual-order') initManualOrderTab();
@@ -5135,6 +5127,169 @@ function saveAllBrandAssign(){
     /* ── MOBILE ASSIGN MODAL ── */
     var _maCustomers = [];
     var _maPendingChanges = {}; // cid → mobile string
+
+
+    // ── Assign Drivers modal (Customers page, same pattern as Update Mobiles) ──
+    var _daFilter = 'nodriver';
+    var _daPendingChanges = {}; // shop_id -> driver name (or '')
+
+    function _daHasDriver(c){
+      var d = (c.assigned_driver || '').trim();
+      return !!(d && d.toLowerCase() !== 'unassigned' && d.toLowerCase() !== 'logistics');
+    }
+    function _daHasGps(c){
+      return c.lat != null && c.lat !== '' && !isNaN(parseFloat(c.lat))
+          && c.lng != null && c.lng !== '' && !isNaN(parseFloat(c.lng));
+    }
+    function setDaFilter(f){
+      _daFilter = f || 'all';
+      document.querySelectorAll('.da-filter').forEach(function(b){
+        b.classList.toggle('on', b.getAttribute('data-da-filter') === _daFilter);
+      });
+      renderDAList();
+    }
+    function openDriverAssignModal(){
+      _daPendingChanges = {};
+      Promise.all([
+        loadCustomerMaster(true),
+        (allDriversList && allDriversList.length) ? Promise.resolve() : loadDrivers()
+      ]).then(function(){
+        var modal = document.getElementById('driverAssignModal');
+        if(modal && modal.parentNode !== document.body) document.body.appendChild(modal);
+        modal.style.display = 'flex';
+        document.body.classList.add('modal-open');
+        document.getElementById('da-search').value = '';
+        document.getElementById('da-msg').style.display = 'none';
+        setDaFilter('nodriver');
+      });
+    }
+    function closeDriverAssignModal(){
+      var modal = document.getElementById('driverAssignModal');
+      if(modal) modal.style.display = 'none';
+      document.body.classList.remove('modal-open');
+      _daPendingChanges = {};
+    }
+    function renderDAList(){
+      var q = (document.getElementById('da-search') && document.getElementById('da-search').value || '').toLowerCase().trim();
+      var list = (allCustomers || []).filter(function(c){
+        if(_daFilter === 'nodriver' && _daHasDriver(c)) return false;
+        if(_daFilter === 'nogps' && _daHasGps(c)) return false;
+        if(_daFilter === 'hasdriver' && !_daHasDriver(c)) return false;
+        if(q){
+          var hay = ((c.name||'')+' '+(c.brand||'')+' '+(c.area||'')+' '+(c.shop_id||'')+' '+(c.assigned_driver||'')).toLowerCase();
+          if(hay.indexOf(q) < 0) return false;
+        }
+        return true;
+      }).slice().sort(function(a,b){ return (a.name||'').localeCompare(b.name||''); });
+
+      var noD = (allCustomers||[]).filter(function(c){ return !_daHasDriver(c); }).length;
+      var noG = (allCustomers||[]).filter(function(c){ return !_daHasGps(c); }).length;
+      var stats = document.getElementById('da-stats');
+      if(stats) stats.textContent = 'Showing ' + list.length + ' · No driver: ' + noD + ' · No GPS: ' + noG + ' · Pending: ' + Object.keys(_daPendingChanges).length;
+
+      var active = (allDriversList||[]).filter(function(d){ return d.active; });
+      var opts = '<option value="">— Unassigned —</option>' + active.map(function(d){
+        return '<option value="'+esc(d.name)+'">'+esc(d.name)+'</option>';
+      }).join('');
+
+      var el = document.getElementById('da-list');
+      if(!el) return;
+      if(!list.length){
+        el.innerHTML = '<div style="text-align:center;padding:28px;color:#64748b;font-size:12px;font-family:monospace">No customers match this filter.</div>';
+        return;
+      }
+      el.innerHTML = list.map(function(c){
+        var cid = String(c.customer_id || c.shop_id || '');
+        var original = _daHasDriver(c) ? (c.assigned_driver || '') : '';
+        var current = _daPendingChanges.hasOwnProperty(cid) ? _daPendingChanges[cid] : original;
+        var changed = _daPendingChanges.hasOwnProperty(cid);
+        var hasG = _daHasGps(c);
+        return '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #f0e8de;background:'+(changed?'#f3e8ff':'#fff')+'">'
+          +'<div style="flex:1;min-width:0">'
+            +'<div style="font-size:13px;font-weight:800;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(c.name||cid)+'</div>'
+            +'<div style="font-size:10px;color:#64748b;font-family:monospace">'
+              +esc(c.brand||'—')+(c.area?(' · '+esc(c.area)):'')
+              +(hasG ? ' · 📍 GPS' : ' · 📍 No GPS')
+            +'</div>'
+          +'</div>'
+          +'<select data-cid="'+cid+'" onchange="daOnChange(this)" style="flex-shrink:0;width:150px;font-size:12px;padding:7px 8px;border:1.5px solid '+(changed?'#d8b4fe':'#e2e8f0')+';border-radius:8px;font-weight:700;color:#6b21a8">'
+            +opts
+          +'</select>'
+        +'</div>';
+      }).join('');
+      el.querySelectorAll('select[data-cid]').forEach(function(sel){
+        var cid = sel.getAttribute('data-cid');
+        var c = allCustomers.find(function(x){ return String(x.customer_id||x.shop_id)===cid; });
+        var original = (c && _daHasDriver(c)) ? (c.assigned_driver||'') : '';
+        var current = _daPendingChanges.hasOwnProperty(cid) ? _daPendingChanges[cid] : original;
+        sel.value = current || '';
+      });
+    }
+    function daOnChange(sel){
+      var cid = sel.getAttribute('data-cid');
+      var c = allCustomers.find(function(x){ return String(x.customer_id||x.shop_id)===cid; }) || {};
+      var original = _daHasDriver(c) ? (c.assigned_driver||'') : '';
+      var newVal = (sel.value || '').trim();
+      if(newVal !== original){
+        _daPendingChanges[cid] = newVal;
+        sel.style.borderColor = '#d8b4fe';
+        if(sel.closest('div')) sel.closest('div').style.background = '#f3e8ff';
+      } else {
+        delete _daPendingChanges[cid];
+        sel.style.borderColor = '#e2e8f0';
+        if(sel.closest('div')) sel.closest('div').style.background = '#fff';
+      }
+      var stats = document.getElementById('da-stats');
+      if(stats){
+        var noD = (allCustomers||[]).filter(function(c){ return !_daHasDriver(c); }).length;
+        var noG = (allCustomers||[]).filter(function(c){ return !_daHasGps(c); }).length;
+        var q = (document.getElementById('da-search')&&document.getElementById('da-search').value||'').toLowerCase();
+        var showing = (allCustomers||[]).filter(function(c){
+          if(_daFilter==='nodriver'&&_daHasDriver(c))return false;
+          if(_daFilter==='nogps'&&_daHasGps(c))return false;
+          if(_daFilter==='hasdriver'&&!_daHasDriver(c))return false;
+          return true;
+        }).length;
+        stats.textContent = 'Showing filter · No driver: '+noD+' · No GPS: '+noG+' · Pending: '+Object.keys(_daPendingChanges).length;
+      }
+    }
+    function saveAllDriverAssign(){
+      var cids = Object.keys(_daPendingChanges);
+      if(!cids.length){ alert('No changes to save.'); return; }
+      var btn = document.getElementById('da-save-btn');
+      var msg = document.getElementById('da-msg');
+      btn.disabled = true; btn.textContent = '⏳ Saving…'; msg.style.display = 'none';
+
+      var ops = cids.map(function(cid){
+        var c = allCustomers.find(function(x){ return String(x.customer_id||x.shop_id)===cid; }) || {};
+        var driver = _daPendingChanges[cid];
+        return apiPost({
+          action: 'updateShop',
+          shop_id: cid,
+          customer_id: c.customer_id || cid,
+          assigned_driver: driver,
+          last_updated_by: 'Admin (Assign Drivers)',
+          last_updated_at: new Date().toLocaleString('en-IN')
+        }).then(function(res){
+          if(res && res.ok === false) throw new Error(res.error || 'fail');
+          if(c) c.assigned_driver = driver;
+          return true;
+        });
+      });
+
+      Promise.all(ops).then(function(){
+        btn.disabled = false; btn.textContent = '💾 Save All Changes';
+        msg.style.display = 'block'; msg.className = 'msg ok';
+        msg.textContent = '✅ Saved ' + cids.length + ' driver assignment(s)';
+        _daPendingChanges = {};
+        renderDAList();
+        try { renderCustomers(); renderCustStats(); } catch(e){}
+      }).catch(function(e){
+        btn.disabled = false; btn.textContent = '💾 Save All Changes';
+        msg.style.display = 'block'; msg.className = 'msg err';
+        msg.textContent = '❌ ' + (e && e.message ? e.message : e);
+      });
+    }
 
     function openMobileAssignModal(){
       loadCustomerMaster().then(function(){
