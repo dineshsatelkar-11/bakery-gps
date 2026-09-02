@@ -370,13 +370,13 @@
 
     <!-- Today delivery stats — only when no tomorrow orders placed yet -->
     <div id="dash-deliv-block">
-        <div class="dash-deliv-lbl" style="font-size:10px;font-weight:800;color:#64748b;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Deliveries · Today</div>
-        <div class="stats-grid" id="dash-stats" style="margin-bottom:14px"></div>
-        <div id="dash-alerts" style="margin-bottom:10px"></div>
-        <div id="dash-tp-row" style="display:none;margin-bottom:14px">
-            <div style="font-size:10px;font-weight:800;color:#7a4800;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">🍵 Tea Post · Today</div>
-            <div class="stats-grid" id="dash-tp-stats"></div>
-        </div>
+      <div class="dash-deliv-lbl" style="font-size:10px;font-weight:800;color:#64748b;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Deliveries · Today</div>
+      <div class="stats-grid" id="dash-stats" style="margin-bottom:14px"></div>
+      <div id="dash-alerts" style="margin-bottom:10px"></div>
+      <div id="dash-tp-row" style="display:none;margin-bottom:14px">
+          <div style="font-size:10px;font-weight:800;color:#7a4800;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">🍵 Tea Post · Today</div>
+          <div class="stats-grid" id="dash-tp-stats"></div>
+      </div>
     </div>
 
     <!-- Tomorrow customer order pipeline — counts only -->
@@ -880,6 +880,7 @@
         <input type="text" id="f-cust-search" placeholder="Search name / ID / area…" oninput="renderCustomers()" style="margin-bottom:0">
         <select id="f-cust-driver" onchange="renderCustomers()" style="margin-bottom:0">
             <option value="">All Drivers</option>
+            <option value="__none__">⚠ No Driver</option>
         </select>
     </div>
     <div class="filter-row">
@@ -910,6 +911,39 @@
         <div id="zoho-cust-msg" style="display:none;margin-top:8px;font-size:11px;font-family:monospace;padding:6px 10px;border-radius:8px"></div>
     </div>
     <div id="customersList"></div>
+</div>
+
+<!-- ASSIGN DRIVER (Customers sub-tab) -->
+<div class="page" id="pg-assign-driver">
+    <div style="font-size:13px;font-weight:900;color:#1e293b;margin-bottom:4px">🚗 Assign Driver to Customers</div>
+    <div style="font-size:11px;color:#64748b;margin-bottom:10px;font-family:monospace">Filter shops missing driver or GPS, then assign a permanent driver (saved on customer master).</div>
+    <div class="stats-grid" id="adStats" style="margin-bottom:10px"></div>
+    <div class="filter-row" style="margin-bottom:8px">
+        <input type="text" id="ad-search" placeholder="🔍 Search name / brand / area…" oninput="renderAssignDriverList()" style="margin-bottom:0;flex:1">
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+        <button type="button" class="btn-sm ad-filter on" data-ad-filter="all" onclick="setAdFilter('all')" style="background:#e8f5e9;color:#1a5a38;border:1.5px solid #a5d6a7;font-weight:800">All</button>
+        <button type="button" class="btn-sm ad-filter" data-ad-filter="nodriver" onclick="setAdFilter('nodriver')" style="background:#fde8e8;color:#c8382a;border:1.5px solid #f0b0b0;font-weight:800">⚠ No Driver</button>
+        <button type="button" class="btn-sm ad-filter" data-ad-filter="nogps" onclick="setAdFilter('nogps')" style="background:#fff3e0;color:#e65100;border:1.5px solid #ffcc80;font-weight:800">📍 No GPS</button>
+        <button type="button" class="btn-sm ad-filter" data-ad-filter="hasdriver" onclick="setAdFilter('hasdriver')" style="background:#e0f2fe;color:#0369a1;border:1.5px solid #7dd3fc;font-weight:800">✓ Has Driver</button>
+    </div>
+    <div class="filter-row" style="margin-bottom:8px">
+        <select id="ad-brand" onchange="renderAssignDriverList()" style="margin-bottom:0;flex:1">
+            <option value="">All Brands</option>
+        </select>
+        <select id="ad-bulk-driver" style="margin-bottom:0;flex:1">
+            <option value="">Bulk assign…</option>
+        </select>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+        <label style="font-size:11px;font-weight:700;color:#64748b;display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="ad-select-all" onchange="adToggleSelectAll(this.checked)" style="width:15px;height:15px;accent-color:#0f766e"> Select all shown
+        </label>
+        <button type="button" class="btn-sm" style="background:#6e3da8;color:#fff;border:none;font-weight:800;padding:8px 12px" onclick="adBulkAssign()">🔀 Assign to selected</button>
+        <button type="button" class="btn-sm" style="background:#e2e8f0;color:#1e293b;border:1.5px solid #cbd5e1;font-weight:700;padding:8px 12px" onclick="loadAssignDriverTab()">↻ Refresh</button>
+    </div>
+    <div id="ad-msg" style="display:none;margin-bottom:8px;font-size:12px;font-family:monospace;padding:8px 10px;border-radius:8px"></div>
+    <div id="adList"></div>
 </div>
 
 <!-- PRODUCTS -->
@@ -2707,7 +2741,8 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
                   {key:'pay-paid',     label:'✅ Paid'},
                   {key:'pay-link',     label:'🔗 Link Zoho'},
                   {key:'pay-zoho-list',label:'🔎 Zoho list'}],
-      customers: [{key:'customers',   label:'🏪 Customers'}],
+      customers: [{key:'customers',   label:'🏪 Customers'},
+                  {key:'assign-driver',label:'🚗 Assign Driver'}],
       /* notify lives under Orders group */
       notify:    [],
       zoho:      [{key:'zoho',        label:'🔗 Zoho'}],
@@ -2860,6 +2895,7 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
       if(t==='approve')      renderApproveQueue();
       if(t==='queue')        { var _qd=document.getElementById('f-queue-date'); if(_qd && !_qd.value) _qd.value=tomorrowStr(); loadQueue(); }
       if(t==='customers')    loadCustomers();
+      if(t==='assign-driver') loadAssignDriverTab();
       if(t==='products')     loadProducts();
       if(t==='cust-orders')  { document.getElementById('co-date').value=tomorrowStr(); loadCustomerMaster().then(loadCustOrders); }
       if(t==='manual-order') initManualOrderTab();
@@ -5218,6 +5254,205 @@ function saveAllBrandAssign(){
         '<div class="stat" style="'+S+'" onclick="var el=document.getElementById(\'f-cust-gps\');el.value=\'no\';_custExtraFilter=\'\';renderCustomers();renderCustStats()"><div class="stat-n" style="color:#c8382a">'+(total-gps)+'</div><div class="stat-l">No GPS</div></div>';
     }
 
+
+    // ── Assign Driver tab (Customers) ─────────────────────────
+    var _adFilter = 'nodriver'; // default: shops missing driver
+    var _adSelected = {};
+
+    function _adHasDriver(c){
+      var d = (c.assigned_driver || '').trim();
+      return !!(d && d.toLowerCase() !== 'unassigned' && d.toLowerCase() !== 'logistics');
+    }
+    function _adHasGps(c){
+      return c.lat != null && c.lat !== '' && !isNaN(parseFloat(c.lat))
+          && c.lng != null && c.lng !== '' && !isNaN(parseFloat(c.lng));
+    }
+    function setAdFilter(f){
+      _adFilter = f || 'all';
+      document.querySelectorAll('.ad-filter').forEach(function(b){
+        b.classList.toggle('on', b.getAttribute('data-ad-filter') === _adFilter);
+      });
+      renderAssignDriverList();
+      renderAdStats();
+    }
+    function adShowMsg(text, ok){
+      var el = document.getElementById('ad-msg');
+      if(!el) return;
+      el.style.display = 'block';
+      el.style.background = ok ? '#e8f5e9' : '#fde8e8';
+      el.style.color = ok ? '#1a5a38' : '#c8382a';
+      el.textContent = text;
+    }
+    function loadAssignDriverTab(){
+      Promise.all([
+        loadCustomerMaster(true),
+        (allDriversList && allDriversList.length) ? Promise.resolve() : loadDrivers()
+      ]).then(function(){
+        var brands = [...new Set(allCustomers.map(function(c){ return (c.brand||'').trim(); }).filter(Boolean))].sort();
+        var br = document.getElementById('ad-brand');
+        if(br) br.innerHTML = '<option value="">All Brands</option>' + brands.map(function(b){ return '<option value="'+esc(b)+'">'+esc(b)+'</option>'; }).join('');
+        var active = (allDriversList||[]).filter(function(d){ return d.active; });
+        var opt = active.map(function(d){ return '<option value="'+esc(d.name)+'">'+esc(d.name)+'</option>'; }).join('');
+        var bulk = document.getElementById('ad-bulk-driver');
+        if(bulk) bulk.innerHTML = '<option value="">Bulk assign…</option>' + opt + '<option value="__clear__">— Clear driver —</option>';
+        _adSelected = {};
+        var sa = document.getElementById('ad-select-all');
+        if(sa) sa.checked = false;
+        setAdFilter(_adFilter || 'nodriver');
+      }).catch(function(e){
+        adShowMsg('Load failed: ' + (e && e.message ? e.message : e), false);
+      });
+    }
+    function renderAdStats(){
+      var total = allCustomers.length;
+      var noD = allCustomers.filter(function(c){ return !_adHasDriver(c); }).length;
+      var noG = allCustomers.filter(function(c){ return !_adHasGps(c); }).length;
+      var hasD = total - noD;
+      var S = 'cursor:pointer;';
+      var el = document.getElementById('adStats');
+      if(!el) return;
+      el.innerHTML =
+        '<div class="stat" style="'+S+(_adFilter==='all'?'background:#e8f5e9;border-color:#2d7a4f':'')+'" onclick="setAdFilter(\'all\')"><div class="stat-n">'+total+'</div><div class="stat-l">Total</div></div>'+
+        '<div class="stat" style="'+S+(_adFilter==='nodriver'?'background:#fde8e8;border-color:#e87a7a':'')+'" onclick="setAdFilter(\'nodriver\')"><div class="stat-n" style="color:#c8382a">'+noD+'</div><div class="stat-l">No Driver</div></div>'+
+        '<div class="stat" style="'+S+(_adFilter==='nogps'?'background:#fff3e0;border-color:#ffcc80':'')+'" onclick="setAdFilter(\'nogps\')"><div class="stat-n" style="color:#e65100">'+noG+'</div><div class="stat-l">No GPS</div></div>'+
+        '<div class="stat" style="'+S+(_adFilter==='hasdriver'?'background:#e0f2fe;border-color:#7dd3fc':'')+'" onclick="setAdFilter(\'hasdriver\')"><div class="stat-n" style="color:#0369a1">'+hasD+'</div><div class="stat-l">Has Driver</div></div>';
+    }
+    function _adFilteredList(){
+      var q = (document.getElementById('ad-search') && document.getElementById('ad-search').value || '').toLowerCase().trim();
+      var brand = document.getElementById('ad-brand') && document.getElementById('ad-brand').value || '';
+      return allCustomers.filter(function(c){
+        if(_adFilter === 'nodriver' && _adHasDriver(c)) return false;
+        if(_adFilter === 'nogps' && _adHasGps(c)) return false;
+        if(_adFilter === 'hasdriver' && !_adHasDriver(c)) return false;
+        if(brand && (c.brand||'').trim() !== brand) return false;
+        if(q){
+          var hay = ((c.name||'')+' '+(c.brand||'')+' '+(c.area||'')+' '+(c.shop_id||'')+' '+(c.assigned_driver||'')).toLowerCase();
+          if(hay.indexOf(q) < 0) return false;
+        }
+        return true;
+      }).slice().sort(function(a,b){
+        return ((a.name||'').localeCompare(b.name||''));
+      });
+    }
+    function renderAssignDriverList(){
+      renderAdStats();
+      var list = _adFilteredList();
+      var el = document.getElementById('adList');
+      if(!el) return;
+      var active = (allDriversList||[]).filter(function(d){ return d.active; });
+      var optHtml = '<option value="">— Unassigned —</option>' + active.map(function(d){ return '<option value="'+esc(d.name)+'">'+esc(d.name)+'</option>'; }).join('');
+      if(!list.length){
+        el.innerHTML = '<div style="text-align:center;padding:28px;color:#64748b;font-size:13px;font-family:monospace">No shops match this filter.</div>';
+        return;
+      }
+      el.innerHTML = list.map(function(c){
+        var sid = c.shop_id || c.customer_id || '';
+        var hasD = _adHasDriver(c);
+        var hasG = _adHasGps(c);
+        var cur = hasD ? (c.assigned_driver||'') : '';
+        var checked = _adSelected[sid] ? ' checked' : '';
+        return '<div class="card" style="margin-bottom:8px;padding:12px" data-ad-sid="'+esc(sid)+'">'+
+          '<div style="display:flex;gap:8px;align-items:flex-start">'+
+            '<input type="checkbox" class="ad-row-cb" data-sid="'+esc(sid)+'" onchange="adToggleOne(this)"'+checked+' style="width:16px;height:16px;margin-top:3px;accent-color:#0f766e">'+
+            '<div style="flex:1;min-width:0">'+
+              '<div style="font-size:13px;font-weight:800;color:#1e293b">'+esc(c.name||sid)+'</div>'+
+              '<div style="font-size:10px;color:#64748b;font-family:monospace;margin-top:2px">'+esc(c.brand||'—')+(c.area?(' · '+esc(c.area)):'')+'</div>'+
+              '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">'+
+                (hasD
+                  ? '<span style="font-size:10px;font-weight:800;background:#e8f5e9;color:#1a5a38;padding:2px 8px;border-radius:20px">🚗 '+esc(cur)+'</span>'
+                  : '<span style="font-size:10px;font-weight:800;background:#fde8e8;color:#c8382a;padding:2px 8px;border-radius:20px">⚠ No driver</span>')+
+                (hasG
+                  ? '<span style="font-size:10px;font-weight:800;background:#e0f2fe;color:#0369a1;padding:2px 8px;border-radius:20px">📍 GPS</span>'
+                  : '<span style="font-size:10px;font-weight:800;background:#fff3e0;color:#e65100;padding:2px 8px;border-radius:20px">📍 No GPS</span>')+
+              '</div>'+
+              '<div style="display:flex;gap:8px;margin-top:10px;align-items:center">'+
+                '<select class="ad-driver-sel" data-sid="'+esc(sid)+'" style="flex:1;margin-bottom:0;font-size:13px;padding:8px 10px">'+optHtml+'</select>'+
+                '<button type="button" class="btn-sm" style="background:#0f766e;color:#fff;border:none;font-weight:800;padding:8px 12px;white-space:nowrap" onclick="adSaveOne(\''+String(sid).replace(/\\/g,'\\\\').replace(/'/g,"\\'")+'\')">Save</button>'+
+              '</div>'+
+            '</div>'+
+          '</div>'+
+        '</div>';
+      }).join('');
+      // set current driver on each select
+      el.querySelectorAll('.ad-driver-sel').forEach(function(sel){
+        var sid = sel.getAttribute('data-sid');
+        var c = allCustomers.find(function(x){ return String(x.shop_id||x.customer_id||'') === String(sid); });
+        if(c && _adHasDriver(c)) sel.value = c.assigned_driver;
+      });
+    }
+    function adToggleOne(cb){
+      var sid = cb.getAttribute('data-sid');
+      if(cb.checked) _adSelected[sid] = true; else delete _adSelected[sid];
+    }
+    function adToggleSelectAll(on){
+      _adFilteredList().forEach(function(c){
+        var sid = c.shop_id || c.customer_id || '';
+        if(on) _adSelected[sid] = true; else delete _adSelected[sid];
+      });
+      renderAssignDriverList();
+    }
+    function adSaveOne(sid){
+      var sel = document.querySelector('.ad-driver-sel[data-sid="'+sid+'"]');
+      if(!sel) return;
+      var driver = (sel.value || '').trim();
+      var c = allCustomers.find(function(x){ return String(x.shop_id||x.customer_id||'') === String(sid); });
+      if(!c){ adShowMsg('Shop not found', false); return; }
+      adShowMsg('Saving…', true);
+      apiPost({
+        action: 'updateShop',
+        shop_id: sid,
+        assigned_driver: driver,
+        last_updated_by: 'Admin (Assign Driver)',
+        last_updated_at: new Date().toLocaleString('en-IN')
+      }).then(function(res){
+        if(res && res.ok === false) throw new Error(res.error || 'Save failed');
+        c.assigned_driver = driver;
+        adShowMsg('Saved: ' + (c.name||sid) + ' → ' + (driver || 'Unassigned'), true);
+        renderAssignDriverList();
+      }).catch(function(e){
+        adShowMsg('Error: ' + (e && e.message ? e.message : e), false);
+      });
+    }
+    function adBulkAssign(){
+      var bulk = document.getElementById('ad-bulk-driver');
+      var driverVal = bulk ? bulk.value : '';
+      if(!driverVal){ adShowMsg('Choose a driver in “Bulk assign…” first', false); return; }
+      var clear = driverVal === '__clear__';
+      var driver = clear ? '' : driverVal;
+      var ids = Object.keys(_adSelected);
+      if(!ids.length){ adShowMsg('Select at least one shop', false); return; }
+      if(!confirm((clear ? 'Clear driver' : ('Assign “'+driver+'"')) + ' on ' + ids.length + ' shop(s)?')) return;
+      adShowMsg('Updating ' + ids.length + '…', true);
+      var i = 0;
+      function next(){
+        if(i >= ids.length){
+          adShowMsg('Done — ' + ids.length + ' shop(s) updated', true);
+          _adSelected = {};
+          var sa = document.getElementById('ad-select-all');
+          if(sa) sa.checked = false;
+          renderAssignDriverList();
+          return;
+        }
+        var sid = ids[i++];
+        var c = allCustomers.find(function(x){ return String(x.shop_id||x.customer_id||'') === String(sid); });
+        apiPost({
+          action: 'updateShop',
+          shop_id: sid,
+          assigned_driver: driver,
+          last_updated_by: 'Admin (Assign Driver bulk)',
+          last_updated_at: new Date().toLocaleString('en-IN')
+        }).then(function(res){
+          if(res && res.ok === false) throw new Error(res.error || 'fail');
+          if(c) c.assigned_driver = driver;
+          adShowMsg('Updated ' + i + '/' + ids.length + '…', true);
+          next();
+        }).catch(function(e){
+          adShowMsg('Failed on ' + sid + ': ' + (e && e.message ? e.message : e), false);
+        });
+      }
+      next();
+    }
+
     function loadCustomers(){
       Promise.all([loadCustomerMaster(), allGroups.length ? Promise.resolve(allGroups) : api({action:'getProductGroups'}).then(function(g){allGroups=Array.isArray(g)?g:[];return allGroups;})]).then(function(){
         var areas=[...new Set(allCustomers.map(function(c){return c.area||'';}).filter(Boolean))].sort();
@@ -5234,7 +5469,8 @@ function saveAllBrandAssign(){
       var fa=document.getElementById('f-cust-area').value;
       var list=allCustomers;
       if(q)list=list.filter(function(c){return(c.name+' '+(c.area||'')+' '+(c.customer_id||c.shop_id||'')+' '+(c.address||'')).toLowerCase().indexOf(q)>=0;});
-      if(fd)list=list.filter(function(c){return(c.assigned_driver||'')===fd;});
+      if(fd==='__none__')list=list.filter(function(c){var d=(c.assigned_driver||'').trim().toLowerCase();return!d||d==='unassigned'||d==='logistics';});
+      else if(fd)list=list.filter(function(c){return(c.assigned_driver||'')===fd;});
       if(fg==='yes')list=list.filter(function(c){return c.lat;});
       if(fg==='no')list=list.filter(function(c){return!c.lat;});
       if(fa)list=list.filter(function(c){return c.area===fa;});
@@ -6424,7 +6660,7 @@ function shareAllCustLogins(){
         sel.innerHTML=first+allOpt;
       });
       var cfd=document.getElementById('f-cust-driver');
-      if(cfd)cfd.innerHTML='<option value="">All Drivers</option>'+allOpt;
+      if(cfd)cfd.innerHTML='<option value="">All Drivers</option><option value="__none__">⚠ No Driver</option>'+allOpt;
       var bf=document.getElementById('bulk-from');
       if(bf)bf.innerHTML='<option value="">From (any)</option>'+allOpt;
       var bt=document.getElementById('bulk-to');
@@ -8200,7 +8436,7 @@ apiPost({
           zoho_doc_type: loc.zoho_doc_type || 'invoice',
           payment_terms_days: (row.payment_terms_days != null ? row.payment_terms_days : (zohoParsePaymentTermsDays(z) != null ? zohoParsePaymentTermsDays(z) : loc.payment_terms_days)),
           flag: loc.flag || '',
-          lat: loc.lat || '', lng: loc.lng || '',
+          // Do NOT send lat/lng — Zoho has no delivery GPS; empty would wipe drop location
           last_updated_by: 'Zoho Pull',
           last_updated_at: new Date().toLocaleString('en-IN')
         });
@@ -8603,11 +8839,9 @@ apiPost({
     name: customer.name,
     address: customer.address || '',
     area: customer.area || '',
-    // never send assigned_driver — Zoho has no driver field; '' was wiping app assignment
+    // never send assigned_driver / lat / lng — Zoho has no delivery driver or drop GPS
     mobile: customer.mobile || '',
     flag: customer.flag || '',
-    lat: customer.lat || '',
-    lng: customer.lng || '',
     last_updated_by: 'Zoho Sync',
     last_updated_at: new Date().toLocaleString('en-IN')
   });
