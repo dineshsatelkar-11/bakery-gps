@@ -831,55 +831,54 @@
         el.innerHTML = '<div style="text-align:center;padding:20px;color:#8a7a6a;font-size:12px">No challan orders for this date</div>';
         return;
       }
-      el.innerHTML = rows.map(function(o) {
+      // Flat challan grid — one row per challan (no customer grouping)
+      var sorted = rows.slice().sort(function(a,b){
+        var na = String(a.shop_name||'').toLowerCase();
+        var nb = String(b.shop_name||'').toLowerCase();
+        if (na !== nb) return na.localeCompare(nb);
+        return String(a.delivery_date||a.date||'').localeCompare(String(b.delivery_date||b.date||''));
+      });
+      var chBody = sorted.map(function(o){
         var st2 = String(o.status||'');
+        var docNo = o.zoho_invoice_number || ('#'+o.id);
+        var invDate = o.delivery_date || o.date || '—';
+        var total = o.invoice_total != null ? parseFloat(o.invoice_total) : 0;
+        if (isNaN(total)) total = 0;
+        var shop = o.shop_name || o.shop_id || '—';
         var badges = '';
         if (o.zoho_invoice_id) badges += '<span style="background:#fff8e1;color:#7a4800;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">In Zoho</span>';
         else badges += '<span style="background:#fde8e8;color:#c8382a;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">Not sent</span>';
         if (o._delivered) badges += '<span style="background:#e8f5e9;color:#1a5a38;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">Delivered</span>';
         else badges += '<span style="background:#fff3e0;color:#c8864a;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">Not delivered</span>';
-        if (String(o.zoho_doc_type||'').toLowerCase() === 'invoice')
-          badges += '<span style="background:#e3f2fd;color:#1565c0;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">Invoice</span>';
-        else
-          badges += '<span style="background:#f3e5f5;color:#6a1b9a;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">Challan</span>';
-        if (typeof _payZohoStatusBadge === 'function') {
-          badges += _payZohoStatusBadge(o.zoho_invoice_status, { showEmpty: !!(o.zoho_invoice_id || o.zoho_invoice_number) });
-        } else if (o.zoho_invoice_status) {
-          badges += '<span style="background:#e3f2fd;color:#1565c0;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">Zoho: '+esc(String(o.zoho_invoice_status))+'</span>';
-        } else if (o.zoho_invoice_id) {
-          badges += '<span style="background:#f5ede0;color:#8a7a6a;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">Zoho: —</span>';
-        }
-
+        if (typeof _payZohoStatusBadge === 'function') badges += _payZohoStatusBadge(o.zoho_invoice_status, { showEmpty: !!(o.zoho_invoice_id || o.zoho_invoice_number) });
         var actions = '';
-        // Edit quantities before send/deliver
-        actions += '<button class="btn-sm btn-edit" onclick="challanDeskEdit(\''+o.id+'\')">✏️ Edit qty</button> ';
-        // Send / update Zoho challan
-        actions += '<button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1px solid #ffe082" onclick="challanDeskSendZoho(\''+o.id+'\')">'+(o.zoho_invoice_id ? '✏️ Update Zoho' : '📤 Send Zoho')+'</button> ';
+        actions += '<button class="btn-sm btn-edit" style="padding:5px 8px;font-size:11px;margin:1px" onclick="challanDeskEdit(\''+o.id+'\')">Edit qty</button> ';
+        actions += '<button class="btn-sm" style="background:#fff8e1;color:#7a4800;border:1px solid #ffe082;padding:5px 8px;font-size:11px;margin:1px;font-weight:800" onclick="challanDeskSendZoho(\''+o.id+'\')">'+(o.zoho_invoice_id ? 'Update Zoho' : 'Send Zoho')+'</button> ';
         if (o.zoho_invoice_id) {
-          actions += '<button class="btn-sm" style="background:#e8f0ff;color:#1a3a8a;border:1px solid #b0c4f0" onclick="challanDeskSyncStatus(\''+o.id+'\')">↻ Status</button> ';
+          actions += '<button class="btn-sm" style="background:#e8f0ff;color:#1a3a8a;border:1px solid #b0c4f0;padding:5px 8px;font-size:11px;margin:1px;font-weight:800" onclick="challanDeskSyncStatus(\''+o.id+'\')">↻ Sync</button> ';
         }
-        // Mark delivered (only if not yet)
         if (!o._delivered) {
-          actions += '<button class="btn-sm" style="background:#e8f5e9;color:#1a5a38;border:1px solid #a5d6a7" onclick="challanDeskMarkDelivered(\''+o.id+'\')">✅ Mark delivered</button> ';
+          actions += '<button class="btn-sm" style="background:#e8f5e9;color:#1a5a38;border:1px solid #a5d6a7;padding:5px 8px;font-size:11px;margin:1px;font-weight:800" onclick="challanDeskMarkDelivered(\''+o.id+'\')">Mark delivered</button> ';
         }
-        // Convert to invoice after delivered — disable if Zoho already fulfilled/invoiced
-        if (o._delivered && String(o.zoho_doc_type||'').toLowerCase() !== 'invoice') {
-          if (typeof _challanAlreadyInvoiced === 'function' && _challanAlreadyInvoiced(o)) {
-            actions += '<button class="btn-sm" style="background:#e8f5e9;color:#1a5a38;border:1px solid #a5d6a7;opacity:.9" disabled>✅ Invoice in Zoho</button>';
-            var invLab = o.zoho_linked_invoice_number || o.zoho_invoice_number || '';
-            if (invLab) actions += ' <span style="font-size:10px;font-family:monospace;color:#1565c0">'+esc(invLab)+'</span>';
-          } else {
-            actions += '<button class="btn-sm" style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9" onclick="challanDeskConvertInvoice(\''+o.id+'\')">🧾 Convert to Invoice</button>';
-          }
-        }
-        return '<div class="card" style="margin-bottom:8px;padding:12px">'+
-          '<div style="font-size:13px;font-weight:800;margin-bottom:4px">'+esc(o.shop_name||o.shop_id||'Shop')+'</div>'+
-          '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;line-height:1.5">'+badges+'<br>'+
-          'Status: '+esc(st2)+' · Order ID: <b style="color:#4a2f14">'+esc(String(o.id))+'</b><br>'+_payDocIdLine(o)+
-          (o.invoice_total != null ? '<br>₹'+Number(o.invoice_total).toLocaleString('en-IN',{maximumFractionDigits:2}) : '')+
-          '<br>'+esc(String(o.items||'').slice(0,120))+
-          '</div><div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">'+actions+'</div></div>';
+        return '<tr style="border-bottom:1px solid #f3e5f5">'+
+          '<td style="padding:9px 8px;font-size:12px;color:#546e7a;white-space:nowrap">'+esc(String(invDate))+'</td>'+
+          '<td style="padding:9px 8px"><div style="font-size:13px;font-weight:900;color:#6a1b9a">'+esc(docNo)+'</div><div style="font-size:10px;color:#90a4ae;font-family:monospace">Order '+esc(String(o.id))+(st2?(' · '+esc(st2)):'')+'</div></td>'+
+          '<td style="padding:9px 8px;max-width:160px"><div style="font-size:12px;font-weight:800;color:#2c1810;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(shop)+'">'+esc(shop)+'</div></td>'+
+          '<td style="padding:9px 8px">'+badges+'</td>'+
+          '<td style="padding:9px 8px;text-align:right;font-size:13px;font-weight:900;color:#4a148c;white-space:nowrap">'+(total?('₹'+total.toLocaleString('en-IN',{maximumFractionDigits:2})):'—')+'</td>'+
+          '<td style="padding:9px 8px;white-space:nowrap">'+actions+'</td></tr>';
       }).join('');
+      el.innerHTML =
+        '<div style="overflow-x:auto;border:1px solid #e1bee7;border-radius:14px;background:#fff">'+
+          '<table style="width:100%;border-collapse:collapse;min-width:700px">'+
+            '<thead><tr style="background:#f3e5f5;border-bottom:1.5px solid #e1bee7">'+
+              '<th style="padding:10px 8px;font-size:10px;font-weight:800;color:#6a1b9a;text-transform:uppercase;text-align:left">Date</th>'+
+              '<th style="padding:10px 8px;font-size:10px;font-weight:800;color:#6a1b9a;text-transform:uppercase;text-align:left">Challan #</th>'+
+              '<th style="padding:10px 8px;font-size:10px;font-weight:800;color:#6a1b9a;text-transform:uppercase;text-align:left">Customer</th>'+
+              '<th style="padding:10px 8px;font-size:10px;font-weight:800;color:#6a1b9a;text-transform:uppercase;text-align:left">Status</th>'+
+              '<th style="padding:10px 8px;font-size:10px;font-weight:800;color:#6a1b9a;text-transform:uppercase;text-align:right">Total</th>'+
+              '<th style="padding:10px 8px;font-size:10px;font-weight:800;color:#6a1b9a;text-transform:uppercase;text-align:left">Actions</th>'+
+            '</tr></thead><tbody>'+chBody+'</tbody></table></div>';
     }
     /** Recalc invoice subtotal / GST / shipping / grand from line qty + product rates. */
     function _payRecalcTotalsFromLines(o, itemsStr, qtyStr, idsStr) {
@@ -2211,7 +2210,7 @@
         targets = payDeskSelectedShopRows(function(o){ return !!o.zoho_invoice_id; });
         if (!targets.length) {
           _zohoSyncRelease();
-          _payDeskMsg('Select shop(s) first (parent checkbox). No Zoho docs in selection.', false);
+          _payDeskMsg('Select invoice row(s) first. No Zoho docs in selection.', false);
           return;
         }
       } else if (mode === 'unpaid') {
@@ -2959,6 +2958,88 @@
             .localeCompare(String(b.shop_name || b.shop_id || '').toLowerCase());
         });
       }
+      function invoiceLineHtml(o) {
+        /* Zoho-style invoice row: Invoice # · Status · Date · Total · Balance Due */
+        var st2 = String(o.payment_status||'unpaid').toLowerCase();
+        var bal = (o.balance_due != null && o.balance_due !== '') ? parseFloat(o.balance_due) : _payDue(o);
+        if (isNaN(bal)) bal = 0;
+        var total = (o.invoice_total != null && o.invoice_total !== '') ? parseFloat(o.invoice_total) : bal;
+        if (isNaN(total)) total = bal;
+        var invNo = o.zoho_invoice_number || ('Order #' + o.id);
+        var zRaw = o.zoho_invoice_status || '';
+        var zLabel = (typeof _payZohoStatusLabel === 'function' ? _payZohoStatusLabel(zRaw) : zRaw) || '—';
+        var zNorm = (typeof _payNormalizeZohoStatus === 'function' ? _payNormalizeZohoStatus(zRaw) : String(zRaw).toLowerCase());
+        // Zoho-like status colours
+        var stBg = '#eceff1', stFg = '#455a64';
+        if (zNorm === 'overdue' || zNorm === 'unpaid') { stBg = '#fdecea'; stFg = '#c62828'; }
+        else if (zNorm === 'sent' || zNorm === 'viewed' || zNorm === 'open' || zNorm === 'approved') { stBg = '#e3f2fd'; stFg = '#1565c0'; }
+        else if (zNorm === 'partially_paid') { stBg = '#fff8e1'; stFg = '#ef6c00'; }
+        else if (zNorm === 'paid' || zNorm === 'closed') { stBg = '#e8f5e9'; stFg = '#2e7d32'; }
+        else if (zNorm === 'draft' || zNorm === 'pending_approval') { stBg = '#f5f5f5'; stFg = '#616161'; }
+        else if (!zNorm && o.customer_claimed_paid) { stBg = '#e3f2fd'; stFg = '#1565c0'; zLabel = 'Payment request'; }
+        else if (!zNorm) { stBg = '#fdecea'; stFg = '#c62828'; zLabel = 'Unpaid'; }
+
+        var invDate = o.delivery_date || o.invoice_date || o.date || '—';
+        var dueDate = o.due_date || o.zoho_due_date || '';
+        // Estimate due date from payment_terms if only delivery date known
+        if (!dueDate && o.delivery_date && o.payment_terms_days != null && o.payment_terms_days !== '') {
+          try {
+            var dd = new Date(String(o.delivery_date).slice(0,10));
+            if (!isNaN(dd.getTime())) {
+              dd.setDate(dd.getDate() + (parseInt(o.payment_terms_days,10)||0));
+              dueDate = dd.toISOString().slice(0,10);
+            }
+          } catch (eD) {}
+        }
+
+        var actions = '';
+        if (o.zoho_invoice_id && st2 !== 'paid') {
+          actions += '<button type="button" class="btn-sm" style="background:#fff;color:#ef6c00;border:1px solid #ffe0b2;padding:6px 10px;font-size:11px;border-radius:8px" onclick="event.stopPropagation();payDeskSyncOne(\''+o.id+'\')">↻ Sync from Zoho</button>';
+        }
+        if (st2 !== 'paid') {
+          actions += '<button type="button" class="btn-sm" style="background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;padding:6px 10px;font-size:11px;border-radius:8px" onclick="event.stopPropagation();payDeskMarkPaid(\''+o.id+'\')">✓ Mark paid</button>';
+          if (o.customer_claimed_paid) {
+            actions += '<button type="button" class="btn-sm" style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;padding:6px 10px;font-size:11px;border-radius:8px" onclick="event.stopPropagation();payDeskConfirmReceived(\''+o.id+'\')">Approve request</button>';
+          }
+        }
+        actions += '<button type="button" class="btn-sm" style="background:#fafafa;color:#37474f;border:1px solid #e0e0e0;padding:6px 10px;font-size:11px;border-radius:8px" onclick="event.stopPropagation();openPayInvDetail(\''+o.id+'\')">View details</button>';
+
+        return '<div style="background:#fff;border:1px solid #e8e0d6;border-radius:12px;padding:14px;margin-bottom:8px">'+
+          // Header: Invoice # + Zoho status
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px">'+
+            '<div style="min-width:0">'+
+              '<div style="font-size:10px;font-weight:800;color:#90a4ae;letter-spacing:0.6px;text-transform:uppercase;margin-bottom:2px">Invoice</div>'+
+              '<div style="font-size:16px;font-weight:900;color:#1a237e;letter-spacing:-0.02em">'+esc(invNo)+'</div>'+
+              (o.zoho_invoice_id ? '<div style="font-size:10px;color:#90a4ae;font-family:monospace;margin-top:2px">Zoho ID · '+esc(String(o.zoho_invoice_id))+'</div>' : '')+
+            '</div>'+
+            '<span style="flex-shrink:0;font-size:11px;font-weight:900;padding:5px 12px;border-radius:6px;background:'+stBg+';color:'+stFg+';text-transform:uppercase;letter-spacing:0.4px">'+esc(zLabel)+'</span>'+
+          '</div>'+
+          // Zoho-style field grid
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;padding:12px;background:#f7f9fc;border-radius:10px;border:1px solid #eef2f7">'+
+            '<div>'+
+              '<div style="font-size:10px;font-weight:700;color:#78909c;margin-bottom:2px">Date</div>'+
+              '<div style="font-size:13px;font-weight:800;color:#263238">'+esc(String(invDate))+'</div>'+
+            '</div>'+
+            '<div>'+
+              '<div style="font-size:10px;font-weight:700;color:#78909c;margin-bottom:2px">Due date</div>'+
+              '<div style="font-size:13px;font-weight:800;color:#263238">'+(dueDate ? esc(String(dueDate)) : '—')+'</div>'+
+            '</div>'+
+            '<div>'+
+              '<div style="font-size:10px;font-weight:700;color:#78909c;margin-bottom:2px">Total</div>'+
+              '<div style="font-size:14px;font-weight:900;color:#263238">₹'+total.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})+'</div>'+
+            '</div>'+
+            '<div>'+
+              '<div style="font-size:10px;font-weight:700;color:#c62828;margin-bottom:2px">Balance Due</div>'+
+              '<div style="font-size:15px;font-weight:900;color:#c62828">₹'+bal.toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})+'</div>'+
+            '</div>'+
+          '</div>'+
+          '<div style="font-size:11px;color:#78909c;margin-top:8px;font-family:monospace">Order ID · '+esc(String(o.id))+
+            (o.customer_claimed_paid ? ' · Customer marked paid' : '')+
+            (o.payment_reminder_sent_at ? ' · Reminded' : '')+
+          '</div>'+
+          '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">'+actions+'</div>'+
+        '</div>';
+      }
       function customerGroupHtml(g) {
         var due = g.rows.reduce(function(s,o){ return s + _payDue(o); }, 0);
         var n = g.rows.length;
@@ -2971,42 +3052,47 @@
         var sid = String(g.shop_id || g.shop_name || '').replace(/[^a-zA-Z0-9_-]/g, '_');
         var open = window._payCustOpen && window._payCustOpen[sid];
         var badges = '';
-        if (claims) badges += '<span style="background:#e3f2fd;color:#1565c0;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">'+claims+' request</span>';
+        if (claims) badges += '<span style="display:inline-flex;align-items:center;background:#e3f2fd;color:#1565c0;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:800;margin-right:4px">'+claims+' request</span>';
         var syncSt = typeof payDeskShopSyncStatus === 'function' ? payDeskShopSyncStatus(String(g.shop_id || g.shop_name || '')) : 'none';
-        if (syncSt === 'ok') badges += '<span style="background:#e8f5e9;color:#1a5a38;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">Sync OK</span>';
-        else if (syncSt === 'fail') badges += '<span style="background:#fde8e8;color:#c8382a;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">Sync fail</span>';
-        else if (syncSt === 'partial') badges += '<span style="background:#fff8e1;color:#7a4800;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800;margin-right:4px">Sync partial</span>';
+        if (syncSt === 'ok') badges += '<span style="display:inline-flex;background:#e8f5e9;color:#1a5a38;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:800;margin-right:4px">Sync OK</span>';
+        else if (syncSt === 'fail') badges += '<span style="display:inline-flex;background:#fde8e8;color:#c8382a;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:800;margin-right:4px">Sync fail</span>';
+        else if (syncSt === 'partial') badges += '<span style="display:inline-flex;background:#fff8e1;color:#7a4800;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:800;margin-right:4px">Partial sync</span>';
         if (zStatuses.length) {
-          zStatuses.slice(0,3).forEach(function(zs){
-            badges += _payZohoStatusBadge(zs);
-          });
-        } else if (g.rows.some(function(o){ return o.zoho_invoice_id || o.zoho_invoice_number; })) {
-          badges += _payZohoStatusBadge('', { showEmpty: true });
+          zStatuses.slice(0,2).forEach(function(zs){ badges += _payZohoStatusBadge(zs); });
         }
-        var details = g.rows.map(card).join('');
+        var details = g.rows.map(invoiceLineHtml).join('');
         var idList = g.rows.map(function(r){ return String(r.id); }).join(',');
-        return '<div class="card" style="margin-bottom:10px;padding:0;overflow:hidden">'+
-          '<div style="padding:12px 14px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px">'+
-            '<input type="checkbox" class="pay-desk-shop-cb" data-ids="'+esc(idList)+'" data-shop="'+esc(String(g.shop_id||''))+'" title="Select this shop" onclick="event.stopPropagation()" onchange="payDeskUpdateSelCount()" style="margin-top:4px;width:18px;height:18px;accent-color:#c8864a;flex-shrink:0">'+
-            '<div style="flex:1;min-width:0;cursor:pointer" onclick="payDeskToggleCust(\''+sid+'\')">'+
-              '<div style="font-size:14px;font-weight:900;color:#4a2f14;margin-bottom:4px">'+esc(g.shop_name)+'</div>'+
-              '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;line-height:1.5">'+
-                badges+
-                '<div style="margin-top:4px"><b style="color:#c8382a;font-size:15px">₹'+due.toLocaleString('en-IN',{maximumFractionDigits:2})+'</b>'+
-                ' due · <b>'+n+'</b> invoice'+(n===1?'':'s')+'</div>'+
+        var accent = claims ? '#1565c0' : (due > 0 ? '#e07050' : '#c8b8a8');
+        return '<div class="card pay-shop-card" style="margin-bottom:12px;padding:0;overflow:hidden;border:1px solid #ebe3d8;border-radius:16px;box-shadow:0 2px 8px rgba(74,47,20,.04);background:#fff">'+
+          '<div style="display:flex;align-items:stretch">'+
+            '<div style="width:5px;background:'+accent+';flex-shrink:0"></div>'+
+            '<div style="flex:1;min-width:0">'+
+              '<div style="padding:14px 14px 12px;display:flex;gap:12px;align-items:center">'+
+                '<input type="checkbox" class="pay-desk-shop-cb" data-ids="'+esc(idList)+'" data-shop="'+esc(String(g.shop_id||''))+'" title="Select this shop" onclick="event.stopPropagation()" onchange="payDeskUpdateSelCount()" style="width:18px;height:18px;accent-color:#c8864a;flex-shrink:0">'+
+                '<div style="flex:1;min-width:0;cursor:pointer" onclick="payDeskToggleCust(\''+sid+'\')">'+
+                  '<div style="font-size:15px;font-weight:900;color:#2c1810;letter-spacing:-0.01em;line-height:1.25;margin-bottom:6px">'+esc(g.shop_name)+'</div>'+
+                  '<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px">'+
+                    '<span style="font-size:11px;font-weight:800;color:#6b5a4a;background:#f5efe6;padding:3px 10px;border-radius:20px">'+n+' invoice'+(n===1?'':'s')+'</span>'+
+                    badges+
+                  '</div>'+
+                '</div>'+
+                '<div style="text-align:right;flex-shrink:0;cursor:pointer" onclick="payDeskToggleCust(\''+sid+'\')">'+
+                  '<div style="font-size:10px;font-weight:700;color:#8a7a6a;margin-bottom:2px;text-transform:uppercase;letter-spacing:0.4px">Balance Due</div>'+
+                  '<div style="font-size:18px;font-weight:900;color:#c8382a;letter-spacing:-0.03em;line-height:1.1">₹'+due.toLocaleString('en-IN',{maximumFractionDigits:0})+'</div>'+
+                  '<div id="pay-cust-chev-'+sid+'" style="margin-top:6px;font-size:12px;font-weight:800;color:#8a7a6a">'+(open?'Hide ▴':'Open ▾')+'</div>'+
+                '</div>'+
+              '</div>'+
+              '<div style="padding:0 14px 12px;display:flex;gap:8px;flex-wrap:wrap">'+
+                '<button type="button" class="btn-sm" style="background:#eef6ff;color:#1565c0;border:1px solid #bbdefb;font-weight:800;border-radius:10px;padding:7px 12px" onclick="event.stopPropagation();payDeskRemindShop(\''+sid+'\')">📨 Remind</button>'+
+                '<button type="button" class="btn-sm" style="background:#2e7d32;color:#fff;border:none;padding:5px 10px;font-size:11px;font-weight:900;margin:1px" onclick="event.stopPropagation();payDeskMarkPaidShop(\''+sid+'\')" title="Mark all unpaid for this customer">Mark paid</button>'+
+                '<button type="button" class="btn-sm" style="background:#f5efe6;color:#4a2f14;border:1px solid #e0d4c4;font-weight:800;border-radius:10px;padding:7px 12px" onclick="event.stopPropagation();payDeskSyncShopStatuses(\''+sid+'\')">↻ Sync shop</button>'+
+                '<button type="button" class="btn-sm" style="background:#fff;color:#6b5a4a;border:1px solid #e8dfd2;font-weight:700;border-radius:10px;padding:7px 12px" onclick="event.stopPropagation();payDeskToggleCust(\''+sid+'\')">'+(open?'Collapse':'Invoices')+'</button>'+
+              '</div>'+
+              '<div id="pay-cust-'+sid+'" style="display:'+(open?'block':'none')+';background:linear-gradient(180deg,#faf7f2 0%,#f5f0e8 100%);border-top:1px solid #ebe3d8;padding:12px 14px 14px">'+
+                '<div style="font-size:10px;font-weight:800;color:#8a7a6a;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:10px">Invoices</div>'+
+                details+
               '</div>'+
             '</div>'+
-            '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">'+
-              '<div style="font-size:18px;color:#8a7a6a;cursor:pointer" id="pay-cust-chev-'+sid+'" onclick="payDeskToggleCust(\''+sid+'\')">'+(open?'▾':'▸')+'</div>'+
-              '<button type="button" class="btn-sm" style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;font-weight:800;white-space:nowrap" onclick="event.stopPropagation();payDeskRemindShop(\''+sid+'\')">📨 Remind</button>'+
-            '</div>'+
-          '</div>'+
-          '<div id="pay-cust-'+sid+'" style="display:'+(open?'block':'none')+';border-top:1.5px solid #e8dfd2;background:#faf7f2;padding:10px">'+
-            '<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">'+
-              '<div style="font-size:10px;font-weight:800;color:#8a7a6a;font-family:monospace;letter-spacing:1px;flex:1">INVOICES · ZOHO STATUS</div>'+
-              '<button type="button" class="btn-sm" style="background:#4a2f14;color:#fff;border:none;font-weight:800" onclick="event.stopPropagation();payDeskSyncShopStatuses(\''+sid+'\')">↻ Sync this shop</button>'+
-            '</div>'+
-            details+
           '</div>'+
         '</div>';
       }
@@ -3033,16 +3119,186 @@
           '<div class="stat" style="background:#fff8e1;border-color:#ffe082"><div class="stat-n" style="color:#7a4800">₹'+draftDue.toLocaleString('en-IN',{maximumFractionDigits:0})+'</div><div class="stat-l">Draft total</div></div>';
       }
       if (elOpen) {
-        var groups = groupByCustomer(listOpen);
-        elOpen.innerHTML = groups.length
-          ? groups.map(customerGroupHtml).join('')
-          : '<div style="text-align:center;padding:20px;color:#8a7a6a;font-size:12px">No unpaid sent invoices<br><span style="font-size:11px">Drafts are on the Draft tab</span></div>';
+        /* One grid: parent customer row + child invoice rows */
+        if (!listOpen.length) {
+          elOpen.innerHTML = '<div style="text-align:center;padding:28px;color:#8a7a6a;font-size:13px">No unpaid sent invoices<br><span style="font-size:11px">Drafts are on the Draft tab</span></div>';
+        } else {
+          function _gridDueDate(o) {
+            var dueDate = o.due_date || o.zoho_due_date || '';
+            if (!dueDate && o.delivery_date && o.payment_terms_days != null && o.payment_terms_days !== '') {
+              try {
+                var dd = new Date(String(o.delivery_date).slice(0,10));
+                if (!isNaN(dd.getTime())) {
+                  dd.setDate(dd.getDate() + (parseInt(o.payment_terms_days,10)||0));
+                  dueDate = dd.toISOString().slice(0,10);
+                }
+              } catch (e) {}
+            }
+            return dueDate || '—';
+          }
+          function _gridStatusPill(o) {
+            var zRaw = o.zoho_invoice_status || '';
+            var zLabel = (typeof _payZohoStatusLabel === 'function' ? _payZohoStatusLabel(zRaw) : zRaw) || '';
+            var zNorm = (typeof _payNormalizeZohoStatus === 'function' ? _payNormalizeZohoStatus(zRaw) : String(zRaw).toLowerCase());
+            var stBg = '#eceff1', stFg = '#455a64';
+            if (!zLabel) {
+              if (o.customer_claimed_paid) { zLabel = 'Request'; stBg = '#e3f2fd'; stFg = '#1565c0'; }
+              else { zLabel = 'Unpaid'; stBg = '#fdecea'; stFg = '#c62828'; }
+            } else if (zNorm === 'overdue' || zNorm === 'unpaid') { stBg = '#fdecea'; stFg = '#c62828'; }
+            else if (zNorm === 'sent' || zNorm === 'viewed' || zNorm === 'open') { stBg = '#e3f2fd'; stFg = '#1565c0'; }
+            else if (zNorm === 'partially_paid') { stBg = '#fff8e1'; stFg = '#ef6c00'; }
+            else if (zNorm === 'paid' || zNorm === 'closed') { stBg = '#e8f5e9'; stFg = '#2e7d32'; }
+            else if (zNorm === 'draft') { stBg = '#f5f5f5'; stFg = '#616161'; }
+            return '<span style="display:inline-block;font-size:10px;font-weight:900;padding:3px 8px;border-radius:6px;background:'+stBg+';color:'+stFg+';text-transform:uppercase;white-space:nowrap">'+esc(zLabel)+'</span>';
+          }
+
+          var groups = groupByCustomer(listOpen);
+          groups.forEach(function(g){
+            g._due = g.rows.reduce(function(s,o){ return s + _payDue(o); }, 0);
+          });
+          groups.sort(function(a,b){
+            if (b._due !== a._due) return b._due - a._due;
+            return String(a.shop_name||'').localeCompare(String(b.shop_name||''));
+          });
+
+          var bodyHtml = groups.map(function(g){
+            var due = g._due || 0;
+            var n = g.rows.length;
+            var claims = g.rows.filter(function(o){ return o.customer_claimed_paid; }).length;
+            var sid = String(g.shop_id || g.shop_name || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+            var open = !!(window._payCustOpen && window._payCustOpen[sid]);
+            var idList = g.rows.map(function(r){ return String(r.id); }).join(',');
+            var shopId = String(g.shop_id || '');
+
+            // Parent row (customer) — same grid columns
+            var parent = '<tr class="pay-parent-row" data-sid="'+esc(sid)+'" style="background:#f7f3ed;border-top:2px solid #e0d4c4;border-bottom:1px solid #e8dfd2">'+
+              '<td style="padding:12px 8px;vertical-align:middle">'+
+                '<input type="checkbox" class="pay-desk-shop-cb" data-ids="'+esc(idList)+'" data-shop="'+esc(shopId)+'" title="Select all for this customer" onclick="event.stopPropagation()" onchange="payDeskUpdateSelCount()" style="width:16px;height:16px;accent-color:#c8864a">'+
+              '</td>'+
+              '<td style="padding:12px 8px;vertical-align:middle;cursor:pointer" colspan="2" onclick="payDeskToggleCust(\''+sid+'\')">'+
+                '<div style="display:flex;align-items:center;gap:8px">'+
+                  '<span id="pay-cust-chev-'+sid+'" style="font-size:12px;font-weight:900;color:#8a7a6a;width:14px">'+(open?'▾':'▸')+'</span>'+
+                  '<div style="min-width:0">'+
+                    '<div style="font-size:13px;font-weight:900;color:#2c1810;line-height:1.3">'+esc(g.shop_name)+'</div>'+
+                    '<div style="font-size:10px;color:#8a7a6a;margin-top:2px">'+n+' invoice'+(n===1?'':'s')+(claims?(' · '+claims+' request'):'')+'</div>'+
+                  '</div>'+
+                '</div>'+
+              '</td>'+
+              '<td style="padding:12px 8px;vertical-align:middle">'+
+                '<span style="font-size:10px;font-weight:900;padding:3px 8px;border-radius:6px;background:#efe8de;color:#6b5a4a;text-transform:uppercase">Customer</span>'+
+              '</td>'+
+              '<td style="padding:12px 8px;vertical-align:middle;font-size:11px;color:#8a7a6a">—</td>'+
+              '<td style="padding:12px 8px;vertical-align:middle;text-align:right;font-size:11px;color:#8a7a6a">—</td>'+
+              '<td style="padding:12px 8px;vertical-align:middle;text-align:right;white-space:nowrap">'+
+                '<div style="font-size:10px;font-weight:800;color:#8a7a6a;text-transform:uppercase">Balance</div>'+
+                '<div style="font-size:16px;font-weight:900;color:#c62828">₹'+due.toLocaleString('en-IN',{maximumFractionDigits:0})+'</div>'+
+              '</td>'+
+              '<td style="padding:12px 8px;vertical-align:middle;white-space:nowrap">'+
+                '<button type="button" class="btn-sm" style="background:#eef6ff;color:#1565c0;border:1px solid #bbdefb;padding:5px 8px;font-size:11px;font-weight:800;margin:1px" onclick="event.stopPropagation();payDeskRemindShop(\''+sid+'\')">Remind</button>'+
+                '<button type="button" class="btn-sm" style="background:#2e7d32;color:#fff;border:none;padding:5px 10px;font-size:11px;font-weight:900;margin:1px" onclick="event.stopPropagation();payDeskMarkPaidShop(\''+sid+'\')" title="Mark all unpaid for this customer">Mark paid</button>'+
+                '<button type="button" class="btn-sm" style="background:#f5efe6;color:#4a2f14;border:1px solid #e0d4c4;padding:5px 8px;font-size:11px;font-weight:800;margin:1px" onclick="event.stopPropagation();payDeskSyncShopStatuses(\''+sid+'\')">↻</button>'+
+              '</td>'+
+            '</tr>';
+
+            // Child invoice rows
+            var children = g.rows.map(function(o){
+              var bal = (o.balance_due != null && o.balance_due !== '') ? parseFloat(o.balance_due) : _payDue(o);
+              if (isNaN(bal)) bal = 0;
+              var total = (o.invoice_total != null && o.invoice_total !== '') ? parseFloat(o.invoice_total) : bal;
+              if (isNaN(total)) total = bal;
+              var invNo = o.zoho_invoice_number || ('#'+o.id);
+              var invDate = o.delivery_date || o.invoice_date || '—';
+              var dueDate = _gridDueDate(o);
+              return '<tr class="pay-child-row pay-child-'+sid+'" data-oid="'+esc(String(o.id))+'" style="border-bottom:1px solid #f0ebe3;background:#fff;display:'+(open?'table-row':'none')+'">'+
+                '<td style="padding:9px 8px 9px 20px;vertical-align:middle">'+
+                  '<input type="checkbox" class="pay-desk-row-cb" data-id="'+esc(String(o.id))+'" data-shop="'+esc(shopId)+'" onchange="payDeskUpdateSelCount()" style="width:16px;height:16px;accent-color:#c8864a">'+
+                '</td>'+
+                '<td style="padding:9px 8px;vertical-align:middle;white-space:nowrap;font-size:12px;color:#546e7a">'+esc(String(invDate))+'</td>'+
+                '<td style="padding:9px 8px;vertical-align:middle">'+
+                  '<div style="font-size:13px;font-weight:900;color:#1a237e">'+esc(invNo)+'</div>'+
+                  '<div style="font-size:10px;color:#90a4ae;font-family:monospace">Order '+esc(String(o.id))+'</div>'+
+                '</td>'+
+                '<td style="padding:9px 8px;vertical-align:middle">'+_gridStatusPill(o)+'</td>'+
+                '<td style="padding:9px 8px;vertical-align:middle;white-space:nowrap;font-size:12px;color:#546e7a">'+esc(String(dueDate))+'</td>'+
+                '<td style="padding:9px 8px;vertical-align:middle;text-align:right;font-size:12px;font-weight:700;color:#37474f;white-space:nowrap">₹'+total.toLocaleString('en-IN',{maximumFractionDigits:2})+'</td>'+
+                '<td style="padding:9px 8px;vertical-align:middle;text-align:right;font-size:13px;font-weight:900;color:#c62828;white-space:nowrap">₹'+bal.toLocaleString('en-IN',{maximumFractionDigits:2})+'</td>'+
+                '<td style="padding:9px 8px;vertical-align:middle;white-space:nowrap">'+
+                  '<button type="button" class="btn-sm" style="background:#f5efe6;color:#4a2f14;border:1px solid #e0d4c4;padding:5px 8px;font-size:11px;font-weight:800;margin:1px" onclick="openPayInvDetail(\''+o.id+'\')">View</button>'+
+                  (o.zoho_invoice_id ? '<button type="button" class="btn-sm" style="background:#fff8e1;color:#ef6c00;border:1px solid #ffe0b2;padding:5px 8px;font-size:11px;font-weight:800;margin:1px" onclick="payDeskSyncOne(\''+o.id+'\')">↻</button>' : '')+
+                  '<button type="button" class="btn-sm" style="background:#2e7d32;color:#fff;border:none;padding:5px 10px;font-size:11px;font-weight:900;margin:1px" onclick="payDeskMarkPaid(\''+o.id+'\')">✓</button>'+
+                '</td>'+
+              '</tr>';
+            }).join('');
+
+            return parent + children;
+          }).join('');
+
+          elOpen.innerHTML =
+            '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid #e8dfd2;border-radius:14px;background:#fff;box-shadow:0 2px 8px rgba(74,47,20,.04)">'+
+              '<table style="width:100%;border-collapse:collapse;min-width:720px;font-family:-apple-system,BlinkMacSystemFont,sans-serif">'+
+                '<thead>'+
+                  '<tr style="background:#efe8de;border-bottom:1.5px solid #e0d4c4">'+
+                    '<th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:800;color:#8a7a6a;text-transform:uppercase"></th>'+
+                    '<th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:800;color:#8a7a6a;text-transform:uppercase">Date</th>'+
+                    '<th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:800;color:#8a7a6a;text-transform:uppercase">Invoice # / Customer</th>'+
+                    '<th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:800;color:#8a7a6a;text-transform:uppercase">Status</th>'+
+                    '<th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:800;color:#8a7a6a;text-transform:uppercase">Due Date</th>'+
+                    '<th style="padding:10px 8px;text-align:right;font-size:10px;font-weight:800;color:#8a7a6a;text-transform:uppercase">Total</th>'+
+                    '<th style="padding:10px 8px;text-align:right;font-size:10px;font-weight:800;color:#c62828;text-transform:uppercase">Balance Due</th>'+
+                    '<th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:800;color:#8a7a6a;text-transform:uppercase">Actions</th>'+
+                  '</tr>'+
+                '</thead>'+
+                '<tbody>'+bodyHtml+'</tbody>'+
+              '</table>'+
+            '</div>';
+        }
       }
       if (elDraft) {
-        var dGroups = groupByCustomer(listDraft);
-        elDraft.innerHTML = dGroups.length
-          ? dGroups.map(customerGroupHtml).join('')
-          : '<div style="text-align:center;padding:20px;color:#8a7a6a;font-size:12px">No draft invoices</div>';
+        /* Flat invoice grid — no customer grouping */
+        if (!listDraft.length) {
+          elDraft.innerHTML = '<div style="text-align:center;padding:20px;color:#8a7a6a;font-size:12px">No draft invoices</div>';
+        } else {
+          var dRows = listDraft.slice().sort(function(a,b){
+            var na = String(a.shop_name||'').toLowerCase();
+            var nb = String(b.shop_name||'').toLowerCase();
+            if (na !== nb) return na.localeCompare(nb);
+            return String(a.delivery_date||'').localeCompare(String(b.delivery_date||''));
+          });
+          var dBody = dRows.map(function(o){
+            var bal = _payDue(o);
+            var total = o.invoice_total != null ? parseFloat(o.invoice_total) : bal;
+            if (isNaN(total)) total = bal;
+            var invNo = o.zoho_invoice_number || ('#'+o.id);
+            var invDate = o.delivery_date || '—';
+            var zLabel = (typeof _payZohoStatusLabel === 'function' ? _payZohoStatusLabel(o.zoho_invoice_status) : (o.zoho_invoice_status||'Draft')) || 'Draft';
+            var shop = o.shop_name || o.shop_id || '—';
+            return '<tr style="border-bottom:1px solid #eee">'+
+              '<td style="padding:9px 8px"><input type="checkbox" class="pay-desk-row-cb" data-id="'+esc(String(o.id))+'" data-shop="'+esc(String(o.shop_id||''))+'" onchange="payDeskUpdateSelCount()" style="width:16px;height:16px"></td>'+
+              '<td style="padding:9px 8px;font-size:12px;color:#546e7a;white-space:nowrap">'+esc(String(invDate))+'</td>'+
+              '<td style="padding:9px 8px"><div style="font-size:13px;font-weight:900;color:#1a237e">'+esc(invNo)+'</div><div style="font-size:10px;color:#90a4ae;font-family:monospace">Order '+esc(String(o.id))+'</div></td>'+
+              '<td style="padding:9px 8px;max-width:160px"><div style="font-size:12px;font-weight:800;color:#2c1810;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(shop)+'">'+esc(shop)+'</div></td>'+
+              '<td style="padding:9px 8px"><span style="font-size:10px;font-weight:900;padding:3px 8px;border-radius:6px;background:#f5f5f5;color:#616161;text-transform:uppercase">'+esc(zLabel)+'</span></td>'+
+              '<td style="padding:9px 8px;text-align:right;font-size:12px;font-weight:700">₹'+Number(total).toLocaleString('en-IN',{maximumFractionDigits:2})+'</td>'+
+              '<td style="padding:9px 8px;text-align:right;font-size:13px;font-weight:900;color:#616161">₹'+Number(bal).toLocaleString('en-IN',{maximumFractionDigits:2})+'</td>'+
+              '<td style="padding:9px 8px;white-space:nowrap">'+
+                '<button type="button" class="btn-sm" style="background:#f5efe6;color:#4a2f14;border:1px solid #e0d4c4;padding:5px 8px;font-size:11px;font-weight:800;margin:1px" onclick="openPayInvDetail(\''+o.id+'\')">View</button> '+
+                (o.zoho_invoice_id ? '<button type="button" class="btn-sm" style="background:#fff8e1;color:#ef6c00;border:1px solid #ffe0b2;padding:5px 8px;font-size:11px;font-weight:800;margin:1px" onclick="payDeskSyncOne(\''+o.id+'\')">↻ Sync</button> ' : '')+
+              '</td></tr>';
+          }).join('');
+          elDraft.innerHTML =
+            '<div style="overflow-x:auto;border:1px solid #e0e0e0;border-radius:14px;background:#fff">'+
+              '<table style="width:100%;border-collapse:collapse;min-width:720px">'+
+                '<thead><tr style="background:#eeeeee;border-bottom:1.5px solid #e0e0e0">'+
+                  '<th style="padding:10px 8px;font-size:10px;font-weight:800;color:#8a7a6a;text-transform:uppercase"></th>'+
+                  '<th style="padding:10px 8px;font-size:10px;font-weight:800;color:#8a7a6a;text-transform:uppercase;text-align:left">Date</th>'+
+                  '<th style="padding:10px 8px;font-size:10px;font-weight:800;color:#8a7a6a;text-transform:uppercase;text-align:left">Invoice #</th>'+
+                  '<th style="padding:10px 8px;font-size:10px;font-weight:800;color:#8a7a6a;text-transform:uppercase;text-align:left">Customer</th>'+
+                  '<th style="padding:10px 8px;font-size:10px;font-weight:800;color:#8a7a6a;text-transform:uppercase;text-align:left">Status</th>'+
+                  '<th style="padding:10px 8px;font-size:10px;font-weight:800;color:#8a7a6a;text-transform:uppercase;text-align:right">Total</th>'+
+                  '<th style="padding:10px 8px;font-size:10px;font-weight:800;color:#8a7a6a;text-transform:uppercase;text-align:right">Balance</th>'+
+                  '<th style="padding:10px 8px;font-size:10px;font-weight:800;color:#8a7a6a;text-transform:uppercase;text-align:left">Actions</th>'+
+                '</tr></thead><tbody>'+dBody+'</tbody></table></div>';
+        }
       }
       if (elReq) {
         if (!listReq.length) {
@@ -3077,16 +3333,33 @@
       try { adminLazyLoadThumbs(document.getElementById('pay-desk-list-req')); adminLazyLoadThumbs(document.getElementById('pay-desk-list-paid')); adminLazyLoadThumbs(document.getElementById('pay-desk-list')); } catch (eLazy) {}
     }
     window._payCustOpen = window._payCustOpen || {};
+
+    function challanDeskToggleCust(sid) {
+      if (!window._challanCustOpen) window._challanCustOpen = {};
+      window._challanCustOpen[sid] = !window._challanCustOpen[sid];
+      var open = !!window._challanCustOpen[sid];
+      var ch = document.getElementById('challan-chev-'+sid);
+      if (ch) ch.textContent = open ? '▾' : '▸';
+      document.querySelectorAll('.ch-child-'+sid).forEach(function(tr){
+        tr.style.display = open ? 'table-row' : 'none';
+      });
+    }
+    window.challanDeskToggleCust = challanDeskToggleCust;
+
     function payDeskToggleCust(sid) {
       if (!window._payCustOpen) window._payCustOpen = {};
       window._payCustOpen[sid] = !window._payCustOpen[sid];
+      var open = !!window._payCustOpen[sid];
       var el = document.getElementById('pay-cust-'+sid);
       var ch = document.getElementById('pay-cust-chev-'+sid);
-      if (el) el.style.display = window._payCustOpen[sid] ? 'block' : 'none';
-      if (ch) ch.textContent = window._payCustOpen[sid] ? '▾' : '▸';
-      // When opening a shop, pull Zoho status for its docs so badges show without extra click
-      if (window._payCustOpen[sid]) {
-        payDeskSyncShopStatuses(sid);
+      if (el) el.style.display = open ? 'block' : 'none';
+      if (ch) ch.textContent = open ? '▾' : '▸';
+      // Grid child rows (parent+child table layout)
+      document.querySelectorAll('.pay-child-'+sid).forEach(function(tr){
+        tr.style.display = open ? 'table-row' : 'none';
+      });
+      if (open) {
+        try { payDeskSyncShopStatuses(sid); } catch (e1) {}
         try { adminLazyLoadThumbs(el); } catch (e) {}
       }
     }
@@ -3183,31 +3456,39 @@
     
     /** Parent shop selection only — no child invoice checkboxes */
     function payDeskUpdateSelCount() {
-      var n = document.querySelectorAll('.pay-desk-shop-cb:checked').length;
+      var nShop = document.querySelectorAll('.pay-desk-shop-cb:checked').length;
+      var nRow = document.querySelectorAll('.pay-desk-row-cb:checked').length;
       var el = document.getElementById('pay-desk-selcount');
-      if (el) el.textContent = n ? (n + ' shop' + (n === 1 ? '' : 's') + ' selected') : '';
+      if (!el) return;
+      if (nRow) el.textContent = nRow + ' invoice' + (nRow === 1 ? '' : 's') + ' selected';
+      else if (nShop) el.textContent = nShop + ' shop' + (nShop === 1 ? '' : 's') + ' selected';
+      else el.textContent = '';
     }
     function payDeskSelect(mode) {
-      document.querySelectorAll('.pay-desk-shop-cb').forEach(function(scb){
+      document.querySelectorAll('.pay-desk-shop-cb, .pay-desk-row-cb').forEach(function(scb){
         if (mode === 'none') { scb.checked = false; return; }
         if (mode === 'visible' || mode === 'unpaid') scb.checked = true;
       });
       payDeskUpdateSelCount();
     }
-    /** Collect order rows for all checked parent shops */
+    /** Collect order rows from grid row checkboxes and/or shop parent checkboxes */
     function payDeskSelectedShopRows(filterFn) {
       var rows = [];
       var seen = {};
+      function addId(id) {
+        if (!id || seen[id]) return;
+        var o = (_payDeskRows || []).find(function(r){ return String(r.id) === String(id); });
+        if (!o) return;
+        if (typeof filterFn === 'function' && !filterFn(o)) return;
+        seen[id] = 1;
+        rows.push(o);
+      }
+      document.querySelectorAll('.pay-desk-row-cb:checked').forEach(function(cb){
+        addId(cb.getAttribute('data-id'));
+      });
       document.querySelectorAll('.pay-desk-shop-cb:checked').forEach(function(scb){
         var ids = String(scb.getAttribute('data-ids') || '').split(',').filter(Boolean);
-        ids.forEach(function(id){
-          if (seen[id]) return;
-          var o = (_payDeskRows || []).find(function(r){ return String(r.id) === String(id); });
-          if (!o) return;
-          if (typeof filterFn === 'function' && !filterFn(o)) return;
-          seen[id] = 1;
-          rows.push(o);
-        });
+        ids.forEach(addId);
       });
       return rows;
     }
@@ -5172,6 +5453,7 @@ function payDeskLoadBlockSettings() {
       window.payDeskBlockSelected = typeof payDeskBlockSelected === 'function' ? payDeskBlockSelected : function(){};
       window.payDeskRunReconcile = typeof payDeskRunReconcile === 'function' ? payDeskRunReconcile : function(){};
       window.payDeskConfirmReconcileHigh = typeof payDeskConfirmReconcileHigh === 'function' ? payDeskConfirmReconcileHigh : function(){};
+      window.payDeskMarkPaidShop = typeof payDeskMarkPaidShop === "function" ? payDeskMarkPaidShop : function(){};
       window.payDeskMarkPaid = typeof payDeskMarkPaid === 'function' ? payDeskMarkPaid : function(){};
       window.payDeskUndoPaid = typeof payDeskUndoPaid === 'function' ? payDeskUndoPaid : function(){};
       window.payDeskConfirmRequest = typeof payDeskConfirmRequest === 'function' ? payDeskConfirmRequest : function(){};
