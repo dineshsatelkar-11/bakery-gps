@@ -35,5 +35,9 @@ const CONFIG = {
 
   ONESIGNAL_APP_ID:       'YOUR_ONESIGNAL_APP_ID',
   ONESIGNAL_REST_API_KEY: 'YOUR_ONESIGNAL_REST_API_KEY',
-  VAPID_PUBLIC_KEY:       'YOUR_VAPID_PUBLIC_KEY'
+  VAPID_PUBLIC_KEY:       'YOUR_VAPID_PUBLIC_KEY',
+
+  // Zoho Books — deposit-to account for customer payments (Mark Paid)
+  // Chart of Accounts → open the bank/cash account → copy ID from URL
+  ZOHO_PAYMENT_ACCOUNT_ID: 'YOUR_ZOHO_BANK_ACCOUNT_ID'
 };

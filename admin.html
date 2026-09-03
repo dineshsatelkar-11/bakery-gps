@@ -10032,6 +10032,8 @@ onStaffRoleChange();
               date: (order.delivery_date || todayStr()),
               payment_mode: mode || 'other',
               reference_number: ref || ('IBCAB-PAY-' + order.id),
+              // Deposit into [ 1 ] It's BAKED Craft & Artisanal Bakery (not Undeposited Funds)
+              account_id: (typeof CONFIG !== 'undefined' && CONFIG.ZOHO_PAYMENT_ACCOUNT_ID) ? String(CONFIG.ZOHO_PAYMENT_ACCOUNT_ID) : '3249544000000190499',
               invoices: [{ invoice_id: order.zoho_invoice_id, amount_applied: amount }]
             }
           })

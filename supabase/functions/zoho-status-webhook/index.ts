@@ -100,28 +100,54 @@ function mapStatuses(zStatus: string): {
 
 function parseBody(raw: string, contentType: string): Record<string, unknown> {
   const ct = (contentType || "").toLowerCase();
+  let out: Record<string, unknown> = {};
+
+  // 1) JSON body
   if (ct.includes("application/json") || raw.trim().startsWith("{")) {
     try {
-      return JSON.parse(raw) as Record<string, unknown>;
+      out = JSON.parse(raw) as Record<string, unknown>;
     } catch {
       /* fall through */
     }
   }
-  const out: Record<string, unknown> = {};
-  try {
-    const params = new URLSearchParams(raw);
-    params.forEach((v, k) => {
-      out[k] = v;
-    });
-    if (Object.keys(out).length) return out;
-  } catch {
-    /* ignore */
+
+  // 2) form-urlencoded (Zoho default for many webhooks)
+  if (!Object.keys(out).length || ct.includes("application/x-www-form-urlencoded")) {
+    try {
+      const params = new URLSearchParams(raw);
+      const form: Record<string, unknown> = {};
+      params.forEach((v, k) => {
+        form[k] = v;
+      });
+      if (Object.keys(form).length) {
+        out = { ...out, ...form };
+      }
+    } catch {
+      /* ignore */
+    }
   }
-  try {
-    return JSON.parse(raw) as Record<string, unknown>;
-  } catch {
-    return { raw };
+
+  // 3) Zoho often wraps payload in JSONString=...
+  const js = out.JSONString || out.jsonstring || out.JSON || out.payload;
+  if (typeof js === "string" && js.trim()) {
+    try {
+      const inner = JSON.parse(js) as Record<string, unknown>;
+      out = { ...out, ...inner };
+    } catch {
+      /* ignore */
+    }
   }
+
+  // 4) last try: raw JSON
+  if (!Object.keys(out).length) {
+    try {
+      out = JSON.parse(raw) as Record<string, unknown>;
+    } catch {
+      out = { raw: raw.slice(0, 500) };
+    }
+  }
+
+  return out;
 }
 
 function flattenPayload(data: Record<string, unknown>): Record<string, unknown> {
@@ -339,22 +365,51 @@ Deno.serve(async (req) => {
     }
   }
 
-  const invoiceId = pick(data, [
-    "invoice_id",
-    "invoiceId",
-    "Invoice ID",
-    "salesorder_id",
-    "deliverychallan_id",
-    "delivery_challan_id",
-    "zoho_invoice_id",
-  ]);
-  const invoiceNumber = pick(data, [
+  // Also scan any key that looks like an id/number from Zoho field labels
+  function pickLoose(keys: string[], extraTest?: (k: string, v: string) => boolean): string {
+    const direct = pick(data, keys);
+    if (direct) return direct;
+    for (const [k, v] of Object.entries(data)) {
+      if (v == null) continue;
+      const vs = String(v).trim();
+      if (!vs || vs.startsWith("{")) continue;
+      const kl = k.toLowerCase().replace(/[\s.]+/g, "_");
+      for (const want of keys) {
+        const wl = want.toLowerCase().replace(/[\s.]+/g, "_");
+        if (kl === wl || kl.endsWith("_" + wl) || kl.includes(wl)) {
+          if (!extraTest || extraTest(kl, vs)) return vs;
+        }
+      }
+    }
+    return "";
+  }
+
+  const invoiceId = pickLoose(
+    [
+      "invoice_id",
+      "invoiceId",
+      "Invoice ID",
+      "salesorder_id",
+      "deliverychallan_id",
+      "delivery_challan_id",
+      "zoho_invoice_id",
+      "id",
+    ],
+    (k, v) => {
+      // Prefer long numeric Zoho ids; avoid short status words
+      if (k === "id" || k.endsWith("_id")) return /^\d{10,}$/.test(v);
+      return true;
+    },
+  );
+  const invoiceNumber = pickLoose([
     "invoice_number",
     "invoiceNumber",
     "Invoice Number",
     "salesorder_number",
     "deliverychallan_number",
+    "Delivery Challan Number",
     "zoho_invoice_number",
+    "invoice_number_formatted",
   ]);
   let statusRaw = pick(data, [
     "status",
@@ -383,11 +438,19 @@ Deno.serve(async (req) => {
     !!pick(data, ["salesorder_id", "deliverychallan_id", "delivery_challan_id"]);
 
   if (!invoiceId && !invoiceNumber && !reference) {
+    console.error("[zoho-status-webhook] missing identifiers", {
+      keys: Object.keys(data),
+      sample: Object.fromEntries(
+        Object.entries(data).slice(0, 12).map(([k, v]) => [k, String(v).slice(0, 80)]),
+      ),
+    });
     return new Response(
       JSON.stringify({
         code: 1,
-        error: "Missing invoice_id / number / reference_number",
+        error: "Missing invoice_id / number / reference_number — check Zoho webhook Entity Parameters",
         keys: Object.keys(data),
+        hint:
+          "In Zoho Workflow → Webhook → add parameters: invoice_id = ${Invoice.Invoice ID}, invoice_number = ${Invoice.Invoice Number}, status = ${Invoice.Status}, reference_number = ${Invoice.Reference Number}",
       }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );

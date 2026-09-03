@@ -2522,7 +2522,7 @@
         if (o.payment_proof_file_id && !g.payment_proof_file_id) g.payment_proof_file_id = o.payment_proof_file_id;
       });
       return Object.keys(map).map(function(k){ return map[k]; }).sort(function(a,b){
-        // Alphabetical by shop name
+        // Alphabetical A→Z by shop name, then newest paid first within same shop
         var na = String(a.shop_name || a.shop_id || '').toLowerCase();
         var nb = String(b.shop_name || b.shop_id || '').toLowerCase();
         if (na !== nb) return na.localeCompare(nb);
@@ -3156,9 +3156,12 @@
           groups.forEach(function(g){
             g._due = g.rows.reduce(function(s,o){ return s + _payDue(o); }, 0);
           });
+          // Alphabetical A→Z by shop name (then higher due within same name)
           groups.sort(function(a,b){
-            if (b._due !== a._due) return b._due - a._due;
-            return String(a.shop_name||'').localeCompare(String(b.shop_name||''));
+            var na = String(a.shop_name || a.shop_id || '').toLowerCase();
+            var nb = String(b.shop_name || b.shop_id || '').toLowerCase();
+            if (na !== nb) return na.localeCompare(nb);
+            return (b._due || 0) - (a._due || 0);
           });
 
           var bodyHtml = groups.map(function(g){
@@ -3798,6 +3801,8 @@
           date: dateStr,
           payment_mode: mode || 'Bank Transfer',
           reference_number: refNum,
+          // Deposit into [ 1 ] It's BAKED Craft & Artisanal Bakery (not Undeposited Funds)
+          account_id: (typeof CONFIG !== 'undefined' && CONFIG.ZOHO_PAYMENT_ACCOUNT_ID) ? String(CONFIG.ZOHO_PAYMENT_ACCOUNT_ID) : '3249544000000190499',
           invoices: invLines
         }
       }).then(function(data){

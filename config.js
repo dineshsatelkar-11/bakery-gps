@@ -47,6 +47,10 @@ const CONFIG = {
 
   VERSION: '3.4',
 
+  // Zoho Books — deposit-to account for customer payments created from admin Mark Paid
+  // Chart of Accounts → [ 1 ] It's BAKED Craft & Artisanal Bakery
+  ZOHO_PAYMENT_ACCOUNT_ID: '3249544000000190499',
+
   // ── Web Push (VAPID) ───────────────────────────────────────────────────────
   // 1. Open generate-vapid.html in your browser → click Generate → copy Public Key here
   // 2. Private Key goes into Supabase Edge Function secrets (never here)
