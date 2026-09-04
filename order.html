@@ -3614,18 +3614,19 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
     /** App-specific intent URLs */
     function buildUpiAppUrls(amount){
       var note = buildPayTxnNote();
-      var q = buildUpiQuery(amount, note);                 // with amount (QR / GPay / Paytm)
-      var qNoAm = buildUpiQuery(amount, note, { omitAmount: true }); // PhonePe only — no am=
-      if(!q && !qNoAm) return {};
+      var q = buildUpiQuery(amount, note); // QR / GPay / Paytm — with amount
+      // PhonePe redirect: UPI ID only (no amount) — avoids wrong app + user types amount
+      var qPp = buildUpiQuery(amount, note, { omitAmount: true });
+      if (!q && !qPp) return {};
       var upi = q ? ('upi://pay?' + q) : '';
-      var upiNoAm = qNoAm ? ('upi://pay?' + qNoAm) : upi;
+      var qPhone = qPp || q;
       return {
         upi: upi,
-        // PhonePe — no amount on redirect (user enters in app)
-        phonepe: 'intent://pay?' + qNoAm + '#Intent;scheme=upi;package=com.phonepe.app;end',
-        phonepeAlt: 'phonepe://pay?' + qNoAm,
-        phonepeAlt2: 'ppe://pay?' + qNoAm,
-        phonepeUpi: upiNoAm,
+        // PhonePe only — app schemes (NOT generic upi:// which often opens WhatsApp on iOS)
+        phonepe: 'intent://pay?' + qPhone + '#Intent;scheme=upi;package=com.phonepe.app;end',
+        phonepeAlt: 'phonepe://pay?' + qPhone,
+        phonepeAlt2: 'ppe://pay?' + qPhone,
+        phonepeAlt3: 'phonepe://upi/pay?' + qPhone,
         // Google Pay
         gpay: 'intent://pay?' + q + '#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end',
         gpayAlt: 'gpay://upi/pay?' + q,
@@ -3787,29 +3788,27 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
 
         var order = [];
         if (isIOS) {
-          // Standard upi:// first — iOS routes it to any installed UPI app (PhonePe/GPay/Paytm).
-          // App-specific schemes as soft fallbacks (no intent://).
-          // PhonePe: use no-amount URL only
+          // Never use generic upi:// for PhonePe — iOS often opens WhatsApp instead.
+          // PhonePe: only phonepe:// / ppe:// schemes, UPI ID only (no amount).
           if (preferred === 'phonepe') {
-            order = [urls.phonepeUpi || urls.phonepeAlt, urls.phonepeAlt, urls.phonepeAlt2];
+            order = [urls.phonepeAlt, urls.phonepeAlt3, urls.phonepeAlt2];
           } else if (preferred === 'gpay') {
-            order = [urls.upi, urls.gpayAlt];
+            order = [urls.gpayAlt, urls.upi];
           } else if (preferred === 'paytm') {
-            order = [urls.upi, urls.paytm, urls.paytmAlt];
+            order = [urls.paytm, urls.paytmAlt, urls.upi];
           } else {
             order = [urls.upi];
           }
         } else if (isAndroid) {
-          // Android: prefer package intent, then app scheme, then generic upi://
-          // PhonePe: all variants without amount
+          // Android: package intent first, then app scheme. No generic upi:// for PhonePe.
           if (preferred === 'phonepe') {
-            order = [urls.phonepe, urls.phonepeAlt, urls.phonepeAlt2, urls.phonepeUpi];
+            order = [urls.phonepe, urls.phonepeAlt, urls.phonepeAlt3, urls.phonepeAlt2];
           } else if (preferred === 'gpay') {
             order = [urls.gpay, urls.gpayAlt, urls.upi];
           } else if (preferred === 'paytm') {
             order = [urls.paytmIntent, urls.paytm, urls.paytmAlt, urls.upi];
           } else {
-            order = [urls.upi, urls.phonepe, urls.gpay, urls.paytm];
+            order = [urls.upi];
           }
         } else {
           // Desktop / other — only generic upi:// (QR is the real path)
