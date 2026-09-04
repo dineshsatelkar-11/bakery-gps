@@ -3763,25 +3763,56 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
           alert('UPI not configured. Ask bakery for UPI ID.');
           return;
         }
-        // Ordered fallbacks — QR uses standard upi:// (works). Buttons need app intent + fallbacks.
+        // iOS Safari rejects Android intent:// URLs with "address is invalid".
+        // On iOS: only use upi:// (and mild app schemes). Never chain multiple launches.
+        var ua = (navigator.userAgent || '').toLowerCase();
+        var isIOS = /iphone|ipad|ipod/.test(ua) ||
+          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        var isAndroid = /android/.test(ua);
+
         var order = [];
-        if(preferred === 'phonepe') {
-          order = [urls.phonepe, urls.phonepeAlt, urls.phonepeAlt2, urls.upi];
-        } else if(preferred === 'gpay') {
-          order = [urls.gpay, urls.gpayAlt, urls.upi];
-        } else if(preferred === 'paytm') {
-          order = [urls.paytmIntent, urls.paytm, urls.paytmAlt, urls.upi];
+        if (isIOS) {
+          // Standard upi:// first — iOS routes it to any installed UPI app (PhonePe/GPay/Paytm).
+          // App-specific schemes as soft fallbacks (no intent://).
+          if (preferred === 'phonepe') {
+            order = [urls.upi, urls.phonepeAlt, urls.phonepeAlt2];
+          } else if (preferred === 'gpay') {
+            order = [urls.upi, urls.gpayAlt];
+          } else if (preferred === 'paytm') {
+            order = [urls.upi, urls.paytm, urls.paytmAlt];
+          } else {
+            order = [urls.upi];
+          }
+        } else if (isAndroid) {
+          // Android: prefer package intent, then app scheme, then generic upi://
+          if (preferred === 'phonepe') {
+            order = [urls.phonepe, urls.phonepeAlt, urls.phonepeAlt2, urls.upi];
+          } else if (preferred === 'gpay') {
+            order = [urls.gpay, urls.gpayAlt, urls.upi];
+          } else if (preferred === 'paytm') {
+            order = [urls.paytmIntent, urls.paytm, urls.paytmAlt, urls.upi];
+          } else {
+            order = [urls.upi, urls.phonepe, urls.gpay, urls.paytm];
+          }
         } else {
-          order = [urls.upi, urls.phonepe, urls.gpay, urls.paytm];
+          // Desktop / other — only generic upi:// (QR is the real path)
+          order = [urls.upi];
         }
+
+        // Drop empty / Android-only intent on non-Android
+        order = order.filter(function(u){
+          if (!u) return false;
+          if (!isAndroid && String(u).indexOf('intent://') === 0) return false;
+          return true;
+        });
 
         var tried = 0;
         function launch(u){
-          if(!u) return;
+          if (!u) return;
           try {
             // location works more reliably for custom schemes / intent:// on Android Chrome
             window.location.href = u;
-          } catch(e){
+          } catch (e) {
             try {
               var a = document.createElement('a');
               a.href = u;
@@ -3789,23 +3820,24 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
               a.style.display = 'none';
               document.body.appendChild(a);
               a.click();
-              setTimeout(function(){ try { document.body.removeChild(a); } catch(e2){} }, 400);
-            } catch(e3){}
+              setTimeout(function(){ try { document.body.removeChild(a); } catch (e2) {} }, 400);
+            } catch (e3) {}
           }
         }
         function tryNext(){
-          if(tried >= order.length) return;
+          if (tried >= order.length) return;
           var u = order[tried++];
-          if(!u) return tryNext();
+          if (!u) return tryNext();
           launch(u);
-          // If scheme is ignored, try next after a short delay
-          if(tried < order.length) {
+          // On iOS only try the first URL — chaining causes multiple "invalid address" alerts.
+          // On Android keep short fallback chain if the preferred app is missing.
+          if (!isIOS && tried < order.length) {
             setTimeout(tryNext, 900);
           }
         }
         tryNext();
         setTimeout(function(){
-          if(typeof startPaymentStatusPoll === 'function') startPaymentStatusPoll('upi');
+          if (typeof startPaymentStatusPoll === 'function') startPaymentStatusPoll('upi');
         }, 1500);
       };
       if (typeof loadUpiSettings === 'function') {
