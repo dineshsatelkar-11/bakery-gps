@@ -2303,14 +2303,9 @@ function qaPayApp(app){
     showMsg('qa-msg','Enter UPI ID or paste QR text — or use Scan QR if they show a code','er');
     return;
   }
-  var url=buildAppUpiUrl(app, vpa, name, amt, note);
-  if(!url){showMsg('qa-msg','Valid UPI ID required','er');return;}
-  try{
-    window.location.href=url;
-    showMsg('qa-msg',(app==='phonepe'?'PhonePe':'Paytm')+' opened. After pay, tap Save.','ok');
-  }catch(e){
-    showMsg('qa-msg','Could not open app','er');
-  }
+  var res=openAppUpiUrl(app, vpa, name, amt, note);
+  if(!res.ok){showMsg('qa-msg',res.err||'Valid UPI ID required','er');return;}
+  showMsg('qa-msg',(app==='phonepe'?'PhonePe':app==='paytm'?'Paytm':'UPI')+' opened. After pay, tap Save.','ok');
 }
 var _qaQrStream=null;
 var _qaQrLoop=0;
@@ -2520,10 +2515,9 @@ function qerPayApp(app){
   var drv=v('qer-driver'); var amt=parseFloat(v('qer-amount'))||0;
   if(!(amt>0)){showMsg('qer-msg','Enter amount first','er');return;}
   var vpa=v('qer-upi'); var d=getDriverUpi(drv); if(!vpa&&d) vpa=d.upi_vpa;
-  var url=buildAppUpiUrl(app, vpa, (d&&d.upi_payee_name)||drv, amt, 'Extra route '+drv);
-  if(!url){showMsg('qer-msg','Valid UPI ID required','er');return;}
-  try{ window.location.href=url; showMsg('qer-msg','App opened — after pay, tap Save','ok'); }
-  catch(e){ showMsg('qer-msg','Could not open app','er'); }
+  var res=openAppUpiUrl(app, vpa, (d&&d.upi_payee_name)||drv, amt, 'Extra route '+drv);
+  if(!res.ok){showMsg('qer-msg',res.err||'Valid UPI ID required','er');return;}
+  showMsg('qer-msg',(app==='phonepe'?'PhonePe':app==='paytm'?'Paytm':'UPI')+' opened — after pay, tap Save','ok');
 }
 function saveQuickExtraRoute(){
   var drv=v('qer-driver'); var amt=parseFloat(v('qer-amount'));
@@ -4480,18 +4474,103 @@ function refreshExtraRouteUpi(){
     if(input) input.value='';
   }
 }
-function buildAppUpiUrl(app, vpa, payeeName, amount, note){
+function isIosDevice(){
+  try{
+    var ua=navigator.userAgent||'';
+    return /iPad|iPhone|iPod/.test(ua) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+  }catch(e){ return false; }
+}
+function buildAppUpiQuery(vpa, payeeName, amount, note){
   var pa=parseUpiVpa(vpa);
   if(!pa||pa.indexOf('@')<0) return '';
   var am=parseFloat(amount);
   if(!(am>0)) return '';
   var pn=encodeURIComponent(String(payeeName||'Driver').slice(0,50));
-  var tn=encodeURIComponent(String(note||'Extra route').slice(0,80));
-  var ams=am.toFixed(2);
-  var q='pa='+encodeURIComponent(pa)+'&pn='+pn+'&am='+ams+'&cu=INR&tn='+tn;
-  if(app==='phonepe') return 'phonepe://pay?'+q;
-  if(app==='paytm') return 'paytmmp://pay?'+q;
+  var tn=encodeURIComponent(String(note||'Payment').slice(0,80));
+  return 'pa='+encodeURIComponent(pa)+'&pn='+pn+'&am='+am.toFixed(2)+'&cu=INR&tn='+tn;
+}
+function buildAppUpiUrl(app, vpa, payeeName, amount, note){
+  var q=buildAppUpiQuery(vpa, payeeName, amount, note);
+  if(!q) return '';
+  var ios=isIosDevice();
+  // iOS Safari: custom schemes only (intent:// does nothing on iPhone)
+  if(ios){
+    if(app==='phonepe') return 'phonepe://pay?'+q;
+    if(app==='paytm') return 'paytmmp://pay?'+q;
+    if(app==='gpay') return 'gpay://upi/pay?'+q;
+    return 'upi://pay?'+q;
+  }
+  // Android: Intent is most reliable from Chrome
+  if(app==='phonepe'){
+    return 'intent://pay?'+q+'#Intent;scheme=phonepe;package=com.phonepe.app;S.browser_fallback_url='+
+      encodeURIComponent('https://play.google.com/store/apps/details?id=com.phonepe.app')+';end';
+  }
+  if(app==='paytm'){
+    return 'intent://pay?'+q+'#Intent;scheme=paytmmp;package=net.one97.paytm;S.browser_fallback_url='+
+      encodeURIComponent('https://play.google.com/store/apps/details?id=net.one97.paytm')+';end';
+  }
+  if(app==='gpay'){
+    return 'intent://upi/pay?'+q+'#Intent;scheme=tez;package=com.google.android.apps.nbu.paisa.user;S.browser_fallback_url='+
+      encodeURIComponent('https://play.google.com/store/apps/details?id=com.google.android.apps.nbu.paisa.user')+';end';
+  }
   return 'upi://pay?'+q;
+}
+/** Open UPI deep link — iOS Safari schemes + Android Intent + universal fallback. */
+function openAppUpiUrl(app, vpa, payeeName, amount, note){
+  var pa=parseUpiVpa(vpa);
+  if(!pa||pa.indexOf('@')<0) return {ok:false, err:'Valid UPI ID required (name@bank)'};
+  var am=parseFloat(amount);
+  if(!(am>0)) return {ok:false, err:'Enter amount first'};
+  var q=buildAppUpiQuery(pa, payeeName, am, note);
+  if(!q) return {ok:false, err:'Valid UPI ID required (name@bank)'};
+  var ios=isIosDevice();
+  var urls=[];
+  if(ios){
+    // iPhone order: app scheme → alternate schemes → universal upi://
+    if(app==='phonepe'){
+      urls.push('phonepe://pay?'+q);
+      urls.push('phonepe://upi/pay?'+q);
+    } else if(app==='paytm'){
+      urls.push('paytmmp://pay?'+q);
+      urls.push('paytm://pay?'+q);
+    } else if(app==='gpay'){
+      urls.push('gpay://upi/pay?'+q);
+      urls.push('tez://upi/pay?'+q);
+    }
+    urls.push('upi://pay?'+q);
+  } else {
+    urls.push(buildAppUpiUrl(app, pa, payeeName, am, note));
+    if(app==='phonepe') urls.push('phonepe://pay?'+q);
+    else if(app==='paytm') urls.push('paytmmp://pay?'+q);
+    else if(app==='gpay') urls.push('tez://upi/pay?'+q);
+    urls.push('upi://pay?'+q);
+  }
+  function tryOpen(url){
+    if(!url) return false;
+    try{
+      // iOS Safari responds best to location change for custom schemes
+      if(ios){
+        window.location.href=url;
+        return true;
+      }
+      var a=document.createElement('a');
+      a.href=url;
+      a.rel='noopener';
+      a.style.display='none';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function(){ try{document.body.removeChild(a);}catch(e){} }, 1500);
+      return true;
+    }catch(e){
+      try{ window.location.href=url; return true; }catch(e2){ return false; }
+    }
+  }
+  // Try first URL immediately; on iOS only one navigation is practical
+  if(tryOpen(urls[0])) return {ok:true};
+  for(var i=1;i<urls.length;i++){
+    if(tryOpen(urls[i])) return {ok:true};
+  }
+  return {ok:false, err:'Could not open app. On iPhone: install PhonePe, open this page in Safari, allow “Open in PhonePe”. Or pay manually then Save.'};
 }
 function payExtraRouteApp(app){
   var drv=v('er-driver'); var amt=parseFloat(v('er-amount'))||250;
@@ -4501,14 +4580,9 @@ function payExtraRouteApp(app){
   if(!vpa && d) vpa=d.upi_vpa;
   var name=(d&&d.upi_payee_name)||drv;
   var note='Extra route '+drv+(v('er-note')?' '+v('er-note'):'');
-  var url=buildAppUpiUrl(app, vpa, name, amt, note);
-  if(!url){showMsg('er-msg','Valid UPI ID required (name@bank)','er');return;}
-  try{
-    window.location.href=url;
-    showMsg('er-msg',(app==='phonepe'?'PhonePe':'Paytm')+' opened. After payment, tap Mark Paid & Save.','ok');
-  }catch(e){
-    showMsg('er-msg','Could not open '+(app==='phonepe'?'PhonePe':'Paytm')+'. Is the app installed?','er');
-  }
+  var res=openAppUpiUrl(app, vpa, name, amt, note);
+  if(!res.ok){showMsg('er-msg',res.err||'Valid UPI ID required','er');return;}
+  showMsg('er-msg',(app==='phonepe'?'PhonePe':app==='paytm'?'Paytm':'UPI')+' opened. After payment, tap Mark Paid & Save.','ok');
 }
 function saveExtraRoutePay(){
   var drv=v('er-driver');
