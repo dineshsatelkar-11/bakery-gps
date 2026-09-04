@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UPI Payment</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .amount {
+            font-size: 48px;
+            font-weight: bold;
+            color: #667eea;
+            margin: 20px 0;
+        }
+
+        .upi-id {
+            background: #f0f4ff;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .upi-id p {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .upi-id-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            word-break: break-all;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .copy-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.3s;
+        }
+
+        .copy-btn:hover {
+            background: #5568d3;
+        }
+
+        .copy-btn.copied {
+            background: #4caf50;
+        }
+
+        .payment-title {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .payment-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+
+        .payment-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding: 16px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            background: white;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+            text-decoration: none;
+            color: #333;
+        }
+
+        .payment-btn:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+        }
+
+        .payment-btn.googlepay:hover {
+            border-color: #4285f4;
+        }
+
+        .payment-btn.paytm:hover {
+            border-color: #0066ff;
+        }
+
+        .payment-btn.phonepe:hover {
+            border-color: #5f2ff2;
+        }
+
+        .emoji {
+            font-size: 24px;
+        }
+
+        .divider {
+            text-align: center;
+            color: #999;
+            margin: 30px 0;
+            font-size: 14px;
+        }
+
+        .manual-steps {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .manual-steps h3 {
+            color: #333;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .manual-steps ol {
+            color: #666;
+            font-size: 13px;
+            line-height: 1.8;
+            margin-left: 20px;
+        }
+
+        .manual-steps li {
+            margin-bottom: 8px;
+        }
+
+        .footer {
+            text-align: center;
+            color: #999;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+
+        .success-message {
+            display: none;
+            background: #4caf50;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 25px;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .amount {
+                font-size: 36px;
+            }
+
+            .payment-btn {
+                padding: 14px 16px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="success-message" id="successMessage">
+            ✓ UPI ID copied to clipboard!
+        </div>
+
+        <div class="header">
+            <h1>💳 Make Payment</h1>
+            <div class="amount">₹10</div>
+        </div>
+
+        <div class="upi-id">
+            <p>Send to:</p>
+            <div class="upi-id-value">
+                <span id="upiText">8956276855@ybl</span>
+                <button class="copy-btn" onclick="copyToClipboard()">Copy</button>
+            </div>
+        </div>
+
+        <div class="payment-title">Choose Your Payment App</div>
+
+        <div class="payment-options">
+            <a href="https://pay.google.com/gp/p/send?pa=8956276855@ybl&am=10" class="payment-btn googlepay" target="_blank">
+                <span class="emoji">💳</span>
+                <span>Google Pay</span>
+            </a>
+
+            <a href="paytm://pay?pa=8956276855@ybl&am=10&tn=Payment" class="payment-btn paytm">
+                <span class="emoji">🛍️</span>
+                <span>PayTM</span>
+            </a>
+
+            <a href="phonepe://pay?pa=8956276855@ybl&am=10" class="payment-btn phonepe">
+                <span class="emoji">📱</span>
+                <span>PhonePe</span>
+            </a>
+        </div>
+
+        <div class="divider">or</div>
+
+        <div class="manual-steps">
+            <h3>📋 Manual Payment Steps</h3>
+            <ol>
+                <li>Open any UPI app (Google Pay, PayTM, PhonePe, BHIM)</li>
+                <li>Tap "Send Money" or "Pay"</li>
+                <li>Select "UPI ID" option</li>
+                <li>Paste UPI ID: <strong>8956276855@ybl</strong></li>
+                <li>Enter Amount: <strong>₹10</strong></li>
+                <li>Confirm and complete payment</li>
+            </ol>
+        </div>
+
+        <div class="footer">
+            <p>Secure payment • No additional charges</p>
+        </div>
+    </div>
+
+    <script>
+        function copyToClipboard() {
+            const upiId = "8956276855@ybl";
+            
+            // Copy to clipboard
+            navigator.clipboard.writeText(upiId).then(() => {
+                // Show success message
+                const successMsg = document.getElementById('successMessage');
+                successMsg.style.display = 'block';
+                
+                // Hide after 2 seconds
+                setTimeout(() => {
+                    successMsg.style.display = 'none';
+                }, 2000);
+            }).catch(err => {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = upiId;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                
+                const successMsg = document.getElementById('successMessage');
+                successMsg.style.display = 'block';
+                setTimeout(() => {
+                    successMsg.style.display = 'none';
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>
