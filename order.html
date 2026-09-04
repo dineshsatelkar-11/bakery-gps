@@ -609,7 +609,7 @@
                     <a id="payUpiGpay" href="#" style="display:block;background:#1a73e8;color:#fff;text-decoration:none;font-weight:700;padding:10px 4px;border-radius:10px;font-size:11px;text-align:center">GPay</a>
                     <a id="payUpiPaytm" href="#" style="display:block;background:#00baf2;color:#fff;text-decoration:none;font-weight:700;padding:10px 4px;border-radius:10px;font-size:11px;text-align:center">Paytm</a>
                 </div>
-                <div style="font-size:10px;color:#64748b;line-height:1.4">Scan QR or open PhonePe / GPay / Paytm → pay → then send request. Admin confirms within ~24 working hours.</div>
+                <div style="font-size:10px;color:#64748b;line-height:1.4">Prefer <b>scan QR</b> in PhonePe / GPay (most reliable). App buttons may say “scan QR instead” for some bank UPI IDs — use the QR above, then send request. Admin confirms within ~24 working hours.</div>
             </div>
             <button type="button" class="btn" id="payRequestBtn" style="width:100%;background:#1e293b;color:#fff;font-weight:800;padding:14px;margin-bottom:10px;border:none;border-radius:14px;font-size:15px" onclick="openPayRequestSheet()">📨 After paying — send request to admin</button>
             <div id="payStatusPoll" style="display:none;margin-bottom:10px;padding:12px;border-radius:12px;border:1.5px solid #90caf9;background:#e3f2fd">
@@ -3578,11 +3578,11 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
       }
       return sanitizeUpiNote(note) || 'IBCAB Payment';
     }
-    function buildUpiQuery(amount, txnNote){
+    function buildUpiQuery(amount, txnNote, opts){
       if(!_upiVpa) return '';
       var vpa = String(_upiVpa).trim().replace(/\s+/g, '');
       if(!vpa || vpa.indexOf('@') < 0) return '';
-      // Do NOT send am/mam — amount blank so user types it in PhonePe / GPay / Paytm
+      opts = opts || {};
       // pn is sent but many UPI apps show bank-registered name for the VPA instead
       var pn = String(_upiPayee || 'IBCAB')
         .replace(/\s+/g, ' ')
@@ -3593,6 +3593,17 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
         'pn=' + encodeURIComponent(pn),
         'cu=INR'
       ];
+      // PhonePe redirect: omit amount (user types it). QR / GPay / Paytm can include am=.
+      if (!opts.omitAmount) {
+        var amt = parseFloat(amount);
+        if (isFinite(amt) && amt > 0) {
+          var amStr = (Math.round(amt * 100) / 100).toFixed(2);
+          if (amStr.slice(-3) === '.00') amStr = amStr.slice(0, -3);
+          parts.push('am=' + encodeURIComponent(amStr));
+        }
+      }
+      var note = sanitizeUpiNote(txnNote || buildPayTxnNote());
+      if (note) parts.push('tn=' + encodeURIComponent(note));
       return parts.join('&');
     }
     /** Standard NPCI scheme — use for QR + default open */
@@ -3602,15 +3613,19 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
     }
     /** App-specific intent URLs */
     function buildUpiAppUrls(amount){
-      var q = buildUpiQuery(amount, buildPayTxnNote());
-      if(!q) return {};
-      var upi = 'upi://pay?' + q;
+      var note = buildPayTxnNote();
+      var q = buildUpiQuery(amount, note);                 // with amount (QR / GPay / Paytm)
+      var qNoAm = buildUpiQuery(amount, note, { omitAmount: true }); // PhonePe only — no am=
+      if(!q && !qNoAm) return {};
+      var upi = q ? ('upi://pay?' + q) : '';
+      var upiNoAm = qNoAm ? ('upi://pay?' + qNoAm) : upi;
       return {
         upi: upi,
-        // PhonePe — prefer Android intent into PhonePe package, then phonepe://, then generic upi://
-        phonepe: 'intent://pay?' + q + '#Intent;scheme=upi;package=com.phonepe.app;end',
-        phonepeAlt: 'phonepe://pay?' + q,
-        phonepeAlt2: 'ppe://pay?' + q,
+        // PhonePe — no amount on redirect (user enters in app)
+        phonepe: 'intent://pay?' + qNoAm + '#Intent;scheme=upi;package=com.phonepe.app;end',
+        phonepeAlt: 'phonepe://pay?' + qNoAm,
+        phonepeAlt2: 'ppe://pay?' + qNoAm,
+        phonepeUpi: upiNoAm,
         // Google Pay
         gpay: 'intent://pay?' + q + '#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end',
         gpayAlt: 'gpay://upi/pay?' + q,
@@ -3774,8 +3789,9 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
         if (isIOS) {
           // Standard upi:// first — iOS routes it to any installed UPI app (PhonePe/GPay/Paytm).
           // App-specific schemes as soft fallbacks (no intent://).
+          // PhonePe: use no-amount URL only
           if (preferred === 'phonepe') {
-            order = [urls.upi, urls.phonepeAlt, urls.phonepeAlt2];
+            order = [urls.phonepeUpi || urls.phonepeAlt, urls.phonepeAlt, urls.phonepeAlt2];
           } else if (preferred === 'gpay') {
             order = [urls.upi, urls.gpayAlt];
           } else if (preferred === 'paytm') {
@@ -3785,8 +3801,9 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
           }
         } else if (isAndroid) {
           // Android: prefer package intent, then app scheme, then generic upi://
+          // PhonePe: all variants without amount
           if (preferred === 'phonepe') {
-            order = [urls.phonepe, urls.phonepeAlt, urls.phonepeAlt2, urls.upi];
+            order = [urls.phonepe, urls.phonepeAlt, urls.phonepeAlt2, urls.phonepeUpi];
           } else if (preferred === 'gpay') {
             order = [urls.gpay, urls.gpayAlt, urls.upi];
           } else if (preferred === 'paytm') {
