@@ -604,12 +604,13 @@
                 <div id="payQrWrap" style="display:inline-block;padding:10px;background:#fff;border-radius:12px;border:1px solid #e2e8f0;min-height:160px;min-width:160px"></div>
                 <div id="payUpiAmtLbl" style="font-size:14px;font-weight:800;font-family:monospace;color:#c8382a;margin:10px 0 4px">₹0</div>
                 <div id="payUpiMeta" style="font-size:11px;color:#64748b;font-family:monospace;margin-bottom:10px"></div>
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
+                <div id="payUpiAppBtns" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
                     <a id="payUpiPhonepe" href="#" style="display:block;background:#5f259f;color:#fff;text-decoration:none;font-weight:700;padding:10px 4px;border-radius:10px;font-size:11px;text-align:center">PhonePe</a>
                     <a id="payUpiGpay" href="#" style="display:block;background:#1a73e8;color:#fff;text-decoration:none;font-weight:700;padding:10px 4px;border-radius:10px;font-size:11px;text-align:center">GPay</a>
                     <a id="payUpiPaytm" href="#" style="display:block;background:#00baf2;color:#fff;text-decoration:none;font-weight:700;padding:10px 4px;border-radius:10px;font-size:11px;text-align:center">Paytm</a>
                 </div>
-                <div style="font-size:10px;color:#64748b;line-height:1.4">Prefer <b>scan QR</b> in PhonePe / GPay (most reliable). App buttons may say “scan QR instead” for some bank UPI IDs — use the QR above, then send request. Admin confirms within ~24 working hours.</div>
+                <button type="button" id="payUpiCopyBtn" onclick="copyUpiIdAndAmount()" style="display:none;width:100%;margin-bottom:8px;padding:10px;border-radius:10px;border:1.5px solid #a5d6a7;background:#e8f5e9;color:#1a5a38;font-weight:800;font-size:12px;cursor:pointer">📋 Copy UPI ID + amount</button>
+                <div id="payUpiOsHint" style="font-size:10px;color:#64748b;line-height:1.4">Prefer <b>scan QR</b> in PhonePe / GPay. Then send request — admin confirms within ~24 working hours.</div>
             </div>
             <button type="button" class="btn" id="payRequestBtn" style="width:100%;background:#1e293b;color:#fff;font-weight:800;padding:14px;margin-bottom:10px;border:none;border-radius:14px;font-size:15px" onclick="openPayRequestSheet()">📨 After paying — send request to admin</button>
             <div id="payStatusPoll" style="display:none;margin-bottom:10px;padding:12px;border-radius:12px;border:1.5px solid #90caf9;background:#e3f2fd">
@@ -3773,8 +3774,17 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
       }
     });
 
+    function _payIsIOS(){
+      try{
+        var ua = (navigator.userAgent || '').toLowerCase();
+        return /iphone|ipad|ipod/.test(ua) ||
+          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      }catch(e){ return false; }
+    }
+    function _payIsAndroid(){
+      try{ return /android/i.test(navigator.userAgent || ''); }catch(e){ return false; }
+    }
     function openUpiIntent(preferred){
-      // Re-load payee name from server right before open
       var go = function(){
         var total = typeof _payUnpaidTotal === 'function' ? _payUnpaidTotal() : 0;
         var urls = buildUpiAppUrls(total);
@@ -3782,17 +3792,18 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
           alert('UPI not configured. Ask bakery for UPI ID.');
           return;
         }
-        // iOS Safari rejects Android intent:// URLs with "address is invalid".
-        // On iOS: only use upi:// (and mild app schemes). Never chain multiple launches.
-        var ua = (navigator.userAgent || '').toLowerCase();
-        var isIOS = /iphone|ipad|ipod/.test(ua) ||
-          (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-        var isAndroid = /android/.test(ua);
+        var isIOS = _payIsIOS();
+        var isAndroid = _payIsAndroid();
+
+        // Always copy UPI ID + amount so user can pay manually if app blocks deep link
+        try{
+          var copyTxt = String(_upiVpa || '') + (total > 0 ? ('\n' + (Math.round(total * 100) / 100).toFixed(2)) : '');
+          if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(copyTxt);
+        }catch(e){}
 
         var order = [];
         if (isIOS) {
-          // Never use generic upi:// for PhonePe — iOS often opens WhatsApp instead.
-          // PhonePe: only phonepe:// / ppe:// schemes, UPI ID only (no amount).
+          // iOS: soft app schemes only — no intent://. PhonePe often shows security policy; QR/copy is backup.
           if (preferred === 'phonepe') {
             order = [urls.phonepeAlt, urls.phonepeAlt3, urls.phonepeAlt2];
           } else if (preferred === 'gpay') {
@@ -3802,8 +3813,11 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
           } else {
             order = [urls.upi];
           }
+          if (typeof _payMsg === 'function') {
+            _payMsg('UPI ID copied. If the app shows an error, open PhonePe → To → paste UPI → pay ₹' +
+              (Math.round(total * 100) / 100).toFixed(2) + '. Or scan the QR above.', true);
+          }
         } else if (isAndroid) {
-          // Android: package intent first, then app scheme. No generic upi:// for PhonePe.
           if (preferred === 'phonepe') {
             order = [urls.phonepe, urls.phonepeAlt, urls.phonepeAlt3, urls.phonepeAlt2];
           } else if (preferred === 'gpay') {
@@ -3814,11 +3828,9 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
             order = [urls.upi];
           }
         } else {
-          // Desktop / other — only generic upi:// (QR is the real path)
           order = [urls.upi];
         }
 
-        // Drop empty / Android-only intent on non-Android
         order = order.filter(function(u){
           if (!u) return false;
           if (!isAndroid && String(u).indexOf('intent://') === 0) return false;
@@ -3829,7 +3841,6 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
         function launch(u){
           if (!u) return;
           try {
-            // location works more reliably for custom schemes / intent:// on Android Chrome
             window.location.href = u;
           } catch (e) {
             try {
@@ -3848,8 +3859,6 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
           var u = order[tried++];
           if (!u) return tryNext();
           launch(u);
-          // On iOS only try the first URL — chaining causes multiple "invalid address" alerts.
-          // On Android keep short fallback chain if the preferred app is missing.
           if (!isIOS && tried < order.length) {
             setTimeout(tryNext, 900);
           }
@@ -3877,6 +3886,31 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
         prompt('Copy UPI link:', url);
       }
     }
+    function copyUpiIdAndAmount(){
+      var total = typeof _payUnpaidTotal === 'function' ? _payUnpaidTotal() : 0;
+      if(!_upiVpa){
+        if(typeof _payMsg === 'function') _payMsg('UPI not configured', false);
+        return;
+      }
+      var am = total > 0 ? (Math.round(total * 100) / 100).toFixed(2) : '';
+      var text = String(_upiVpa).trim() + (am ? ('\n' + am) : '');
+      function ok(){
+        if(typeof _payMsg === 'function'){
+          _payMsg('Copied: ' + _upiVpa + (am ? (' · ₹' + am) : '') + '. Open PhonePe → To → paste → pay. Then send request.', true);
+        }
+      }
+      try{
+        if(navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(text).then(ok).catch(function(){ prompt('Copy UPI ID:', text); ok(); });
+        } else {
+          prompt('Copy UPI ID:', text);
+          ok();
+        }
+      }catch(e){
+        prompt('Copy UPI ID:', text);
+        ok();
+      }
+    }
     function renderPayUpiBox(){
       var box = document.getElementById('payUpiBox');
       if(!box) return;
@@ -3890,20 +3924,41 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
         return;
       }
       box.style.display = 'block';
+      var isIOS = _payIsIOS();
+      var isAndroid = _payIsAndroid();
       var urls = buildUpiAppUrls(total);
       var url = urls.upi;
       var amtLbl = document.getElementById('payUpiAmtLbl');
       var meta = document.getElementById('payUpiMeta');
+      var hint = document.getElementById('payUpiOsHint');
+      var copyBtn = document.getElementById('payUpiCopyBtn');
+      var appBtns = document.getElementById('payUpiAppBtns');
       if(amtLbl) amtLbl.textContent = '₹' + total.toLocaleString('en-IN', {maximumFractionDigits:2});
       if(meta) {
         meta.innerHTML = '<div style="font-size:13px;font-weight:800;color:#1a5a38">Pay to: '+esc(_upiPayee)+'</div>'+
           '<div style="margin-top:2px">'+esc(_upiVpa)+'</div>';
       }
-      // "Pay with UPI (any app)" removed — only QR + PhonePe / GPay / Paytm
+      // OS-specific UI — Copy UPI on all devices; hide app buttons only on iOS
+      if (copyBtn) copyBtn.style.display = 'block';
+      if (isIOS) {
+        if (appBtns) appBtns.style.display = 'none';
+        if (hint) {
+          hint.innerHTML = '<b>iPhone:</b> <b>Scan this QR</b> in PhonePe / GPay / Paytm. Or tap <b>Copy UPI ID</b> → open your UPI app → To → paste → pay. Then send request below.';
+        }
+      } else if (isAndroid) {
+        if (appBtns) appBtns.style.display = 'grid';
+        if (hint) {
+          hint.innerHTML = '<b>Android:</b> Tap PhonePe / GPay / Paytm, <b>scan QR</b>, or <b>Copy UPI ID</b>. Then send request — admin confirms within ~24 working hours.';
+        }
+      } else {
+        if (appBtns) appBtns.style.display = 'none';
+        if (hint) {
+          hint.innerHTML = 'On phone: <b>scan QR</b> or <b>Copy UPI ID</b> and pay in the app, then send request.';
+        }
+      }
       var pp = document.getElementById('payUpiPhonepe');
       var gp = document.getElementById('payUpiGpay');
       var pt = document.getElementById('payUpiPaytm');
-      // href = working upi:// so long-press / fallback still works; click opens preferred app chain
       if(pp){
         pp.href = urls.upi || '#';
         pp.onclick = function(e){ e.preventDefault(); e.stopPropagation(); openUpiIntent('phonepe'); return false; };
@@ -3919,7 +3974,6 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
       var wrap = document.getElementById('payQrWrap');
       if(wrap){
         wrap.innerHTML = '';
-        // QR must be standard upi:// so any app can scan
         if(typeof QRCode !== 'undefined'){
           try {
             _payQrObj = new QRCode(wrap, {
