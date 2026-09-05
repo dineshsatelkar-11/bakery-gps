@@ -88,9 +88,34 @@
         .ptr-bubble{background:var(--primary);color:#fff;font-size:11px;font-weight:700;font-family:inherit;padding:6px 14px;border-radius:20px;margin-top:calc(8px + var(--sat));box-shadow:0 4px 12px rgba(15,23,42,.15)}
         .tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:53px;z-index:98}
 
-        /* Customer bottom nav (app-style) */
-        .cust-bottom-nav{display:none;position:fixed;left:0;right:0;bottom:0;z-index:300;background:var(--surface);border-top:1px solid var(--border);padding:8px 4px max(10px,var(--sab));max-width:100%;width:100%;margin:0;box-shadow:0 -4px 20px rgba(15,23,42,.06);transform:translateZ(0);-webkit-transform:translateZ(0);backface-visibility:hidden;min-height:calc(64px + var(--sab))}
-        .cust-bottom-nav-inner{display:flex;justify-content:space-around;align-items:stretch;min-height:56px}
+        /* Customer bottom nav (app-style) — pinned to viewport bottom (fixes first-open float on iOS PWA) */
+        .cust-bottom-nav{
+          display:none;
+          position:fixed !important;
+          left:0 !important;
+          right:0 !important;
+          bottom:0 !important;
+          top:auto !important;
+          width:100% !important;
+          max-width:none !important;
+          margin:0 !important;
+          z-index:300;
+          background:var(--surface);
+          border-top:1px solid var(--border);
+          padding:8px 4px 0;
+          padding-left:max(4px,var(--sal));
+          padding-right:max(4px,var(--sar));
+          padding-bottom:max(10px,var(--sab));
+          box-shadow:0 -4px 20px rgba(15,23,42,.06);
+          -webkit-transform:translate3d(0,0,0);
+          transform:translate3d(0,0,0);
+          -webkit-backface-visibility:hidden;
+          backface-visibility:hidden;
+          will-change:transform;
+          box-sizing:border-box;
+          min-height:calc(64px + var(--sab));
+        }
+        .cust-bottom-nav-inner{display:flex;justify-content:space-around;align-items:stretch;min-height:56px;width:100%}
         .cbnav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 4px;border:none;background:transparent;cursor:pointer;color:var(--muted);font-family:inherit;-webkit-tap-highlight-color:transparent;min-height:56px;border-radius:12px;margin:0 2px;transition:background .15s,color .15s}
         .cbnav-item.on{color:var(--accent);background:var(--accent-soft)}
         .cbnav-item.on .cbnav-ico{transform:scale(1.06)}
@@ -187,7 +212,8 @@
             border-radius:0;
           }
           body.cust-app .cust-bottom-nav{
-            left:0;right:0;width:100%;max-width:100%;
+            left:0 !important;right:0 !important;bottom:0 !important;top:auto !important;
+            width:100% !important;max-width:none !important;
           }
           #custNotifPanel,#notifPromptBanner{
             max-width:100% !important;
@@ -1162,6 +1188,41 @@
     }
     function showApp(){
       try { document.body.classList.add('cust-app'); } catch(e) {}
+      /* First open: pin bottom nav to true screen bottom (iOS PWA often paints it high once) */
+      try {
+        window.scrollTo(0, 0);
+        var nav = document.getElementById('custBottomNav');
+        if (nav) {
+          nav.style.position = 'fixed';
+          nav.style.left = '0';
+          nav.style.right = '0';
+          nav.style.bottom = '0';
+          nav.style.top = 'auto';
+        }
+        requestAnimationFrame(function () {
+          window.scrollTo(0, 0);
+          if (nav) {
+            nav.style.bottom = '0';
+            nav.style.top = 'auto';
+          }
+        });
+        setTimeout(function () {
+          window.scrollTo(0, 0);
+          if (nav) {
+            nav.style.bottom = '0';
+            nav.style.top = 'auto';
+          }
+        }, 50);
+        setTimeout(function () {
+          if (nav) {
+            nav.style.bottom = '';
+            nav.style.top = '';
+            nav.style.left = '';
+            nav.style.right = '';
+            nav.style.position = '';
+          }
+        }, 400);
+      } catch (e) {}
       // Reset all stale state from any previous session / user
       existingOrder = null; qty = {}; products = []; _editLocked = false; _orderClosed = false; _amendMode = false; _amendMinQty = {};
       loadCustomerPaySetting();
