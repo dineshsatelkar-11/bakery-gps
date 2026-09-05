@@ -602,14 +602,17 @@
             <div id="payUpiBox" style="display:none;background:#fff;border:1.5px solid #c8e6c9;border-radius:14px;padding:14px;margin-bottom:12px;text-align:center">
                 <div style="font-size:12px;font-weight:800;color:#1a5a38;margin-bottom:8px">Pay with UPI</div>
                 <div id="payQrWrap" style="display:inline-block;padding:10px;background:#fff;border-radius:12px;border:1px solid #e2e8f0;min-height:160px;min-width:160px"></div>
-                <div id="payUpiAmtLbl" style="font-size:14px;font-weight:800;font-family:monospace;color:#c8382a;margin:10px 0 4px">₹0</div>
+                <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:8px 0 4px">
+                  <button type="button" id="payUpiDlQrBtn" onclick="downloadPayQr()" style="padding:8px 12px;border-radius:10px;border:1.5px solid #c8e6c9;background:#fff;color:#1a5a38;font-weight:800;font-size:11px;cursor:pointer">⬇ Download QR</button>
+                  <button type="button" id="payUpiCopyBtn" onclick="copyUpiIdOnly()" style="padding:8px 12px;border-radius:10px;border:1.5px solid #a5d6a7;background:#e8f5e9;color:#1a5a38;font-weight:800;font-size:11px;cursor:pointer">📋 Copy UPI ID</button>
+                </div>
+                <div id="payUpiAmtLbl" style="font-size:14px;font-weight:800;font-family:monospace;color:#c8382a;margin:6px 0 4px">₹0</div>
                 <div id="payUpiMeta" style="font-size:11px;color:#64748b;font-family:monospace;margin-bottom:10px"></div>
                 <div id="payUpiAppBtns" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
                     <a id="payUpiPhonepe" href="#" style="display:block;background:#5f259f;color:#fff;text-decoration:none;font-weight:700;padding:10px 4px;border-radius:10px;font-size:11px;text-align:center">PhonePe</a>
                     <a id="payUpiGpay" href="#" style="display:block;background:#1a73e8;color:#fff;text-decoration:none;font-weight:700;padding:10px 4px;border-radius:10px;font-size:11px;text-align:center">GPay</a>
                     <a id="payUpiPaytm" href="#" style="display:block;background:#00baf2;color:#fff;text-decoration:none;font-weight:700;padding:10px 4px;border-radius:10px;font-size:11px;text-align:center">Paytm</a>
                 </div>
-                <button type="button" id="payUpiCopyBtn" onclick="copyUpiIdAndAmount()" style="display:none;width:100%;margin-bottom:8px;padding:10px;border-radius:10px;border:1.5px solid #a5d6a7;background:#e8f5e9;color:#1a5a38;font-weight:800;font-size:12px;cursor:pointer">📋 Copy UPI ID + amount</button>
                 <div id="payUpiOsHint" style="font-size:10px;color:#64748b;line-height:1.4">Prefer <b>scan QR</b> in PhonePe / GPay. Then send request — admin confirms within ~24 working hours.</div>
             </div>
             <button type="button" class="btn" id="payRequestBtn" style="width:100%;background:#1e293b;color:#fff;font-weight:800;padding:14px;margin-bottom:10px;border:none;border-radius:14px;font-size:15px" onclick="openPayRequestSheet()">📨 After paying — send request to admin</button>
@@ -3795,10 +3798,10 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
         var isIOS = _payIsIOS();
         var isAndroid = _payIsAndroid();
 
-        // Always copy UPI ID + amount so user can pay manually if app blocks deep link
+        // Copy UPI ID only (no amount) so user can paste if deep link fails
         try{
-          var copyTxt = String(_upiVpa || '') + (total > 0 ? ('\n' + (Math.round(total * 100) / 100).toFixed(2)) : '');
-          if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(copyTxt);
+          var copyTxt = String(_upiVpa || '').trim();
+          if(copyTxt && navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(copyTxt);
         }catch(e){}
 
         var order = [];
@@ -3814,8 +3817,7 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
             order = [urls.upi];
           }
           if (typeof _payMsg === 'function') {
-            _payMsg('UPI ID copied. If the app shows an error, open PhonePe → To → paste UPI → pay ₹' +
-              (Math.round(total * 100) / 100).toFixed(2) + '. Or scan the QR above.', true);
+            _payMsg('UPI ID copied. If the app shows an error, open PhonePe → To → paste UPI → enter amount → pay. Or scan / download the QR above.', true);
           }
         } else if (isAndroid) {
           if (preferred === 'phonepe') {
@@ -3886,17 +3888,15 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
         prompt('Copy UPI link:', url);
       }
     }
-    function copyUpiIdAndAmount(){
-      var total = typeof _payUnpaidTotal === 'function' ? _payUnpaidTotal() : 0;
+    function copyUpiIdOnly(){
       if(!_upiVpa){
         if(typeof _payMsg === 'function') _payMsg('UPI not configured', false);
         return;
       }
-      var am = total > 0 ? (Math.round(total * 100) / 100).toFixed(2) : '';
-      var text = String(_upiVpa).trim() + (am ? ('\n' + am) : '');
+      var text = String(_upiVpa).trim();
       function ok(){
         if(typeof _payMsg === 'function'){
-          _payMsg('Copied: ' + _upiVpa + (am ? (' · ₹' + am) : '') + '. Open PhonePe → To → paste → pay. Then send request.', true);
+          _payMsg('UPI ID copied: ' + text + '. Open PhonePe → To → paste → enter amount → pay. Then send request.', true);
         }
       }
       try{
@@ -3909,6 +3909,53 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
       }catch(e){
         prompt('Copy UPI ID:', text);
         ok();
+      }
+    }
+    /** Download the visible Pay-tab QR as PNG */
+    function downloadPayQr(){
+      var wrap = document.getElementById('payQrWrap');
+      if(!wrap){
+        if(typeof _payMsg === 'function') _payMsg('QR not ready', false);
+        return;
+      }
+      var canvas = wrap.querySelector('canvas');
+      var img = wrap.querySelector('img');
+      var dataUrl = '';
+      try{
+        if(canvas && canvas.toDataURL){
+          dataUrl = canvas.toDataURL('image/png');
+        } else if(img && img.src){
+          dataUrl = img.src;
+        }
+      }catch(e){}
+      if(!dataUrl){
+        // Fallback: external QR image of current UPI URL
+        var total = typeof _payUnpaidTotal === 'function' ? _payUnpaidTotal() : 0;
+        var url = typeof buildUpiPayUrl === 'function' ? buildUpiPayUrl(total) : '';
+        if(!url){
+          if(typeof _payMsg === 'function') _payMsg('QR not ready', false);
+          return;
+        }
+        dataUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=' + encodeURIComponent(url);
+      }
+      try{
+        var a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = 'IBCAB-UPI-QR.png';
+        a.rel = 'noopener';
+        a.style.display = 'none';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function(){ try{ document.body.removeChild(a); }catch(e2){} }, 400);
+        if(typeof _payMsg === 'function') _payMsg('QR download started. Open in PhonePe / GPay to scan if needed.', true);
+      }catch(e3){
+        // iOS Safari often blocks download of data URLs — open in new tab so user can save
+        try{
+          window.open(dataUrl, '_blank');
+          if(typeof _payMsg === 'function') _payMsg('Opened QR image — long-press to Save Image.', true);
+        }catch(e4){
+          if(typeof _payMsg === 'function') _payMsg('Could not download QR. Use on-screen QR or Copy UPI ID.', false);
+        }
       }
     }
     function renderPayUpiBox(){
@@ -3938,22 +3985,24 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
         meta.innerHTML = '<div style="font-size:13px;font-weight:800;color:#1a5a38">Pay to: '+esc(_upiPayee)+'</div>'+
           '<div style="margin-top:2px">'+esc(_upiVpa)+'</div>';
       }
-      // OS-specific UI — Copy UPI on all devices; hide app buttons only on iOS
-      if (copyBtn) copyBtn.style.display = 'block';
+      // OS-specific UI — Download QR + Copy UPI ID on all; hide app buttons only on iOS
+      if (copyBtn) copyBtn.style.display = 'inline-block';
+      var dlBtn = document.getElementById('payUpiDlQrBtn');
+      if (dlBtn) dlBtn.style.display = 'inline-block';
       if (isIOS) {
         if (appBtns) appBtns.style.display = 'none';
         if (hint) {
-          hint.innerHTML = '<b>iPhone:</b> <b>Scan this QR</b> in PhonePe / GPay / Paytm. Or tap <b>Copy UPI ID</b> → open your UPI app → To → paste → pay. Then send request below.';
+          hint.innerHTML = '<b>iPhone:</b> <b>Scan QR</b> or <b>Download QR</b> and open in Photos → share to PhonePe. Or <b>Copy UPI ID</b> → paste in app → enter amount. Then send request.';
         }
       } else if (isAndroid) {
         if (appBtns) appBtns.style.display = 'grid';
         if (hint) {
-          hint.innerHTML = '<b>Android:</b> Tap PhonePe / GPay / Paytm, <b>scan QR</b>, or <b>Copy UPI ID</b>. Then send request — admin confirms within ~24 working hours.';
+          hint.innerHTML = '<b>Android:</b> Tap PhonePe / GPay / Paytm, <b>scan QR</b>, <b>Download QR</b>, or <b>Copy UPI ID</b>. Then send request — admin confirms within ~24 working hours.';
         }
       } else {
         if (appBtns) appBtns.style.display = 'none';
         if (hint) {
-          hint.innerHTML = 'On phone: <b>scan QR</b> or <b>Copy UPI ID</b> and pay in the app, then send request.';
+          hint.innerHTML = 'On phone: <b>scan / download QR</b> or <b>Copy UPI ID</b>, pay in the app, then send request.';
         }
       }
       var pp = document.getElementById('payUpiPhonepe');
