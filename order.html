@@ -613,7 +613,16 @@
                     <a id="payUpiGpay" href="#" style="display:block;background:#1a73e8;color:#fff;text-decoration:none;font-weight:700;padding:10px 4px;border-radius:10px;font-size:11px;text-align:center">GPay</a>
                     <a id="payUpiPaytm" href="#" style="display:block;background:#00baf2;color:#fff;text-decoration:none;font-weight:700;padding:10px 4px;border-radius:10px;font-size:11px;text-align:center">Paytm</a>
                 </div>
-                <div id="payUpiOsHint" style="font-size:10px;color:#64748b;line-height:1.4">Prefer <b>scan QR</b> in PhonePe / GPay. Then send request — admin confirms within ~24 working hours.</div>
+                <div id="payUpiOsHint" style="font-size:10px;color:#64748b;line-height:1.4;margin-bottom:8px"></div>
+                <div id="payUpiSteps" style="text-align:left;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px;font-size:11px;color:#334155;line-height:1.55">
+                  <div style="font-weight:900;color:#1a5a38;margin-bottom:6px">How to pay &amp; send request</div>
+                  <ol style="margin:0;padding-left:18px">
+                    <li style="margin-bottom:4px"><b>Scan QR</b> in PhonePe / GPay / Paytm <i>or</i> tap <b>Download QR</b> → save to Photos → open UPI app → scan from gallery. (Or <b>Copy UPI ID</b> and paste in app.)</li>
+                    <li style="margin-bottom:4px">Pay the <b>exact amount</b> shown above.</li>
+                    <li style="margin-bottom:4px">Take a <b>screenshot</b> of the successful payment (UTR / paid screen).</li>
+                    <li style="margin-bottom:0">Tap <b>After paying — send request</b> below and <b>attach / share the screenshot</b> so admin can confirm (usually within ~24 working hours).</li>
+                  </ol>
+                </div>
             </div>
             <button type="button" class="btn" id="payRequestBtn" style="width:100%;background:#1e293b;color:#fff;font-weight:800;padding:14px;margin-bottom:10px;border:none;border-radius:14px;font-size:15px" onclick="openPayRequestSheet()">📨 After paying — send request to admin</button>
             <div id="payStatusPoll" style="display:none;margin-bottom:10px;padding:12px;border-radius:12px;border:1.5px solid #90caf9;background:#e3f2fd">
@@ -3929,7 +3938,6 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
         }
       }catch(e){}
       if(!dataUrl){
-        // Fallback: external QR image of current UPI URL
         var total = typeof _payUnpaidTotal === 'function' ? _payUnpaidTotal() : 0;
         var url = typeof buildUpiPayUrl === 'function' ? buildUpiPayUrl(total) : '';
         if(!url){
@@ -3938,6 +3946,70 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
         }
         dataUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=' + encodeURIComponent(url);
       }
+
+      var isIOS = typeof _payIsIOS === 'function' ? _payIsIOS() : /iphone|ipad|ipod/i.test(navigator.userAgent||'');
+
+      // Build a File/Blob for share when possible (works well on iPhone)
+      function dataUrlToBlob(du){
+        try{
+          if(du.indexOf('data:') !== 0) return null;
+          var parts = du.split(',');
+          var mime = (parts[0].match(/:(.*?);/) || [])[1] || 'image/png';
+          var bin = atob(parts[1] || '');
+          var arr = new Uint8Array(bin.length);
+          for(var i=0;i<bin.length;i++) arr[i] = bin.charCodeAt(i);
+          return new Blob([arr], { type: mime });
+        }catch(e){ return null; }
+      }
+
+      function showIosSaveSheet(src){
+        var existing = document.getElementById('payQrSaveSheet');
+        if(existing) try{ existing.parentNode.removeChild(existing); }catch(e){}
+        var sheet = document.createElement('div');
+        sheet.id = 'payQrSaveSheet';
+        sheet.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.55);display:flex;align-items:flex-end;justify-content:center;padding:16px;box-sizing:border-box';
+        sheet.innerHTML =
+          '<div style="background:#fff;border-radius:16px 16px 12px 12px;padding:16px;max-width:360px;width:100%;text-align:center;box-shadow:0 -4px 24px rgba(0,0,0,.2)">'+
+            '<div style="font-size:14px;font-weight:900;color:#1a5a38;margin-bottom:8px">Save UPI QR</div>'+
+            '<div style="font-size:11px;color:#64748b;line-height:1.45;margin-bottom:12px"><b>Long-press the image</b> → <b>Save to Photos</b>. Then open PhonePe and scan from gallery.</div>'+
+            '<img alt="UPI QR" src="'+src.replace(/"/g,'&quot;')+'" style="width:220px;height:220px;object-fit:contain;border:1px solid #e2e8f0;border-radius:12px;background:#fff;touch-action:manipulation"/>'+
+            '<button type="button" id="payQrSaveClose" style="margin-top:14px;width:100%;padding:12px;border:none;border-radius:12px;background:#1e293b;color:#fff;font-weight:800;font-size:14px;cursor:pointer">Close</button>'+
+          '</div>';
+        document.body.appendChild(sheet);
+        sheet.addEventListener('click', function(ev){
+          if(ev.target === sheet) try{ sheet.parentNode.removeChild(sheet); }catch(e){}
+        });
+        var closeBtn = document.getElementById('payQrSaveClose');
+        if(closeBtn) closeBtn.onclick = function(){ try{ sheet.parentNode.removeChild(sheet); }catch(e){} };
+        if(typeof _payMsg === 'function') _payMsg('Long-press the QR → Save to Photos.', true);
+      }
+
+      // 1) iOS: try native Share sheet with the image file
+      if(isIOS){
+        var blob = dataUrlToBlob(dataUrl);
+        if(blob && navigator.share && navigator.canShare){
+          try{
+            var file = new File([blob], 'IBCAB-UPI-QR.png', { type: 'image/png' });
+            if(navigator.canShare({ files: [file] })){
+              navigator.share({
+                files: [file],
+                title: 'IBCAB UPI QR',
+                text: 'Scan to pay bakery'
+              }).then(function(){
+                if(typeof _payMsg === 'function') _payMsg('Shared. Save Image / Add to Photos, then scan in PhonePe.', true);
+              }).catch(function(){
+                showIosSaveSheet(dataUrl);
+              });
+              return;
+            }
+          }catch(eShare){}
+        }
+        // 2) iOS fallback: in-app sheet — long-press to save (download attr is blocked)
+        showIosSaveSheet(dataUrl);
+        return;
+      }
+
+      // Android / desktop: normal download
       try{
         var a = document.createElement('a');
         a.href = dataUrl;
@@ -3947,15 +4019,9 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
         document.body.appendChild(a);
         a.click();
         setTimeout(function(){ try{ document.body.removeChild(a); }catch(e2){} }, 400);
-        if(typeof _payMsg === 'function') _payMsg('QR download started. Open in PhonePe / GPay to scan if needed.', true);
+        if(typeof _payMsg === 'function') _payMsg('QR download started.', true);
       }catch(e3){
-        // iOS Safari often blocks download of data URLs — open in new tab so user can save
-        try{
-          window.open(dataUrl, '_blank');
-          if(typeof _payMsg === 'function') _payMsg('Opened QR image — long-press to Save Image.', true);
-        }catch(e4){
-          if(typeof _payMsg === 'function') _payMsg('Could not download QR. Use on-screen QR or Copy UPI ID.', false);
-        }
+        showIosSaveSheet(dataUrl);
       }
     }
     function renderPayUpiBox(){
@@ -3992,17 +4058,17 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
       if (isIOS) {
         if (appBtns) appBtns.style.display = 'none';
         if (hint) {
-          hint.innerHTML = '<b>iPhone:</b> <b>Scan QR</b> or <b>Download QR</b> and open in Photos → share to PhonePe. Or <b>Copy UPI ID</b> → paste in app → enter amount. Then send request.';
+          hint.innerHTML = '<b>iPhone tip:</b> Use <b>Download QR</b> → long-press → Save to Photos → scan in PhonePe from gallery. After pay, <b>screenshot success</b> and attach it when you send request.';
         }
       } else if (isAndroid) {
         if (appBtns) appBtns.style.display = 'grid';
         if (hint) {
-          hint.innerHTML = '<b>Android:</b> Tap PhonePe / GPay / Paytm, <b>scan QR</b>, <b>Download QR</b>, or <b>Copy UPI ID</b>. Then send request — admin confirms within ~24 working hours.';
+          hint.innerHTML = '<b>Android tip:</b> Open app button or scan QR. After pay, <b>screenshot success</b> and attach it when you send request.';
         }
       } else {
         if (appBtns) appBtns.style.display = 'none';
         if (hint) {
-          hint.innerHTML = 'On phone: <b>scan / download QR</b> or <b>Copy UPI ID</b>, pay in the app, then send request.';
+          hint.innerHTML = 'Follow the steps below. After paying, attach a <b>screenshot</b> with your request.';
         }
       }
       var pp = document.getElementById('payUpiPhonepe');
