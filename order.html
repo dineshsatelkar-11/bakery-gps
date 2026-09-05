@@ -613,10 +613,10 @@
                     <a id="payUpiGpay" href="#" style="display:block;background:#1a73e8;color:#fff;text-decoration:none;font-weight:700;padding:10px 4px;border-radius:10px;font-size:11px;text-align:center">GPay</a>
                     <a id="payUpiPaytm" href="#" style="display:block;background:#00baf2;color:#fff;text-decoration:none;font-weight:700;padding:10px 4px;border-radius:10px;font-size:11px;text-align:center">Paytm</a>
                 </div>
-                <div id="payUpiOsHint" style="font-size:10px;color:#64748b;line-height:1.4;margin-bottom:6px"></div>
-                <div id="payUpiSteps" style="text-align:left;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;font-size:12px;color:#334155;line-height:1.5">
-                  <div style="font-weight:800;color:#1a5a38;margin-bottom:8px;font-size:11px;letter-spacing:.3px;text-transform:uppercase">Payment guide</div>
-                  <div id="payUpiStepsBody" style="color:#1e293b"></div>
+                <div id="payUpiOsHint" style="font-size:11px;color:#64748b;line-height:1.45;margin-bottom:6px"></div>
+                <div id="payUpiSteps" style="text-align:left;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;font-size:14px;color:#334155;line-height:1.55">
+                  <div style="font-weight:800;color:#1a5a38;margin-bottom:10px;font-size:13px;letter-spacing:.3px;text-transform:uppercase">Payment guide</div>
+                  <div id="payUpiStepsBody" style="color:#1e293b;font-size:14px;line-height:1.55"></div>
                 </div>
             </div>
             <button type="button" class="btn" id="payRequestBtn" style="width:100%;background:#1e293b;color:#fff;font-weight:800;padding:14px;margin-bottom:10px;border:none;border-radius:14px;font-size:15px" onclick="openPayRequestSheet()">📨 After paying — send request to admin</button>
@@ -4052,9 +4052,9 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
       if (dlBtn) dlBtn.style.display = 'inline-block';
       var stepsBody = document.getElementById('payUpiStepsBody');
       function _payStepList(items){
-        var h = '<ol style="margin:0;padding-left:18px">';
+        var h = '<ol style="margin:0;padding-left:20px;font-size:14px;line-height:1.55">';
         for (var i = 0; i < items.length; i++) {
-          h += '<li style="margin-bottom:' + (i === items.length - 1 ? '0' : '6px') + '">' + items[i] + '</li>';
+          h += '<li style="margin-bottom:' + (i === items.length - 1 ? '0' : '8px') + '">' + items[i] + '</li>';
         }
         return h + '</ol>';
       }
@@ -4063,7 +4063,8 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
         if (hint) hint.innerHTML = '';
         if (stepsBody) {
           stepsBody.innerHTML = _payStepList([
-            'Scan the QR in PhonePe, GPay or Paytm — or download the QR and save it to Photos, then scan from gallery.',
+            '<b>Long-press the QR</b> above, then open it in PhonePe, GPay, Paytm or your bank app to pay.',
+            'If that does not open, use <b>Download QR</b> (save to Photos) or <b>Copy UPI ID</b>.',
             'Complete payment for the amount shown above.',
             'Take a screenshot of the successful payment.',
             'Tap <b>Send request</b> below and attach the screenshot for confirmation.'
