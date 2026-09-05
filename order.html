@@ -613,15 +613,10 @@
                     <a id="payUpiGpay" href="#" style="display:block;background:#1a73e8;color:#fff;text-decoration:none;font-weight:700;padding:10px 4px;border-radius:10px;font-size:11px;text-align:center">GPay</a>
                     <a id="payUpiPaytm" href="#" style="display:block;background:#00baf2;color:#fff;text-decoration:none;font-weight:700;padding:10px 4px;border-radius:10px;font-size:11px;text-align:center">Paytm</a>
                 </div>
-                <div id="payUpiOsHint" style="font-size:10px;color:#64748b;line-height:1.4;margin-bottom:8px"></div>
-                <div id="payUpiSteps" style="text-align:left;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px;font-size:11px;color:#334155;line-height:1.55">
-                  <div style="font-weight:900;color:#1a5a38;margin-bottom:6px">How to pay &amp; send request</div>
-                  <ol style="margin:0;padding-left:18px">
-                    <li style="margin-bottom:4px"><b>Scan QR</b> in PhonePe / GPay / Paytm <i>or</i> tap <b>Download QR</b> → save to Photos → open UPI app → scan from gallery. (Or <b>Copy UPI ID</b> and paste in app.)</li>
-                    <li style="margin-bottom:4px">Pay the <b>exact amount</b> shown above.</li>
-                    <li style="margin-bottom:4px">Take a <b>screenshot</b> of the successful payment (UTR / paid screen).</li>
-                    <li style="margin-bottom:0">Tap <b>After paying — send request</b> below and <b>attach / share the screenshot</b> so admin can confirm (usually within ~24 working hours).</li>
-                  </ol>
+                <div id="payUpiOsHint" style="font-size:10px;color:#64748b;line-height:1.4;margin-bottom:6px"></div>
+                <div id="payUpiSteps" style="text-align:left;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px 14px;font-size:12px;color:#334155;line-height:1.5">
+                  <div style="font-weight:800;color:#1a5a38;margin-bottom:8px;font-size:11px;letter-spacing:.3px;text-transform:uppercase">Payment guide</div>
+                  <div id="payUpiStepsBody" style="color:#1e293b"></div>
                 </div>
             </div>
             <button type="button" class="btn" id="payRequestBtn" style="width:100%;background:#1e293b;color:#fff;font-weight:800;padding:14px;margin-bottom:10px;border:none;border-radius:14px;font-size:15px" onclick="openPayRequestSheet()">📨 After paying — send request to admin</button>
@@ -4051,24 +4046,50 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
         meta.innerHTML = '<div style="font-size:13px;font-weight:800;color:#1a5a38">Pay to: '+esc(_upiPayee)+'</div>'+
           '<div style="margin-top:2px">'+esc(_upiVpa)+'</div>';
       }
-      // OS-specific UI — Download QR + Copy UPI ID on all; hide app buttons only on iOS
+      // OS-specific UI — professional short steps; hide app buttons only on iOS
       if (copyBtn) copyBtn.style.display = 'inline-block';
       var dlBtn = document.getElementById('payUpiDlQrBtn');
       if (dlBtn) dlBtn.style.display = 'inline-block';
+      var stepsBody = document.getElementById('payUpiStepsBody');
+      function _payStepList(items){
+        var h = '<ol style="margin:0;padding-left:18px">';
+        for (var i = 0; i < items.length; i++) {
+          h += '<li style="margin-bottom:' + (i === items.length - 1 ? '0' : '6px') + '">' + items[i] + '</li>';
+        }
+        return h + '</ol>';
+      }
       if (isIOS) {
         if (appBtns) appBtns.style.display = 'none';
-        if (hint) {
-          hint.innerHTML = '<b>iPhone tip:</b> Use <b>Download QR</b> → long-press → Save to Photos → scan in PhonePe from gallery. After pay, <b>screenshot success</b> and attach it when you send request.';
+        if (hint) hint.innerHTML = '';
+        if (stepsBody) {
+          stepsBody.innerHTML = _payStepList([
+            'Scan the QR in PhonePe, GPay or Paytm — or download the QR and save it to Photos, then scan from gallery.',
+            'Complete payment for the amount shown above.',
+            'Take a screenshot of the successful payment.',
+            'Tap <b>Send request</b> below and attach the screenshot for confirmation.'
+          ]);
         }
       } else if (isAndroid) {
         if (appBtns) appBtns.style.display = 'grid';
-        if (hint) {
-          hint.innerHTML = '<b>Android tip:</b> Open app button or scan QR. After pay, <b>screenshot success</b> and attach it when you send request.';
+        if (hint) hint.innerHTML = '';
+        if (stepsBody) {
+          stepsBody.innerHTML = _payStepList([
+            'Open PhonePe, GPay or Paytm, or scan the QR code.',
+            'Complete payment for the amount shown above.',
+            'Take a screenshot of the successful payment.',
+            'Tap <b>Send request</b> below and attach the screenshot for confirmation.'
+          ]);
         }
       } else {
         if (appBtns) appBtns.style.display = 'none';
-        if (hint) {
-          hint.innerHTML = 'Follow the steps below. After paying, attach a <b>screenshot</b> with your request.';
+        if (hint) hint.innerHTML = '';
+        if (stepsBody) {
+          stepsBody.innerHTML = _payStepList([
+            'Scan the QR or copy the UPI ID and pay in your UPI app.',
+            'Complete payment for the amount shown above.',
+            'Take a screenshot of the successful payment.',
+            'Tap <b>Send request</b> below and attach the screenshot for confirmation.'
+          ]);
         }
       }
       var pp = document.getElementById('payUpiPhonepe');
