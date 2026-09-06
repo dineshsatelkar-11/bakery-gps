@@ -224,6 +224,7 @@
   <div style="font-size:11px;color:#8a7a6a;margin-bottom:10px;line-height:1.45">
     Daily flow: <b>Edit</b> (damage/missing) → <b>Send/Update Zoho</b> → <b>Mark delivered</b> → <b>Convert to Invoice</b>.
     Only shops with doc type Challan (or existing challan id).
+    <b>Delete</b> = remove from app only (not Zoho) — use if already deleted in Zoho.
   </div>
   <div class="card" style="margin-bottom:10px;padding:12px">
     <div style="font-size:11px;font-weight:800;color:#8a7a6a;letter-spacing:.3px;margin-bottom:8px">DELIVERY DATE</div>
@@ -249,6 +250,7 @@
 </div>
 <div class="page" id="pg-pay-draft">
   <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">📝 Payments — Draft invoices</div>
+  <div style="font-size:11px;color:#8a7a6a;margin-bottom:8px;line-height:1.45"><b>Delete</b> removes the row from this app only (use when already deleted in Zoho). It does <b>not</b> delete the Zoho document.</div>
   <div style="font-size:11px;color:#8a7a6a;margin-bottom:10px;line-height:1.45">
     Zoho <b>draft</b> invoices (not yet sent). Customers do <b>not</b> see these on Pay.
     Send / update in Zoho, then sync — they move to <b>Unpaid</b> when status is sent.
@@ -860,6 +862,7 @@
         if (!o._delivered) {
           actions += '<button class="btn-sm" style="background:#e8f5e9;color:#1a5a38;border:1px solid #a5d6a7;padding:5px 8px;font-size:11px;margin:1px;font-weight:800" onclick="challanDeskMarkDelivered(\''+o.id+'\')">Mark delivered</button> ';
         }
+        actions += '<button class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0;padding:5px 8px;font-size:11px;margin:1px;font-weight:800" onclick="deleteAppCustomerOrder(\''+o.id+'\',\'challan\')" title="Remove from app only — does not delete in Zoho">Delete</button> ';
         return '<tr style="border-bottom:1px solid #f3e5f5">'+
           '<td style="padding:9px 8px;font-size:12px;color:#546e7a;white-space:nowrap">'+esc(String(invDate))+'</td>'+
           '<td style="padding:9px 8px"><div style="font-size:13px;font-weight:900;color:#6a1b9a">'+esc(docNo)+'</div><div style="font-size:10px;color:#90a4ae;font-family:monospace">Order '+esc(String(o.id))+(st2?(' · '+esc(st2)):'')+'</div></td>'+
@@ -2387,6 +2390,46 @@
           _payDeskMsg('Zoho sync failed: ' + (e && e.message ? e.message : e) + ' — ensure edge supports get_invoice.', false);
         });
     }
+
+    /** Delete draft invoice / challan from app only (not Zoho). */
+    function deleteAppCustomerOrder(id, kind) {
+      kind = kind || 'document';
+      var o = null;
+      try {
+        o = (_payDeskRows || []).find(function(r){ return String(r.id) === String(id); })
+          || (_challanDeskRows || []).find(function(r){ return String(r.id) === String(id); });
+      } catch (eF) {}
+      var label = (o && (o.zoho_invoice_number || o.shop_name)) ? (o.zoho_invoice_number || o.shop_name) : ('#' + id);
+      var docKind = kind === 'challan' ? 'challan' : (kind === 'draft' ? 'draft invoice' : 'document');
+      if (!confirm('Delete this ' + docKind + ' from the app only?\n\n' + label + '\n\n• Removes it from bakery app (draft/challan lists)\n• Does NOT delete anything in Zoho\n• Use when already deleted in Zoho or created by mistake')) {
+        return;
+      }
+      var msgFn = kind === 'challan'
+        ? function(t, ok){ try { if (typeof _challanMsg === 'function') _challanMsg(t, ok); else if (typeof _payDeskMsg === 'function') _payDeskMsg(t, ok); } catch(e){ alert(t); } }
+        : function(t, ok){ try { if (typeof _payDeskMsg === 'function') _payDeskMsg(t, ok); else alert(t); } catch(e){ alert(t); } };
+      msgFn('Deleting from app…', null);
+      api({ action: 'deleteCustomerOrder', id: id })
+        .then(function(res){
+          if (!res || res.ok === false) {
+            msgFn((res && res.error) || 'Delete failed', false);
+            return;
+          }
+          // Drop from local caches
+          try {
+            _payDeskRows = (_payDeskRows || []).filter(function(r){ return String(r.id) !== String(id); });
+            _challanDeskRows = (_challanDeskRows || []).filter(function(r){ return String(r.id) !== String(id); });
+          } catch (eC) {}
+          msgFn('Deleted from app only' + (res.zoho_invoice_number ? (': ' + res.zoho_invoice_number) : '') + '. Zoho unchanged.', true);
+          try { if (typeof renderPaymentsDesk === 'function') renderPaymentsDesk(); } catch (e1) {}
+          try { if (typeof renderChallanDesk === 'function') renderChallanDesk(); } catch (e2) {}
+          try { if (kind === 'challan' && typeof loadChallanDesk === 'function') loadChallanDesk(); } catch (e3) {}
+        })
+        .catch(function(e){
+          msgFn('Delete failed: ' + (e && e.message ? e.message : e), false);
+        });
+    }
+    window.deleteAppCustomerOrder = deleteAppCustomerOrder;
+
     function adminProofUrls(o){
       var fid = (o && (o.payment_proof_file_id || o.file_id)) ? String(o.payment_proof_file_id || o.file_id).trim() : '';
       var raw = (o && o.payment_proof_url) ? String(o.payment_proof_url).trim() : '';
@@ -3286,6 +3329,7 @@
               '<td style="padding:9px 8px;white-space:nowrap">'+
                 '<button type="button" class="btn-sm" style="background:#f5efe6;color:#4a2f14;border:1px solid #e0d4c4;padding:5px 8px;font-size:11px;font-weight:800;margin:1px" onclick="openPayInvDetail(\''+o.id+'\')">View</button> '+
                 (o.zoho_invoice_id ? '<button type="button" class="btn-sm" style="background:#fff8e1;color:#ef6c00;border:1px solid #ffe0b2;padding:5px 8px;font-size:11px;font-weight:800;margin:1px" onclick="payDeskSyncOne(\''+o.id+'\')">↻ Sync</button> ' : '')+
+                '<button type="button" class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0;padding:5px 8px;font-size:11px;font-weight:800;margin:1px" onclick="deleteAppCustomerOrder(\''+o.id+'\',\'draft\')" title="Remove from app only — does not delete in Zoho">Delete</button>'+
               '</td></tr>';
           }).join('');
           elDraft.innerHTML =

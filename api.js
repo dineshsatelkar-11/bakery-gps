@@ -516,8 +516,16 @@ function normalizeProducts(list) {
           })
           .catch(function(){ return []; });
 
-      case 'getCustomerNotifications':
-        return sbGet('customer_notifications', { shop_id: p.shop_id, is_read: false }, 'created_at.desc');
+      case 'getCustomerNotifications': {
+        // Last 7 days — both read and unread so customer can open history
+        var cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        var url = BASE + '/customer_notifications?shop_id=eq.' + encodeURIComponent(p.shop_id) +
+          '&created_at=gte.' + encodeURIComponent(cutoff) +
+          '&order=created_at.desc&limit=50';
+        return fetch(url, { headers: hdrs() })
+          .then(function (r) { return r.ok ? r.json() : []; })
+          .catch(function () { return []; });
+      }
 
       case 'getCrateLogs': {
         var where = {};
@@ -1620,6 +1628,25 @@ function normalizeProducts(list) {
         }).then(function(r){ return r.ok ? { ok: true } : { ok: false }; })
           .catch(function(){ return { ok: false }; });
 
+      case 'markCustomerNotifRead': {
+        // Mark a single notification as read by id (and shop for safety)
+        if (!b.id || !b.shop_id) return Promise.resolve({ ok: false, error: 'missing id' });
+        return fetch(BASE + '/customer_notifications?id=eq.' + encodeURIComponent(b.id) +
+          '&shop_id=eq.' + encodeURIComponent(b.shop_id), {
+          method: 'PATCH',
+          headers: hdrs({ 'Prefer': 'return=minimal' }),
+          body: JSON.stringify({ is_read: true })
+        }).then(function(r){ return r.ok ? { ok: true } : { ok: false }; })
+          .catch(function(){ return { ok: false }; });
+      }
+
+      case 'clearCustomerNotifs':
+        return fetch(BASE + '/customer_notifications?shop_id=eq.' + encodeURIComponent(b.shop_id), {
+          method: 'DELETE',
+          headers: hdrs({ 'Prefer': 'return=minimal' })
+        }).then(function(r){ return r.ok ? { ok: true } : { ok: false }; })
+          .catch(function(){ return { ok: false }; });
+
       case 'setSetting':
         return sbUpsert('settings', {key: b.key, value: b.value}, 'key');
 
@@ -1772,6 +1799,49 @@ function normalizeProducts(list) {
         if (b.invoice_total !== undefined) payUpd.invoice_total = b.invoice_total;
         if (b.zoho_payment_id !== undefined) payUpd.zoho_payment_id = b.zoho_payment_id;
         return sbPatch('customer_orders', { id: b.id }, payUpd);
+      }
+
+      // Delete draft invoice / challan from app only (does NOT delete in Zoho)
+      case 'deleteCustomerOrder': {
+        var delId = b.id != null ? b.id : b.order_id;
+        if (delId == null || delId === '') {
+          return Promise.resolve({ ok: false, error: 'Missing order id' });
+        }
+        return fetch(BASE + '/customer_orders?id=eq.' + encodeURIComponent(delId) + '&select=id,payment_status,zoho_invoice_number,shop_id,delivery_date&limit=1', {
+          headers: hdrs()
+        }).then(function (r) {
+          return r.json().then(function (rows) {
+            if (!r.ok) return { ok: false, error: (rows && rows.message) || 'Lookup failed' };
+            var row = Array.isArray(rows) ? rows[0] : rows;
+            if (!row) return { ok: false, error: 'Order not found (already deleted?)' };
+            var pst = String(row.payment_status || '').toLowerCase();
+            if (pst === 'paid' && !b.force) {
+              return { ok: false, error: 'Cannot delete a paid invoice. Undo paid first.' };
+            }
+            // Remove matching driver `orders` row if synced as CO-{id}
+            var coKey = 'CO-' + String(delId);
+            return sbDelete('orders', { order_id: coKey }).catch(function () {
+              return { ok: true };
+            }).then(function () {
+              return fetch(BASE + '/orders?dc_num=eq.' + encodeURIComponent(coKey), {
+                method: 'DELETE',
+                headers: hdrs()
+              }).catch(function () { return null; });
+            }).then(function () {
+              return sbDelete('customer_orders', { id: delId });
+            }).then(function (delRes) {
+              if (delRes && delRes.ok === false) return delRes;
+              return {
+                ok: true,
+                deleted_id: delId,
+                zoho_invoice_number: row.zoho_invoice_number || '',
+                note: 'Deleted from app only — Zoho document was not changed'
+              };
+            });
+          });
+        }).catch(function (e) {
+          return { ok: false, error: String(e && e.message || e) };
+        });
       }
 
       case 'customerClaimPaid': {
