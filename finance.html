@@ -370,6 +370,16 @@ body.dark .search-item:hover{background:#3d4a5c}
 
   <!-- ══ DASHBOARD ══ -->
   <div class="page on" id="tab-dashboard">
+    <div id="finSetupCard" class="card" style="display:none;border:1.5px solid #f0c36a;background:#fffbeb">
+      <div class="card-title" style="color:#92400e">🚀 Fresh setup</div>
+      <div style="font-size:12px;color:#a16207;margin-bottom:12px;line-height:1.5">Finance data is empty. Add these first so Expenses / Bank / Drivers work:</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <button type="button" class="btn btn-blue" style="margin:0;padding:12px 10px;font-size:12px" onclick="showTab('bank');setTimeout(function(){showBankTab('manage');},30)">🏦 Bank account</button>
+        <button type="button" class="btn btn-blue" style="margin:0;padding:12px 10px;font-size:12px" onclick="showTab('drivers');setTimeout(function(){showDriverTab('manage');try{openAddDriverPopup();}catch(e){}},40)">👷 Driver</button>
+        <button type="button" class="btn btn-yellow" style="margin:0;padding:12px 10px;font-size:12px" onclick="showTab('expenses');setTimeout(function(){showExpenseTab('add');},30)">💸 Expense</button>
+        <button type="button" class="btn btn-grey" style="margin:0;padding:12px 10px;font-size:12px" onclick="showTab('loans');setTimeout(function(){showLoanTab('add');},30)">📋 Loan</button>
+      </div>
+    </div>
     <div class="card" style="background:linear-gradient(135deg,#1a3a5c,#2a5a8c);border:none">
       <div style="color:#8ab4d8;font-size:10px;font-family:monospace;font-weight:700;letter-spacing:2px;text-transform:uppercase">THIS MONTH</div>
       <div style="color:#fff;font-size:28px;font-weight:900;margin:4px 0" id="dashNetP&L">₹ —</div>
@@ -2269,7 +2279,16 @@ function loadQuickDriverPayList(){
     var drivers=res[0]||[];
     var advs=res[1]||[];
     var unpaidSals=res[2]||[];
-    if(!drivers.length){el.innerHTML='<div class="empty">No active drivers</div>';return;}
+    if(!drivers.length){
+      el.innerHTML=
+        '<div class="card" style="text-align:center;padding:18px 14px;margin:0;border:none;box-shadow:none">'+
+          '<div style="font-size:26px;margin-bottom:6px">👷</div>'+
+          '<div style="font-weight:800;margin-bottom:6px">No drivers yet</div>'+
+          '<div style="font-size:12px;color:#7a8fa6;margin-bottom:12px">Add team members before advances / salary.</div>'+
+          '<button type="button" class="btn btn-blue" style="max-width:240px;margin:0 auto" onclick="showDriverTab(\'manage\');setTimeout(function(){try{openAddDriverPopup();}catch(e){}},50)">➕ Add driver</button>'+
+        '</div>';
+      return;
+    }
     el.innerHTML=drivers.map(function(d){
       var name=d.name;
       var advGiven=advs.filter(function(a){return a.driver_name===name&&a.type==='advance';})
@@ -5444,7 +5463,14 @@ function filterExpenseList(){
     else{tot.style.display='none';}
   }
   if(!rows.length){
-    el.innerHTML='<div class="empty">'+(q?'No results for "'+q+'"':'No expenses yet — use ➕ Add')+'</div>';
+    el.innerHTML=q
+      ? '<div class="empty">No results for "'+esc(q)+'"</div>'
+      : '<div class="card" style="text-align:center;padding:20px 16px">'+
+          '<div style="font-size:28px;margin-bottom:8px">💸</div>'+
+          '<div style="font-weight:800;margin-bottom:6px">No expenses yet</div>'+
+          '<div style="font-size:12px;color:#7a8fa6;margin-bottom:14px">Data was cleared. Add your first expense to start.</div>'+
+          '<button type="button" class="btn btn-yellow" style="max-width:240px;margin:0 auto" onclick="showExpenseTab(\'add\')">➕ Add expense</button>'+
+        '</div>';
     return;
   }
   el.innerHTML=rows.map(function(e){
@@ -5576,7 +5602,13 @@ function loadBankAccountCards(){
     var listEl=document.getElementById('bankAccountList');
     if(!accounts.length){
       if(cardEl) cardEl.innerHTML='';
-      if(listEl) listEl.innerHTML='<div class="empty">No bank accounts yet — open ⚙️ Manage → Add account</div>';
+      if(listEl) listEl.innerHTML=
+        '<div class="card" style="text-align:center;padding:20px 16px">'+
+          '<div style="font-size:28px;margin-bottom:8px">🏦</div>'+
+          '<div style="font-weight:800;margin-bottom:6px">No bank accounts yet</div>'+
+          '<div style="font-size:12px;color:#7a8fa6;margin-bottom:14px">Add at least one account (cash / bank) before recording money.</div>'+
+          '<button type="button" class="btn btn-blue" style="max-width:260px;margin:0 auto" onclick="showBankTab(\'manage\')">➕ Add bank account</button>'+
+        '</div>';
       return;
     }
     Promise.all(accounts.map(function(a){
@@ -5640,6 +5672,8 @@ function clearBankFilter(){
 }
 function loadBankDetail(){
   var el=document.getElementById('bankDetailList');
+  if(!el) return;
+  el.innerHTML='<div class="empty">Loading…</div>';
   var mon=v('bk-detail-month'); var type=v('bk-detail-type');
   var parts=[];
   if(_currentBankAccount) parts.push('account_name=eq.'+encodeURIComponent(_currentBankAccount));
@@ -5652,7 +5686,13 @@ function loadBankDetail(){
   parts.push('order=date.desc,id.desc');
   if(!mon) parts.push('limit=2000');
   sbGetQ('bank_transactions',parts.join('&')).then(function(rows){
-    if(!rows.length){el.innerHTML='<div class="empty">No transactions</div>';return;}
+    rows=_asRows(rows);
+    if(!rows.length){
+      el.innerHTML=(_bankAccounts&&_bankAccounts.length)
+        ? '<div class="empty">No transactions yet — use ➕ Add Txn</div>'
+        : '<div class="empty">Add a bank account first (⚙️ Manage)</div>';
+      return;
+    }
     var totalIn=rows.filter(function(r){return r.type==='credit';}).reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
     var totalOut=rows.filter(function(r){return r.type!=='credit';}).reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
     el.innerHTML='<div style="display:flex;gap:8px;margin-bottom:8px">'+
@@ -5920,7 +5960,16 @@ function loadLoanList(){
     var allEmis=res[1]||[];
     loans=rows;
     var el=document.getElementById('loanList');
-    if(!rows.length){el.innerHTML='<div class="empty">No loans yet — add existing loans under ➕ New Loan</div>';return;}
+    if(!rows.length){
+      el.innerHTML=
+        '<div class="card" style="text-align:center;padding:20px 16px">'+
+          '<div style="font-size:28px;margin-bottom:8px">📋</div>'+
+          '<div style="font-weight:800;margin-bottom:6px">No loans yet</div>'+
+          '<div style="font-size:12px;color:#7a8fa6;margin-bottom:14px">Add term loans, OD, or credit cards to track EMIs.</div>'+
+          '<button type="button" class="btn btn-blue" style="max-width:240px;margin:0 auto" onclick="showLoanTab(\'add\')">➕ New loan</button>'+
+        '</div>';
+      return;
+    }
     var emisByLoan={};
     allEmis.forEach(function(e){
       if(!emisByLoan[e.loan_id]) emisByLoan[e.loan_id]=[];
@@ -6491,13 +6540,23 @@ function loadDashboard(){
     sbGetQ('driver_salary','order=month.asc'),
     // This month driver advances/deductions/rent
     sbGetQ('driver_advances','date=gte.'+from+'&date=lte.'+to+'&order=date.asc'),
-    sbGetQ('driver_tempo_rent','month=eq.'+encodeURIComponent(mon))
+    sbGetQ('driver_tempo_rent','month=eq.'+encodeURIComponent(mon)),
+    // Setup detection
+    sbGetQ('bank_accounts','select=id&limit=1'),
+    sbGetQ('loans','select=id&limit=1')
   ]).then(function(res){
     var payments=_asRows(res[0]); var rentOut=_asRows(res[1]);
     var expenses=_asRows(res[2]); var salaries=_asRows(res[3]);
     var rentIn=_asRows(res[4]); var emis=_asRows(res[5]); var services=_asRows(res[6]);
     var allDrivers=_asRows(res[7]); var allAdvances=_asRows(res[8]); var allSalaries=_asRows(res[9]);
     var monthAdvances=_asRows(res[10]); var monthTempoRent=_asRows(res[11]);
+    var hasBank=_asRows(res[12]).length>0;
+    var hasLoan=_asRows(res[13]).length>0;
+    var setupEl=document.getElementById('finSetupCard');
+    if(setupEl){
+      var needsSetup=!hasBank||!allDrivers.length;
+      setupEl.style.display=needsSetup?'block':'none';
+    }
 
     var totalPayments=payments.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
     var totalRentOut=rentOut.reduce(function(a,r){return a+(parseFloat(r.received)||0);},0);
