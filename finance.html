@@ -134,11 +134,22 @@ body{
   #app{max-width:none;width:100%}
   .tabs{display:none !important}
   .fin-bnav{display:block}
-  .topbar{position:fixed;left:0;right:0;max-width:var(--fin-phone);margin-left:auto;margin-right:auto}
+  .topbar{position:fixed;left:0;right:0;max-width:var(--fin-phone);margin-left:auto;margin-right:auto;z-index:1100}
   body.fin-app #app{padding-top:calc(58px + var(--sat));padding-bottom:calc(72px + var(--sab))}
   .page{padding:12px 14px calc(24px + var(--sab)) !important}
   #searchBar{padding-left:12px;padding-right:12px}
   #chatBtn{bottom:calc(78px + var(--sab)) !important}
+  /* Chat fills ONLY the middle band: below topbar, above bottom nav */
+  #chatPanel{
+    top:calc(56px + var(--sat)) !important;
+    bottom:calc(64px + var(--sab)) !important;
+    height:auto !important;
+    max-height:none !important;
+    border-radius:14px 14px 0 0;
+    z-index:1000; /* above page content, under topbar (1100) / with nav visible */
+  }
+  .fin-bnav{z-index:1100}
+  body.chat-open .fin-bnav{display:block !important;z-index:1100}
   .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
   .row2{grid-template-columns:1fr 1fr}
 }
@@ -241,14 +252,28 @@ textarea{resize:vertical;min-height:60px;font-size:13px;line-height:1.6}
 .empty{text-align:center;color:#7a8fa6;font-size:13px;padding:32px 0;font-family:monospace}
 
 /* ── CHAT ── */
+/* Phone: sits BETWEEN topbar and bottom nav (not full screen) */
 #chatBtn{position:fixed;bottom:22px;right:18px;z-index:1200;width:52px;height:52px;border-radius:50%;background:#1a3a5c;color:#fff;font-size:22px;border:none;cursor:pointer;box-shadow:0 4px 18px rgba(26,58,92,.45);display:flex;align-items:center;justify-content:center}
-/* Chat ABOVE bottom nav (bnav z-index:999) so phone keyboard + input stay usable */
-#chatPanel{position:fixed;bottom:0;right:0;left:0;z-index:1300;max-width:var(--fin-phone);margin:0 auto;background:#fff;border-radius:20px 20px 0 0;box-shadow:0 -4px 24px rgba(0,0,0,.18);display:none;flex-direction:column;height:min(72vh, calc(100dvh - 12px));max-height:calc(100dvh - env(safe-area-inset-top, 0px));}
+#chatPanel{
+  position:fixed;
+  left:0;right:0;
+  /* Default desktop-ish; phone overrides below */
+  bottom:0;
+  z-index:980; /* below bottom nav (999) and topbar (300)... wait: need above content, below chrome */
+  max-width:var(--fin-phone);margin:0 auto;
+  background:#fff;
+  border-radius:16px 16px 0 0;
+  box-shadow:0 -4px 24px rgba(0,0,0,.18);
+  display:none;flex-direction:column;
+  height:auto;
+  overflow:hidden;
+}
 #chatPanel.open{display:flex}
-body.chat-open .fin-bnav{display:none !important}
+/* Keep header + bottom nav visible while chat is open */
+body.chat-open .fin-bnav{display:block !important}
 body.chat-open #chatBtn{display:none !important}
 body.dark #chatPanel{background:#232b3e}
-#chatHead{padding:12px 16px;background:#1a3a5c;border-radius:20px 20px 0 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+#chatHead{padding:12px 16px;background:#1a3a5c;border-radius:16px 16px 0 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 #chatHead span{color:#fff;font-weight:800;font-size:14px}
 #chatClose{background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:0 4px}
 #chatMsgs{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px;display:flex;flex-direction:column;gap:10px;min-height:0}
@@ -261,7 +286,7 @@ body.dark .cm-user{background:#3b5bdb}
 .chat-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
 .chip{background:#d8e4f0;color:#1a3a5c;border:none;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif}
 body.dark .chip{background:#3d4a5c;color:#e2e8f0}
-#chatInputRow{padding:10px 12px;padding-bottom:max(10px, env(safe-area-inset-bottom, 0px));border-top:1px solid #e4edf6;display:flex;gap:8px;align-items:center;flex-shrink:0;background:#fff;position:relative;z-index:2}
+#chatInputRow{padding:10px 12px;padding-bottom:10px;border-top:1px solid #e4edf6;display:flex;gap:8px;align-items:center;flex-shrink:0;background:#fff;position:relative;z-index:2}
 body.dark #chatInputRow{border-color:#3d4a5c;background:#232b3e}
 #chatInput{flex:1;padding:12px 14px;border:1.5px solid #d8e4f0;border-radius:22px;font-size:16px;background:#f4f8fc;outline:none;font-family:-apple-system,sans-serif;-webkit-appearance:none}
 /* 16px prevents iOS zoom-on-focus which breaks keyboard layout */
@@ -279,10 +304,14 @@ body.dark #chatInput{background:#2d3748;color:#e2e8f0;border-color:#3d4a5c}
 /* Desktop: floating chat + centered modal */
 @media (min-width:768px){
   #chatPanel{
-    left:auto !important;right:24px !important;bottom:24px !important;
+    left:auto !important;right:24px !important;
+    top:auto !important;bottom:24px !important;
     max-width:420px !important;width:100%;
-    border-radius:16px !important;height:min(70vh,560px) !important;
+    border-radius:16px !important;
+    height:min(70vh,560px) !important;
+    max-height:min(70vh,560px) !important;
     box-shadow:0 12px 40px rgba(15,23,42,.2) !important;
+    z-index:1300;
   }
   #chatHead{border-radius:16px 16px 0 0}
   #chatBtn{right:28px !important;bottom:28px !important}
@@ -8003,19 +8032,50 @@ if(sessionStorage.getItem('fin_auth')==='1') initApp();
 // ════════════════════════════════════════════
 var _chatState={};  // holds conversation context between turns
 
+function _chatIsPhone(){
+  try{ return window.matchMedia && window.matchMedia('(max-width:767px)').matches; }catch(e){ return window.innerWidth<=767; }
+}
 function _chatLayoutForKeyboard(){
   var p=document.getElementById('chatPanel');
   if(!p || !p.classList.contains('open')) return;
+  // Desktop: leave floating panel alone
+  if(!_chatIsPhone()){
+    p.style.top='';
+    p.style.bottom='';
+    p.style.height='';
+    p.style.maxHeight='';
+    return;
+  }
   try{
     var vv=window.visualViewport;
-    if(!vv) return;
-    // Keep chat panel within visible viewport when keyboard is open
-    var topGap=Math.max(0, vv.offsetTop||0);
-    var h=Math.max(220, Math.floor(vv.height));
-    p.style.top=topGap+'px';
-    p.style.bottom='auto';
-    p.style.height=h+'px';
-    p.style.maxHeight=h+'px';
+    var topBar=0, bottomNav=0;
+    try{
+      var tb=document.querySelector('.topbar');
+      var bn=document.getElementById('finBottomNav');
+      if(tb) topBar=tb.getBoundingClientRect().bottom;
+      if(bn && bn.offsetParent!==null) bottomNav=window.innerHeight - bn.getBoundingClientRect().top;
+    }catch(eM){}
+    if(!topBar) topBar=56;
+    if(!bottomNav) bottomNav=64;
+
+    // When keyboard open, visualViewport shrinks — pin chat to visible middle band
+    if(vv){
+      var kbGap=Math.max(0, window.innerHeight - (vv.height + (vv.offsetTop||0)));
+      var top=Math.max(topBar, vv.offsetTop||0);
+      // If keyboard covers bottom nav, sit above keyboard; else above bottom nav
+      var bottomFromScreen=kbGap>40 ? kbGap : bottomNav;
+      var h=Math.max(180, Math.floor(vv.height - Math.max(0, top - (vv.offsetTop||0)) - (kbGap>40?0:0)));
+      // Prefer top + bottom anchors so header/nav stay outside the panel
+      p.style.top=top+'px';
+      p.style.bottom=bottomFromScreen+'px';
+      p.style.height='auto';
+      p.style.maxHeight='none';
+    } else {
+      p.style.top=topBar+'px';
+      p.style.bottom=bottomNav+'px';
+      p.style.height='auto';
+      p.style.maxHeight='none';
+    }
   }catch(e){}
 }
 function _chatResetLayout(){
@@ -8036,9 +8096,9 @@ function toggleChat(){
   if(!isOpen){
     if(document.getElementById('chatMsgs').children.length===0) chatWelcome();
     setTimeout(function(){
-      var inp=document.getElementById('chatInput');
-      if(inp) try{ inp.focus(); }catch(e){}
       _chatLayoutForKeyboard();
+      var inp=document.getElementById('chatInput');
+      if(inp) try{ inp.focus({preventScroll:true}); }catch(e){ try{inp.focus();}catch(e2){} }
     }, 50);
   } else {
     _chatResetLayout();
@@ -8060,7 +8120,7 @@ function closeChat(){
   }
   window.addEventListener('resize', onVv, {passive:true});
   document.addEventListener('focusin', function(ev){
-    if(ev.target && ev.target.id==='chatInput') setTimeout(_chatLayoutForKeyboard, 100);
+    if(ev.target && ev.target.id==='chatInput') setTimeout(_chatLayoutForKeyboard, 80);
   });
 })();
 function chatWelcome(){
