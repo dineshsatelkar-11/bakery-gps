@@ -1090,11 +1090,12 @@ body.dark .search-item:hover{background:#3d4a5c}
           <div id="er-upi-info" style="font-size:11px;color:#64748b;margin-bottom:8px">Select a driver to load saved UPI.</div>
           <label class="lbl">UPI ID (edit if needed)</label>
           <input type="text" id="er-upi-vpa" placeholder="name@ybl" autocomplete="off">
-          <div style="display:flex;gap:8px;margin-top:10px">
-            <button type="button" class="btn btn-blue" style="flex:1;background:#5f259f;margin-bottom:0" onclick="payExtraRouteApp('phonepe')">📱 PhonePe</button>
-            <button type="button" class="btn btn-blue" style="flex:1;background:#00baf2;margin-bottom:0" onclick="payExtraRouteApp('paytm')">📱 Paytm</button>
+          <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+            <button type="button" class="btn btn-blue" style="flex:1;background:#5f259f;margin-bottom:0;min-width:90px" onclick="payExtraRouteApp('phonepe')">📱 PhonePe</button>
+            <button type="button" class="btn btn-blue" style="flex:1;background:#00baf2;margin-bottom:0;min-width:90px" onclick="payExtraRouteApp('paytm')">📱 Paytm</button>
+            <button type="button" class="btn btn-grey" style="flex:1;margin-bottom:0;min-width:90px" onclick="copyExtraRouteUpi()">📋 Copy UPI</button>
           </div>
-          <div style="font-size:10px;color:#64748b;margin-top:6px">Opens only PhonePe or Paytm. After paying, tap <b>Mark Paid & Save</b>.</div>
+          <div style="font-size:10px;color:#64748b;margin-top:6px">If Paytm shows <b>security error</b>: tap Copy UPI → open Paytm → Pay to UPI ID → paste → Pay. Then <b>Mark Paid & Save</b>.</div>
         </div>
         <button class="btn btn-green" style="width:100%" onclick="saveExtraRoutePay()">✅ Mark Paid & Save</button>
         <div id="er-msg"></div>
@@ -2103,19 +2104,21 @@ function buildFinUpiUrl(vpa, payeeName, amount, note){
   if(!pa||pa.indexOf('@')<0) return '';
   var am=parseFloat(amount);
   if(!(am>0)) return '';
+  // Soft P2P only — no tn/tr (reduces Paytm/PhonePe security blocks)
   var params=new URLSearchParams();
   params.set('pa', pa);
   params.set('pn', String(payeeName||'Payee').slice(0,50));
   params.set('am', am.toFixed(2));
   params.set('cu', 'INR');
-  if(note) params.set('tn', String(note).slice(0,80));
-  params.set('tr', 'FIN'+Date.now().toString(36).toUpperCase());
   return 'upi://pay?'+params.toString();
 }
 function openFinUpiPay(vpa, payeeName, amount, note){
   var url=buildFinUpiUrl(vpa, payeeName, amount, note);
   if(!url){ alert('Enter a valid UPI ID (must include @) or paste upi:// from QR, and amount > 0'); return false; }
-  try{ window.location.href=url; }catch(e){ alert('Could not open UPI app'); return false; }
+  var pa=parseUpiVpa(vpa);
+  var am=parseFloat(amount);
+  copyUpiPayDetails(pa, am);
+  try{ window.location.href=url; }catch(e){ alert('Could not open UPI app. UPI ID copied — paste in Paytm/PhonePe manually.'); return false; }
   return true;
 }
 function getDriverUpiLocal(name){
@@ -4847,32 +4850,35 @@ function buildAppUpiQuery(vpa, payeeName, amount, note){
   return 'pa='+encodeURIComponent(pa)+'&pn='+pn+'&am='+am.toFixed(2)+'&cu=INR&tn='+tn;
 }
 function buildAppUpiUrl(app, vpa, payeeName, amount, note){
-  var q=buildAppUpiQuery(vpa, payeeName, amount, note);
-  if(!q) return '';
+  // Prefer soft P2P query (pa/pn/am/cu only) — full tn/tr often triggers Paytm/PhonePe “security” blocks
+  var pa=parseUpiVpa(vpa);
+  if(!pa||pa.indexOf('@')<0) return '';
+  var am=parseFloat(amount);
+  if(!(am>0)) return '';
+  var softQ='pa='+encodeURIComponent(pa)+
+    '&pn='+encodeURIComponent(String(payeeName||'Driver').slice(0,50))+
+    '&am='+am.toFixed(2)+'&cu=INR';
   var ios=isIosDevice();
-  // iOS Safari: custom schemes only (intent:// does nothing on iPhone)
   if(ios){
-    if(app==='phonepe') return 'phonepe://pay?'+q;
-    if(app==='paytm') return 'paytmmp://pay?'+q;
-    if(app==='gpay') return 'gpay://upi/pay?'+q;
-    return 'upi://pay?'+q;
+    if(app==='phonepe') return 'phonepe://pay?'+softQ;
+    if(app==='paytm') return 'paytmmp://upi/pay?'+softQ;
+    if(app==='gpay') return 'gpay://upi/pay?'+softQ;
+    return 'upi://pay?'+softQ;
   }
-  // Android: Intent is most reliable from Chrome
+  // Android: soft custom-scheme first (less “security policy” than heavy intents)
   if(app==='phonepe'){
-    return 'intent://pay?'+q+'#Intent;scheme=phonepe;package=com.phonepe.app;S.browser_fallback_url='+
-      encodeURIComponent('https://play.google.com/store/apps/details?id=com.phonepe.app')+';end';
+    return 'phonepe://pay?'+softQ;
   }
   if(app==='paytm'){
-    return 'intent://pay?'+q+'#Intent;scheme=paytmmp;package=net.one97.paytm;S.browser_fallback_url='+
-      encodeURIComponent('https://play.google.com/store/apps/details?id=net.one97.paytm')+';end';
+    // Paytm accepts several paths; upi/pay is least likely to hit security error
+    return 'paytmmp://upi/pay?'+softQ;
   }
   if(app==='gpay'){
-    return 'intent://upi/pay?'+q+'#Intent;scheme=tez;package=com.google.android.apps.nbu.paisa.user;S.browser_fallback_url='+
-      encodeURIComponent('https://play.google.com/store/apps/details?id=com.google.android.apps.nbu.paisa.user')+';end';
+    return 'tez://upi/pay?'+softQ;
   }
-  return 'upi://pay?'+q;
+  return 'upi://pay?'+softQ;
 }
-/** Copy UPI ID (and amount) so user can pay manually if PhonePe blocks deep-link. */
+/** Copy UPI ID (and amount) so user can pay manually if app blocks deep-link. */
 function copyUpiPayDetails(vpa, amount){
   var pa=parseUpiVpa(vpa)||String(vpa||'').trim();
   var am=parseFloat(amount);
@@ -4889,7 +4895,16 @@ function copyUpiPayDetails(vpa, amount){
   }catch(e){}
   return pa;
 }
-/** Open UPI — soft P2P link + clipboard (avoids “UPI security policy” on iPhone). */
+function upiSecurityHelpMsg(app, pa, ams){
+  var appName=app==='paytm'?'Paytm':app==='phonepe'?'PhonePe':app==='gpay'?'GPay':'UPI app';
+  return 'UPI <b>'+esc(pa)+'</b> + ₹'+ams+' copied.\n'+
+    'If '+appName+' shows <b>security error</b>:\n'+
+    '1) Open '+appName+' yourself\n'+
+    '2) Pay → To UPI ID / To mobile\n'+
+    '3) Paste UPI → amount ₹'+ams+' → Pay\n'+
+    '4) Return here and Save';
+}
+/** Open UPI — soft P2P links + clipboard (works around Paytm/PhonePe “security policy”). */
 function openAppUpiUrl(app, vpa, payeeName, amount, note){
   var pa=parseUpiVpa(vpa);
   if(!pa||pa.indexOf('@')<0) return {ok:false, err:'Valid UPI ID required (name@bank)'};
@@ -4898,64 +4913,65 @@ function openAppUpiUrl(app, vpa, payeeName, amount, note){
   var ios=isIosDevice();
   var pn=encodeURIComponent(String(payeeName||'Driver').slice(0,50));
   var ams=am.toFixed(2);
-  // Soft query: VPA + amount only (no heavy note/tr) — fewer security blocks
+  // Soft query only — no tn/tr (those often cause security blocks on Paytm)
   var softQ='pa='+encodeURIComponent(pa)+'&pn='+pn+'&am='+ams+'&cu=INR';
-  var fullQ=buildAppUpiQuery(pa, payeeName, am, note);
   copyUpiPayDetails(pa, am);
 
   function tryOpen(url){
     if(!url) return false;
     try{
-      if(ios){ window.location.href=url; return true; }
-      var a=document.createElement('a');
-      a.href=url; a.rel='noopener'; a.style.display='none';
-      document.body.appendChild(a); a.click();
-      setTimeout(function(){ try{document.body.removeChild(a);}catch(e){} }, 1500);
+      // Always prefer location for custom schemes (more reliable than <a> for paytmmp://)
+      window.location.href=url;
       return true;
     }catch(e){
-      try{ window.location.href=url; return true; }catch(e2){ return false; }
+      try{
+        var a=document.createElement('a');
+        a.href=url; a.rel='noopener'; a.style.display='none';
+        document.body.appendChild(a); a.click();
+        setTimeout(function(){ try{document.body.removeChild(a);}catch(e2){} }, 800);
+        return true;
+      }catch(e3){ return false; }
     }
   }
 
+  // Ordered fallbacks: soft app scheme → alternate paths → generic upi:// (user picks app)
   var urls=[];
-  if(ios){
-    // iPhone: soft link first; if PhonePe still blocks, user uses copied UPI ID
-    if(app==='phonepe'){
-      urls.push('phonepe://pay?'+softQ);
-      urls.push('upi://pay?'+softQ);
-    } else if(app==='paytm'){
-      urls.push('paytmmp://pay?'+softQ);
-      urls.push('upi://pay?'+softQ);
-    } else if(app==='gpay'){
-      urls.push('gpay://upi/pay?'+softQ);
-      urls.push('tez://upi/pay?'+softQ);
-      urls.push('upi://pay?'+softQ);
-    } else {
-      urls.push('upi://pay?'+softQ);
+  if(app==='paytm'){
+    // Paytm is strictest — try multiple soft formats then universal UPI
+    urls.push('paytmmp://upi/pay?'+softQ);
+    urls.push('paytmmp://pay?'+softQ);
+    urls.push('paytm://upi/pay?'+softQ);
+    if(!ios){
+      urls.push('intent://upi/pay?'+softQ+'#Intent;scheme=paytmmp;package=net.one97.paytm;end');
     }
+    urls.push('upi://pay?'+softQ);
+  } else if(app==='phonepe'){
+    urls.push('phonepe://pay?'+softQ);
+    if(!ios){
+      urls.push('intent://pay?'+softQ+'#Intent;scheme=phonepe;package=com.phonepe.app;end');
+    }
+    urls.push('upi://pay?'+softQ);
+  } else if(app==='gpay'){
+    urls.push('gpay://upi/pay?'+softQ);
+    urls.push('tez://upi/pay?'+softQ);
+    if(!ios){
+      urls.push('intent://upi/pay?'+softQ+'#Intent;scheme=tez;package=com.google.android.apps.nbu.paisa.user;end');
+    }
+    urls.push('upi://pay?'+softQ);
   } else {
-    urls.push(buildAppUpiUrl(app, pa, payeeName, am, note));
-    if(app==='phonepe') urls.push('phonepe://pay?'+(fullQ||softQ));
-    else if(app==='paytm') urls.push('paytmmp://pay?'+(fullQ||softQ));
-    else if(app==='gpay') urls.push('tez://upi/pay?'+(fullQ||softQ));
-    urls.push('upi://pay?'+(fullQ||softQ));
+    urls.push('upi://pay?'+softQ);
   }
 
+  // Open primary only (chaining multiple location.href confuses the browser)
   var opened=tryOpen(urls[0]);
-  if(!opened){
-    for(var i=1;i<urls.length;i++){ if(tryOpen(urls[i])){ opened=true; break; } }
-  }
-  if(opened){
-    return {
-      ok:true,
-      msg: ios
-        ? 'UPI ID copied. If PhonePe says “security policy”: open PhonePe → To → paste UPI → ₹'+ams+' → Pay. Then return here and Save.'
-        : (app==='phonepe'?'PhonePe':app==='paytm'?'Paytm':'UPI')+' opened. After pay, Save here.'
-    };
-  }
+  if(!opened && urls[1]) opened=tryOpen(urls[1]);
+
+  // Always return ok with manual fallback instructions — deep-link success is hard to detect
   return {
-    ok:false,
-    err:'UPI ID copied. Open PhonePe manually → pay to '+pa+' → ₹'+ams+' → then Save here.'
+    ok:true,
+    msg: upiSecurityHelpMsg(app, pa, ams),
+    pa:pa,
+    amount:ams
   };
 }
 function payExtraRouteApp(app){
@@ -4969,6 +4985,16 @@ function payExtraRouteApp(app){
   var res=openAppUpiUrl(app, vpa, name, amt, note);
   if(!res.ok){showMsg('er-msg',res.err||'Valid UPI ID required','er');return;}
   showMsg('er-msg', res.msg||'Opened. After payment, tap Mark Paid & Save.','ok');
+}
+function copyExtraRouteUpi(){
+  var drv=v('er-driver'); var amt=parseFloat(v('er-amount'))||250;
+  var vpa=v('er-upi-vpa');
+  var d=getDriverUpi(drv);
+  if(!vpa && d) vpa=d.upi_vpa;
+  var pa=parseUpiVpa(vpa);
+  if(!pa){ showMsg('er-msg','No UPI ID — select driver or type UPI','er'); return; }
+  copyUpiPayDetails(pa, amt);
+  showMsg('er-msg','Copied <b>'+esc(pa)+'</b>'+(amt>0?' · ₹'+amt.toFixed(2):'')+'. Open Paytm → Pay → To UPI ID → paste.','ok');
 }
 function saveExtraRoutePay(){
   var drv=v('er-driver');
