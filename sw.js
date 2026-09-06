@@ -97,10 +97,9 @@ self.addEventListener('activate', function(e) {
 });
 
 // ── Share Target (PhonePe / GPay / Paytm / WhatsApp → payment proof) ──────────
-// POST multipart → stash Blob in IndexedDB (not base64 — avoids QuotaExceededError)
-// → 303 redirect to /order?share=1
+// POST multipart → stash Blob in IndexedDB → 303 redirect to /order?share=1
 var SHARE_DB = 'ibcab-share';
-var SHARE_DB_VER = 2;
+var SHARE_DB_VER = 3;
 
 function openShareDb() {
   return new Promise(function(resolve, reject) {
@@ -147,9 +146,55 @@ function stashSharePayload(payload) {
 function isShareTargetPost(req) {
   if (req.method !== 'POST') return false;
   var u = req.url || '';
+  // Manifest action is /order?share=1 — also accept /order.html?share=1
   if (u.indexOf('share=1') >= 0) return true;
+  // PhonePe / Android sometimes POST to /order without query (still multipart)
+  try {
+    var ct = (req.headers && req.headers.get) ? (req.headers.get('content-type') || '') : '';
+    if (/multipart\/form-data/i.test(ct) && /\/order(\.html)?([?#]|$)/i.test(u)) return true;
+  } catch (eCt) {}
   if (/\/order(\.html)?([?#]|$)/i.test(u)) return true;
   return false;
+}
+
+function pickShareFile(form) {
+  var keys = ['media', 'file', 'files', 'image', 'screenshot', 'photo', 'receipt', 'shared_image'];
+  var i, f;
+  for (i = 0; i < keys.length; i++) {
+    f = form.get(keys[i]);
+    if (f && typeof f.arrayBuffer === 'function' && (f.size == null || f.size > 0)) return f;
+  }
+  // Some apps send multiple under the same name
+  try {
+    for (i = 0; i < keys.length; i++) {
+      var all = form.getAll(keys[i]);
+      if (all && all.length) {
+        for (var j = 0; j < all.length; j++) {
+          f = all[j];
+          if (f && typeof f.arrayBuffer === 'function' && (f.size == null || f.size > 0)) return f;
+        }
+      }
+    }
+  } catch (eAll) {}
+  // Last resort: any File/Blob in the form
+  try {
+    var entries = form.entries();
+    var pair = entries.next();
+    while (!pair.done) {
+      var v = pair.value && pair.value[1];
+      if (v && typeof v.arrayBuffer === 'function' && (v.size == null || v.size > 0)) return v;
+      pair = entries.next();
+    }
+  } catch (eIter) {}
+  return null;
+}
+
+function shareRedirectUrl() {
+  try {
+    return new URL('/order?share=1', self.registration.scope).href;
+  } catch (e) {
+    return '/order?share=1';
+  }
 }
 
 // Fetch — share POST first, then network-first for GET
@@ -162,38 +207,31 @@ self.addEventListener('fetch', function(e) {
     e.respondWith((async function() {
       var hasFile = false;
       var stashErr = '';
+      var fileSize = 0;
       try {
         var form = await e.request.formData();
         var title = form.get('title') || '';
         var text  = form.get('text') || '';
         var shareUrl = form.get('url') || '';
-        var file = form.get('media') || form.get('file') || form.get('files') || form.get('image') || form.get('screenshot');
-        if (!file || typeof file.arrayBuffer !== 'function') {
-          try {
-            var entries = form.entries();
-            var pair = entries.next();
-            while (!pair.done) {
-              var v = pair.value && pair.value[1];
-              if (v && typeof v.arrayBuffer === 'function' && (v.size == null || v.size > 0)) {
-                file = v;
-                break;
-              }
-              pair = entries.next();
-            }
-          } catch (eIter) {}
-        }
+        var file = pickShareFile(form);
 
         var fileBlob = null;
         var fileName = '';
         var fileType = '';
-        var fileSize = 0;
         if (file && typeof file.arrayBuffer === 'function') {
           var buf = await file.arrayBuffer();
           if (buf && buf.byteLength > 0) {
             fileType = file.type || 'image/jpeg';
-            fileName = file.name || 'share.jpg';
+            // PhonePe sometimes sends empty type — sniff from name
+            if (!fileType || fileType === 'application/octet-stream') {
+              var nm = String(file.name || '').toLowerCase();
+              if (nm.indexOf('.png') >= 0) fileType = 'image/png';
+              else if (nm.indexOf('.webp') >= 0) fileType = 'image/webp';
+              else if (nm.indexOf('.pdf') >= 0) fileType = 'application/pdf';
+              else fileType = 'image/jpeg';
+            }
+            fileName = file.name || 'phonepe-receipt.jpg';
             fileSize = buf.byteLength;
-            // Store as Blob (much smaller / safer than base64 string in IDB)
             fileBlob = new Blob([buf], { type: fileType });
             hasFile = true;
           }
@@ -213,8 +251,8 @@ self.addEventListener('fetch', function(e) {
 
         try {
           await stashSharePayload(payload);
+          console.log('[SW] share stashed', { hasFile: hasFile, fileSize: fileSize, fileType: fileType, fileName: fileName });
         } catch (idbErr) {
-          // Quota or IDB failure — try text-only fallback so UTR still arrives
           stashErr = (idbErr && idbErr.name ? idbErr.name + ': ' : '') + String(idbErr && idbErr.message ? idbErr.message : idbErr);
           console.warn('[SW] share IDB write failed', stashErr);
           try {
@@ -237,7 +275,12 @@ self.addEventListener('fetch', function(e) {
           var list = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
           list.forEach(function(c) {
             try {
-              c.postMessage({ type: 'ibcab-share-ready', hasFile: hasFile, err: stashErr || '' });
+              c.postMessage({
+                type: 'ibcab-share-ready',
+                hasFile: hasFile,
+                fileSize: fileSize,
+                err: stashErr || ''
+              });
             } catch (eMsg) {}
           });
         } catch (eCl) {}
@@ -251,7 +294,8 @@ self.addEventListener('fetch', function(e) {
           });
         } catch (e2) {}
       }
-      return Response.redirect('/order?share=1', 303);
+      // Absolute URL — relative redirects break on some Android WebView / Chrome builds
+      return Response.redirect(shareRedirectUrl(), 303);
     })());
     return;
   }
