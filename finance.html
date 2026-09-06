@@ -538,24 +538,26 @@ body.dark .search-item:hover{background:#3d4a5c}
   <!-- ══ DRIVERS ══ -->
   <div class="page" id="tab-drivers">
     <!-- Sub-tabs -->
-    <div style="display:flex;gap:6px;margin-bottom:12px;background:#e8eef5;padding:4px;border-radius:12px">
-      <button type="button" class="btn-sm btn-blue" id="dstab-pay" onclick="showDriverTab('pay')" style="flex:1;margin:0;padding:10px 8px;border-radius:10px;font-size:13px">💳 Pay</button>
-      <button type="button" class="btn-sm btn-grey" id="dstab-salary" onclick="showDriverTab('salary')" style="flex:1;margin:0;padding:10px 8px;border-radius:10px;font-size:13px">💰 Salary</button>
-      <button type="button" class="btn-sm btn-grey" id="dstab-manage" onclick="showDriverTab('manage')" style="flex:1;margin:0;padding:10px 8px;border-radius:10px;font-size:13px">👷 Team</button>
+    <div style="display:flex;gap:4px;margin-bottom:14px;background:#f1f5f9;padding:4px;border-radius:12px;border:1px solid #e2e8f0">
+      <button type="button" class="btn-sm btn-blue" id="dstab-pay" onclick="showDriverTab('pay')" style="flex:1;margin:0;padding:10px 8px;border-radius:9px;font-size:13px;font-weight:800">Pay</button>
+      <button type="button" class="btn-sm btn-grey" id="dstab-salary" onclick="showDriverTab('salary')" style="flex:1;margin:0;padding:10px 8px;border-radius:9px;font-size:13px;font-weight:700">Salary</button>
+      <button type="button" class="btn-sm btn-grey" id="dstab-manage" onclick="showDriverTab('manage')" style="flex:1;margin:0;padding:10px 8px;border-radius:9px;font-size:13px;font-weight:700">Team</button>
     </div>
 
     <!-- PAY tab: all drivers list + pay actions -->
     <div id="dsec-pay">
-      <div class="card" id="quick-driver-pay" style="border:1.5px solid #bae6fd;background:#f0f9ff;margin-bottom:10px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <div class="card-title" style="margin:0;color:#0c4a6e">Drivers this month</div>
-          <button type="button" class="btn-sm btn-grey" onclick="loadQuickDriverPayList()" style="font-size:11px">🔄</button>
+      <div class="card" id="quick-driver-pay" style="border:1px solid #e2e8f0;background:#fff;margin-bottom:10px;box-shadow:0 1px 3px rgba(15,23,42,.04)">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px">
+          <div>
+            <div class="card-title" style="margin:0;color:#0f172a;font-size:15px;letter-spacing:-.2px">Driver payouts</div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px">This month · tap an action to record</div>
+          </div>
+          <button type="button" class="btn-sm btn-grey" onclick="loadQuickDriverPayList()" style="font-size:11px;flex-shrink:0">↻ Refresh</button>
         </div>
-        <div style="font-size:11px;color:#0369a1;margin-bottom:8px"><b>Advance / Extra / Return / Fine</b> open popup · <b>History</b> expands under the row</div>
         <div id="quickDriverPayList"><div class="empty">Loading drivers…</div></div>
       </div>
-      <details style="margin-bottom:10px;background:#fff;border:1px solid #d8e4f0;border-radius:12px;padding:8px 12px">
-        <summary style="font-size:12px;font-weight:700;color:#64748b;cursor:pointer">More: tempo rent</summary>
+      <details style="margin-bottom:10px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:10px 14px">
+        <summary style="font-size:12px;font-weight:700;color:#475569;cursor:pointer">More options · Tempo rent</summary>
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
           <button type="button" class="btn-sm btn-grey" onclick="showDriverPayExtra('tempopay')">🚐 Tempo rent</button>
         </div>
@@ -2184,34 +2186,44 @@ function loadQuickDriverPayList(){
         .reduce(function(s,r){return s+(parseFloat(r.net_paid)||0);},0);
       // Net: unpaid salary − advance out − fines (driver debit)
       var net=+(unpaidSal-netAdv-fines).toFixed(2);
-      var netColor=net>0.01?'#1e7a4f':net<-0.01?'#c8382a':'#64748b';
+      var netColor=net>0.01?'#059669':net<-0.01?'#dc2626':'#64748b';
+      var netBg=net>0.01?'#ecfdf5':net<-0.01?'#fef2f2':'#f8fafc';
+      var netBorder=net>0.01?'#a7f3d0':net<-0.01?'#fecaca':'#e2e8f0';
       var netTxt=(net>0?'+':'')+fmt(net);
       var safe=String(name).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
       var upi=getDriverUpi(name);
-      var btn='flex:1;min-width:calc(50% - 4px);min-height:40px;padding:8px 10px;font-size:13px;border-radius:10px;font-weight:800;border:none;cursor:pointer;';
       var histId='qhist-'+String(name).replace(/[^a-zA-Z0-9]/g,'_');
-      var debitBits=[];
-      if(netAdv>0) debitBits.push('Adv '+fmt(netAdv));
-      if(fines>0) debitBits.push('Fine '+fmt(fines));
-      return'<div class="item-card" style="margin-bottom:8px;padding:12px">'+
-        '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px">'+
-          '<div style="flex:1;min-width:0">'+
-            '<div style="font-weight:800;font-size:15px">'+esc(name)+(upi&&upi.upi_vpa?' <span class="badge b-green" style="font-size:9px">UPI</span>':'')+'</div>'+
-            (debitBits.length?'<div style="font-size:11px;color:#b45309;margin-top:2px">Debit: '+debitBits.join(' · ')+'</div>':'')+
+      var initial=(String(name).trim().charAt(0)||'?').toUpperCase();
+      var metaPills='';
+      if(unpaidSal>0) metaPills+='<span style="display:inline-flex;align-items:center;gap:3px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:700">Salary due '+fmt(unpaidSal)+'</span>';
+      if(netAdv>0) metaPills+='<span style="display:inline-flex;align-items:center;gap:3px;background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:700">Advance '+fmt(netAdv)+'</span>';
+      if(fines>0) metaPills+='<span style="display:inline-flex;align-items:center;gap:3px;background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:700">Fine '+fmt(fines)+'</span>';
+      if(!metaPills) metaPills='<span style="font-size:11px;color:#94a3b8">No open balances this month</span>';
+      var actBtn='flex:1;min-width:0;padding:9px 6px;font-size:11px;border-radius:9px;font-weight:700;border:1px solid;cursor:pointer;line-height:1.2;background:#fff';
+      return'<div style="margin-bottom:10px;padding:14px;background:#fff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 1px 2px rgba(15,23,42,.04)">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px">'+
+          '<div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">'+
+            '<div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#1e3a5f,#334155);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;flex-shrink:0">'+esc(initial)+'</div>'+
+            '<div style="min-width:0">'+
+              '<div style="font-weight:800;font-size:14px;color:#0f172a;letter-spacing:-.2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+esc(name)+
+                (upi&&upi.upi_vpa?'<span style="font-size:9px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;border-radius:6px;padding:2px 6px">UPI</span>':'')+
+              '</div>'+
+              '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">'+metaPills+'</div>'+
+            '</div>'+
           '</div>'+
-          '<div style="text-align:right;flex:none">'+
-            '<div style="font-size:10px;color:#94a3b8;font-weight:700">NET</div>'+
-            '<div style="font-weight:900;font-size:16px;color:'+netColor+'">'+netTxt+'</div>'+
+          '<div style="text-align:right;flex:none;background:'+netBg+';border:1px solid '+netBorder+';border-radius:12px;padding:8px 10px;min-width:88px">'+
+            '<div style="font-size:9px;color:#64748b;font-weight:800;letter-spacing:.6px;text-transform:uppercase">Net</div>'+
+            '<div style="font-weight:900;font-size:15px;color:'+netColor+';font-family:ui-monospace,monospace;margin-top:1px">'+netTxt+'</div>'+
           '</div>'+
         '</div>'+
-        '<div style="display:flex;flex-wrap:wrap;gap:8px">'+
-          '<button type="button" style="'+btn+'background:#1e3a5f;color:#fff" onclick="openQuickAdvance(\''+safe+'\')">Advance</button>'+
-          '<button type="button" style="'+btn+'background:#047857;color:#fff" onclick="openQuickExtraRoute(\''+safe+'\')">Extra route</button>'+
-          '<button type="button" style="'+btn+'background:#0284c7;color:#fff" onclick="openQuickReturn(\''+safe+'\')">Return</button>'+
-          '<button type="button" style="'+btn+'background:#dc2626;color:#fff" onclick="openQuickFine(\''+safe+'\')">Fine</button>'+
-          '<button type="button" style="'+btn+'background:#64748b;color:#fff;min-width:100%" onclick="toggleQuickHistory(\''+safe+'\',\''+histId+'\')">History</button>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'+
+          '<button type="button" style="'+actBtn+'border-color:#cbd5e1;color:#1e3a5f" onclick="openQuickAdvance(\''+safe+'\')">Advance</button>'+
+          '<button type="button" style="'+actBtn+'border-color:#a7f3d0;color:#047857" onclick="openQuickExtraRoute(\''+safe+'\')">Extra route</button>'+
+          '<button type="button" style="'+actBtn+'border-color:#bae6fd;color:#0369a1" onclick="openQuickReturn(\''+safe+'\')">Return</button>'+
+          '<button type="button" style="'+actBtn+'border-color:#fecaca;color:#b91c1c" onclick="openQuickFine(\''+safe+'\')">Fine</button>'+
         '</div>'+
-        '<div id="'+histId+'" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid #e2e8f0"></div>'+
+        '<button type="button" style="width:100%;margin-top:8px;padding:8px;font-size:11px;font-weight:700;color:#64748b;background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;cursor:pointer" onclick="toggleQuickHistory(\''+safe+'\',\''+histId+'\')">View history</button>'+
+        '<div id="'+histId+'" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid #f1f5f9"></div>'+
         '</div>';
     }).join('');
   });
