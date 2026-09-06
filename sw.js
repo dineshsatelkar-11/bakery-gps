@@ -97,9 +97,11 @@ self.addEventListener('activate', function(e) {
 });
 
 // ── Share Target (PhonePe / GPay / Paytm / WhatsApp → payment proof) ──────────
-// POST multipart → stash Blob in IndexedDB → 303 redirect to /order?share=1
+// POST multipart → stash ArrayBuffer in IndexedDB + Cache API → 303 /order?share=1
 var SHARE_DB = 'ibcab-share';
-var SHARE_DB_VER = 3;
+var SHARE_DB_VER = 4;
+var SHARE_CACHE = 'ibcab-share-file-v1';
+var SHARE_CACHE_URL = '/__ibcab_share_latest';
 
 function openShareDb() {
   return new Promise(function(resolve, reject) {
@@ -135,7 +137,24 @@ function stashSharePayload(payload) {
           console.warn('[SW] IDB tx abort', tx.error);
           reject(tx.error || new Error('IDB write aborted'));
         };
-        tx.objectStore('incoming').put({ id: 'latest', ts: Date.now(), data: payload });
+        // Flat row — ArrayBuffer clones reliably; nested Blob often arrives empty on Android
+        tx.objectStore('incoming').put({
+          id: 'latest',
+          ts: Date.now(),
+          title: payload.title || '',
+          text: payload.text || '',
+          url: payload.url || '',
+          fileName: payload.fileName || '',
+          fileType: payload.fileType || '',
+          fileSize: payload.fileSize || 0,
+          hasFile: !!payload.hasFile,
+          err: payload.err || '',
+          // ArrayBuffer preferred
+          fileBuffer: payload.fileBuffer || null,
+          // keep blob as secondary for older page code
+          fileBlob: payload.fileBlob || null,
+          data: payload
+        });
       } catch (e) {
         reject(e);
       }
@@ -143,12 +162,28 @@ function stashSharePayload(payload) {
   });
 }
 
+function stashShareInCache(fileBuffer, fileType) {
+  if (!fileBuffer || !fileBuffer.byteLength) return Promise.resolve(false);
+  return caches.open(SHARE_CACHE).then(function(cache) {
+    var blob = new Blob([fileBuffer], { type: fileType || 'image/jpeg' });
+    var headers = new Headers({
+      'Content-Type': fileType || 'image/jpeg',
+      'X-IBCAB-Share': '1',
+      'X-IBCAB-Size': String(fileBuffer.byteLength)
+    });
+    return cache.put(SHARE_CACHE_URL, new Response(blob, { headers: headers })).then(function() {
+      return true;
+    });
+  }).catch(function(e) {
+    console.warn('[SW] share cache put failed', e);
+    return false;
+  });
+}
+
 function isShareTargetPost(req) {
   if (req.method !== 'POST') return false;
   var u = req.url || '';
-  // Manifest action is /order?share=1 — also accept /order.html?share=1
   if (u.indexOf('share=1') >= 0) return true;
-  // PhonePe / Android sometimes POST to /order without query (still multipart)
   try {
     var ct = (req.headers && req.headers.get) ? (req.headers.get('content-type') || '') : '';
     if (/multipart\/form-data/i.test(ct) && /\/order(\.html)?([?#]|$)/i.test(u)) return true;
@@ -164,7 +199,6 @@ function pickShareFile(form) {
     f = form.get(keys[i]);
     if (f && typeof f.arrayBuffer === 'function' && (f.size == null || f.size > 0)) return f;
   }
-  // Some apps send multiple under the same name
   try {
     for (i = 0; i < keys.length; i++) {
       var all = form.getAll(keys[i]);
@@ -176,7 +210,6 @@ function pickShareFile(form) {
       }
     }
   } catch (eAll) {}
-  // Last resort: any File/Blob in the form
   try {
     var entries = form.entries();
     var pair = entries.next();
@@ -191,9 +224,9 @@ function pickShareFile(form) {
 
 function shareRedirectUrl() {
   try {
-    return new URL('/order?share=1', self.registration.scope).href;
+    return new URL('/order?share=1&t=' + Date.now(), self.registration.scope).href;
   } catch (e) {
-    return '/order?share=1';
+    return '/order?share=1&t=' + Date.now();
   }
 }
 
@@ -208,6 +241,9 @@ self.addEventListener('fetch', function(e) {
       var hasFile = false;
       var stashErr = '';
       var fileSize = 0;
+      var fileType = '';
+      var fileName = '';
+      var fileBuffer = null;
       try {
         var form = await e.request.formData();
         var title = form.get('title') || '';
@@ -215,14 +251,10 @@ self.addEventListener('fetch', function(e) {
         var shareUrl = form.get('url') || '';
         var file = pickShareFile(form);
 
-        var fileBlob = null;
-        var fileName = '';
-        var fileType = '';
         if (file && typeof file.arrayBuffer === 'function') {
           var buf = await file.arrayBuffer();
           if (buf && buf.byteLength > 0) {
             fileType = file.type || 'image/jpeg';
-            // PhonePe sometimes sends empty type — sniff from name
             if (!fileType || fileType === 'application/octet-stream') {
               var nm = String(file.name || '').toLowerCase();
               if (nm.indexOf('.png') >= 0) fileType = 'image/png';
@@ -232,7 +264,7 @@ self.addEventListener('fetch', function(e) {
             }
             fileName = file.name || 'phonepe-receipt.jpg';
             fileSize = buf.byteLength;
-            fileBlob = new Blob([buf], { type: fileType });
+            fileBuffer = buf;
             hasFile = true;
           }
         }
@@ -241,7 +273,8 @@ self.addEventListener('fetch', function(e) {
           title: String(title || ''),
           text: String(text || ''),
           url: String(shareUrl || ''),
-          fileBlob: fileBlob,
+          fileBuffer: fileBuffer,
+          fileBlob: fileBuffer ? new Blob([fileBuffer], { type: fileType }) : null,
           fileName: fileName,
           fileType: fileType,
           fileSize: fileSize,
@@ -249,26 +282,35 @@ self.addEventListener('fetch', function(e) {
           ts: Date.now()
         };
 
+        // Cache API first (often more reliable than IDB Blob on Android)
+        if (fileBuffer) {
+          try { await stashShareInCache(fileBuffer, fileType); } catch (eC) {}
+        }
+
         try {
           await stashSharePayload(payload);
           console.log('[SW] share stashed', { hasFile: hasFile, fileSize: fileSize, fileType: fileType, fileName: fileName });
         } catch (idbErr) {
           stashErr = (idbErr && idbErr.name ? idbErr.name + ': ' : '') + String(idbErr && idbErr.message ? idbErr.message : idbErr);
           console.warn('[SW] share IDB write failed', stashErr);
+          // Retry metadata only
           try {
             await stashSharePayload({
               title: payload.title,
               text: payload.text,
               url: payload.url,
+              fileBuffer: null,
               fileBlob: null,
-              hasFile: false,
+              hasFile: hasFile,
+              fileSize: fileSize,
+              fileType: fileType,
+              fileName: fileName,
               err: stashErr,
               ts: Date.now()
             });
           } catch (e2) {
             console.warn('[SW] share text-only stash also failed', e2);
           }
-          hasFile = false;
         }
 
         try {
@@ -279,6 +321,7 @@ self.addEventListener('fetch', function(e) {
                 type: 'ibcab-share-ready',
                 hasFile: hasFile,
                 fileSize: fileSize,
+                fileType: fileType,
                 err: stashErr || ''
               });
             } catch (eMsg) {}
@@ -288,13 +331,12 @@ self.addEventListener('fetch', function(e) {
         console.warn('[SW] share stash failed', err);
         try {
           await stashSharePayload({
-            title: '', text: '', url: '', fileBlob: null, hasFile: false,
+            title: '', text: '', url: '', fileBuffer: null, fileBlob: null, hasFile: false,
             err: String(err && err.message ? err.message : err),
             ts: Date.now()
           });
         } catch (e2) {}
       }
-      // Absolute URL — relative redirects break on some Android WebView / Chrome builds
       return Response.redirect(shareRedirectUrl(), 303);
     })());
     return;

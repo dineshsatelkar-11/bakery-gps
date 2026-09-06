@@ -935,7 +935,9 @@
     }
 
     var SHARE_DB_NAME = 'ibcab-share';
-    var SHARE_DB_VER = 3; // must match sw.js
+    var SHARE_DB_VER = 4; // must match sw.js
+    var SHARE_CACHE = 'ibcab-share-file-v1';
+    var SHARE_CACHE_URL = '/__ibcab_share_latest';
     window._shareIdbLastError = '';
     window._sharePullInFlight = false;
 
@@ -975,9 +977,21 @@
             var g = tx.objectStore('incoming').get('latest');
             g.onsuccess = function(){
               var row = g.result;
-              var data = row && row.data ? row.data : null;
-              // Also accept row stored flat (older builds)
-              if (!data && row && (row.fileBlob || row.fileB64 || row.text)) data = row;
+              if (!row) { resolve(null); return; }
+              // Prefer flat fields (SW v4); fall back to nested data
+              var data = {
+                title: row.title || (row.data && row.data.title) || '',
+                text: row.text || (row.data && row.data.text) || '',
+                url: row.url || (row.data && row.data.url) || '',
+                fileName: row.fileName || (row.data && row.data.fileName) || '',
+                fileType: row.fileType || (row.data && row.data.fileType) || '',
+                fileSize: row.fileSize || (row.data && row.data.fileSize) || 0,
+                hasFile: !!(row.hasFile || (row.data && row.data.hasFile)),
+                err: row.err || (row.data && row.data.err) || '',
+                fileBuffer: row.fileBuffer || (row.data && row.data.fileBuffer) || null,
+                fileBlob: row.fileBlob || (row.data && row.data.fileBlob) || null,
+                fileB64: row.fileB64 || (row.data && row.data.fileB64) || null
+              };
               resolve(data);
               if (clearAfter === true) {
                 try {
@@ -1001,6 +1015,28 @@
       });
     }
 
+    /** Secondary path: Cache API put by SW */
+    function loadShareFromCache(){
+      if (!('caches' in window)) return Promise.resolve(null);
+      return caches.open(SHARE_CACHE).then(function(cache){
+        return cache.match(SHARE_CACHE_URL);
+      }).then(function(res){
+        if (!res) return null;
+        var mime = (res.headers && res.headers.get('Content-Type')) || 'image/jpeg';
+        return res.arrayBuffer().then(function(buf){
+          if (!buf || !buf.byteLength) return null;
+          return {
+            title: '', text: '', url: '',
+            fileBuffer: buf,
+            fileType: mime,
+            fileSize: buf.byteLength,
+            hasFile: true,
+            fileName: 'share-cache.jpg'
+          };
+        });
+      }).catch(function(){ return null; });
+    }
+
     function clearShareFromIndexedDb(){
       openShareDbPage().then(function(db){
         try {
@@ -1008,13 +1044,34 @@
           tx.objectStore('incoming').delete('latest');
         } catch (e) {}
       }).catch(function(){});
+      try {
+        if ('caches' in window) {
+          caches.open(SHARE_CACHE).then(function(c){ return c.delete(SHARE_CACHE_URL); }).catch(function(){});
+        }
+      } catch (e2) {}
+    }
+
+    function arrayBufferToBase64(buf){
+      return new Promise(function(resolve, reject){
+        try {
+          if (!buf || !buf.byteLength) { resolve(''); return; }
+          var blob = new Blob([buf], { type: 'application/octet-stream' });
+          var reader = new FileReader();
+          reader.onload = function(){
+            var dataUrl = String(reader.result || '');
+            var b64 = dataUrl.indexOf(',') >= 0 ? dataUrl.split(',')[1] : '';
+            resolve(b64);
+          };
+          reader.onerror = function(){ reject(reader.error || new Error('FileReader failed')); };
+          reader.readAsDataURL(blob);
+        } catch (e) { reject(e); }
+      });
     }
 
     /** Blob / ArrayBuffer / File → base64 (in memory only; not stored in sessionStorage). */
     function blobToBase64(blob){
       return new Promise(function(resolve, reject){
         if (!blob) { resolve(''); return; }
-        // Some IDB restores return Blob-like without being instanceof Blob
         try {
           if (!(blob instanceof Blob) && blob.arrayBuffer) {
             blob.arrayBuffer().then(function(buf){
@@ -1043,7 +1100,13 @@
       return false;
     }
 
-    /** Apply share payload. Supports fileBlob (preferred) or legacy fileB64. */
+    function isUsableArrayBuffer(b){
+      try {
+        return !!(b && b.byteLength > 0);
+      } catch (e) { return false; }
+    }
+
+    /** Apply share payload. Prefers ArrayBuffer (Android-safe), then Blob, then base64. */
     function applySharePayload(data){
       if (!data) return Promise.resolve(false);
       var got = false;
@@ -1061,64 +1124,98 @@
         window._shareIdbLastError = String(data.err);
       }
 
-      // Preferred: Blob / File from SW (do NOT require instanceof Blob — IDB restore can differ)
+      var mime = data.fileType || 'image/jpeg';
+      if (!mime || mime === 'application/octet-stream') mime = 'image/jpeg';
+
+      function setImage(b64, m){
+        if (!b64) return false;
+        window._payProofBase64 = b64;
+        window._sharedPayImage = 'data:' + m + ';base64,' + b64;
+        window._payProofMime = m;
+        try { sessionStorage.setItem('sharedPayHasImage', '1'); } catch (eF) {}
+        try { console.log('[order] share image applied', b64.length, m); } catch (eL) {}
+        return true;
+      }
+
+      // 1) ArrayBuffer (SW v4 — most reliable on Android)
+      if (isUsableArrayBuffer(data.fileBuffer)) {
+        return arrayBufferToBase64(data.fileBuffer).then(function(b64){
+          return setImage(b64, mime) || got;
+        }).catch(function(e){
+          window._shareIdbLastError = 'arrayBufferToBase64: ' + (e && e.message ? e.message : e);
+          return got;
+        });
+      }
+
+      // 2) Blob / File
       if (isUsableShareBlob(data.fileBlob)) {
-        var mime = data.fileType || data.fileBlob.type || 'image/jpeg';
-        if (!mime || mime === 'application/octet-stream') mime = 'image/jpeg';
+        mime = data.fileType || data.fileBlob.type || mime;
         return blobToBase64(data.fileBlob).then(function(b64){
-          if (!b64) return got;
-          window._payProofBase64 = b64;
-          window._sharedPayImage = 'data:' + mime + ';base64,' + b64;
-          window._payProofMime = mime;
-          try { sessionStorage.setItem('sharedPayHasImage', '1'); } catch (eF) {}
-          try { console.log('[order] share image applied', b64.length, mime); } catch (eL) {}
-          return true;
+          return setImage(b64, mime) || got;
         }).catch(function(e){
           window._shareIdbLastError = 'blobToBase64: ' + (e && e.message ? e.message : e);
           return got;
         });
       }
 
-      // Legacy: base64 string in IDB
+      // 3) Legacy base64
       if (data.fileB64 && String(data.fileB64).length > 20) {
-        var mime2 = data.fileType || 'image/jpeg';
-        if (String(mime2).indexOf('pdf') >= 0) mime2 = 'application/pdf';
-        window._payProofBase64 = data.fileB64;
-        window._sharedPayImage = 'data:' + mime2 + ';base64,' + data.fileB64;
-        window._payProofMime = mime2;
-        try { sessionStorage.setItem('sharedPayHasImage', '1'); } catch (eF2) {}
-        return Promise.resolve(true);
+        if (String(mime).indexOf('pdf') >= 0) mime = 'application/pdf';
+        return Promise.resolve(setImage(data.fileB64, mime) || got);
       }
 
-      if (data.hasFile && !data.fileBlob) {
-        window._shareIdbLastError = window._shareIdbLastError || 'Share marked hasFile but blob missing in IDB';
+      if (data.hasFile && !data.fileBuffer && !data.fileBlob) {
+        window._shareIdbLastError = window._shareIdbLastError || 'Share hasFile=true but no file bytes in IDB';
       }
 
       return Promise.resolve(got);
     }
 
-    /** Poll IndexedDB until share file appears (SW may finish slightly after redirect). */
+    /** Load from IDB first, then Cache API fallback. */
+    function loadShareAny(){
+      return loadShareFromIndexedDb(false).then(function(data){
+        if (data && (isUsableArrayBuffer(data.fileBuffer) || isUsableShareBlob(data.fileBlob) || (data.fileB64 && data.fileB64.length > 20))) {
+          return data;
+        }
+        // IDB has text only or empty file — try Cache API
+        return loadShareFromCache().then(function(cached){
+          if (!cached) return data;
+          // Merge text from IDB if any
+          if (data) {
+            cached.title = cached.title || data.title;
+            cached.text = cached.text || data.text;
+            cached.url = cached.url || data.url;
+          }
+          return cached;
+        });
+      });
+    }
+
+    /** Poll until share file appears (SW may finish slightly after redirect). */
     function pullShareFromDbWithRetry(maxTries, gapMs){
-      maxTries = maxTries || 12;
-      gapMs = gapMs || 300;
+      maxTries = maxTries || 16;
+      gapMs = gapMs || 250;
       if (window._sharePullInFlight) return window._sharePullInFlight;
       var n = 0;
       function once(){
-        return loadShareFromIndexedDb(false).then(function(data){
+        return loadShareAny().then(function(data){
           n++;
           try {
-            if (data) console.log('[order] share IDB row', {
+            if (data) console.log('[order] share load', {
               hasFile: !!data.hasFile,
               fileSize: data.fileSize,
-              hasBlob: !!data.fileBlob,
-              blobSize: data.fileBlob && data.fileBlob.size,
+              hasBuf: !!(data.fileBuffer && data.fileBuffer.byteLength),
+              hasBlob: !!(data.fileBlob && data.fileBlob.size),
               err: data.err || ''
             });
           } catch (eLog) {}
-          return applySharePayload(data).then(function(applied){
+          return applySharePayload(data).then(function(){
             var hasImg = !!(window._payProofBase64 || (window._sharedPayImage && String(window._sharedPayImage).indexOf('data:') === 0));
             if (hasImg) {
               applySharedPayToUi();
+              // Re-open sheet after short delay so preview paints reliably
+              setTimeout(function(){ try { applySharedPayToUi(); } catch (e) {} }, 400);
+              setTimeout(function(){ try { applySharedPayToUi(); } catch (e2) {} }, 1200);
               window._sharePullInFlight = null;
               return true;
             }
@@ -1162,13 +1259,12 @@
         }
       } catch (e) {}
 
-      // 2) IndexedDB payload from Service Worker (real file share from PhonePe etc.)
+      // 2) IndexedDB + Cache from Service Worker (PhonePe file share)
       var isShare = /[?&]share=1\b/.test(location.search || '');
       var maybeShare = isShare || sessionStorage.getItem('sharedPayHasImage') || sessionStorage.getItem('sharedPayUtr') || sessionStorage.getItem('sharedPayText');
       if (maybeShare || isShare) {
-        // Mark early so openPayRequestSheet does not bail on empty unpaid list
         try { if (isShare) sessionStorage.setItem('sharedPayHasImage', sessionStorage.getItem('sharedPayHasImage') || '1'); } catch (eFlag) {}
-        pullShareFromDbWithRetry(isShare ? 14 : 6, 280);
+        pullShareFromDbWithRetry(isShare ? 18 : 8, 220);
       }
 
       // 3) Launch Queue (Chrome Android file share fallback)
@@ -1202,7 +1298,8 @@
             var d = ev && ev.data;
             if (!d || d.type !== 'ibcab-share-ready') return;
             try { console.log('[order] SW share-ready', d); } catch (eL) {}
-            pullShareFromDbWithRetry(10, 200);
+            window._sharePullInFlight = null; // allow new pull
+            pullShareFromDbWithRetry(12, 180);
           });
         } catch (eMsg) {}
       }
