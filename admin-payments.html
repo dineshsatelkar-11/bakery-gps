@@ -2408,9 +2408,10 @@
         ? function(t, ok){ try { if (typeof _challanMsg === 'function') _challanMsg(t, ok); else if (typeof _payDeskMsg === 'function') _payDeskMsg(t, ok); } catch(e){ alert(t); } }
         : function(t, ok){ try { if (typeof _payDeskMsg === 'function') _payDeskMsg(t, ok); else alert(t); } catch(e){ alert(t); } };
       msgFn('Deleting from app…', null);
-      api({ action: 'deleteCustomerOrder', id: id })
+      // Must use apiPost — deleteCustomerOrder is only on the POST handler
+      apiPost({ action: 'deleteCustomerOrder', id: id })
         .then(function(res){
-          if (!res || res.ok === false) {
+          if (!res || res.ok !== true) {
             msgFn((res && res.error) || 'Delete failed', false);
             return;
           }
@@ -2423,6 +2424,7 @@
           try { if (typeof renderPaymentsDesk === 'function') renderPaymentsDesk(); } catch (e1) {}
           try { if (typeof renderChallanDesk === 'function') renderChallanDesk(); } catch (e2) {}
           try { if (kind === 'challan' && typeof loadChallanDesk === 'function') loadChallanDesk(); } catch (e3) {}
+          try { if (kind === 'draft' && typeof loadPaymentsDesk === 'function') loadPaymentsDesk(); } catch (e4) {}
         })
         .catch(function(e){
           msgFn('Delete failed: ' + (e && e.message ? e.message : e), false);
