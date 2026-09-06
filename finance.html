@@ -117,7 +117,8 @@ body{
 }
 .fin-more-item .mi{font-size:20px}
 
-.page{display:none;padding:12px 14px 90px;width:100%;max-width:100%;overflow-x:hidden}.page.on{display:block}
+.page{display:none !important;padding:12px 14px 90px;width:100%;max-width:100%;overflow-x:hidden}
+.page.on{display:block !important;visibility:visible !important;opacity:1 !important}
 .table-scroll,.list-scroll{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
 
 /* ══ PHONE (≤767px) ══ */
@@ -1895,15 +1896,26 @@ function hdrs(extra){
   if(extra) Object.assign(h,extra);
   return h;
 }
+function _asRows(data){
+  if(Array.isArray(data)) return data;
+  if(data && typeof data==='object' && Array.isArray(data.data)) return data.data;
+  return [];
+}
 function sbGet(table,params){
   var url=BASE+'/'+table+'?';
   if(params) url+=Object.entries(params).map(function(kv){
     return encodeURIComponent(kv[0])+'=eq.'+encodeURIComponent(kv[1]);
   }).join('&');
-  return fetch(url+'&order=created_at.desc',{headers:hdrs()}).then(function(r){return r.ok?r.json():[];}).catch(function(){return[];});
+  return fetch(url+'&order=created_at.desc',{headers:hdrs()})
+    .then(function(r){return r.ok?r.json():[];})
+    .then(_asRows)
+    .catch(function(){return[];});
 }
 function sbGetQ(table,qs){
-  return fetch(BASE+'/'+table+'?'+qs,{headers:hdrs()}).then(function(r){return r.ok?r.json():[];}).catch(function(){return[];});
+  return fetch(BASE+'/'+table+'?'+qs,{headers:hdrs()})
+    .then(function(r){return r.ok?r.json():[];})
+    .then(_asRows)
+    .catch(function(){return[];});
 }
 function sbPost(table,body){
   return fetch(BASE+'/'+table,{method:'POST',headers:hdrs({'Prefer':'return=representation'}),body:JSON.stringify(body)})
@@ -2135,10 +2147,16 @@ function finMoreGo(tab){
 }
 function showTab(tab){
   currentTab=tab;
-  document.querySelectorAll('.page').forEach(function(p){p.classList.remove('on');});
+  document.querySelectorAll('.page').forEach(function(p){
+    p.classList.remove('on');
+    try{ p.style.display=''; }catch(e0){}
+  });
   document.querySelectorAll('#mainTabs .tab').forEach(function(t){t.classList.remove('on');});
   var pg=document.getElementById('tab-'+tab);
-  if(pg) pg.classList.add('on');
+  if(pg){
+    pg.classList.add('on');
+    try{ pg.style.display='block'; }catch(e1){}
+  }
   var tabs=document.querySelectorAll('#mainTabs .tab');
   tabs.forEach(function(t){
     var oc=t.getAttribute('onclick')||'';
@@ -2146,15 +2164,19 @@ function showTab(tab){
   });
   finSetBottomNav(tab);
   try{ window.scrollTo(0,0); }catch(e){}
-  if(tab==='dashboard') loadDashboard();
-  if(tab==='fleet') { loadTempoList(); loadKMAlerts(); }
-  if(tab==='loans'){ loadLoanList(); populateLoanSelect(); }
-  if(tab==='bank'){ _currentBankAccount=''; loadBankAccounts(); showBankTab('accounts'); }
-  if(tab==='expenses'){ populateExpCatSelects(); setExpenseFilter('month'); showExpenseTab('all'); }
-  if(tab==='payments') loadPaymentList();
-  if(tab==='drivers') { showDriverTab('pay'); }
-  if(tab==='ledger') { showLedgerTab(_currentLedgerTab||'all'); }
-  if(tab==='report') { showReportTab('pl'); }
+  try{
+    if(tab==='dashboard') loadDashboard();
+    if(tab==='fleet') { loadTempoList(); loadKMAlerts(); }
+    if(tab==='loans'){ loadLoanList(); populateLoanSelect(); }
+    if(tab==='bank'){ _currentBankAccount=''; loadBankAccounts(); showBankTab('accounts'); }
+    if(tab==='expenses'){ populateExpCatSelects(); setExpenseFilter('month'); showExpenseTab('all'); }
+    if(tab==='payments') loadPaymentList();
+    if(tab==='drivers') { showDriverTab('pay'); }
+    if(tab==='ledger') { showLedgerTab(_currentLedgerTab||'all'); }
+    if(tab==='report') { showReportTab('pl'); }
+  }catch(err){
+    console.error('showTab load error', tab, err);
+  }
 }
 function showDriverTab(t){
   t = t || 'pay';
@@ -5388,32 +5410,43 @@ var _expenseRows=[];
 function loadExpenseList(){
   var from=v('ex-from'); var to=v('ex-to'); var cat=v('ex-list-cat');
   var el=document.getElementById('expenseList');
+  if(!el) return;
   el.innerHTML='<div class="empty">Loading…</div>';
   var parts=['order=date.desc','limit=2000'];
   if(from) parts.push('date=gte.'+from);
   if(to)   parts.push('date=lte.'+to);
   if(cat)  parts.push('category=eq.'+encodeURIComponent(cat));
   sbGetQ('fin_expenses',parts.join('&')).then(function(rows){
-    _expenseRows=rows||[];
+    _expenseRows=_asRows(rows);
     filterExpenseList();
+  }).catch(function(){
+    _expenseRows=[];
+    el.innerHTML='<div class="empty">Could not load expenses (check connection)</div>';
   });
 }
 function filterExpenseList(){
   var el=document.getElementById('expenseList');
+  if(!el) return;
   var q=(v('ex-search')||'').toLowerCase().trim();
-  var rows=q?_expenseRows.filter(function(e){
+  var base=_asRows(_expenseRows);
+  var rows=q?base.filter(function(e){
     return (e.note||'').toLowerCase().indexOf(q)>=0||
            (e.tempo_name||'').toLowerCase().indexOf(q)>=0||
            (e.driver_name||'').toLowerCase().indexOf(q)>=0||
            String(e.amount).indexOf(q)>=0||
            (e.date||'').indexOf(q)>=0||
            expCatLabel(e.category).toLowerCase().indexOf(q)>=0;
-  }):_expenseRows;
+  }):base;
   var total=rows.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
   var tot=document.getElementById('expenseTotal');
-  if(rows.length){tot.style.display='block';tot.textContent='Total: '+fmt(total)+' ('+rows.length+' entries'+(q?' matched':'')+')';}
-  else{tot.style.display='none';}
-  if(!rows.length){el.innerHTML='<div class="empty">'+(q?'No results for "'+q+'"':'No expenses for selected range')+'</div>';return;}
+  if(tot){
+    if(rows.length){tot.style.display='block';tot.textContent='Total: '+fmt(total)+' ('+rows.length+' entries'+(q?' matched':'')+')';}
+    else{tot.style.display='none';}
+  }
+  if(!rows.length){
+    el.innerHTML='<div class="empty">'+(q?'No results for "'+q+'"':'No expenses yet — use ➕ Add')+'</div>';
+    return;
+  }
   el.innerHTML=rows.map(function(e){
     return'<div class="item-card"><div style="display:flex;justify-content:space-between;align-items:center">'+
       '<div><div style="font-weight:800">'+fmt(e.amount)+'  <span class="badge b-blue">'+expCatLabel(e.category)+'</span></div>'+
@@ -5475,10 +5508,11 @@ function showBankTab(t){
 }
 function loadBankAccounts(){
   sbGetQ('bank_accounts','active=eq.true&order=name.asc').then(function(rows){
-    _bankAccounts=rows||[];
-    var opts=rows.map(function(a){return'<option value="'+a.name+'">'+a.name+'</option>';}).join('');
+    rows=_asRows(rows);
+    _bankAccounts=rows;
+    var opts=rows.map(function(a){return'<option value="'+esc(a.name)+'">'+esc(a.name)+'</option>';}).join('');
     var accEl=document.getElementById('bk-account');
-    if(accEl) accEl.innerHTML=opts;
+    if(accEl) accEl.innerHTML=opts||'<option value="">— No accounts —</option>';
     var listEl=document.getElementById('bk-list-account');
     if(listEl) listEl.innerHTML='<option value="">All Accounts</option>'+opts;
     var xfrFrom=document.getElementById('bk-xfr-from');
@@ -5537,11 +5571,12 @@ function loadBankAccounts(){
 }
 function loadBankAccountCards(){
   sbGetQ('bank_accounts','order=name.asc').then(function(accounts){
+    accounts=_asRows(accounts);
     var cardEl=document.getElementById('bankAccountCards');
     var listEl=document.getElementById('bankAccountList');
-    if(!accounts||!accounts.length){
+    if(!accounts.length){
       if(cardEl) cardEl.innerHTML='';
-      if(listEl) listEl.innerHTML='<div class="empty">No accounts — use ⚙️ Manage to add</div>';
+      if(listEl) listEl.innerHTML='<div class="empty">No bank accounts yet — open ⚙️ Manage → Add account</div>';
       return;
     }
     Promise.all(accounts.map(function(a){
@@ -6458,11 +6493,11 @@ function loadDashboard(){
     sbGetQ('driver_advances','date=gte.'+from+'&date=lte.'+to+'&order=date.asc'),
     sbGetQ('driver_tempo_rent','month=eq.'+encodeURIComponent(mon))
   ]).then(function(res){
-    var payments=res[0]; var rentOut=res[1];
-    var expenses=res[2]; var salaries=res[3];
-    var rentIn=res[4]; var emis=res[5]; var services=res[6];
-    var allDrivers=res[7]||[]; var allAdvances=res[8]||[]; var allSalaries=res[9]||[];
-    var monthAdvances=res[10]||[]; var monthTempoRent=res[11]||[];
+    var payments=_asRows(res[0]); var rentOut=_asRows(res[1]);
+    var expenses=_asRows(res[2]); var salaries=_asRows(res[3]);
+    var rentIn=_asRows(res[4]); var emis=_asRows(res[5]); var services=_asRows(res[6]);
+    var allDrivers=_asRows(res[7]); var allAdvances=_asRows(res[8]); var allSalaries=_asRows(res[9]);
+    var monthAdvances=_asRows(res[10]); var monthTempoRent=_asRows(res[11]);
 
     var totalPayments=payments.reduce(function(a,r){return a+(parseFloat(r.amount)||0);},0);
     var totalRentOut=rentOut.reduce(function(a,r){return a+(parseFloat(r.received)||0);},0);
