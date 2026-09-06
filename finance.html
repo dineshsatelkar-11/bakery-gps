@@ -402,6 +402,7 @@ body.dark .search-item:hover{background:#3d4a5c}
     <button class="tab" onclick="showTab('drivers')">👷 Drivers</button>
     <button class="tab" onclick="showTab('fleet')">🚛 Fleet</button>
     <button class="tab" onclick="showTab('expenses')">💸 Expenses</button>
+    <button class="tab" onclick="showTab('vendors')">🏪 Vendors</button>
     <button class="tab" onclick="showTab('bank')">🏦 Bank</button>
     <button class="tab" onclick="showTab('loans')">📋 Loans</button>
     <button class="tab" onclick="showTab('payments')">💰 Payments</button>
@@ -1166,8 +1167,10 @@ body.dark .search-item:hover{background:#3d4a5c}
           </label>
         </div>
         <div id="drv-tempo-fields" style="display:none">
-          <label class="lbl">Tempo Name</label>
-          <input type="text" id="drv-tempo-name" placeholder="e.g. MH-09-AB-1234">
+          <label class="lbl">Tempo (from Fleet)</label>
+          <select id="drv-tempo-name">
+            <option value="">— select tempo —</option>
+          </select>
           <label class="lbl">Current Monthly Rent (₹)</label>
           <input type="number" id="drv-tempo-rent" placeholder="0">
         </div>
@@ -1430,6 +1433,38 @@ body.dark .search-item:hover{background:#3d4a5c}
     </div>
   </div>
 
+  <!-- ══ VENDORS ══ -->
+  <div class="page" id="tab-vendors">
+    <div class="card">
+      <div class="card-title" id="vnd-form-title">🏪 Add Vendor</div>
+      <input type="hidden" id="vnd-edit-id" value="">
+      <label class="lbl">Vendor Name</label>
+      <input type="text" id="vnd-name" placeholder="e.g. Fuel Pump, Flour Supplier" autocomplete="organization">
+      <label class="lbl">Mobile (optional)</label>
+      <input type="tel" id="vnd-mobile" placeholder="10-digit mobile" inputmode="numeric">
+      <div style="margin:8px 0;padding:10px;background:#f0fdfa;border:1px solid #99f6e4;border-radius:10px">
+        <div style="font-size:12px;font-weight:700;color:#0f766e;margin-bottom:6px">📱 Vendor UPI (for expense payments)</div>
+        <label class="lbl">UPI ID (VPA)</label>
+        <input type="text" id="vnd-upi-vpa" placeholder="shop@ybl / name@okaxis" autocomplete="off">
+        <label class="lbl">Payee name on UPI</label>
+        <input type="text" id="vnd-upi-name" placeholder="Name shown in UPI app" autocomplete="off">
+        <div style="font-size:10px;color:#64748b;margin-top:4px">Saved on this phone. Auto-fills when you pick this vendor on Expenses.</div>
+      </div>
+      <label class="lbl">Note</label>
+      <input type="text" id="vnd-note" placeholder="Optional">
+      <div id="vnd-msg" style="margin:8px 0;font-size:12px;font-weight:700"></div>
+      <div style="display:flex;gap:10px;margin-top:8px">
+        <button type="button" class="btn btn-grey" id="vnd-cancel-btn" style="display:none;flex:1;margin:0" onclick="clearVendorForm()">Cancel</button>
+        <button type="button" class="btn btn-blue" style="flex:1.4;margin:0" onclick="saveVendor()">💾 Save Vendor</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">🏪 Vendors</div>
+      <div style="font-size:12px;color:#7a8fa6;margin-bottom:10px">Pick a vendor on <b>Expenses → Add</b> to pay via saved UPI.</div>
+      <div id="vendorList"><div class="empty">Loading…</div></div>
+    </div>
+  </div>
+
   <!-- ══ EXPENSES ══ -->
   <div class="page" id="tab-expenses">
     <!-- Sub-tabs -->
@@ -1482,6 +1517,10 @@ body.dark .search-item:hover{background:#3d4a5c}
         </div>
         <label class="lbl">Category</label>
         <select id="ex-cat"></select>
+        <label class="lbl">Vendor (optional)</label>
+        <select id="ex-vendor" onchange="onExpenseVendorChange()">
+          <option value="">— No vendor —</option>
+        </select>
         <div class="row2">
           <div><label class="lbl">Tempo (if any)</label>
             <select id="ex-tempo"><option value="">—</option></select></div>
@@ -1503,13 +1542,13 @@ body.dark .search-item:hover{background:#3d4a5c}
         <input type="text" id="ex-note" placeholder="Description">
         <div style="margin-top:8px;padding:10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px">
           <div style="font-size:12px;font-weight:700;color:#334155;margin-bottom:6px">📱 Pay vendor via UPI / QR (optional)</div>
-          <div style="font-size:11px;color:#64748b;margin-bottom:8px">Got only a QR? Open your UPI app, scan QR, or paste UPI ID / <code>upi://…</code> text below. If you already paid, skip this and just Save.</div>
+          <div id="ex-vendor-upi-info" style="font-size:11px;color:#64748b;margin-bottom:8px">Select a vendor above to load saved UPI, or paste UPI ID / <code>upi://…</code> from QR.</div>
           <label class="lbl">Vendor UPI ID or paste from QR</label>
           <input type="text" id="ex-upi-vpa" placeholder="shop@ybl or paste upi://pay?pa=…" autocomplete="off" oninput="document.getElementById('ex-pay-mode').value='upi'">
           <label class="lbl">Payee name (optional)</label>
           <input type="text" id="ex-upi-name" placeholder="Name shown on UPI" autocomplete="off">
           <button type="button" class="btn btn-blue" style="width:100%;margin-top:8px" onclick="payExpenseViaUpi()">📱 Open UPI app → pay</button>
-          <div style="font-size:10px;color:#64748b;margin-top:6px">After paying, return and tap <b>Save Expense</b> to record in books.</div>
+          <div style="font-size:10px;color:#64748b;margin-top:6px">After paying, return and tap <b>Save Expense</b> to record in books. Manage vendors under <b>More → Vendors</b>.</div>
         </div>
         <div style="display:flex;gap:8px;margin-top:8px">
           <button class="btn btn-yellow" id="ex-save-btn" style="flex:1" onclick="saveExpense()">💾 Save Expense</button>
@@ -2096,6 +2135,32 @@ function setDriverUpiLocal(name, vpa, payeeName){
 function getDriverUpi(name){
   return getDriverUpiLocal(name);
 }
+function getVendorUpiLocal(name){
+  try{
+    var all=JSON.parse(localStorage.getItem('fin_vendor_upi')||'{}');
+    return all[name]||null;
+  }catch(e){ return null; }
+}
+function setVendorUpiLocal(name, vpa, payeeName, mobile){
+  try{
+    var all=JSON.parse(localStorage.getItem('fin_vendor_upi')||'{}');
+    if(vpa || mobile){
+      var prev=all[name]||{};
+      all[name]={
+        upi_vpa:vpa||prev.upi_vpa||'',
+        upi_payee_name:payeeName||prev.upi_payee_name||name,
+        mobile:mobile!=null?mobile:(prev.mobile||'')
+      };
+      if(!all[name].upi_vpa && !all[name].mobile) delete all[name];
+    } else {
+      delete all[name];
+    }
+    localStorage.setItem('fin_vendor_upi', JSON.stringify(all));
+  }catch(e){}
+}
+function getVendorUpi(name){
+  return getVendorUpiLocal(name);
+}
 function refreshAdvUpiBox(){
   var drv=v('adv-driver');
   var info=document.getElementById('adv-upi-info');
@@ -2125,13 +2190,35 @@ function payAdvanceViaUpi(){
 function payExpenseViaUpi(){
   var amt=parseFloat(v('ex-amount'));
   if(!(amt>0)){showMsg('ex-msg','Enter amount first','er');return;}
+  var vendorName=v('ex-vendor')||'';
   var vpa=v('ex-upi-vpa');
-  var name=v('ex-upi-name')||'Vendor';
+  var d=vendorName?getVendorUpi(vendorName):null;
+  if(!vpa && d) vpa=d.upi_vpa;
+  var name=v('ex-upi-name')||(d&&d.upi_payee_name)||vendorName||'Vendor';
   var note=v('ex-note')||expCatLabel(v('ex-cat'))||'Expense';
   if(openFinUpiPay(vpa, name, amt, note)){
     setV('ex-pay-mode','upi');
     showMsg('ex-msg','UPI app opened. After payment, tap Save Expense.','ok');
   }
+}
+function onExpenseVendorChange(){
+  var name=v('ex-vendor');
+  var info=document.getElementById('ex-vendor-upi-info');
+  if(!name){
+    if(info) info.textContent='Select a vendor above to load saved UPI, or paste UPI ID / upi://… from QR.';
+    return;
+  }
+  var d=getVendorUpi(name);
+  if(d&&d.upi_vpa){
+    setV('ex-upi-vpa', d.upi_vpa);
+    setV('ex-upi-name', d.upi_payee_name||name);
+    setV('ex-pay-mode','upi');
+    if(info) info.innerHTML='Loaded UPI for <b>'+esc(name)+'</b>: '+esc(d.upi_vpa)+(d.upi_payee_name?' ('+esc(d.upi_payee_name)+')':'')+'. Edit below if needed.';
+  } else {
+    if(info) info.innerHTML='No UPI saved for <b>'+esc(name)+'</b>. Add under More → Vendors, or paste UPI ID below.';
+  }
+  // Prefill note with vendor if empty
+  if(!v('ex-note')) setV('ex-note', name);
 }
 function paySalaryViaUpi(id, driverName, amount){
   var d=getDriverUpi(driverName);
@@ -2247,7 +2334,8 @@ function showTab(tab){
       loadBankAccounts();
       loadBankAccountCards();
     }
-    if(tab==='expenses'){ populateExpCatSelects(); setExpenseFilter('month'); showExpenseTab('all'); }
+    if(tab==='expenses'){ populateExpCatSelects(); populateExpenseVendorSelect(); setExpenseFilter('month'); showExpenseTab('all'); }
+    if(tab==='vendors'){ loadVendorList(); }
     if(tab==='payments') loadPaymentList();
     if(tab==='drivers') { showDriverTab('pay'); }
     if(tab==='ledger') { showLedgerTab(_currentLedgerTab||'all'); }
@@ -3700,6 +3788,16 @@ function _showDriverModal(titleText){
 }
 function openAddDriverPopup(){
   clearDriverForm();
+  // Ensure fleet tempos are in the dropdown
+  if(!tempos || !tempos.length){
+    loadTempos();
+  } else {
+    var el=document.getElementById('drv-tempo-name');
+    if(el && el.options.length<=1){
+      el.innerHTML='<option value="">— select tempo —</option>'+
+        tempos.map(function(t){return'<option value="'+esc(t.name)+'">'+esc(t.name)+'</option>';}).join('');
+    }
+  }
   _showDriverModal('Add Driver');
 }
 function closeDriverPopup(){
@@ -3743,11 +3841,36 @@ function _fillAndOpenDriver(d){
   var ht=document.getElementById('drv-has-tempo');
   if(ht) ht.checked=!!d.has_tempo;
   toggleTempoFields(!!d.has_tempo);
-  setV('drv-tempo-name', d.tempo_name||'');
   setV('drv-tempo-rent', d.tempo_rent!=null?d.tempo_rent:'');
   var upi=getDriverUpiLocal(d.name||'');
   setV('drv-upi-vpa', (upi&&upi.upi_vpa)||'');
   setV('drv-upi-name', (upi&&upi.upi_payee_name)||d.name||'');
+  // Ensure fleet list is loaded into tempo dropdown, then select driver's tempo
+  var applyTempo=function(){
+    var el=document.getElementById('drv-tempo-name');
+    if(!el) return;
+    var name=d.tempo_name||'';
+    if(name){
+      var found=false;
+      for(var i=0;i<el.options.length;i++){
+        if(el.options[i].value===name){ found=true; break; }
+      }
+      if(!found && name){
+        // legacy free-text tempo not in fleet — keep as option so value isn't lost
+        var opt=document.createElement('option');
+        opt.value=name; opt.textContent=name+' (not in fleet)';
+        el.appendChild(opt);
+      }
+      el.value=name;
+    } else {
+      el.value='';
+    }
+  };
+  if(tempos && tempos.length){
+    applyTempo();
+  } else {
+    loadTempos().then(function(){ applyTempo(); });
+  }
   _showDriverModal('Edit Driver');
 }
 // legacy signature (if anything still calls it)
@@ -3756,6 +3879,19 @@ function editDriver(id,name,base,mobile,note,hasTempo,tempoName,tempoRent,isPart
 }
 function toggleTempoFields(show){
   document.getElementById('drv-tempo-fields').style.display=show?'block':'none';
+  if(show){
+    var el=document.getElementById('drv-tempo-name');
+    if(el && el.options.length<=1){
+      if(tempos && tempos.length){
+        var cur=el.value;
+        el.innerHTML='<option value="">— select tempo —</option>'+
+          tempos.map(function(t){return'<option value="'+esc(t.name)+'">'+esc(t.name)+'</option>';}).join('');
+        if(cur) el.value=cur;
+      } else {
+        loadTempos();
+      }
+    }
+  }
 }
 function toggleParttimeFields(isPart){
   document.getElementById('drv-fulltime-fields').style.display=isPart?'none':'block';
@@ -3860,6 +3996,14 @@ function loadTempos(){
       el.innerHTML=(hasAll?'<option value="">— All / None —</option>':'')+
         tempos.map(function(t){return'<option value="'+t.id+'">'+esc(t.name)+'</option>';}).join('');
     });
+    // Driver form: tempo dropdown by name (fin_drivers.tempo_name stores name string)
+    var drvTempoEl=document.getElementById('drv-tempo-name');
+    if(drvTempoEl){
+      var cur=drvTempoEl.value;
+      drvTempoEl.innerHTML='<option value="">— select tempo —</option>'+
+        tempos.map(function(t){return'<option value="'+esc(t.name)+'">'+esc(t.name)+'</option>';}).join('');
+      if(cur) drvTempoEl.value=cur;
+    }
     loadTempoList();
     return tempos;
   }).catch(function(err){
@@ -5461,6 +5605,134 @@ function deleteService(id){
   });
 }
 
+// ── VENDORS ──
+var _vendorRows=[];
+function clearVendorForm(){
+  setV('vnd-edit-id',''); setV('vnd-name',''); setV('vnd-mobile','');
+  setV('vnd-upi-vpa',''); setV('vnd-upi-name',''); setV('vnd-note','');
+  var title=document.getElementById('vnd-form-title');
+  if(title) title.textContent='🏪 Add Vendor';
+  var cancel=document.getElementById('vnd-cancel-btn');
+  if(cancel) cancel.style.display='none';
+  var msg=document.getElementById('vnd-msg'); if(msg) msg.textContent='';
+}
+function loadVendorList(){
+  var el=document.getElementById('vendorList');
+  if(!el) return;
+  el.innerHTML='<div class="empty">Loading…</div>';
+  sbGetQ('fin_parties','type=eq.vendor&order=name.asc').then(function(rows){
+    rows=_asRows(rows);
+    _vendorRows=rows;
+    populateExpenseVendorSelect();
+    if(!rows.length){
+      el.innerHTML='<div class="empty">No vendors yet — add above. Used when paying on Expenses.</div>';
+      return;
+    }
+    el.innerHTML=rows.map(function(r){
+      var upi=getVendorUpiLocal(r.name);
+      var mobile=(upi&&upi.mobile)||r.mobile||'';
+      var active=r.active!==false && r.active!==0 && r.active!=='false';
+      return '<div class="item-card"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-weight:800;font-size:14px">🏪 '+esc(r.name)+(active?'':' <span style="color:#94a3b8;font-size:11px">(inactive)</span>')+'</div>'+
+          '<div style="font-size:11px;color:#7a8fa6">'+
+            (mobile?esc(mobile)+' · ':'')+
+            (upi&&upi.upi_vpa?'UPI '+esc(upi.upi_vpa):'No UPI')+
+            (r.note?' · '+esc(r.note):'')+
+          '</div>'+
+        '</div>'+
+        '<div style="display:flex;gap:4px;flex-shrink:0">'+
+          '<button type="button" class="btn-sm btn-edit" data-vnd-edit="'+r.id+'">✏</button>'+
+          '<button type="button" class="btn-sm btn-del" onclick="delGuard(this,function(){deleteVendor('+r.id+',\''+String(r.name||'').replace(/'/g,"\\'")+'\');})">Del</button>'+
+        '</div></div></div>';
+    }).join('');
+    el.querySelectorAll('[data-vnd-edit]').forEach(function(btn){
+      btn.onclick=function(){ editVendorById(btn.getAttribute('data-vnd-edit')); };
+    });
+  }).catch(function(){
+    el.innerHTML='<div class="empty">Could not load vendors</div>';
+  });
+}
+function editVendorById(id){
+  var rows=_vendorRows||[];
+  var d=null;
+  for(var i=0;i<rows.length;i++){ if(String(rows[i].id)===String(id)){ d=rows[i]; break; } }
+  if(!d){
+    sbGetQ('fin_parties','id=eq.'+id).then(function(rows){
+      if(rows&&rows[0]) _fillVendorForm(rows[0]);
+      else alert('Vendor not found');
+    });
+    return;
+  }
+  _fillVendorForm(d);
+}
+function _fillVendorForm(d){
+  setV('vnd-edit-id', d.id);
+  setV('vnd-name', d.name||'');
+  setV('vnd-note', d.note||'');
+  var upi=getVendorUpiLocal(d.name||'');
+  setV('vnd-mobile', (upi&&upi.mobile)||d.mobile||'');
+  setV('vnd-upi-vpa', (upi&&upi.upi_vpa)||'');
+  setV('vnd-upi-name', (upi&&upi.upi_payee_name)||d.name||'');
+  var title=document.getElementById('vnd-form-title');
+  if(title) title.textContent='✏️ Edit Vendor';
+  var cancel=document.getElementById('vnd-cancel-btn');
+  if(cancel) cancel.style.display='block';
+  try{ window.scrollTo(0,0); }catch(e){}
+}
+function saveVendor(){
+  var id=v('vnd-edit-id');
+  var name=v('vnd-name').trim();
+  if(!name){ showMsg('vnd-msg','Name required','er'); return; }
+  var upi=String(v('vnd-upi-vpa')||'').trim();
+  var upiParsed=upi?parseUpiVpa(upi):null;
+  if(upi && !upiParsed){ showMsg('vnd-msg','UPI ID must include @ (e.g. shop@ybl) or paste upi:// from QR','er'); return; }
+  var mobile=String(v('vnd-mobile')||'').trim();
+  // fin_parties columns: name, type, note, active (mobile kept locally with UPI)
+  var body={
+    name:name,
+    type:'vendor',
+    note:v('vnd-note')||'',
+    active:true
+  };
+  var promise=id
+    ? fetch(BASE+'/fin_parties?id=eq.'+id,{method:'PATCH',headers:hdrs({'Prefer':'return=minimal'}),body:JSON.stringify(body)}).then(function(r){return{ok:r.ok};})
+    : sbPost('fin_parties',body);
+  promise.then(function(r){
+    if(r.ok){
+      setVendorUpiLocal(name, upiParsed||'', v('vnd-upi-name')||name, mobile);
+      showMsg('vnd-msg',(id?'Updated':'Added')+(upiParsed?' · UPI saved':'')+' ✓','ok');
+      setTimeout(function(){ clearVendorForm(); loadVendorList(); }, 350);
+    } else showMsg('vnd-msg','Error saving (name may already exist)','er');
+  }).catch(function(){ showMsg('vnd-msg','Network error','er'); });
+}
+function deleteVendor(id, name){
+  fetch(BASE+'/fin_parties?id=eq.'+id,{method:'DELETE',headers:hdrs({'Prefer':'return=minimal'})})
+    .then(function(){
+      if(name) setVendorUpiLocal(name, '', '');
+      loadVendorList();
+    });
+}
+function populateExpenseVendorSelect(){
+  var el=document.getElementById('ex-vendor');
+  if(!el) return;
+  var cur=el.value;
+  var fill=function(rows){
+    rows=_asRows(rows).filter(function(r){ return r.active!==false && r.active!==0 && r.active!=='false'; });
+    el.innerHTML='<option value="">— No vendor —</option>'+
+      rows.map(function(r){ return '<option value="'+esc(r.name)+'">'+esc(r.name)+'</option>'; }).join('');
+    if(cur) el.value=cur;
+  };
+  if(_vendorRows && _vendorRows.length){
+    fill(_vendorRows);
+  } else {
+    sbGetQ('fin_parties','type=eq.vendor&order=name.asc').then(function(rows){
+      _vendorRows=_asRows(rows);
+      fill(_vendorRows);
+    }).catch(function(){ /* keep empty */ });
+  }
+}
+
 // ── EXPENSES ──
 // ── Expense sub-tabs ──
 function showExpenseTab(t){
@@ -5469,6 +5741,7 @@ function showExpenseTab(t){
     var btn=document.getElementById('extab-'+s); if(btn) btn.className='btn-sm '+(s===t?'btn-blue':'btn-grey');
   });
   if(t==='all'){setV('ex-search','');loadExpenseList();}
+  if(t==='add'){ populateExpenseVendorSelect(); }
   if(t==='cats') renderExpCatList();
 }
 function setExpenseFilter(p){
@@ -5489,7 +5762,11 @@ function saveExpense(){
   var tempo=tid?tempos.find(function(t){return String(t.id)===String(tid);}):null;
   var cat=v('ex-cat'); var bankAcct=v('ex-bank-account');
   var mode=v('ex-pay-mode')||'cash';
+  var vendorName=v('ex-vendor')||'';
   var noteBase=v('ex-note')||'';
+  if(vendorName && noteBase.toLowerCase().indexOf(vendorName.toLowerCase())<0){
+    noteBase=(noteBase?noteBase+' · ':'')+vendorName;
+  }
   var note=noteBase+(noteBase?' · ':'')+modeLabel(mode);
   var body={date:date,category:cat,amount:amt,tempo_name:tempo?tempo.name:'',driver_name:v('ex-driver'),note:note,bank_account:bankAcct};
   var editId=parseInt(v('ex-edit-id'))||0;
@@ -5504,7 +5781,9 @@ function saveExpense(){
       }
       showMsg('ex-msg',(editId>0?'Updated':'Expense saved'+(bankAcct?' + bank entry':''))+' ✓','ok');
       setV('ex-amount','');setV('ex-note','');setV('ex-bank-account',getDefaultBank()||'');
-      setV('ex-upi-vpa','');setV('ex-upi-name','');
+      setV('ex-upi-vpa','');setV('ex-upi-name',''); setV('ex-vendor','');
+      var info=document.getElementById('ex-vendor-upi-info');
+      if(info) info.textContent='Select a vendor above to load saved UPI, or paste UPI ID / upi://… from QR.';
       cancelEditExpense();showExpenseTab('all');
     }
     else showMsg('ex-msg','Error','er');
@@ -8124,7 +8403,7 @@ function closeChat(){
   });
 })();
 function chatWelcome(){
-  botMsg('👋 Hi! I can help you add entries quickly.\n\nTry:\n• <b>add driver Raju salary 12000</b>\n• <b>add tempo MH09AB1234</b>\n• <b>expense 500 fuel today</b>\n• <b>advance 2000 to Raju</b>\n• <b>leave Raju today unpaid</b>\n• <b>add bank Warna 50000</b>\n• <b>balance Siddhesh -10000</b>\n• <b>bill ABC Traders 5000</b>\n• <b>payment 3000 from ABC Traders</b>\n\nType <b>help</b> to see all commands.');
+  botMsg('👋 Hi! I can help you add entries quickly.\n\nTry:\n• <b>add driver Raju salary 12000</b>\n• <b>upi Raju raju@ybl</b> (set / update UPI)\n• <b>add tempo MH09AB1234</b>\n• <b>add vendor Fuel Pump upi shop@ybl</b>\n• <b>expense 500 fuel today</b>\n• <b>advance 2000 to Raju</b>\n• <b>leave Raju today unpaid</b>\n• <b>add bank Warna 50000</b>\n• <b>balance Siddhesh -10000</b>\n• <b>bill ABC Traders 5000</b>\n• <b>payment 3000 from ABC Traders</b>\n\nType <b>help</b> to see all commands.');
 }
 function botMsg(html,type){
   var el=document.createElement('div');
@@ -8191,6 +8470,10 @@ function processChat(raw){
     botMsg('📋 <b>Commands:</b><br>'+
       '<b>add driver</b> [name] salary [amount]<br>'+
       '<b>add tempo</b> [name] owner [owner]<br>'+
+      '<b>add vendor</b> [name] [upi shop@ybl?]<br>'+
+      '<b>upi</b> [driver/vendor name] [id@bank] — set / update UPI<br>'+
+      '<b>driver</b> [name] <b>upi</b> [id@bank]<br>'+
+      '<b>vendor</b> [name] <b>upi</b> [id@bank]<br>'+
       '<b>expense</b> [amount] [category] [date?]<br>'+
       '<b>advance</b> [amount] to [driver]<br>'+
       '<b>deduction</b> [amount] [driver] [reason]<br>'+
@@ -8200,12 +8483,67 @@ function processChat(raw){
       '<b>bill</b> [customer] [amount] [desc?]<br>'+
       '<b>payment</b> [amount] from [customer]<br>'+
       '<b>add loan</b> [lender] [amount] emi [emi]<br>'+
-      '<b>add party</b> [name] [client/supplier]');
+      '<b>add party</b> [name] [client/supplier/vendor]');
+    return;
+  }
+
+  // ── SET / UPDATE UPI (driver or vendor) ──
+  // upi Raju name@ybl | set upi Raju name@ybl | driver Raju upi name@ybl | vendor Fuel Pump upi shop@ybl
+  // (Handled before add driver/vendor so "driver X upi Y" updates UPI instead of creating)
+  var m;
+  if((m=t.match(/^(?:set\s+)?upi\s+(?:(?:for|of)\s+)?(.+?)\s+(\S+@\S+|upi:\/\/\S+)$/i)) ||
+     (m=t.match(/^(?:set\s+)?driver\s+(.+?)\s+upi\s+(\S+)$/i)) ||
+     (m=t.match(/^(.+?)\s+upi\s+(\S+@\S+|upi:\/\/\S+)$/i) && !/^(?:add\s+)?(?:vendor|party|tempo|bank|loan)\b/.test(t))){
+    var whoRaw=m[1].trim().replace(/^(driver|vendor|for|of)\s+/i,'').trim();
+    var upiRaw=String(m[2]).trim();
+    var who=titleCase(whoRaw);
+    var upiParsed=parseUpiVpa(upiRaw);
+    if(!who){ botMsg('Usage: <b>upi</b> [name] [id@bank]','er'); return; }
+    if(!upiParsed){ botMsg('UPI must include @ (e.g. name@ybl) or paste upi://…','er'); return; }
+    sbGetQ('fin_drivers','name=ilike.'+encodeURIComponent(who)+'&limit=5').then(function(drows){
+      drows=_asRows(drows);
+      var exactD=drows.filter(function(d){ return String(d.name||'').toLowerCase()===whoRaw.toLowerCase(); });
+      if(exactD.length || drows.length===1){
+        var dname=(exactD[0]||drows[0]).name;
+        askConfirm('Set UPI for driver <b>'+esc(dname)+'</b> → <b>'+esc(upiParsed)+'</b>?', function(){
+          setDriverUpiLocal(dname, upiParsed, dname);
+          botMsg('✅ Driver <b>'+esc(dname)+'</b> UPI updated: '+esc(upiParsed),'ok');
+        });
+        return;
+      }
+      return sbGetQ('fin_parties','type=eq.vendor&name=ilike.'+encodeURIComponent(who)+'&limit=5').then(function(vrows){
+        vrows=_asRows(vrows);
+        var exactV=vrows.filter(function(v0){ return String(v0.name||'').toLowerCase()===whoRaw.toLowerCase(); });
+        if(exactV.length || vrows.length===1){
+          var vname=(exactV[0]||vrows[0]).name;
+          askConfirm('Set UPI for vendor <b>'+esc(vname)+'</b> → <b>'+esc(upiParsed)+'</b>?', function(){
+            setVendorUpiLocal(vname, upiParsed, vname, '');
+            botMsg('✅ Vendor <b>'+esc(vname)+'</b> UPI updated: '+esc(upiParsed),'ok');
+            try{ if(typeof loadVendorList==='function') loadVendorList(); }catch(e){}
+          });
+          return;
+        }
+        if(drows.length>1){
+          botMsg('Several drivers match <b>'+esc(who)+'</b>. Use full name: <b>upi Full Name id@bank</b>');
+          return;
+        }
+        askConfirm('No driver/vendor named <b>'+esc(who)+'</b>. Create <b>vendor</b> and save UPI <b>'+esc(upiParsed)+'</b>?', function(){
+          sbPost('fin_parties',{name:who,type:'vendor',note:'',active:true}).then(function(r){
+            if(r.ok){
+              setVendorUpiLocal(who, upiParsed, who, '');
+              botMsg('✅ Vendor <b>'+esc(who)+'</b> created with UPI '+esc(upiParsed),'ok');
+              try{ loadVendorList(); populateExpenseVendorSelect(); }catch(e){}
+            } else botMsg('❌ Could not create vendor.','er');
+          });
+        });
+      });
+    }).catch(function(){
+      botMsg('❌ Could not look up name. Try again.','er');
+    });
     return;
   }
 
   // ── ADD DRIVER ──
-  var m;
   if((m=t.match(/(?:add\s+)?driver\s+([a-z\s]+?)\s+(?:salary|sal)\s+([\d,]+)/i))){
     var name=titleCase(m[1].trim()); var sal=parseNum(m[2]);
     askConfirm('Add driver <b>'+name+'</b> with salary <b>'+fmt(sal)+'</b>?', function(){
@@ -8216,7 +8554,7 @@ function processChat(raw){
     });
     return;
   }
-  if((m=t.match(/(?:add\s+)?driver\s+([a-z\s]+)/i))){
+  if((m=t.match(/(?:add\s+)?driver\s+([a-z\s]+)/i)) && !/\bupi\b/.test(t)){
     var name=titleCase(m[1].trim());
     _chatState.driverName=name;
     botMsg('What is <b>'+name+'</b>\'s monthly base salary? (type amount)');
@@ -8440,12 +8778,67 @@ function processChat(raw){
     return;
   }
 
+  // ── ADD / UPDATE VENDOR (Vendors tab + expense UPI) ──
+  // Patterns: add vendor Fuel Pump | add vendor Fuel Pump upi shop@ybl | vendor Fuel Pump upi shop@ybl
+  if((m=t.match(/(?:add\s+)?vendor\s+(.+?)(?:\s+upi\s+(\S+))?$/i)) && !/party\s/.test(t) && !/^upi\s/.test(t)){
+    var vraw=m[1].trim();
+    var vupi=m[2]?String(m[2]).trim():'';
+    // If "upi" was not captured but text ends with something@domain, treat as UPI
+    if(!vupi){
+      var upiTail=vraw.match(/\s+(\S+@\S+)\s*$/);
+      if(upiTail){ vupi=upiTail[1]; vraw=vraw.slice(0, upiTail.index).trim(); }
+    }
+    var vname=titleCase(vraw.replace(/\s+upi\s*$/i,'').trim());
+    if(!vname){ botMsg('Usage: <b>add vendor</b> [name] [upi shop@ybl]','er'); return; }
+    var upiParsed=vupi?parseUpiVpa(vupi):null;
+    if(vupi && !upiParsed){ botMsg('UPI must include @ (e.g. shop@ybl) or paste upi://…','er'); return; }
+    // If vendor already exists and UPI given → update UPI instead of failing
+    sbGetQ('fin_parties','type=eq.vendor&name=ilike.'+encodeURIComponent(vname)+'&limit=5').then(function(rows){
+      rows=_asRows(rows);
+      var exact=rows.filter(function(r){ return String(r.name||'').toLowerCase()===vname.toLowerCase(); });
+      var existing=exact[0]||(rows.length===1?rows[0]:null);
+      if(existing && upiParsed){
+        askConfirm('Vendor <b>'+esc(existing.name)+'</b> exists. Update UPI → <b>'+esc(upiParsed)+'</b>?', function(){
+          setVendorUpiLocal(existing.name, upiParsed, existing.name, '');
+          botMsg('✅ Vendor <b>'+esc(existing.name)+'</b> UPI updated.','ok');
+          try{ loadVendorList(); }catch(e){}
+        });
+        return;
+      }
+      if(existing && !upiParsed){
+        botMsg('Vendor <b>'+esc(existing.name)+'</b> already exists. Set UPI: <b>upi '+existing.name+' shop@ybl</b>');
+        return;
+      }
+      var conf='Add vendor <b>'+vname+'</b>'+(upiParsed?' with UPI <b>'+esc(upiParsed)+'</b>':'')+'?';
+      askConfirm(conf, function(){
+        sbPost('fin_parties',{name:vname,type:'vendor',note:'',active:true}).then(function(r){
+          if(r.ok){
+            if(upiParsed) setVendorUpiLocal(vname, upiParsed, vname, '');
+            botMsg('✅ Vendor <b>'+vname+'</b> added!'+(upiParsed?' UPI saved — use on Expenses.':' Add UPI under Vendors tab.'),'ok');
+            try{ if(typeof loadVendorList==='function') loadVendorList(); if(typeof populateExpenseVendorSelect==='function') populateExpenseVendorSelect(); }catch(e){}
+          } else {
+            botMsg('❌ Error — vendor may already exist. Open <b>More → Vendors</b>.','er');
+            try{ showTab('vendors'); }catch(e2){}
+          }
+        });
+      });
+    }).catch(function(){
+      botMsg('❌ Could not check vendors.','er');
+    });
+    return;
+  }
+
   // ── ADD PARTY (Ledger) ──
   if((m=t.match(/(?:add\s+)?party\s+([a-z\s]+?)\s+(client|supplier|vendor|customer)/i))){
-    var pname=titleCase(m[1].trim()); var ptype=m[2].toLowerCase()==='client'||m[2].toLowerCase()==='customer'?'client':'supplier';
+    var pname=titleCase(m[1].trim());
+    var ptypeRaw=m[2].toLowerCase();
+    var ptype=ptypeRaw==='client'||ptypeRaw==='customer'?'client':(ptypeRaw==='vendor'?'vendor':'supplier');
     askConfirm('Add <b>'+ptype+'</b> party <b>'+pname+'</b>?', function(){
       sbPost('fin_parties',{name:pname,type:ptype,active:true}).then(function(r){
-        if(r.ok) botMsg('✅ Party <b>'+pname+'</b> added!','ok');
+        if(r.ok){
+          botMsg('✅ '+(ptype==='vendor'?'Vendor':'Party')+' <b>'+pname+'</b> added!','ok');
+          if(ptype==='vendor'){ try{ loadVendorList(); populateExpenseVendorSelect(); }catch(e){} }
+        }
         else botMsg('❌ Error — may already exist.','er');
       });
     });
@@ -8517,6 +8910,7 @@ function matchExpCat(raw){
     <div class="fin-more-grid">
       <button type="button" class="fin-more-item" onclick="finMoreGo('ledger')"><span class="mi">📒</span>Ledger</button>
       <button type="button" class="fin-more-item" onclick="finMoreGo('fleet')"><span class="mi">🚛</span>Fleet</button>
+      <button type="button" class="fin-more-item" onclick="finMoreGo('vendors')"><span class="mi">🏪</span>Vendors</button>
       <button type="button" class="fin-more-item" onclick="finMoreGo('loans')"><span class="mi">📋</span>Loans</button>
       <button type="button" class="fin-more-item" onclick="finMoreGo('payments')"><span class="mi">💰</span>Payments</button>
       <button type="button" class="fin-more-item" onclick="finMoreGo('report')"><span class="mi">📊</span>Report</button>
