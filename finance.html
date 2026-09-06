@@ -117,8 +117,15 @@ body{
 }
 .fin-more-item .mi{font-size:20px}
 
-.page{display:none !important;padding:12px 14px 90px;width:100%;max-width:100%;overflow-x:hidden}
-.page.on{display:block !important;visibility:visible !important;opacity:1 !important}
+.page{display:none !important;padding:12px 14px 90px;width:100%;max-width:100%;overflow-x:hidden;visibility:hidden}
+.page.on{
+  display:block !important;
+  visibility:visible !important;
+  opacity:1 !important;
+  position:relative;
+  z-index:1;
+  min-height:40vh;
+}
 .table-scroll,.list-scroll{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
 
 /* ══ PHONE (≤767px) ══ */
@@ -1496,11 +1503,11 @@ body.dark .search-item:hover{background:#3d4a5c}
 
   <!-- ══ BANK ══ -->
   <div class="page" id="tab-bank">
-    <div style="display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px">
-      <button class="btn-sm btn-blue" id="bktab-accounts" onclick="showBankTab('accounts')">🏦 Accounts</button>
-      <button class="btn-sm btn-grey" id="bktab-add"      onclick="showBankTab('add')">➕ Add Txn</button>
-      <button class="btn-sm btn-grey" id="bktab-transfer" onclick="showBankTab('transfer')">🔄 Transfer</button>
-      <button class="btn-sm btn-grey" id="bktab-manage"   onclick="showBankTab('manage')">⚙️ Manage</button>
+    <div id="bkSubNav" style="display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:8px">
+      <button type="button" class="btn-sm btn-blue" id="bktab-accounts" onclick="showBankTab('accounts')">🏦 Accounts</button>
+      <button type="button" class="btn-sm btn-grey" id="bktab-add"      onclick="showBankTab('add')">➕ Add Txn</button>
+      <button type="button" class="btn-sm btn-grey" id="bktab-transfer" onclick="showBankTab('transfer')">🔄 Transfer</button>
+      <button type="button" class="btn-sm btn-grey" id="bktab-manage"   onclick="showBankTab('manage')">⚙️ Manage</button>
     </div>
 
     <!-- Accounts list + All Transactions -->
@@ -2167,15 +2174,26 @@ function finMoreGo(tab){
 }
 function showTab(tab){
   currentTab=tab;
+  // Hide every page with !important — .page{display:none !important} must be overridden the same way
   document.querySelectorAll('.page').forEach(function(p){
     p.classList.remove('on');
-    try{ p.style.display=''; }catch(e0){}
+    try{
+      p.style.setProperty('display','none','important');
+      p.style.setProperty('visibility','hidden','important');
+    }catch(e0){}
   });
   document.querySelectorAll('#mainTabs .tab').forEach(function(t){t.classList.remove('on');});
   var pg=document.getElementById('tab-'+tab);
   if(pg){
     pg.classList.add('on');
-    try{ pg.style.display='block'; }catch(e1){}
+    try{
+      pg.style.setProperty('display','block','important');
+      pg.style.setProperty('visibility','visible','important');
+      pg.style.setProperty('opacity','1','important');
+      pg.style.setProperty('min-height','120px','important');
+    }catch(e1){}
+  } else {
+    console.error('showTab: missing page #tab-'+tab);
   }
   var tabs=document.querySelectorAll('#mainTabs .tab');
   tabs.forEach(function(t){
@@ -2190,10 +2208,10 @@ function showTab(tab){
     if(tab==='loans'){ loadLoanList(); populateLoanSelect(); }
     if(tab==='bank'){
       _currentBankAccount='';
+      // Force Accounts sub-section visible before async loads
+      try{ showBankTab(window._finBankSubTab || 'accounts'); window._finBankSubTab=null; }catch(eB){ console.error(eB); }
       loadBankAccounts();
-      // Allow showTab('bank') then openBankManage() without race flipping back to accounts
-      if(!window._finBankSubTab) showBankTab('accounts');
-      else { showBankTab(window._finBankSubTab); window._finBankSubTab=null; }
+      loadBankAccountCards();
     }
     if(tab==='expenses'){ populateExpCatSelects(); setExpenseFilter('month'); showExpenseTab('all'); }
     if(tab==='payments') loadPaymentList();
