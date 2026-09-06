@@ -2205,7 +2205,7 @@ function showTab(tab){
   try{ window.scrollTo(0,0); }catch(e){}
   try{
     if(tab==='dashboard') loadDashboard();
-    if(tab==='fleet') { loadTempoList(); loadKMAlerts(); }
+    if(tab==='fleet') { loadTempos(); loadKMAlerts(); if(typeof showFleetTab==='function') showFleetTab('tempos'); }
     if(tab==='loans'){ loadLoanList(); populateLoanSelect(); }
     if(tab==='bank'){
       _currentBankAccount='';
@@ -3101,11 +3101,14 @@ function loadDriverTxns(){
   });
 }
 function showFleetTab(t){
+  t=t||'tempos';
   ['tempos','rentin','rentout','service'].forEach(function(s){
-    document.getElementById('flsec-'+s).style.display=s===t?'block':'none';
+    var el=document.getElementById('flsec-'+s);
+    if(el) el.style.display=s===t?'block':'none';
     var btn=document.getElementById('fltab-'+s);
     if(btn){btn.className='btn-sm '+(s===t?'btn-blue':'btn-grey');}
   });
+  if(t==='tempos') loadTempos();
   if(t==='rentin') loadRentInList();
   if(t==='rentout') loadRentOutList();
   if(t==='service'){ showServiceTab('log'); _svItems=[]; renderServiceItems(); }
@@ -3809,26 +3812,40 @@ function initApp(){
 
 // ── TEMPOS ──
 function loadTempos(){
-  sbGet('tempos',{active:true}).then(function(rows){
-    tempos=rows||[];
+  // Prefer active tempos; fall back to all if filter fails / active null
+  return sbGetQ('tempos','order=name.asc').then(function(rows){
+    rows=_asRows(rows);
+    var active=rows.filter(function(t){
+      return t.active===true || t.active===null || t.active===undefined || t.active==='true' || t.active===1;
+    });
+    tempos = active.length ? active : rows;
     var tempoSelects=['ri-tempo','ro-tempo','sv-tempo','ex-tempo','ri-list-tempo','ro-list-tempo','sv-list-tempo'];
     tempoSelects.forEach(function(id){
       var el=document.getElementById(id);
       if(!el) return;
       var hasAll=id.indexOf('list')>-1||id==='ex-tempo';
       el.innerHTML=(hasAll?'<option value="">— All / None —</option>':'')+
-        rows.map(function(t){return'<option value="'+t.id+'">'+t.name+'</option>';}).join('');
+        tempos.map(function(t){return'<option value="'+t.id+'">'+esc(t.name)+'</option>';}).join('');
     });
     loadTempoList();
+    return tempos;
+  }).catch(function(err){
+    console.error('loadTempos failed', err);
+    tempos=[];
+    loadTempoList();
+    return [];
   });
 }
 function loadTempoList(){
   var el=document.getElementById('tempoList');
   if(!el) return;
-  if(!tempos.length){el.innerHTML='<div class="empty">No tempos yet</div>';return;}
+  if(!tempos.length){
+    el.innerHTML='<div class="empty">No tempos yet — add from form or chat: <b>add tempo MH12AB1234</b></div>';
+    return;
+  }
   el.innerHTML=tempos.map(function(t){
     return'<div class="item-card"><div style="display:flex;justify-content:space-between;align-items:center">'+
-      '<div><div style="font-weight:800;font-size:14px">🚛 '+t.name+'</div>'+
+      '<div><div style="font-weight:800;font-size:14px">🚛 '+esc(t.name)+'</div>'+
       '<div style="font-size:11px;color:#7a8fa6">'+[t.type,t.owner_name?'Owner: '+t.owner_name:''].filter(Boolean).join(' · ')+'</div></div>'+
       '<button class="btn-sm btn-del" onclick="delGuard(this,function(){deleteTempo('+t.id+');})">Delete</button></div></div>';
   }).join('');
@@ -3838,7 +3855,7 @@ function saveTempo(){
   if(!name){showMsg('tp-msg','Enter vehicle name/number','er');return;}
   sbPost('tempos',{name:name,type:v('tp-type'),owner_name:v('tp-owner'),active:true}).then(function(r){
     if(r.ok){showMsg('tp-msg','Tempo saved','ok');setV('tp-name','');setV('tp-type','');setV('tp-owner','');loadTempos();}
-    else showMsg('tp-msg','Error saving','er');
+    else showMsg('tp-msg', (r&&r.error)||'Error saving','er');
   });
 }
 function deleteTempo(id){
@@ -8110,12 +8127,31 @@ function processChat(raw){
   }
 
   // ── ADD TEMPO ──
-  if((m=t.match(/(?:add\s+)?tempo\s+([\w-]+)(?:\s+(?:owner|malik)\s+([a-z\s]+))?/i))){
-    var tname=m[1].trim().toUpperCase(); var owner=m[2]?titleCase(m[2].trim()):'';
+  // add tempo MH12AB1234 | add tempo MH12 AB 1234 owner Raju | tempo MH09XY9999
+  if((m=t.match(/(?:add\s+)?tempo\s+([a-z0-9\-\s]+?)(?:\s+(?:owner|malik)\s+([a-z\s]+))?$/i))){
+    var tname=m[1].trim().replace(/\s+/g,'').toUpperCase();
+    var owner=m[2]?titleCase(m[2].trim()):'';
+    if(!tname){ botMsg('❌ Tempo number required.','er'); return; }
     askConfirm('Add tempo <b>'+tname+'</b>'+(owner?' owner <b>'+owner+'</b>':'')+'?', function(){
       sbPost('tempos',{name:tname,owner_name:owner,active:true}).then(function(r){
-        if(r.ok) botMsg('✅ Tempo <b>'+tname+'</b> added!','ok');
-        else botMsg('❌ Error saving.','er');
+        var isConflict=r&&(r.status===409||/duplicate|unique|conflict/i.test(String(r.error||'')));
+        if(r.ok){
+          botMsg('✅ Tempo <b>'+tname+'</b> added!','ok');
+        } else if(isConflict){
+          botMsg('ℹ️ Tempo <b>'+tname+'</b> already exists — opening Fleet list.','ok');
+        } else {
+          botMsg('❌ Could not add tempo: '+(r.error||'check table/RLS')+'.','er');
+          return;
+        }
+        try{
+          loadTempos().then(function(){
+            showTab('fleet');
+            setTimeout(function(){
+              if(typeof showFleetTab==='function') showFleetTab('tempos');
+              loadTempoList();
+            }, 80);
+          });
+        }catch(e){ console.error(e); }
       });
     });
     return;
