@@ -45,7 +45,7 @@ const CONFIG = {
     }
   },
 
-  VERSION: '3.7',
+  VERSION: '3.9',
 
   // Zoho Books — deposit-to account for customer payments created from admin Mark Paid
   // Chart of Accounts → [ 1 ] It's BAKED Craft & Artisanal Bakery

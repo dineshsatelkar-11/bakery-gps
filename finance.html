@@ -5704,41 +5704,61 @@ function _paintBankAccounts(accounts, balByName){
     var a=accounts[i]||{};
     var nm=String(a.name||'Account');
     var openBal=parseFloat(a.opening_balance); if(isNaN(openBal)) openBal=0;
-    var bal = (balByName[nm]!=null) ? balByName[nm] : openBal;
+    var bal = (balByName && Object.prototype.hasOwnProperty.call(balByName, nm)) ? balByName[nm] : openBal;
     var balN=parseFloat(bal); if(isNaN(balN)) balN=openBal;
     var safe=nm.replace(/\\/g,'\\\\').replace(/'/g,'\\\'');
     var id=a.id!=null?a.id:i;
+    var balColor = balN>0 ? '#1e7a4f' : (balN<0 ? '#c8382a' : '#64748b');
+    var cardBg = balN<0
+      ? 'linear-gradient(135deg,#7f1d1d,#b91c1c)'
+      : 'linear-gradient(135deg,#1e5a2a,#2d8a40)';
     cardsHtml +=
-      '<div class="card" style="flex:none;min-width:160px;background:linear-gradient(135deg,#1e5a2a,#2d8a40);border:none;margin:0;cursor:pointer" onclick="openBankAccount(\''+safe+'\')">'+
-        '<div style="color:#a5d6a7;font-size:9px;font-weight:700;letter-spacing:1px">'+nm.toUpperCase().replace(/</g,'')+'</div>'+
+      '<div class="card" style="flex:none;min-width:160px;background:'+cardBg+';border:none;margin:0;cursor:pointer" onclick="openBankAccount(\''+safe+'\')">'+
+        '<div style="color:rgba(255,255,255,.75);font-size:9px;font-weight:700;letter-spacing:1px">'+nm.toUpperCase().replace(/</g,'')+'</div>'+
         '<div style="color:#fff;font-size:22px;font-weight:900;margin:4px 0">'+fmt(balN)+'</div>'+
-        '<div style="color:#a5d6a7;font-size:10px">opening '+fmt(openBal)+'</div>'+
+        '<div style="color:rgba(255,255,255,.7);font-size:10px">open '+fmt(openBal)+(balN!==openBal?' · live':'')+'</div>'+
       '</div>';
     listHtml +=
       '<div class="item-card" id="bk-acc-card-'+id+'" style="cursor:pointer">'+
         '<div style="display:flex;justify-content:space-between;align-items:center" onclick="openBankAccount(\''+safe+'\')">'+
           '<div><div style="font-weight:800;font-size:15px">'+nm.replace(/</g,'&lt;')+'</div>'+
           (a.note?'<div style="font-size:11px;color:#7a8fa6">'+String(a.note).replace(/</g,'&lt;')+'</div>':'')+
+          '<div style="font-size:10px;color:#94a3b8;margin-top:2px">Opening '+fmt(openBal)+'</div>'+
           '</div>'+
           '<div style="text-align:right">'+
-            '<div style="font-weight:900;font-size:16px;color:'+(balN>=0?'#1e7a4f':'#c8382a')+'">'+fmt(balN)+'</div>'+
-            '<div style="font-size:10px;color:#7a8fa6">tap for txns ›</div>'+
+            '<div style="font-weight:900;font-size:16px;color:'+balColor+'">'+fmt(balN)+'</div>'+
+            '<div style="font-size:10px;color:#7a8fa6">'+(balN<0?'paid out / negative':'tap for txns')+' ›</div>'+
           '</div>'+
         '</div>'+
         '<div style="margin-top:8px;text-align:right">'+
-          '<button type="button" class="btn-sm btn-grey" style="font-size:10px;padding:4px 8px" onclick="event.stopPropagation();adjustBankOpeningInline('+id+','+openBal+')">⚙️ Opening bal</button>'+
+          '<button type="button" class="btn-sm btn-grey" style="font-size:10px;padding:4px 8px" onclick="event.stopPropagation();adjustBankOpeningInline('+id+','+openBal+')">⚙️ Set opening (use − for already paid)</button>'+
         '</div>'+
       '</div>';
   }
   if(cardEl) cardEl.innerHTML=cardsHtml;
   if(listEl) listEl.innerHTML=listHtml;
 }
+/** Balance = opening + credits − debits (negative allowed). */
+function _computeAccountBalance(opening, rows){
+  var open=parseFloat(opening);
+  if(isNaN(open)) open=0;
+  rows=_asRows(rows);
+  var credits=0, debits=0;
+  for(var i=0;i<rows.length;i++){
+    var r=rows[i];
+    var amt=parseFloat(r.amount);
+    if(isNaN(amt)) amt=0;
+    var t=String(r.type||'').toLowerCase();
+    if(t==='credit' || t==='in' || t==='deposit') credits+=amt;
+    else debits+=amt; // debit, charge, emi, transfer-out, etc.
+  }
+  return open + credits - debits;
+}
 function loadBankAccountCards(){
   var listEl=document.getElementById('bankAccountList');
   if(listEl && !(_bankAccounts&&_bankAccounts.length)){
     listEl.innerHTML='<div class="empty">Loading accounts…</div>';
   }
-  // Force accounts section visible while loading
   var sec=document.getElementById('bksec-accounts');
   if(sec) sec.style.setProperty('display','block','important');
 
@@ -5746,37 +5766,27 @@ function loadBankAccountCards(){
     accounts=_asRows(accounts);
     _bankAccounts=accounts;
     console.log('[finance] bank_accounts loaded', accounts.length, accounts.map(function(a){return a.name;}));
+    // Paint opening balances first (supports negative opening)
     _paintBankAccounts(accounts);
 
-    // Best-effort balance enrichment (does not block first paint)
-    accounts.forEach(function(a){
-      sbGetQ('bank_transactions','account_name=eq.'+encodeURIComponent(a.name)+'&order=date.desc,id.desc&limit=200')
+    // Compute full balances for ALL accounts together (no race)
+    return Promise.all(accounts.map(function(a){
+      return sbGetQ('bank_transactions','account_name=eq.'+encodeURIComponent(a.name)+'&select=amount,type,balance_after,date,id&order=date.desc,id.desc&limit=5000')
         .then(function(rows){
           rows=_asRows(rows);
-          var bal=parseFloat(a.opening_balance)||0;
-          if(rows.length){
-            var lastWithBal=null;
-            for(var i=0;i<rows.length;i++){ if(rows[i].balance_after!=null){ lastWithBal=rows[i]; break; } }
-            if(lastWithBal) bal=parseFloat(lastWithBal.balance_after)||bal;
-            else {
-              var credits=0, debits=0;
-              rows.forEach(function(r){
-                var amt=parseFloat(r.amount)||0;
-                if(r.type==='credit') credits+=amt; else debits+=amt;
-              });
-              bal=(parseFloat(a.opening_balance)||0)+credits-debits;
-            }
-          }
-          var map={}; map[a.name]=bal;
-          // Re-paint only this account's balance by full re-paint with merged map
-          var allMap={};
-          (_bankAccounts||[]).forEach(function(x){
-            allMap[x.name]=parseFloat(x.opening_balance)||0;
-          });
-          allMap[a.name]=bal;
-          // Keep previously enriched if present on DOM — simplest: re-paint from opening + this one
-          _paintBankAccounts(_bankAccounts, allMap);
-        }).catch(function(){});
+          var bal=_computeAccountBalance(a.opening_balance, rows);
+          return {name:a.name, bal:bal, txCount:rows.length};
+        })
+        .catch(function(){
+          var open=parseFloat(a.opening_balance); if(isNaN(open)) open=0;
+          return {name:a.name, bal:open, txCount:0};
+        });
+    })).then(function(results){
+      var allMap={};
+      results.forEach(function(r){ allMap[r.name]=r.bal; });
+      window._bankBalances=allMap;
+      console.log('[finance] bank balances', allMap);
+      _paintBankAccounts(_bankAccounts, allMap);
     });
   }).catch(function(err){
     console.error('loadBankAccountCards failed', err);
@@ -5868,10 +5878,12 @@ function adjustBankOpeningInline(id,currentOpening){
   var div=document.createElement('div');
   div.id=uid;
   div.style.cssText='margin-top:8px;background:#f0f4ff;border-radius:8px;padding:10px;border:1px solid #c7d2fe';
+  var cur=parseFloat(currentOpening); if(isNaN(cur)) cur=0;
   div.innerHTML=
-    '<div style="font-size:11px;font-weight:700;color:#4338ca;margin-bottom:6px">⚙️ Adjust Opening Balance</div>'+
+    '<div style="font-size:11px;font-weight:700;color:#4338ca;margin-bottom:4px">⚙️ Set opening balance</div>'+
+    '<div style="font-size:10px;color:#64748b;margin-bottom:6px;line-height:1.4">Use <b>negative</b> if already paid out before tracking (e.g. <b>-10000</b>). Live balance = opening + money in − money out.</div>'+
     '<label class="lbl">Opening Balance (₹)</label>'+
-    '<input type="number" id="'+uid+'-amt" value="'+(currentOpening||0)+'" style="margin-bottom:6px;background:#e8f0ff;font-weight:700;color:#1a3a5c;width:100%">'+
+    '<input type="number" id="'+uid+'-amt" value="'+cur+'" step="0.01" placeholder="-10000" style="margin-bottom:6px;background:#e8f0ff;font-weight:700;color:#1a3a5c;width:100%">'+
     '<div style="display:flex;gap:6px">'+
     '<button class="btn-sm" style="background:#4338ca;color:#fff;flex:1" onclick="saveBankOpeningAdj('+id+')">Save</button>'+
     '<button class="btn-sm btn-grey" style="flex:1" onclick="document.getElementById(\''+uid+'\').remove()">Cancel</button>'+
@@ -7983,7 +7995,7 @@ function closeChat(){
   document.getElementById('chatBtn').textContent='💬';
 }
 function chatWelcome(){
-  botMsg('👋 Hi! I can help you add entries quickly.\n\nTry:\n• <b>add driver Raju salary 12000</b>\n• <b>add tempo MH09AB1234</b>\n• <b>expense 500 fuel today</b>\n• <b>advance 2000 to Raju</b>\n• <b>leave Raju today unpaid</b>\n• <b>add bank Warna 50000</b>\n• <b>bill ABC Traders 5000</b>\n• <b>payment 3000 from ABC Traders</b>\n\nType <b>help</b> to see all commands.');
+  botMsg('👋 Hi! I can help you add entries quickly.\n\nTry:\n• <b>add driver Raju salary 12000</b>\n• <b>add tempo MH09AB1234</b>\n• <b>expense 500 fuel today</b>\n• <b>advance 2000 to Raju</b>\n• <b>leave Raju today unpaid</b>\n• <b>add bank Warna 50000</b>\n• <b>balance Siddhesh -10000</b>\n• <b>bill ABC Traders 5000</b>\n• <b>payment 3000 from ABC Traders</b>\n\nType <b>help</b> to see all commands.');
 }
 function botMsg(html,type){
   var el=document.createElement('div');
@@ -8055,6 +8067,7 @@ function processChat(raw){
       '<b>deduction</b> [amount] [driver] [reason]<br>'+
       '<b>leave</b> [driver] [date] [paid/unpaid]<br>'+
       '<b>add bank</b> [name] [opening balance]<br>'+
+      '<b>balance</b> [account] [amount] — set live balance (use − for paid out)<br>'+
       '<b>bill</b> [customer] [amount] [desc?]<br>'+
       '<b>payment</b> [amount] from [customer]<br>'+
       '<b>add loan</b> [lender] [amount] emi [emi]<br>'+
@@ -8157,8 +8170,68 @@ function processChat(raw){
     return;
   }
 
+  // ── UPDATE BANK BALANCE ──
+  // balance Siddhesh -10000 | set balance Cash 5000 | update balance Dinesh 1000 | bank balance Cash -2000
+  if((m=t.match(/(?:update\s+|set\s+)?(?:bank\s+)?balance\s+([a-z0-9\s]+?)\s+(-?[\d,]+)/i) ||
+        t.match(/([a-z0-9\s]+?)\s+balance\s+(-?[\d,]+)/i))){
+    var bnameRaw=m[1].trim().replace(/^(update|set|bank)\s+/i,'').trim();
+    var targetBal=parseFloat(String(m[2]).replace(/,/g,''));
+    if(isNaN(targetBal)){ botMsg('❌ Invalid amount.','er'); return; }
+    var bname=titleCase(bnameRaw);
+    askConfirm('Set <b>'+bname+'</b> live balance to <b>'+fmt(targetBal)+'</b>?', function(){
+      sbGetQ('bank_accounts','order=name.asc').then(function(rows){
+        rows=_asRows(rows);
+        var acc=null;
+        var needle=bnameRaw.toLowerCase();
+        for(var i=0;i<rows.length;i++){
+          var n=String(rows[i].name||'').toLowerCase();
+          if(n===needle || n===bname.toLowerCase()){ acc=rows[i]; break; }
+        }
+        if(!acc){
+          for(var j=0;j<rows.length;j++){
+            var n2=String(rows[j].name||'').toLowerCase();
+            if(n2.indexOf(needle)>=0 || needle.indexOf(n2)>=0){ acc=rows[j]; break; }
+          }
+        }
+        if(!acc){
+          botMsg('❌ Account <b>'+esc(bname)+'</b> not found. Add it first with <b>add bank '+esc(bname)+'</b>.','er');
+          return;
+        }
+        // Adjust opening so: opening + credits − debits = targetBal
+        sbGetQ('bank_transactions','account_name=eq.'+encodeURIComponent(acc.name)+'&select=amount,type&limit=5000')
+          .then(function(txRows){
+            txRows=_asRows(txRows);
+            var credits=0, debits=0;
+            txRows.forEach(function(r){
+              var amt=parseFloat(r.amount)||0;
+              var tp=String(r.type||'').toLowerCase();
+              if(tp==='credit'||tp==='in'||tp==='deposit') credits+=amt;
+              else debits+=amt;
+            });
+            var netTx=credits-debits;
+            var newOpening=targetBal-netTx;
+            return sbPatch('bank_accounts','id=eq.'+acc.id,{opening_balance:newOpening}).then(function(r){
+              if(r.ok){
+                botMsg('✅ <b>'+esc(acc.name)+'</b> balance set to <b>'+fmt(targetBal)+'</b>'+
+                  (newOpening!==targetBal?' (opening adjusted to '+fmt(newOpening)+')':'')+'.','ok');
+                try{
+                  loadBankAccounts();
+                  window._finBankSubTab='accounts';
+                  showTab('bank');
+                  setTimeout(function(){ loadBankAccountCards(); }, 150);
+                }catch(e){}
+              } else {
+                botMsg('❌ Could not update balance.','er');
+              }
+            });
+          });
+      });
+    });
+    return;
+  }
+
   // ── ADD BANK ACCOUNT ──
-  if((m=t.match(/(?:add\s+)?bank\s+([a-z\s]+?)\s+([\d,]+)/i))){
+  if((m=t.match(/(?:add\s+)?bank\s+([a-z\s]+?)\s+(-?[\d,]+)/i))){
     var bname=titleCase(m[1].trim()); var opening=parseNum(m[2]);
     askConfirm('Add bank account <b>'+bname+'</b> opening balance <b>'+fmt(opening)+'</b>?', function(){
       sbPost('bank_accounts',{name:bname,opening_balance:opening,active:true}).then(function(r){
@@ -8257,7 +8330,7 @@ function askConfirm(html, onConfirm){
   _chatState.pending={onConfirm:onConfirm};
 }
 function titleCase(s){return s.replace(/\b\w/g,function(c){return c.toUpperCase();});}
-function parseNum(s){return parseFloat((s||'0').toString().replace(/,/g,''))||0;}
+function parseNum(s){var n=parseFloat((s||'0').toString().replace(/,/g,'')); return isNaN(n)?0:n;}
 function parseDate(s){
   if(!s||s==='today') return todayStr();
   if(s==='yesterday'){var d=new Date();d.setDate(d.getDate()-1);return d.toISOString().slice(0,10);}
