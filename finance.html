@@ -11,8 +11,25 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
-*{box-sizing:border-box;margin:0;padding:0}:root{--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);--sal:env(safe-area-inset-left,0px);--sar:env(safe-area-inset-right,0px)}
-body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#eef2f7;color:#1a2535;max-width:520px;margin:0 auto;min-height:100vh;min-height:100dvh}
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --sat:env(safe-area-inset-top,0px);
+  --sab:env(safe-area-inset-bottom,0px);
+  --sal:env(safe-area-inset-left,0px);
+  --sar:env(safe-area-inset-right,0px);
+  --fin-max:1100px;
+  --fin-phone:520px;
+}
+html{width:100%;-webkit-text-size-adjust:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  background:#eef2f7;color:#1a2535;
+  margin:0 auto;min-height:100vh;min-height:100dvh;
+  width:100%;max-width:100%;
+  overflow-x:hidden;
+  -webkit-tap-highlight-color:transparent;
+}
+#app{width:100%;max-width:var(--fin-phone);margin:0 auto;position:relative}
 
 /* ── LOGIN ── */
 #loginScreen{position:fixed;inset:0;background:#1a3a5c;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;padding:24px;padding-top:max(24px,calc(16px + var(--sat)));padding-bottom:max(24px,calc(16px + var(--sab)));padding-left:max(24px,var(--sal));padding-right:max(24px,var(--sar))}
@@ -32,19 +49,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#eef2f7;
   position:fixed;top:0;left:0;right:0;z-index:300;
   box-shadow:0 1px 0 rgba(15,23,42,.12);
   transform:translateZ(0);-webkit-transform:translateZ(0);
+  width:100%;max-width:var(--fin-phone);margin:0 auto;
 }
 .topbar-title{color:#fff;font-size:16px;font-weight:900;letter-spacing:-0.2px}
 .topbar-sub{color:#94a3b8;font-size:10px;font-family:monospace;margin-top:2px}
 .tbtn{background:rgba(255,255,255,.12);border:none;color:#fff;padding:8px 12px;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;min-height:36px}
 
-/* Desktop top tabs */
+/* Desktop top tabs (hidden on phone) */
 .tabs{
   display:none;
   background:#fff;border-bottom:1px solid #e2e8f0;
   position:fixed;left:0;right:0;z-index:290;
-  overflow-x:auto;scrollbar-width:none;
+  overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;
   padding:0 max(8px, var(--sal));
   box-shadow:0 1px 0 rgba(15,23,42,.06);
+  width:100%;max-width:var(--fin-phone);margin:0 auto;
 }
 .tabs::-webkit-scrollbar{display:none}
 .tab{
@@ -66,6 +85,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#eef2f7;
   padding-left:var(--sal);padding-right:var(--sar);
   box-shadow:0 -4px 20px rgba(15,23,42,.06);
   transform:translate3d(0,0,0);-webkit-transform:translate3d(0,0,0);
+  width:100%;max-width:var(--fin-phone);margin:0 auto;
 }
 .fin-bnav-inner{display:flex;width:100%;align-items:stretch}
 .fin-bnav-item{
@@ -84,7 +104,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#eef2f7;
 }
 .fin-more-sheet.open{display:flex}
 .fin-more-panel{
-  width:100%;max-width:520px;background:#fff;border-radius:18px 18px 0 0;
+  width:100%;max-width:var(--fin-phone);background:#fff;border-radius:18px 18px 0 0;
   padding:14px 14px max(20px, calc(16px + var(--sab)));
   box-shadow:0 -8px 30px rgba(15,23,42,.15);
 }
@@ -97,44 +117,82 @@ body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#eef2f7;
 }
 .fin-more-item .mi{font-size:20px}
 
-/* Mobile layout */
+.page{display:none;padding:12px 14px 90px;width:100%;max-width:100%;overflow-x:hidden}.page.on{display:block}
+.table-scroll,.list-scroll{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+/* ══ PHONE (≤767px) ══ */
 @media (max-width:767px){
+  body{max-width:var(--fin-phone)}
   #app{max-width:none;width:100%}
   .tabs{display:none !important}
   .fin-bnav{display:block}
-  .topbar{position:fixed}
+  .topbar{position:fixed;left:0;right:0;max-width:var(--fin-phone);margin-left:auto;margin-right:auto}
   body.fin-app #app{padding-top:calc(58px + var(--sat));padding-bottom:calc(72px + var(--sab))}
   .page{padding:12px 14px calc(24px + var(--sab)) !important}
   #searchBar{padding-left:12px;padding-right:12px}
   #chatBtn{bottom:calc(78px + var(--sab)) !important}
+  .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr)) !important}
+  .row2{grid-template-columns:1fr 1fr}
 }
 
-/* Desktop / browser wide */
+/* ══ TABLET / WEB (≥768px) ══ */
 @media (min-width:768px){
-  body{background:#e8eef5}
+  body{
+    max-width:none;
+    background:#e2e8f0;
+  }
   #app{
-    max-width:1100px;margin:0 auto;
-    background:#f1f5f9;min-height:100dvh;
-    box-shadow:0 0 0 1px rgba(15,23,42,.06);
+    max-width:var(--fin-max);
+    margin:0 auto;
+    background:#f1f5f9;
+    min-height:100dvh;
+    box-shadow:0 0 0 1px rgba(15,23,42,.06), 0 8px 40px rgba(15,23,42,.06);
   }
   .fin-bnav{display:none !important}
   .tabs{
     display:flex !important;
     top:calc(56px + var(--sat));
-    max-width:1100px;left:50%;transform:translateX(-50%);
+    left:50%;
+    right:auto;
+    transform:translateX(-50%);
     width:100%;
+    max-width:var(--fin-max);
   }
   .topbar{
-    max-width:1100px;left:50%;transform:translateX(-50%);
-    width:100%;padding-top:max(14px, calc(12px + var(--sat)));padding-bottom:14px;
+    left:50%;
+    right:auto;
+    transform:translateX(-50%);
+    width:100%;
+    max-width:var(--fin-max);
+    padding-top:max(14px, calc(12px + var(--sat)));
+    padding-bottom:14px;
   }
   body.fin-app #app{padding-top:calc(56px + 48px + var(--sat));padding-bottom:40px}
-  .page{padding:16px 20px 40px !important;max-width:100%}
-  .stats-grid{grid-template-columns:repeat(4,1fr) !important}
+  .page{padding:18px 24px 48px !important;max-width:100%}
+  .stats-grid{grid-template-columns:repeat(4,minmax(0,1fr)) !important}
   .card{max-width:100%}
+  .row2{grid-template-columns:1fr 1fr}
+  /* Wider forms: 2-col where helpful */
+  .fin-desk-2col{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+  #chatPanel{
+    left:auto;right:24px;bottom:24px;
+    max-width:420px;width:100%;
+    border-radius:16px;height:min(70vh,560px);
+    box-shadow:0 12px 40px rgba(15,23,42,.2);
+  }
+  #chatBtn{right:28px;bottom:28px}
+  .fin-more-panel{max-width:480px;border-radius:16px;margin-bottom:24px}
+  .item-card,.card{border-radius:14px}
+  select,input[type=text],input[type=date],input[type=number],input[type=month],input[type=tel],textarea{
+    font-size:14px;
+  }
 }
 
-.page{display:none;padding:12px 14px 90px}.page.on{display:block}
+/* Large desktop */
+@media (min-width:1200px){
+  :root{--fin-max:1200px}
+  .page{padding:20px 28px 56px !important}
+}
 
 /* ── CARDS / FORMS ── */
 .card{background:#fff;border:1.5px solid #d8e4f0;border-radius:16px;padding:14px;margin-bottom:10px}
@@ -176,7 +234,7 @@ textarea{resize:vertical;min-height:60px;font-size:13px;line-height:1.6}
 
 /* ── CHAT ── */
 #chatBtn{position:fixed;bottom:22px;right:18px;z-index:300;width:52px;height:52px;border-radius:50%;background:#1a3a5c;color:#fff;font-size:22px;border:none;cursor:pointer;box-shadow:0 4px 18px rgba(26,58,92,.45);display:flex;align-items:center;justify-content:center}
-#chatPanel{position:fixed;bottom:0;right:0;left:0;z-index:299;max-width:520px;margin:0 auto;background:#fff;border-radius:20px 20px 0 0;box-shadow:0 -4px 24px rgba(0,0,0,.18);display:none;flex-direction:column;height:72vh}
+#chatPanel{position:fixed;bottom:0;right:0;left:0;z-index:299;max-width:var(--fin-phone);margin:0 auto;background:#fff;border-radius:20px 20px 0 0;box-shadow:0 -4px 24px rgba(0,0,0,.18);display:none;flex-direction:column;height:72vh}
 #chatPanel.open{display:flex}
 body.dark #chatPanel{background:#232b3e}
 #chatHead{padding:12px 16px;background:#1a3a5c;border-radius:20px 20px 0 0;display:flex;align-items:center;justify-content:space-between}
@@ -201,10 +259,27 @@ body.dark #chatInput{background:#2d3748;color:#e2e8f0;border-color:#3d4a5c}
 #modalOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1100;align-items:flex-end;justify-content:center}
 #modalOverlay.open{display:flex}
 #modalBox{
-  background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:520px;
+  background:#fff;border-radius:20px 20px 0 0;width:100%;max-width:var(--fin-phone);
   max-height:min(92vh, 100%);display:flex;flex-direction:column;
   padding:0;overflow:hidden;
   padding-bottom:env(safe-area-inset-bottom,0px);
+}
+/* Desktop: floating chat + centered modal */
+@media (min-width:768px){
+  #chatPanel{
+    left:auto !important;right:24px !important;bottom:24px !important;
+    max-width:420px !important;width:100%;
+    border-radius:16px !important;height:min(70vh,560px) !important;
+    box-shadow:0 12px 40px rgba(15,23,42,.2) !important;
+  }
+  #chatHead{border-radius:16px 16px 0 0}
+  #chatBtn{right:28px !important;bottom:28px !important}
+  #modalOverlay{align-items:center;justify-content:center;padding:24px}
+  #modalBox{
+    max-width:560px;border-radius:16px;
+    max-height:min(88vh,720px);
+    padding-bottom:0;
+  }
 }
 #modalTitle{font-size:16px;font-weight:900;color:#1a3a5c;padding:16px 16px 0;flex:none}
 #modalBody{padding:12px 16px 0;overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch}
@@ -1003,7 +1078,7 @@ body.dark .search-item:hover{background:#3d4a5c}
 
     <!-- Add / Edit Driver popup -->
     <div id="drvFormModal" style="display:none;position:fixed;inset:0;z-index:5000;background:rgba(15,23,42,.45);align-items:flex-end;justify-content:center;padding:0" onclick="if(event.target===this)closeDriverPopup()">
-      <div style="background:#fff;width:100%;max-width:520px;max-height:92vh;overflow:auto;border-radius:16px 16px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));box-shadow:0 -8px 32px rgba(0,0,0,.15)" onclick="event.stopPropagation()">
+      <div style="background:#fff;width:100%;max-width:min(560px,100%);max-height:92vh;overflow:auto;border-radius:16px 16px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));box-shadow:0 -8px 32px rgba(0,0,0,.15)" onclick="event.stopPropagation()">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px">
           <div id="drvFormTitle" style="font-size:16px;font-weight:900;color:#1a3a5c">➕ Add Driver</div>
           <button type="button" onclick="closeDriverPopup()" style="border:none;background:#e4edf6;color:#1a3a5c;border-radius:10px;padding:8px 14px;font-weight:800;font-size:13px;cursor:pointer">✕ Cancel</button>
