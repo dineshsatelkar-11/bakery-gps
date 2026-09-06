@@ -2567,11 +2567,11 @@
         if (o.payment_proof_file_id && !g.payment_proof_file_id) g.payment_proof_file_id = o.payment_proof_file_id;
       });
       return Object.keys(map).map(function(k){ return map[k]; }).sort(function(a,b){
-        // Alphabetical A→Z by shop name, then newest paid first within same shop
-        var na = String(a.shop_name || a.shop_id || '').toLowerCase();
-        var nb = String(b.shop_name || b.shop_id || '').toLowerCase();
-        if (na !== nb) return na.localeCompare(nb);
-        return String(b.paid_at || '').localeCompare(String(a.paid_at || ''));
+        // Payment received order: newest paid first (not alphabetical)
+        var ta = String(a.paid_at || '');
+        var tb = String(b.paid_at || '');
+        if (ta !== tb) return tb.localeCompare(ta);
+        return String(b.shop_name || '').toLowerCase().localeCompare(String(a.shop_name || '').toLowerCase());
       });
     }
     function paidPaymentGroupHtml(g) {
@@ -2899,14 +2899,18 @@
         return String(b.delivery_date||'').localeCompare(String(a.delivery_date||''));
       });
       var listReq = claims.filter(matchQ).sort(function(a,b){
-        return String(a.shop_name || a.shop_id || '').toLowerCase()
-          .localeCompare(String(b.shop_name || b.shop_id || '').toLowerCase());
+        // Request order: newest customer claim first
+        var ta = String(a.customer_claimed_at || a.updated_at || a.created_at || '');
+        var tb = String(b.customer_claimed_at || b.updated_at || b.created_at || '');
+        if (ta !== tb) return tb.localeCompare(ta);
+        return String(a.shop_name || '').toLowerCase().localeCompare(String(b.shop_name || '').toLowerCase());
       });
       var listPaid = paid.filter(matchQ).sort(function(a,b){
-        var na = String(a.shop_name || a.shop_id || '').toLowerCase();
-        var nb = String(b.shop_name || b.shop_id || '').toLowerCase();
-        if (na !== nb) return na.localeCompare(nb);
-        return String(b.paid_at||b.delivery_date||'').localeCompare(String(a.paid_at||a.delivery_date||''));
+        // Payment received order: newest paid first
+        var ta = String(a.paid_at || a.payment_confirmed_at || a.updated_at || '');
+        var tb = String(b.paid_at || b.payment_confirmed_at || b.updated_at || '');
+        if (ta !== tb) return tb.localeCompare(ta);
+        return String(a.shop_name || '').toLowerCase().localeCompare(String(b.shop_name || '').toLowerCase());
       });
 
       function card(o) {
@@ -3353,29 +3357,123 @@
         if (!listReq.length) {
           elReq.innerHTML = '<div style="text-align:center;padding:20px;color:#8a7a6a;font-size:12px">No payment requests</div>';
         } else {
-          elReq.innerHTML = listReq.map(function(o){
-            var due = _payDue(o);
-            var utr = String(o.payment_ref || o.customer_claim_note || '').trim();
-            var note = String(o.customer_claim_note || '').trim();
-            if (note && note === utr) note = '';
-            var proof = adminProofUrls(o);
-            var hasAtt = !!(proof.file_id || (proof.view && proof.view.length > 8) || (proof.thumb && proof.thumb.length > 8));
-            var attUrl = (proof.view || proof.thumb || '').replace(/'/g, '');
-            var inv = o.zoho_invoice_number || (_payIsChallan(o) ? 'Challan' : 'Invoice') || ('#'+o.id);
-            return '<div class="card" style="padding:14px;margin-bottom:10px">'+
-              '<div style="font-size:15px;font-weight:900;color:#4a2f14;line-height:1.3">'+esc(o.shop_name||o.shop_id||'Shop')+'</div>'+
-              '<div style="font-size:20px;font-weight:900;color:#c8382a;margin-top:6px">₹'+due.toLocaleString('en-IN',{maximumFractionDigits:2})+'</div>'+
-              '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:4px">'+esc(String(inv))+(o.delivery_date ? ' · '+esc(String(o.delivery_date)) : '')+'</div>'+
-              (utr ? '<div style="margin-top:8px;font-size:13px;font-weight:700;color:#1565c0">UTR / ref: '+esc(utr)+'</div>' : '')+
-              (note ? '<div style="margin-top:4px;font-size:12px;color:#546e7a">Note: '+esc(note)+'</div>' : '')+
-              '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;align-items:center">'+
-                (hasAtt
-                  ? '<button type="button" class="btn-sm" style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;padding:8px 12px;font-weight:800" onclick="adminViewPaymentProof(\''+attUrl+'\')">📷 Screenshot attached — view</button>'
-                  : '<span style="display:inline-block;padding:6px 10px;border-radius:8px;background:#fff8e1;color:#7a4800;border:1px solid #ffe082;font-size:11px;font-weight:800">⚠ No screenshot</span>')+
-                '<button type="button" class="btn-sm" style="background:#2d7a4f;color:#fff;border:none;padding:8px 14px;font-weight:800" onclick="payDeskConfirmReceived(\''+String(o.id)+'\')">Approve</button>'+
-                '<button type="button" class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0;padding:8px 14px;font-weight:800" onclick="payDeskRejectRequest(\''+String(o.id)+'\')">Reject</button>'+
-              '</div></div>';
+          // Grid like Unpaid: parent customer + child invoice rows, ordered by latest request time
+          var reqMap = {};
+          listReq.forEach(function(o){
+            var k = String(o.shop_id || o.shop_name || 'unknown');
+            if (!reqMap[k]) reqMap[k] = { shop_id: o.shop_id, shop_name: o.shop_name || o.shop_id || 'Shop', rows: [], _latest: '' };
+            reqMap[k].rows.push(o);
+            if (o.shop_name) reqMap[k].shop_name = o.shop_name;
+            var ct = String(o.customer_claimed_at || o.updated_at || o.created_at || '');
+            if (ct && ct > reqMap[k]._latest) reqMap[k]._latest = ct;
+          });
+          var reqGroups = Object.keys(reqMap).map(function(k){ return reqMap[k]; }).sort(function(a,b){
+            if (a._latest !== b._latest) return String(b._latest).localeCompare(String(a._latest));
+            return String(a.shop_name||'').toLowerCase().localeCompare(String(b.shop_name||'').toLowerCase());
+          });
+          reqGroups.forEach(function(g){
+            g.rows.sort(function(a,b){
+              var ta = String(a.customer_claimed_at || a.updated_at || '');
+              var tb = String(b.customer_claimed_at || b.updated_at || '');
+              return tb.localeCompare(ta);
+            });
+            g._due = g.rows.reduce(function(s,o){ return s + _payDue(o); }, 0);
+          });
+
+          var reqBody = reqGroups.map(function(g){
+            var due = g._due || 0;
+            var n = g.rows.length;
+            var sid = 'req_' + String(g.shop_id || g.shop_name || '').replace(/[^a-zA-Z0-9_-]/g, '_');
+            var open = !!(window._payReqOpen && window._payReqOpen[sid]);
+            var idList = g.rows.map(function(r){ return String(r.id); }).join(',');
+            var shopId = String(g.shop_id || '');
+            var latestLbl = g._latest ? String(g._latest).slice(0,16).replace('T',' ') : '—';
+
+            var parent = '<tr class="pay-req-parent" data-sid="'+esc(sid)+'" style="background:#eef6ff;border-top:2px solid #bbdefb;border-bottom:1px solid #e3f2fd">'+
+              '<td style="padding:12px 8px;vertical-align:middle">'+
+                '<input type="checkbox" class="pay-desk-shop-cb" data-ids="'+esc(idList)+'" data-shop="'+esc(shopId)+'" title="Select all requests for this customer" onclick="event.stopPropagation()" onchange="payDeskUpdateSelCount()" style="width:16px;height:16px;accent-color:#1565c0">'+
+              '</td>'+
+              '<td style="padding:12px 8px;vertical-align:middle;cursor:pointer" colspan="2" onclick="payDeskToggleReq(\''+sid+'\')">'+
+                '<div style="display:flex;align-items:center;gap:8px">'+
+                  '<span id="pay-req-chev-'+sid+'" style="font-size:12px;font-weight:900;color:#1565c0;width:14px">'+(open?'▾':'▸')+'</span>'+
+                  '<div style="min-width:0">'+
+                    '<div style="font-size:13px;font-weight:900;color:#0d47a1;line-height:1.3">'+esc(g.shop_name)+'</div>'+
+                    '<div style="font-size:10px;color:#547e9b;margin-top:2px">'+n+' request'+(n===1?'':'s')+' · '+esc(latestLbl)+'</div>'+
+                  '</div>'+
+                '</div>'+
+              '</td>'+
+              '<td style="padding:12px 8px;vertical-align:middle">'+
+                '<span style="font-size:10px;font-weight:900;padding:3px 8px;border-radius:6px;background:#e3f2fd;color:#1565c0;text-transform:uppercase">Request</span>'+
+              '</td>'+
+              '<td style="padding:12px 8px;vertical-align:middle;font-size:11px;color:#547e9b;white-space:nowrap">'+esc(latestLbl)+'</td>'+
+              '<td style="padding:12px 8px;vertical-align:middle;text-align:right;font-size:11px;color:#8a7a6a">—</td>'+
+              '<td style="padding:12px 8px;vertical-align:middle;text-align:right;white-space:nowrap">'+
+                '<div style="font-size:10px;font-weight:800;color:#8a7a6a;text-transform:uppercase">Due</div>'+
+                '<div style="font-size:16px;font-weight:900;color:#c62828">₹'+due.toLocaleString('en-IN',{maximumFractionDigits:0})+'</div>'+
+              '</td>'+
+              '<td style="padding:12px 8px;vertical-align:middle;white-space:nowrap">'+
+                '<button type="button" class="btn-sm" style="background:#2d7a4f;color:#fff;border:none;padding:5px 10px;font-size:11px;font-weight:900;margin:1px" onclick="event.stopPropagation();payDeskConfirmReceivedShop(\''+esc(shopId)+'\')">Approve all</button>'+
+              '</td>'+
+            '</tr>';
+
+            var children = g.rows.map(function(o){
+              var bal = _payDue(o);
+              var total = o.invoice_total != null ? parseFloat(o.invoice_total) : bal;
+              if (isNaN(total)) total = bal;
+              var invNo = o.zoho_invoice_number || ('#'+o.id);
+              var invDate = o.delivery_date || o.invoice_date || '—';
+              var claimedAt = o.customer_claimed_at ? String(o.customer_claimed_at).slice(0,16).replace('T',' ') : '—';
+              var utr = String(o.payment_ref || '').trim();
+              var proof = adminProofUrls(o);
+              var hasAtt = !!(proof.file_id || (proof.view && proof.view.length > 8) || (proof.thumb && proof.thumb.length > 8));
+              var attUrl = (proof.view || proof.thumb || '').replace(/'/g, '');
+              return '<tr class="pay-req-child pay-req-child-'+sid+'" data-oid="'+esc(String(o.id))+'" style="border-bottom:1px solid #e3f2fd;background:#fff;display:'+(open?'table-row':'none')+'">'+
+                '<td style="padding:9px 8px 9px 20px;vertical-align:middle">'+
+                  '<input type="checkbox" class="pay-desk-row-cb" data-id="'+esc(String(o.id))+'" data-shop="'+esc(shopId)+'" onchange="payDeskUpdateSelCount()" style="width:16px;height:16px;accent-color:#1565c0">'+
+                '</td>'+
+                '<td style="padding:9px 8px;vertical-align:middle;white-space:nowrap;font-size:12px;color:#546e7a">'+esc(String(invDate))+'</td>'+
+                '<td style="padding:9px 8px;vertical-align:middle">'+
+                  '<div style="font-size:13px;font-weight:900;color:#1a237e">'+esc(invNo)+'</div>'+
+                  '<div style="font-size:10px;color:#90a4ae;font-family:monospace">Order '+esc(String(o.id))+(utr ? ' · UTR '+esc(utr) : '')+'</div>'+
+                '</td>'+
+                '<td style="padding:9px 8px;vertical-align:middle">'+
+                  '<span style="display:inline-block;font-size:10px;font-weight:900;padding:3px 8px;border-radius:6px;background:#e3f2fd;color:#1565c0;text-transform:uppercase">Request</span>'+
+                '</td>'+
+                '<td style="padding:9px 8px;vertical-align:middle;white-space:nowrap;font-size:11px;color:#1565c0">'+esc(claimedAt)+'</td>'+
+                '<td style="padding:9px 8px;vertical-align:middle;text-align:right;font-size:12px;font-weight:700;color:#37474f;white-space:nowrap">₹'+Number(total).toLocaleString('en-IN',{maximumFractionDigits:2})+'</td>'+
+                '<td style="padding:9px 8px;vertical-align:middle;text-align:right;font-size:13px;font-weight:900;color:#c62828;white-space:nowrap">₹'+Number(bal).toLocaleString('en-IN',{maximumFractionDigits:2})+'</td>'+
+                '<td style="padding:9px 8px;vertical-align:middle;white-space:nowrap">'+
+                  (hasAtt
+                    ? '<button type="button" class="btn-sm" style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;padding:5px 8px;font-size:11px;font-weight:800;margin:1px" onclick="adminViewPaymentProof(\''+attUrl+'\')">📷</button> '
+                    : '<span style="font-size:10px;color:#b0a090;margin-right:4px">No SS</span>')+
+                  '<button type="button" class="btn-sm" style="background:#2d7a4f;color:#fff;border:none;padding:5px 10px;font-size:11px;font-weight:900;margin:1px" onclick="payDeskConfirmReceived(\''+String(o.id)+'\')">✓</button> '+
+                  '<button type="button" class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0;padding:5px 8px;font-size:11px;font-weight:800;margin:1px" onclick="payDeskRejectRequest(\''+String(o.id)+'\')">✕</button> '+
+                  '<button type="button" class="btn-sm" style="background:#f5efe6;color:#4a2f14;border:1px solid #e0d4c4;padding:5px 8px;font-size:11px;font-weight:800;margin:1px" onclick="openPayInvDetail(\''+o.id+'\')">View</button>'+
+                '</td>'+
+              '</tr>';
+            }).join('');
+
+            return parent + children;
           }).join('');
+
+          elReq.innerHTML =
+            '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid #bbdefb;border-radius:14px;background:#fff;box-shadow:0 2px 8px rgba(21,101,192,.06)">'+
+              '<table style="width:100%;border-collapse:collapse;min-width:760px;font-family:-apple-system,BlinkMacSystemFont,sans-serif">'+
+                '<thead>'+
+                  '<tr style="background:#e3f2fd;border-bottom:1.5px solid #bbdefb">'+
+                    '<th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:800;color:#547e9b;text-transform:uppercase"></th>'+
+                    '<th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:800;color:#547e9b;text-transform:uppercase">Inv date</th>'+
+                    '<th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:800;color:#547e9b;text-transform:uppercase">Invoice # / Customer</th>'+
+                    '<th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:800;color:#547e9b;text-transform:uppercase">Status</th>'+
+                    '<th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:800;color:#547e9b;text-transform:uppercase">Requested</th>'+
+                    '<th style="padding:10px 8px;text-align:right;font-size:10px;font-weight:800;color:#547e9b;text-transform:uppercase">Total</th>'+
+                    '<th style="padding:10px 8px;text-align:right;font-size:10px;font-weight:800;color:#c62828;text-transform:uppercase">Balance Due</th>'+
+                    '<th style="padding:10px 8px;text-align:left;font-size:10px;font-weight:800;color:#547e9b;text-transform:uppercase">Actions</th>'+
+                  '</tr>'+
+                '</thead>'+
+                '<tbody>'+reqBody+'</tbody>'+
+              '</table>'+
+            '</div>';
         }
       }
       if (elPaid) { var paidGroups = groupPaidByTransaction(listPaid); elPaid.innerHTML = paidGroups.length ? paidGroups.map(paidPaymentGroupHtml).join('') : ('<div style="text-align:center;padding:20px;color:#8a7a6a;font-size:12px">'+(showAllPaid?'No paid rows yet':'No paid invoices in the last 7 days.<br><span style="font-size:11px">Turn on “Show all paid” to see older.</span>')+'</div>'); }
@@ -3412,6 +3510,31 @@
         try { adminLazyLoadThumbs(el); } catch (e) {}
       }
     }
+    window._payReqOpen = window._payReqOpen || {};
+    function payDeskToggleReq(sid) {
+      if (!window._payReqOpen) window._payReqOpen = {};
+      window._payReqOpen[sid] = !window._payReqOpen[sid];
+      var open = !!window._payReqOpen[sid];
+      var ch = document.getElementById('pay-req-chev-'+sid);
+      if (ch) ch.textContent = open ? '▾' : '▸';
+      document.querySelectorAll('.pay-req-child-'+sid).forEach(function(tr){
+        tr.style.display = open ? 'table-row' : 'none';
+      });
+    }
+    window.payDeskToggleReq = payDeskToggleReq;
+    function payDeskConfirmReceivedShop(shopId) {
+      if (!shopId) return;
+      var rows = (_payDeskRows || []).filter(function(o){
+        return String(o.shop_id) === String(shopId) && o.customer_claimed_paid && !_payIsPaid(o) && !_payIsVoid(o);
+      });
+      if (!rows.length) {
+        if (typeof _payDeskMsg === 'function') _payDeskMsg('No open requests for this shop.', false);
+        return;
+      }
+      // payDeskConfirmReceived already settles all open requests for the same shop
+      payDeskConfirmReceived(String(rows[0].id));
+    }
+    window.payDeskConfirmReceivedShop = payDeskConfirmReceivedShop;
     function payDeskSyncShopStatuses(sid) {
       if (_paySyncRunning || _challanSyncRunning || !_zohoSyncTryAcquire('shop status')) {
         if (typeof _payDeskMsg === 'function') _payDeskMsg(_zohoSyncBusyMsg(), false);

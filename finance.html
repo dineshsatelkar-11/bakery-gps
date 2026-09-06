@@ -241,14 +241,17 @@ textarea{resize:vertical;min-height:60px;font-size:13px;line-height:1.6}
 .empty{text-align:center;color:#7a8fa6;font-size:13px;padding:32px 0;font-family:monospace}
 
 /* ── CHAT ── */
-#chatBtn{position:fixed;bottom:22px;right:18px;z-index:300;width:52px;height:52px;border-radius:50%;background:#1a3a5c;color:#fff;font-size:22px;border:none;cursor:pointer;box-shadow:0 4px 18px rgba(26,58,92,.45);display:flex;align-items:center;justify-content:center}
-#chatPanel{position:fixed;bottom:0;right:0;left:0;z-index:299;max-width:var(--fin-phone);margin:0 auto;background:#fff;border-radius:20px 20px 0 0;box-shadow:0 -4px 24px rgba(0,0,0,.18);display:none;flex-direction:column;height:72vh}
+#chatBtn{position:fixed;bottom:22px;right:18px;z-index:1200;width:52px;height:52px;border-radius:50%;background:#1a3a5c;color:#fff;font-size:22px;border:none;cursor:pointer;box-shadow:0 4px 18px rgba(26,58,92,.45);display:flex;align-items:center;justify-content:center}
+/* Chat ABOVE bottom nav (bnav z-index:999) so phone keyboard + input stay usable */
+#chatPanel{position:fixed;bottom:0;right:0;left:0;z-index:1300;max-width:var(--fin-phone);margin:0 auto;background:#fff;border-radius:20px 20px 0 0;box-shadow:0 -4px 24px rgba(0,0,0,.18);display:none;flex-direction:column;height:min(72vh, calc(100dvh - 12px));max-height:calc(100dvh - env(safe-area-inset-top, 0px));}
 #chatPanel.open{display:flex}
+body.chat-open .fin-bnav{display:none !important}
+body.chat-open #chatBtn{display:none !important}
 body.dark #chatPanel{background:#232b3e}
-#chatHead{padding:12px 16px;background:#1a3a5c;border-radius:20px 20px 0 0;display:flex;align-items:center;justify-content:space-between}
+#chatHead{padding:12px 16px;background:#1a3a5c;border-radius:20px 20px 0 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 #chatHead span{color:#fff;font-weight:800;font-size:14px}
 #chatClose{background:none;border:none;color:#fff;font-size:20px;cursor:pointer;padding:0 4px}
-#chatMsgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+#chatMsgs{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px;display:flex;flex-direction:column;gap:10px;min-height:0}
 .cm-bot{align-self:flex-start;background:#e3f0fd;color:#1a3a5c;border-radius:0 14px 14px 14px;padding:10px 13px;font-size:13px;max-width:88%;line-height:1.6}
 .cm-user{align-self:flex-end;background:#1a3a5c;color:#fff;border-radius:14px 0 14px 14px;padding:10px 13px;font-size:13px;max-width:88%;line-height:1.6}
 .cm-bot.ok{background:#e8f5e9;color:#1e7a4f}
@@ -258,11 +261,12 @@ body.dark .cm-user{background:#3b5bdb}
 .chat-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
 .chip{background:#d8e4f0;color:#1a3a5c;border:none;border-radius:20px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,sans-serif}
 body.dark .chip{background:#3d4a5c;color:#e2e8f0}
-#chatInputRow{padding:10px 12px;border-top:1px solid #e4edf6;display:flex;gap:8px;align-items:center}
-body.dark #chatInputRow{border-color:#3d4a5c}
-#chatInput{flex:1;padding:10px 14px;border:1.5px solid #d8e4f0;border-radius:22px;font-size:14px;background:#f4f8fc;outline:none;font-family:-apple-system,sans-serif}
+#chatInputRow{padding:10px 12px;padding-bottom:max(10px, env(safe-area-inset-bottom, 0px));border-top:1px solid #e4edf6;display:flex;gap:8px;align-items:center;flex-shrink:0;background:#fff;position:relative;z-index:2}
+body.dark #chatInputRow{border-color:#3d4a5c;background:#232b3e}
+#chatInput{flex:1;padding:12px 14px;border:1.5px solid #d8e4f0;border-radius:22px;font-size:16px;background:#f4f8fc;outline:none;font-family:-apple-system,sans-serif;-webkit-appearance:none}
+/* 16px prevents iOS zoom-on-focus which breaks keyboard layout */
 body.dark #chatInput{background:#2d3748;color:#e2e8f0;border-color:#3d4a5c}
-#chatSend{background:#1a3a5c;color:#fff;border:none;border-radius:50%;width:40px;height:40px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+#chatSend{background:#1a3a5c;color:#fff;border:none;border-radius:50%;width:44px;height:44px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 /* ── MODAL (above bottom nav z-index:999) ── */
 #modalOverlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1100;align-items:flex-end;justify-content:center}
 #modalOverlay.open{display:flex}
@@ -7999,18 +8003,66 @@ if(sessionStorage.getItem('fin_auth')==='1') initApp();
 // ════════════════════════════════════════════
 var _chatState={};  // holds conversation context between turns
 
+function _chatLayoutForKeyboard(){
+  var p=document.getElementById('chatPanel');
+  if(!p || !p.classList.contains('open')) return;
+  try{
+    var vv=window.visualViewport;
+    if(!vv) return;
+    // Keep chat panel within visible viewport when keyboard is open
+    var topGap=Math.max(0, vv.offsetTop||0);
+    var h=Math.max(220, Math.floor(vv.height));
+    p.style.top=topGap+'px';
+    p.style.bottom='auto';
+    p.style.height=h+'px';
+    p.style.maxHeight=h+'px';
+  }catch(e){}
+}
+function _chatResetLayout(){
+  var p=document.getElementById('chatPanel');
+  if(!p) return;
+  p.style.top='';
+  p.style.bottom='';
+  p.style.height='';
+  p.style.maxHeight='';
+}
 function toggleChat(){
   var p=document.getElementById('chatPanel');
   var b=document.getElementById('chatBtn');
   var isOpen=p.classList.contains('open');
   p.classList.toggle('open',!isOpen);
   b.textContent=isOpen?'💬':'✕';
-  if(!isOpen && document.getElementById('chatMsgs').children.length===0) chatWelcome();
+  document.body.classList.toggle('chat-open', !isOpen);
+  if(!isOpen){
+    if(document.getElementById('chatMsgs').children.length===0) chatWelcome();
+    setTimeout(function(){
+      var inp=document.getElementById('chatInput');
+      if(inp) try{ inp.focus(); }catch(e){}
+      _chatLayoutForKeyboard();
+    }, 50);
+  } else {
+    _chatResetLayout();
+  }
 }
 function closeChat(){
   document.getElementById('chatPanel').classList.remove('open');
   document.getElementById('chatBtn').textContent='💬';
+  document.body.classList.remove('chat-open');
+  _chatResetLayout();
 }
+(function bindChatKeyboard(){
+  if(window.__chatKbBound) return;
+  window.__chatKbBound=true;
+  function onVv(){ if(document.body.classList.contains('chat-open')) _chatLayoutForKeyboard(); }
+  if(window.visualViewport){
+    visualViewport.addEventListener('resize', onVv, {passive:true});
+    visualViewport.addEventListener('scroll', onVv, {passive:true});
+  }
+  window.addEventListener('resize', onVv, {passive:true});
+  document.addEventListener('focusin', function(ev){
+    if(ev.target && ev.target.id==='chatInput') setTimeout(_chatLayoutForKeyboard, 100);
+  });
+})();
 function chatWelcome(){
   botMsg('👋 Hi! I can help you add entries quickly.\n\nTry:\n• <b>add driver Raju salary 12000</b>\n• <b>add tempo MH09AB1234</b>\n• <b>expense 500 fuel today</b>\n• <b>advance 2000 to Raju</b>\n• <b>leave Raju today unpaid</b>\n• <b>add bank Warna 50000</b>\n• <b>balance Siddhesh -10000</b>\n• <b>bill ABC Traders 5000</b>\n• <b>payment 3000 from ABC Traders</b>\n\nType <b>help</b> to see all commands.');
 }
