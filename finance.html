@@ -5632,9 +5632,50 @@ function loadBankAccounts(){
     loadBankAccountCards();
   });
 }
+function _renderBankAccountResults(results, cardEl, listEl){
+  results = (results||[]).filter(function(r){ return r && r.acc; });
+  if(!results.length){
+    if(cardEl) cardEl.innerHTML='';
+    if(listEl) listEl.innerHTML='<div class="empty">No accounts to show</div>';
+    return;
+  }
+  if(cardEl){
+    cardEl.innerHTML=results.map(function(r){
+      var nm=String(r.acc.name||'');
+      var safe=nm.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      return'<div class="card" style="flex:none;min-width:160px;background:linear-gradient(135deg,#1e5a2a,#2d8a40);border:none;margin:0;cursor:pointer" onclick="openBankAccount(\''+safe+'\')">'+
+        '<div style="color:#a5d6a7;font-size:9px;font-weight:700;letter-spacing:1px">'+esc(nm).toUpperCase()+'</div>'+
+        '<div style="color:#fff;font-size:22px;font-weight:900;margin:4px 0">'+fmt(r.bal)+'</div>'+
+        '<div style="color:#a5d6a7;font-size:10px">'+(r.date?'as of '+esc(r.date):'opening balance')+(r.computed?' (calc)':'')+'</div>'+
+        '</div>';
+    }).join('');
+  }
+  if(listEl){
+    listEl.innerHTML=results.map(function(r){
+      var nm=String(r.acc.name||'');
+      var safe=nm.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+      var safeId=r.acc.id;
+      var openBal=parseFloat(r.acc.opening_balance)||0;
+      return'<div class="item-card" id="bk-acc-card-'+safeId+'">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer" onclick="openBankAccount(\''+safe+'\')">'+
+        '<div><div style="font-weight:700">'+esc(nm)+'</div>'+
+        (r.acc.note?'<div style="font-size:11px;color:#7a8fa6">'+esc(r.acc.note)+'</div>':'')+
+        '</div>'+
+        '<div style="text-align:right">'+
+        '<div style="font-weight:900;font-size:15px;color:'+(r.bal>=0?'#1e7a4f':'#c8382a')+'">'+fmt(r.bal)+'</div>'+
+        '<div style="font-size:10px;color:#7a8fa6">'+(r.date?esc(r.date):'opening')+' ›</div>'+
+        '</div></div>'+
+        '<div style="margin-top:6px;text-align:right">'+
+        '<button type="button" class="btn-sm btn-grey" style="font-size:10px;padding:2px 8px" onclick="event.stopPropagation();adjustBankOpeningInline('+safeId+','+openBal+')">⚙️ Adjust Opening Balance</button>'+
+        '</div>'+
+        '</div>';
+    }).join('');
+  }
+}
 function loadBankAccountCards(){
   sbGetQ('bank_accounts','order=name.asc').then(function(accounts){
     accounts=_asRows(accounts);
+    _bankAccounts=accounts;
     var cardEl=document.getElementById('bankAccountCards');
     var listEl=document.getElementById('bankAccountList');
     if(!accounts.length){
@@ -5656,49 +5697,47 @@ function loadBankAccountCards(){
         '</div>';
       return;
     }
+    // 1) Show accounts immediately (opening balance) — never wait on transactions
+    var instant=accounts.map(function(a){
+      return {acc:a, bal:parseFloat(a.opening_balance)||0, date:null, computed:true};
+    });
+    _renderBankAccountResults(instant, cardEl, listEl);
+
+    // 2) Enrich balances from transactions (best-effort)
     Promise.all(accounts.map(function(a){
-      return sbGetQ('bank_transactions','account_name=eq.'+encodeURIComponent(a.name)+'&order=date.desc,id.desc')
+      return sbGetQ('bank_transactions','account_name=eq.'+encodeURIComponent(a.name)+'&order=date.desc,id.desc&limit=500')
         .then(function(rows){
-          // Use last balance_after if available, else compute from opening_balance + credits - debits
-          var lastWithBal=rows.find(function(r){return r.balance_after!=null;});
+          rows=_asRows(rows);
+          var lastWithBal=null;
+          for(var i=0;i<rows.length;i++){ if(rows[i].balance_after!=null){ lastWithBal=rows[i]; break; } }
           var bal;
           if(lastWithBal){
             bal=parseFloat(lastWithBal.balance_after);
           } else if(rows.length){
-            var credits=rows.filter(function(r){return r.type==='credit';}).reduce(function(s,r){return s+(parseFloat(r.amount)||0);},0);
-            var debits=rows.filter(function(r){return r.type!=='credit';}).reduce(function(s,r){return s+(parseFloat(r.amount)||0);},0);
+            var credits=0, debits=0;
+            rows.forEach(function(r){
+              var amt=parseFloat(r.amount)||0;
+              if(r.type==='credit') credits+=amt; else debits+=amt;
+            });
             bal=(parseFloat(a.opening_balance)||0)+credits-debits;
           } else {
             bal=parseFloat(a.opening_balance)||0;
           }
-          var lastDate=rows.length?rows[0].date:null;
-          return{acc:a,bal:bal,date:lastDate,computed:!lastWithBal};
+          return {acc:a, bal:bal, date:rows.length?rows[0].date:null, computed:!lastWithBal};
+        })
+        .catch(function(){
+          return {acc:a, bal:parseFloat(a.opening_balance)||0, date:null, computed:true};
         });
     })).then(function(results){
-      if(cardEl) cardEl.innerHTML=results.map(function(r){
-        return'<div class="card" style="flex:none;min-width:160px;background:linear-gradient(135deg,#1e5a2a,#2d8a40);border:none;margin:0;cursor:pointer" onclick="openBankAccount(\''+r.acc.name.replace(/'/g,"\\'")+'\')">'+
-          '<div style="color:#a5d6a7;font-size:9px;font-weight:700;letter-spacing:1px">'+r.acc.name.toUpperCase()+'</div>'+
-          '<div style="color:#fff;font-size:22px;font-weight:900;margin:4px 0">'+fmt(r.bal)+'</div>'+
-          '<div style="color:#a5d6a7;font-size:10px">'+(r.date?'as of '+r.date:'opening balance')+(r.computed?' (calc)':'')+'</div>'+
-          '</div>';
-      }).join('');
-      if(listEl) listEl.innerHTML=results.map(function(r){
-        var safeId=r.acc.id;
-        return'<div class="item-card" id="bk-acc-card-'+safeId+'">'+
-          '<div style="display:flex;justify-content:space-between;align-items:center" onclick="openBankAccount(\''+r.acc.name.replace(/'/g,"\\'")+'\')">'+
-          '<div><div style="font-weight:700">'+r.acc.name+'</div>'+
-          (r.acc.note?'<div style="font-size:11px;color:#7a8fa6">'+r.acc.note+'</div>':'')+
-          '</div>'+
-          '<div style="text-align:right">'+
-          '<div style="font-weight:900;font-size:15px;color:'+(r.bal>=0?'#1e7a4f':'#c8382a')+'">'+fmt(r.bal)+'</div>'+
-          '<div style="font-size:10px;color:#7a8fa6">'+(r.date?r.date:'')+' ›</div>'+
-          '</div></div>'+
-          '<div style="margin-top:6px;text-align:right">'+
-          '<button class="btn-sm btn-grey" style="font-size:10px;padding:2px 8px" onclick="adjustBankOpeningInline('+safeId+','+r.acc.opening_balance+')">⚙️ Adjust Opening Balance</button>'+
-          '</div>'+
-          '</div>';
-      }).join('');
+      _renderBankAccountResults(results, cardEl, listEl);
+    }).catch(function(err){
+      console.error('loadBankAccountCards enrich failed', err);
+      // keep instant render
     });
+  }).catch(function(err){
+    console.error('loadBankAccountCards failed', err);
+    var listEl=document.getElementById('bankAccountList');
+    if(listEl) listEl.innerHTML='<div class="empty">Could not load accounts</div>';
   });
 }
 function openBankAccount(name){
@@ -5870,26 +5909,18 @@ function _saveBankAccountPayload(name, opening, accountNo, note, msgId, onOk){
   if(accountNo!=null && String(accountNo).trim()!=='') body.account_no=String(accountNo).trim();
   if(note!=null && String(note).trim()!=='') body.note=String(note).trim();
   sbPost('bank_accounts', body).then(function(r){
-    if(r.ok){
+    // 409 Conflict = name already exists — treat as success and show list
+    var isConflict = r && (r.status===409 || /duplicate|unique|conflict/i.test(String(r.error||'')));
+    if(r.ok || isConflict){
       if(typeof onOk==='function') onOk(r);
+      if(msgId) showMsg(msgId, isConflict ? ('Account "'+name+'" already exists — showing list') : 'Account added ✓', isConflict?'in':'ok');
       return loadBankAccounts().then(function(){
-        var found=(_bankAccounts||[]).some(function(a){ return String(a.name).toLowerCase()===name.toLowerCase(); });
-        if(found){
-          if(msgId) showMsg(msgId,'Account added ✓','ok');
-          setTimeout(function(){ showBankTab('accounts'); }, 150);
-        } else {
-          // Insert reported OK but SELECT returned nothing → almost always RLS
-          if(msgId) showMsg(msgId,
-            'Saved but list is empty — enable SELECT policy on bank_accounts for anon/authenticated in Supabase RLS',
-            'er');
-          console.error('bank_accounts insert ok but not visible on fetch. Check RLS policies.', r);
-        }
+        setTimeout(function(){ showBankTab('accounts'); loadBankAccountCards(); }, 100);
       });
-    } else {
-      var err=(r&&r.error)?r.error:'Error (name may already exist / RLS / missing column)';
-      if(msgId) showMsg(msgId, err, 'er');
-      console.error('saveBankAccount failed', r);
     }
+    var err=(r&&r.error)?r.error:'Error (name may already exist / RLS / missing column)';
+    if(msgId) showMsg(msgId, err, 'er');
+    console.error('saveBankAccount failed', r);
   });
 }
 function saveBankAccount(){
@@ -8088,12 +8119,16 @@ function processChat(raw){
     var bname=titleCase(m[1].trim()); var opening=parseNum(m[2]);
     askConfirm('Add bank account <b>'+bname+'</b> opening balance <b>'+fmt(opening)+'</b>?', function(){
       sbPost('bank_accounts',{name:bname,opening_balance:opening,active:true}).then(function(r){
+        var isConflict=r&&(r.status===409||/duplicate|unique|conflict/i.test(String(r.error||'')));
         if(r.ok){
-          botMsg('✅ Bank account <b>'+bname+'</b> added! Open Bank tab to see it.','ok');
-          try{ loadBankAccounts(); showTab('bank'); }catch(e){}
+          botMsg('✅ Bank account <b>'+bname+'</b> added!','ok');
+        } else if(isConflict){
+          botMsg('ℹ️ <b>'+bname+'</b> already exists — opening Bank list.','ok');
         } else {
           botMsg('❌ Could not add account: '+(r.error||'check table/RLS')+'.','er');
+          return;
         }
+        try{ loadBankAccounts(); window._finBankSubTab='accounts'; showTab('bank'); setTimeout(function(){loadBankAccountCards();},150); }catch(e){}
       });
     });
     return;
@@ -8102,12 +8137,16 @@ function processChat(raw){
     var bname=titleCase(m[1].trim());
     askConfirm('Add bank account <b>'+bname+'</b> with ₹0 opening balance?', function(){
       sbPost('bank_accounts',{name:bname,opening_balance:0,active:true}).then(function(r){
+        var isConflict=r&&(r.status===409||/duplicate|unique|conflict/i.test(String(r.error||'')));
         if(r.ok){
-          botMsg('✅ Bank account <b>'+bname+'</b> added! Open Bank tab to see it.','ok');
-          try{ loadBankAccounts(); showTab('bank'); }catch(e){}
+          botMsg('✅ Bank account <b>'+bname+'</b> added!','ok');
+        } else if(isConflict){
+          botMsg('ℹ️ <b>'+bname+'</b> already exists — opening Bank list.','ok');
         } else {
           botMsg('❌ Could not add account: '+(r.error||'check table/RLS')+'.','er');
+          return;
         }
+        try{ loadBankAccounts(); window._finBankSubTab='accounts'; showTab('bank'); setTimeout(function(){loadBankAccountCards();},150); }catch(e){}
       });
     });
     return;
