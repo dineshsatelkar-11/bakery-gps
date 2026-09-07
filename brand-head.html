@@ -111,10 +111,26 @@
         .shop-search-wrap{flex:1;display:flex;align-items:center;gap:7px;background:#fff;border:1.5px solid #c8e6c9;border-radius:10px;padding:0 10px}
         .shop-search-wrap input{width:100%;border:none;outline:none;padding:9px 0;font-size:12px;font-family:-apple-system,sans-serif;background:transparent;color:#1e1611}
         .shop-count{font-size:10px;color:#78909c;font-family:monospace;margin:0 2px 8px}
-        .shop-card{background:#fff;border:1.5px solid #e8eaf6;border-radius:14px;padding:12px;margin-bottom:8px}
-        .shop-actions{display:flex;gap:6px;margin-top:9px}
-        .shop-action{flex:1;border:1.5px solid #c8e6c9;background:#f7fff7;color:#2e7d32;border-radius:9px;padding:8px 5px;font-size:11px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif}
-        .shop-action.secondary{border-color:#bbdefb;background:#f5fbff;color:#1565c0}
+        .shop-card{background:#fff;border:1.5px solid #e2e8f0;border-radius:16px;padding:14px;margin-bottom:10px;box-shadow:0 2px 10px rgba(15,23,42,.04)}
+        .shop-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+        .shop-action{flex:1;min-width:90px;border:1.5px solid #e2e8f0;background:#f8fafc;color:#0f172a;border-radius:10px;padding:10px 8px;font-size:11px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif}
+        .shop-action.secondary{border-color:#bfdbfe;background:#eff6ff;color:#1d4ed8}
+        .shop-action.call{border-color:#a7f3d0;background:#ecfdf5;color:#047857}
+        .shop-action.pay{border-color:#99f6e4;background:#f0fdfa;color:#0f766e}
+        .shop-dues{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+        .shop-due-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 6px;text-align:center}
+        .shop-due-box .n{font-size:12px;font-weight:900;font-family:monospace;color:#0f172a}
+        .shop-due-box .l{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-top:2px;letter-spacing:.3px}
+        .shop-due-box.challan .n{color:#7a4800}
+        .shop-due-box.draft .n{color:#616161}
+        .shop-due-box.inv .n{color:#c8382a}
+        .inv-split{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
+        .inv-split-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 6px;text-align:center}
+        .inv-split-box .n{font-size:12px;font-weight:900;font-family:monospace}
+        .inv-split-box .l{font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase;margin-top:2px}
+        .inv-badge.challan{background:#fff8e1;color:#7a4800}
+        .inv-badge.draft{background:#f5f5f5;color:#616161}
+        .inv-badge.invoice{background:#fde8e8;color:#c8382a}
         .shop-overlay{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:200;display:none;align-items:flex-end;justify-content:center;pointer-events:none}
         .shop-overlay.open{display:flex;pointer-events:auto}
         .shop-modal{width:min(520px,100%);max-height:88vh;overflow:auto;background:#fff;border-radius:20px 20px 0 0;padding:14px}
@@ -357,8 +373,16 @@
         .inv-line{font-size:12px;color:#546e7a;margin-top:10px;padding-top:10px;border-top:1px solid #f0e8dc;line-height:1.5}
         .inv-doc-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 0;border-bottom:1px solid #f5f0ea}
         .inv-doc-row:last-child{border-bottom:none}
-        .inv-preview-btn{border:none;background:#4a2f14;color:#fff;border-radius:10px;padding:8px 12px;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0}
+        .inv-preview-btn{border:none;background:#1e293b;color:#fff;border-radius:10px;padding:8px 12px;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0}
         .inv-preview-btn:active{opacity:.9}
+        .inv-pay-btn{border:none;background:#0f766e;color:#fff;border-radius:10px;padding:8px 12px;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0}
+        .inv-pay-btn:active{opacity:.9}
+        .inv-pay-btn.secondary{background:#fff;color:#0f766e;border:1.5px solid #99f6e4}
+        .inv-doc-actions{display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}
+        .bps-mode{border:1.5px solid #e2e8f0;background:#fff;color:#475569;border-radius:20px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit}
+        .bps-mode.on{border-color:#0f766e;background:#f0fdfa;color:#0f766e;box-shadow:0 0 0 2px rgba(15,118,110,.12)}
+        .inv-card .inv-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+        .inv-card .inv-actions button{flex:1;min-width:120px;padding:11px 12px;border-radius:12px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;border:none}
         #brandInvPreview{display:none;position:fixed;inset:0;z-index:420;background:rgba(15,23,42,.5);align-items:flex-end;justify-content:center;pointer-events:none}
         #brandInvPreview.open{display:flex;pointer-events:auto}
         #brandInvPreview .bip-card{background:var(--surface);width:100%;max-width:520px;max-height:88vh;border-radius:18px 18px 0 0;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 -8px 32px rgba(15,23,42,.2)}
@@ -419,7 +443,7 @@
 <div class="tabs brand-top-tabs">
     <button class="tab on" id="tb-today"  onclick="showTab('today')">📊 Today</button>
     <button class="tab"    id="tb-orders" onclick="showTab('orders')">📋 Orders</button>
-    <button class="tab"    id="tb-invoices" onclick="showTab('invoices')">💰 Invoices</button>
+    <button class="tab"    id="tb-invoices" onclick="showTab('invoices')">💰 Payments</button>
     <button class="tab"    id="tb-track"  onclick="showTab('track')">📍 Track</button>
     <button class="tab"    id="tb-shop"   onclick="showTab('shop')">🏪 Shop</button>
     <button class="tab"    id="tb-settings" onclick="showTab('settings')">⚙️ Settings</button>
@@ -429,7 +453,7 @@
   <div class="brand-bottom-nav-inner">
     <button type="button" class="bbnav-item on" id="bbnav-today" onclick="showTab('today')"><span class="bbnav-ico">📊</span><span class="bbnav-lbl">Today</span></button>
     <button type="button" class="bbnav-item" id="bbnav-orders" onclick="showTab('orders')"><span class="bbnav-ico">📋</span><span class="bbnav-lbl">Orders</span></button>
-    <button type="button" class="bbnav-item" id="bbnav-invoices" onclick="showTab('invoices')"><span class="bbnav-ico">💰</span><span class="bbnav-lbl">Invoices</span></button>
+    <button type="button" class="bbnav-item" id="bbnav-invoices" onclick="showTab('invoices')"><span class="bbnav-ico">💰</span><span class="bbnav-lbl">Payments</span></button>
     <button type="button" class="bbnav-item" id="bbnav-track" onclick="showTab('track')"><span class="bbnav-ico">📍</span><span class="bbnav-lbl">Track</span></button>
     <button type="button" class="bbnav-item" id="bbnav-shop" onclick="showTab('shop')"><span class="bbnav-ico">🏪</span><span class="bbnav-lbl">Shops</span></button>
     <button type="button" class="bbnav-item" id="bbnav-settings" onclick="showTab('settings')"><span class="bbnav-ico">⚙️</span><span class="bbnav-lbl">More</span></button>
@@ -471,41 +495,99 @@
 
 
 
-<!-- ══════════════════ INVOICES TAB ══════════════════ -->
+<!-- ══════════════════ PAYMENTS TAB ══════════════════ -->
 <div class="page" id="pg-invoices">
-    <div class="card" style="margin-bottom:12px;border-color:#e8dfd2">
-      <div style="font-size:15px;font-weight:900;color:#4a2f14;margin-bottom:4px">Shop invoices</div>
-      <div style="font-size:12px;color:#8a7a6a;line-height:1.45;margin-bottom:12px">Balances for shops under your brand. Tap <b>Preview</b> for line items &amp; totals.</div>
-      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
-        <div style="flex:1;min-width:120px">
-          <div class="lbl">Search</div>
-          <input id="inv-search" type="search" placeholder="Shop name / mobile…" oninput="renderInvoiceList()" style="width:100%;padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:13px;background:#faf8f5">
+    <div class="card" style="margin-bottom:12px;border-color:#e8dfd2;padding:14px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px">
+        <div style="min-width:0">
+          <div style="font-size:15px;font-weight:900;color:#0f172a;letter-spacing:-.2px">Payments</div>
+          <div style="font-size:12px;color:#64748b;line-height:1.45;margin-top:3px">Record cash / UPI / bank for your brand shops. Stored on the same invoices as HQ admin.</div>
         </div>
-        <div>
-          <div class="lbl">Filter</div>
-          <select id="inv-filter" onchange="renderInvoiceList()" style="padding:10px 12px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:12px;font-weight:700;background:#fff">
-            <option value="unpaid">Unpaid</option>
-            <option value="all">All with invoice</option>
-            <option value="paid">Paid (7 days)</option>
-          </select>
-        </div>
-        <button class="refresh-btn" onclick="loadInvoices()">🔄</button>
+        <button class="refresh-btn" onclick="loadInvoices()" title="Refresh">🔄</button>
       </div>
-      <div id="inv-summary" style="margin-top:12px;font-size:13px;font-weight:800;color:#4a2f14"></div>
+      <div id="inv-stats" class="stat-grid" style="margin:10px 0 12px;grid-template-columns:repeat(3,1fr)"></div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">
+        <input id="inv-search" type="search" placeholder="Search shop / mobile / invoice…" oninput="renderInvoiceList()" style="flex:1;min-width:140px;padding:11px 12px;border:1.5px solid #e2e8f0;border-radius:12px;font-size:13px;background:#fff;outline:none">
+      </div>
+      <div class="history-filter-bar" style="margin:0 0 4px" id="inv-filter-chips">
+        <button type="button" class="history-chip on" data-inv-fil="unpaid" onclick="setInvFilter('unpaid')">Unpaid</button>
+        <button type="button" class="history-chip" data-inv-fil="all" onclick="setInvFilter('all')">All invoices</button>
+        <button type="button" class="history-chip" data-inv-fil="paid" onclick="setInvFilter('paid')">Paid (7d)</button>
+      </div>
+      <select id="inv-filter" onchange="renderInvoiceList()" style="display:none">
+        <option value="unpaid" selected>Unpaid</option>
+        <option value="all">All with invoice</option>
+        <option value="paid">Paid (7 days)</option>
+      </select>
+      <div id="inv-summary" style="margin-top:10px;font-size:12px;font-weight:700;color:#475569;font-family:monospace"></div>
+      <div id="inv-pay-msg" style="display:none;margin-top:8px" class="msg ok"></div>
     </div>
-    <div id="inv-list"><div class="card"><div class="empty-msg">Open this tab to load invoices…</div></div></div>
+    <div id="inv-list"><div class="card"><div class="empty-msg">Open this tab to load payments…</div></div></div>
+</div>
+
+<!-- Brand record payment sheet -->
+<div id="brandPaySheet" class="shop-overlay" style="display:none" onclick="if(event.target===this)closeBrandPaySheet()">
+  <div class="shop-modal" style="max-height:min(92vh,640px)" onclick="event.stopPropagation()">
+    <div class="shop-modal-head">
+      <div>
+        <div class="shop-modal-title" id="bpsTitle">Record payment</div>
+        <div class="shop-modal-sub" id="bpsSub">Store payment against invoice(s)</div>
+      </div>
+      <button type="button" class="modal-close" onclick="closeBrandPaySheet()">×</button>
+    </div>
+    <div id="bpsBody" style="padding-bottom:4px">
+      <div style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:14px;padding:12px;margin-bottom:12px">
+        <div style="font-size:11px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.4px">Amount due</div>
+        <div id="bpsAmt" style="font-size:28px;font-weight:900;font-family:monospace;color:#0f172a;margin-top:4px">₹0</div>
+        <div id="bpsDocs" style="font-size:11px;color:#64748b;margin-top:6px;line-height:1.45"></div>
+      </div>
+      <div class="lbl">Payment mode</div>
+      <div id="bpsModeRow" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+        <button type="button" class="bps-mode on" data-mode="upi" onclick="setBrandPayMode('upi')">UPI</button>
+        <button type="button" class="bps-mode" data-mode="cash" onclick="setBrandPayMode('cash')">Cash</button>
+        <button type="button" class="bps-mode" data-mode="bank" onclick="setBrandPayMode('bank')">Bank</button>
+        <button type="button" class="bps-mode" data-mode="other" onclick="setBrandPayMode('other')">Other</button>
+      </div>
+      <div class="lbl">UTR / reference (optional)</div>
+      <input type="text" id="bpsRef" placeholder="e.g. UPI ref / cheque no." autocomplete="off" style="width:100%;padding:11px 12px;border:1.5px solid #e2e8f0;border-radius:12px;font-size:14px;margin-bottom:12px;background:#fff">
+      <div class="lbl">Note (optional)</div>
+      <input type="text" id="bpsNote" placeholder="Who paid / partial note" autocomplete="off" style="width:100%;padding:11px 12px;border:1.5px solid #e2e8f0;border-radius:12px;font-size:14px;margin-bottom:14px;background:#fff">
+      <div id="bpsMsg" style="display:none;margin-bottom:10px" class="msg in"></div>
+      <button type="button" id="bpsSaveBtn" class="shop-save" style="background:#0f766e;margin-bottom:8px" onclick="confirmBrandPay()">✓ Save payment</button>
+      <button type="button" onclick="closeBrandPaySheet()" style="width:100%;padding:12px;border:1.5px solid #e2e8f0;border-radius:12px;background:#fff;color:#475569;font-size:13px;font-weight:800;cursor:pointer">Cancel</button>
+    </div>
+  </div>
 </div>
 
 <!-- ══════════════════ SHOP TAB ══════════════════ -->
 <div class="page" id="pg-shop">
-    <div class="shop-toolbar">
-        <div class="shop-search-wrap">
-            <span>🔎</span>
-            <input id="shop-search" type="search" placeholder="Search shop name or mobile…" oninput="renderShopList()">
+    <div class="card" style="margin-bottom:12px;padding:14px;border-color:#e2e8f0">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px">
+        <div>
+          <div style="font-size:15px;font-weight:900;color:#0f172a">Shops</div>
+          <div style="font-size:12px;color:#64748b;margin-top:2px">Brand locations — dues by challan / draft / invoice</div>
         </div>
         <button class="refresh-btn" onclick="refreshShopList()">🔄</button>
+      </div>
+      <div id="shop-stats" class="stat-grid" style="margin:0 0 12px;grid-template-columns:repeat(2,1fr)"></div>
+      <div class="shop-toolbar" style="margin-bottom:8px">
+        <div class="shop-search-wrap" style="border-color:#e2e8f0">
+            <span>🔎</span>
+            <input id="shop-search" type="search" placeholder="Search name, mobile, area, driver…" oninput="renderShopList()">
+        </div>
+      </div>
+      <div class="history-filter-bar" style="margin:0 0 6px" id="shop-filter-chips">
+        <button type="button" class="history-chip on" data-shop-fil="all" onclick="setShopFilter('all')">All</button>
+        <button type="button" class="history-chip" data-shop-fil="due" onclick="setShopFilter('due')">Has due</button>
+        <button type="button" class="history-chip" data-shop-fil="clear" onclick="setShopFilter('clear')">Clear</button>
+      </div>
+      <div class="history-filter-bar" style="margin:0 0 4px" id="shop-sort-chips">
+        <button type="button" class="history-chip on" data-shop-sort="name" onclick="setShopSort('name')">A–Z</button>
+        <button type="button" class="history-chip" data-shop-sort="due" onclick="setShopSort('due')">Due first</button>
+        <button type="button" class="history-chip" data-shop-sort="area" onclick="setShopSort('area')">By area</button>
+      </div>
+      <div id="shop-count" class="shop-count" style="margin:8px 0 0"></div>
     </div>
-    <div id="shop-count" class="shop-count"></div>
     <div id="shop-content">
         <div class="card"><div class="empty-msg">Loading…</div></div>
     </div>
@@ -708,19 +790,32 @@
           }).join('')
         : '<div style="font-size:12px;color:#8a7a6a;margin-bottom:10px">Line items not stored on this row. Totals below are from the invoice.</div>';
       function money(n){ return _invMoney(n); }
-      var totals = '<div style="background:#f9f6f1;border-radius:12px;padding:12px;border:1px solid #e8dfd2;margin-top:12px">';
+      var totals = '<div style="background:#f8fafc;border-radius:12px;padding:12px;border:1px solid #e2e8f0;margin-top:12px">';
       if (o.invoice_subtotal != null) totals += '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span>Taxable</span><b>'+money(o.invoice_subtotal)+'</b></div>';
       if (o.tax_cgst != null) totals += '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span>CGST</span><b>'+money(o.tax_cgst)+'</b></div>';
       if (o.tax_sgst != null) totals += '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span>SGST</span><b>'+money(o.tax_sgst)+'</b></div>';
       if (o.shipping_amount != null) totals += '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px"><span>Shipping</span><b>'+money(o.shipping_amount)+'</b></div>';
-      totals += '<div style="display:flex;justify-content:space-between;font-size:15px;font-weight:900;margin-top:8px;padding-top:8px;border-top:1.5px solid #e8dfd2;color:#4a2f14"><span>Total</span><span>'+money(total)+'</span></div>';
+      totals += '<div style="display:flex;justify-content:space-between;font-size:15px;font-weight:900;margin-top:8px;padding-top:8px;border-top:1.5px solid #e2e8f0;color:#0f172a"><span>Total</span><span>'+money(total)+'</span></div>';
       if (!paid) totals += '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:800;margin-top:6px;color:#c8382a"><span>Balance due</span><span>'+money(due)+'</span></div>';
-      else totals += '<div style="margin-top:6px;font-size:12px;font-weight:800;color:#1a5a38">Paid · Balance ₹0</div>';
+      else {
+        totals += '<div style="margin-top:6px;font-size:12px;font-weight:800;color:#1a5a38">Paid · Balance ₹0</div>';
+        if (o.payment_mode || o.payment_ref || o.paid_at) {
+          totals += '<div style="margin-top:8px;font-size:11px;color:#64748b;line-height:1.55;font-family:monospace">';
+          if (o.payment_mode) totals += 'Mode: <b style="color:#0f172a">'+esc(o.payment_mode)+'</b><br>';
+          if (o.payment_ref) totals += 'Ref: <b style="color:#0f172a">'+esc(o.payment_ref)+'</b><br>';
+          if (o.paid_by) totals += 'By: <b style="color:#0f172a">'+esc(o.paid_by)+'</b><br>';
+          if (o.paid_at) totals += 'At: '+esc(String(o.paid_at).slice(0,16).replace('T',' '));
+          totals += '</div>';
+        }
+      }
       totals += '</div>';
+      var payBtn = (!paid && due > 0.009)
+        ? '<button type="button" class="inv-pay-btn" style="width:100%;padding:12px;margin-top:12px;border-radius:12px;font-size:13px" onclick="closeBrandInvPreview();openBrandPaySheet([\''+String(o.id).replace(/'/g,'')+'\'])">💰 Record payment</button>'
+        : '';
       body.innerHTML =
-        '<div style="font-size:11px;color:#8a7a6a;margin-bottom:10px">Shop: <b style="color:#4a2f14">'+esc(o.shop_name||'')+'</b>'+
+        '<div style="font-size:11px;color:#8a7a6a;margin-bottom:10px">Shop: <b style="color:#0f172a">'+esc(o.shop_name||'')+'</b>'+
         (o.zoho_invoice_status ? ' · Zoho: '+esc(String(o.zoho_invoice_status)) : '')+'</div>' +
-        linesHtml + totals +
+        linesHtml + totals + payBtn +
         '<div style="font-size:10px;color:#8a7a6a;margin-top:12px;line-height:1.45">Summary from app data. Official tax invoice is in Zoho Books.</div>';
       sh.classList.add('open');
       sh.style.display = 'flex';
@@ -729,6 +824,154 @@
     window.openBrandInvPreview = openBrandInvPreview;
     window.closeBrandInvPreview = closeBrandInvPreview;
     window.toggleBrandNotif = toggleBrandNotif;
+
+    // ── Brand admin: record / store payment (same markInvoicePayment as HQ) ──
+    var _brandPayIds = [];
+    var _brandPayMode = 'upi';
+    function _brandPayDue(o){
+      var d = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
+      if (isNaN(d)) d = 0;
+      return d;
+    }
+    function _brandPayUnpaidDocs(list){
+      return (list || []).filter(function(o){
+        var st = String(o.payment_status || '').toLowerCase();
+        if (st === 'paid' || st === 'void') return false;
+        return _brandPayDue(o) > 0.009;
+      });
+    }
+    function setInvFilter(fil){
+      var sel = document.getElementById('inv-filter');
+      if (sel) sel.value = fil;
+      document.querySelectorAll('#inv-filter-chips .history-chip').forEach(function(btn){
+        btn.classList.toggle('on', btn.getAttribute('data-inv-fil') === fil);
+      });
+      renderInvoiceList();
+    }
+    window.setInvFilter = setInvFilter;
+    function setBrandPayMode(mode){
+      _brandPayMode = mode || 'upi';
+      document.querySelectorAll('#bpsModeRow .bps-mode').forEach(function(btn){
+        btn.classList.toggle('on', btn.getAttribute('data-mode') === _brandPayMode);
+      });
+    }
+    window.setBrandPayMode = setBrandPayMode;
+    function openBrandPaySheet(ids){
+      ids = (ids || []).map(String);
+      var docs = (_brandInvOrders || []).filter(function(o){ return ids.indexOf(String(o.id)) >= 0; });
+      docs = _brandPayUnpaidDocs(docs);
+      if (!docs.length) {
+        _brandPayToast('No unpaid amount on selected invoice(s).', false);
+        return;
+      }
+      _brandPayIds = docs.map(function(o){ return String(o.id); });
+      var total = docs.reduce(function(s,o){ return s + _brandPayDue(o); }, 0);
+      var shopName = docs[0].shop_name || '';
+      var amtEl = document.getElementById('bpsAmt');
+      var docsEl = document.getElementById('bpsDocs');
+      var title = document.getElementById('bpsTitle');
+      var sub = document.getElementById('bpsSub');
+      if (title) title.textContent = 'Record payment';
+      if (sub) sub.textContent = shopName + (docs.length > 1 ? (' · ' + docs.length + ' invoices') : '');
+      if (amtEl) amtEl.textContent = _invMoney(total);
+      if (docsEl) {
+        docsEl.innerHTML = docs.map(function(o){
+          return esc(o.zoho_invoice_number || ('#'+o.id)) + ' · ' + _invMoney(_brandPayDue(o));
+        }).join('<br>');
+      }
+      var ref = document.getElementById('bpsRef');
+      var note = document.getElementById('bpsNote');
+      if (ref) ref.value = '';
+      if (note) note.value = '';
+      setBrandPayMode('upi');
+      var msg = document.getElementById('bpsMsg');
+      if (msg) { msg.style.display = 'none'; msg.textContent = ''; }
+      var btn = document.getElementById('bpsSaveBtn');
+      if (btn) { btn.disabled = false; btn.textContent = '✓ Save payment'; }
+      var sh = document.getElementById('brandPaySheet');
+      if (sh) { sh.classList.add('open'); sh.style.display = 'flex'; }
+      document.body.classList.add('modal-open');
+    }
+    window.openBrandPaySheet = openBrandPaySheet;
+    function openBrandPaySheetForShop(shopId){
+      shopId = String(shopId || '');
+      var docs = (_brandInvOrders || []).filter(function(o){
+        return String(o.shop_id || o.customer_id || '') === shopId;
+      });
+      docs = _brandPayUnpaidDocs(docs);
+      if (!docs.length) {
+        _brandPayToast('No unpaid invoices for this shop.', false);
+        return;
+      }
+      openBrandPaySheet(docs.map(function(o){ return o.id; }));
+    }
+    window.openBrandPaySheetForShop = openBrandPaySheetForShop;
+    function closeBrandPaySheet(){
+      var sh = document.getElementById('brandPaySheet');
+      if (sh) { sh.classList.remove('open'); sh.style.display = 'none'; }
+      document.body.classList.remove('modal-open');
+      _brandPayIds = [];
+    }
+    window.closeBrandPaySheet = closeBrandPaySheet;
+    function _brandPayToast(t, ok){
+      var el = document.getElementById('inv-pay-msg');
+      if (!el) return;
+      el.style.display = 'block';
+      el.textContent = t;
+      el.className = 'msg ' + (ok === false ? 'er' : (ok ? 'ok' : 'in'));
+      if (ok) setTimeout(function(){ el.style.display = 'none'; }, 3500);
+    }
+    function confirmBrandPay(){
+      if (!_brandPayIds.length) return;
+      var docs = (_brandInvOrders || []).filter(function(o){ return _brandPayIds.indexOf(String(o.id)) >= 0; });
+      docs = _brandPayUnpaidDocs(docs);
+      if (!docs.length) {
+        closeBrandPaySheet();
+        return;
+      }
+      var mode = _brandPayMode || 'upi';
+      var ref = ((document.getElementById('bpsRef')||{}).value || '').trim();
+      var note = ((document.getElementById('bpsNote')||{}).value || '').trim();
+      if (note) ref = ref ? (ref + ' · ' + note) : note;
+      ref = ref.slice(0, 64);
+      var staff = (typeof staffName !== 'undefined' && staffName) ? staffName
+        : (sessionStorage.getItem('staffName') || localStorage.getItem('staffNamePersist') || 'Brand Admin');
+      var btn = document.getElementById('bpsSaveBtn');
+      var msg = document.getElementById('bpsMsg');
+      if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+      if (msg) { msg.style.display = 'block'; msg.className = 'msg in'; msg.textContent = 'Saving payment…'; }
+      var chain = Promise.resolve();
+      docs.forEach(function(o){
+        var due = _brandPayDue(o);
+        chain = chain.then(function(){
+          return apiPost({
+            action: 'markInvoicePayment',
+            id: o.id,
+            payment_status: 'paid',
+            balance_due: 0,
+            paid_amount: due,
+            payment_mode: mode,
+            payment_ref: ref,
+            paid_by: 'brand:' + String(staff).slice(0, 40)
+          }).then(function(res){
+            if (res && res.ok === false) throw new Error(res.error || 'Save failed');
+            return res;
+          });
+        });
+      });
+      chain.then(function(){
+        if (msg) { msg.className = 'msg ok'; msg.textContent = '✅ Payment saved'; }
+        _brandPayToast('Payment recorded for ' + docs.length + ' invoice(s).', true);
+        setTimeout(function(){
+          closeBrandPaySheet();
+          loadInvoices();
+        }, 450);
+      }).catch(function(e){
+        if (msg) { msg.className = 'msg er'; msg.textContent = '❌ ' + (e.message || e); }
+        if (btn) { btn.disabled = false; btn.textContent = '✓ Save payment'; }
+      });
+    }
+    window.confirmBrandPay = confirmBrandPay;
 
     // ── SETTINGS ──
     function renderSettingsProfile(){
@@ -817,6 +1060,45 @@
     var _shopList = [];
     var _shopHistory = { orders: [], deliveries: [] };
     var _historyMode = 'orders';
+    var _shopSort = 'name'; // name | due | area
+    var _shopFilter = 'all'; // all | due | clear
+    var _shopDuesMap = {}; // shop_id → { challan, draft, invoice, due, unpaid_n }
+
+    function setShopSort(s){
+      _shopSort = s || 'name';
+      document.querySelectorAll('#shop-sort-chips .history-chip').forEach(function(btn){
+        btn.classList.toggle('on', btn.getAttribute('data-shop-sort') === _shopSort);
+      });
+      renderShopList();
+    }
+    window.setShopSort = setShopSort;
+    function setShopFilter(f){
+      _shopFilter = f || 'all';
+      document.querySelectorAll('#shop-filter-chips .history-chip').forEach(function(btn){
+        btn.classList.toggle('on', btn.getAttribute('data-shop-fil') === _shopFilter);
+      });
+      renderShopList();
+    }
+    window.setShopFilter = setShopFilter;
+
+    function _brandIsChallan(o){
+      if (!o) return false;
+      var dt = String(o.zoho_doc_type || o.doc_type || '').toLowerCase().replace(/\s+/g, '_');
+      if (dt.indexOf('challan') >= 0 || dt === 'dc' || dt === 'deliverychallan') return true;
+      var num = String(o.zoho_invoice_number || '');
+      if (/^dc[-_]/i.test(num) || /challan/i.test(num)) return true;
+      return false;
+    }
+    function _brandIsDraft(o){
+      if (!o || _brandIsChallan(o)) return false;
+      var s = String(o.zoho_invoice_status || '').toLowerCase().replace(/\s+/g, '_');
+      return s === 'draft' || s === 'pending_approval';
+    }
+    function _brandDocKind(o){
+      if (_brandIsChallan(o)) return 'challan';
+      if (_brandIsDraft(o)) return 'draft';
+      return 'invoice';
+    }
 
     function loadShopList(){
       var el = document.getElementById('shop-content');
@@ -824,10 +1106,30 @@
       el.innerHTML = '<div class="card"><div class="empty-msg">Loading shops…</div></div>';
       Promise.all([
         api({action:'getShops'}),
-        loadBrandShops()
+        loadBrandShops(),
+        api({ action:'getCustomerOrders', limit: 800 }).catch(function(){ return []; })
       ]).then(function(res){
         var shops = Array.isArray(res[0]) ? res[0] : [];
         _shopList = shops.filter(function(s){ return inMyBrand(s); });
+        // Build dues map for brand shops (challan / draft / invoice)
+        var list = Array.isArray(res[2]) ? res[2] : [];
+        _shopDuesMap = {};
+        list.forEach(function(o){
+          if (!inMyBrand(o)) return;
+          var hasDoc = !!(o.zoho_invoice_id || o.zoho_invoice_number || o.invoice_total != null || o.balance_due != null);
+          if (!hasDoc) return;
+          var st = String(o.payment_status||'').toLowerCase();
+          if (st === 'paid' || st === 'void') return;
+          var due = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
+          if (isNaN(due) || due <= 0.009) return;
+          var id = sid(o);
+          if (!id) return;
+          if (!_shopDuesMap[id]) _shopDuesMap[id] = { challan:0, draft:0, invoice:0, due:0, unpaid_n:0 };
+          var kind = _brandDocKind(o);
+          _shopDuesMap[id][kind] += due;
+          _shopDuesMap[id].due += due;
+          _shopDuesMap[id].unpaid_n++;
+        });
         renderShopList();
       }).catch(function(){
         el.innerHTML = '<div class="card msg er">Failed to load shops.</div>';
@@ -842,40 +1144,106 @@
     function renderShopList(){
       var el = document.getElementById('shop-content');
       var countEl = document.getElementById('shop-count');
+      var statsEl = document.getElementById('shop-stats');
       if(!el) return;
       var q = ((document.getElementById('shop-search')||{}).value || '').trim().toLowerCase();
+      // Brand-wide dues totals (before search filter)
+      var allChallan = 0, allDraft = 0, allInv = 0, allDue = 0, shopsWithDue = 0;
+      (_shopList || []).forEach(function(s){
+        var d = _shopDuesMap[sid(s)] || { challan:0, draft:0, invoice:0, due:0 };
+        allChallan += d.challan || 0;
+        allDraft += d.draft || 0;
+        allInv += d.invoice || 0;
+        allDue += d.due || 0;
+        if ((d.due || 0) > 0.009) shopsWithDue++;
+      });
+      if (statsEl) {
+        statsEl.innerHTML =
+          '<div class="stat-box" style="cursor:default"><div class="stat-num" style="color:#c8382a;font-size:15px">'+_invMoney(allDue)+'</div><div class="stat-lbl">Total due</div></div>'+
+          '<div class="stat-box" style="cursor:default"><div class="stat-num" style="color:#0f766e">'+shopsWithDue+'</div><div class="stat-lbl">Shops due</div></div>'+
+          '<div class="stat-box" style="cursor:default"><div class="stat-num" style="color:#7a4800;font-size:13px">'+_invMoney(allChallan)+'</div><div class="stat-lbl">Challan</div></div>'+
+          '<div class="stat-box" style="cursor:default"><div class="stat-num" style="color:#616161;font-size:13px">'+_invMoney(allDraft)+'</div><div class="stat-lbl">Draft</div></div>'+
+          '<div class="stat-box" style="cursor:default;grid-column:1/-1"><div class="stat-num" style="color:#c8382a;font-size:14px">'+_invMoney(allInv)+'</div><div class="stat-lbl">Invoice unpaid</div></div>';
+        statsEl.style.gridTemplateColumns = 'repeat(2,1fr)';
+      }
       var shown = _shopList.filter(function(s){
+        var id = sid(s);
+        var dues = _shopDuesMap[id] || { due:0 };
+        if (_shopFilter === 'due' && !(dues.due > 0.009)) return false;
+        if (_shopFilter === 'clear' && dues.due > 0.009) return false;
         if(!q) return true;
-        return [s.name,s.mobile,s.shop_id,s.customer_id,s.area,s.address]
+        return [s.name,s.mobile,s.shop_id,s.customer_id,s.area,s.address,s.login_username,s.assigned_driver]
           .some(function(v){ return String(v||'').toLowerCase().indexOf(q) >= 0; });
       });
-      if(countEl) countEl.textContent = shown.length + ' shop' + (shown.length===1?'':'s') + (q ? ' found' : '') + ' · ' + (myBrand || 'brand');
+      var totalDue = shown.reduce(function(sum,s){
+        var d = _shopDuesMap[sid(s)];
+        return sum + (d ? d.due : 0);
+      }, 0);
+      if(countEl) {
+        countEl.textContent = shown.length + ' shop' + (shown.length===1?'':'s') +
+          (q ? ' found' : '') +
+          (totalDue > 0.009 ? (' · ' + _invMoney(totalDue) + ' due') : '') +
+          ' · ' + (myBrand || 'brand');
+      }
       if(!shown.length){
         el.innerHTML = '<div class="card"><div class="empty-msg">'+
-          (q ? 'No shops match your search.' : 'No shops found for this brand.')+'</div></div>';
+          (q || _shopFilter !== 'all' ? 'No shops match this filter.' : 'No shops found for this brand.')+'</div></div>';
         return;
       }
 
-      var html = '';
       shown = shown.slice().sort(function(a,b){
+        if (_shopSort === 'due') {
+          var da = (_shopDuesMap[sid(a)] && _shopDuesMap[sid(a)].due) || 0;
+          var db = (_shopDuesMap[sid(b)] && _shopDuesMap[sid(b)].due) || 0;
+          if (db !== da) return db - da;
+        }
+        if (_shopSort === 'area') {
+          var aa = String(a.area || a.address || '').toLowerCase();
+          var ab = String(b.area || b.address || '').toLowerCase();
+          if (aa !== ab) return aa.localeCompare(ab);
+        }
         return String(a.name||'').localeCompare(String(b.name||''), undefined, { sensitivity:'base' });
       });
+      var html = '';
       shown.forEach(function(s){
         var id = sid(s);
         var mobile = String(s.mobile||'').trim();
         var place = String(s.area || s.address || '').trim();
+        var driver = String(s.assigned_driver || '').trim();
+        var user = String(s.login_username || '').trim();
+        var dues = _shopDuesMap[id] || { challan:0, draft:0, invoice:0, due:0, unpaid_n:0 };
+        var callHref = mobile ? ('tel:' + mobile.replace(/\s+/g,'')) : '';
         html += '<div class="shop-card">';
         html += '<div class="shop-row-top">';
         html += '<div style="flex:1;min-width:0">';
-        html += '<div class="shop-name">'+esc(s.name||'Unnamed Shop')+'</div>';
-        if(mobile) html += '<div class="shop-meta">📞 '+esc(mobile)+'</div>';
+        html += '<div class="shop-name" style="font-size:15px;font-weight:900;color:#0f172a">'+esc(s.name||'Unnamed Shop')+'</div>';
+        if(mobile) html += '<div class="shop-meta" style="margin-top:3px">📞 '+esc(mobile)+'</div>';
         if(place) html += '<div class="shop-meta">📍 '+esc(place)+'</div>';
+        if(driver) html += '<div class="shop-meta">🚚 '+esc(driver)+'</div>';
+        if(user) html += '<div class="shop-meta">🔐 '+esc(user)+'</div>';
         html += '</div>';
-        html += '<span class="status-badge shop-brand">'+esc(s.brand||myBrand||'Brand')+'</span>';
+        html += '<div style="text-align:right;flex-shrink:0">';
+        html += '<span class="status-badge shop-brand" style="background:#f0fdfa;color:#0f766e;border:1px solid #99f6e4">'+esc(s.brand||myBrand||'Brand')+'</span>';
+        if (dues.due > 0.009) {
+          html += '<div style="margin-top:8px;font-size:15px;font-weight:900;font-family:monospace;color:#c8382a">'+_invMoney(dues.due)+'</div>';
+          html += '<div style="font-size:9px;font-weight:800;color:#64748b;text-transform:uppercase">total due</div>';
+        } else {
+          html += '<div style="margin-top:8px;font-size:11px;font-weight:800;color:#1a5a38">✓ Clear</div>';
+        }
+        html += '</div></div>';
+        // Always show complete amount breakdown
+        html += '<div class="shop-dues">';
+        html += '<div class="shop-due-box challan"><div class="n">'+_invMoney(dues.challan)+'</div><div class="l">Challan</div></div>';
+        html += '<div class="shop-due-box draft"><div class="n">'+_invMoney(dues.draft)+'</div><div class="l">Draft</div></div>';
+        html += '<div class="shop-due-box inv"><div class="n">'+_invMoney(dues.invoice)+'</div><div class="l">Invoice</div></div>';
         html += '</div>';
         html += '<div class="shop-actions">';
+        if (callHref) html += '<a class="shop-action call" href="'+escAttr(callHref)+'" style="text-decoration:none;text-align:center">📞 Call</a>';
         html += '<button type="button" class="shop-action" onclick="openShopEdit(\''+escAttr(id)+'\')">✏️ Edit</button>';
         html += '<button type="button" class="shop-action secondary" onclick="openShopHistory(\''+escAttr(id)+'\')">🕘 History</button>';
+        if (dues.due > 0.009) {
+          html += '<button type="button" class="shop-action pay" onclick="showTab(\'invoices\');setTimeout(function(){openBrandPaySheetForShop(\''+escAttr(id)+'\')},200)">💰 Pay</button>';
+        }
         html += '</div></div>';
       });
       el.innerHTML = html;
@@ -1166,33 +1534,42 @@
             var hasInv = !!(o.zoho_invoice_id || o.zoho_invoice_number || o.invoice_total != null || o.balance_due != null);
             return hasInv;
           });
-          // Aggregate by shop
+          // Aggregate by shop — split challan / draft / invoice
           var map = {};
+          function emptyShopRow(id, name){
+            return {
+              shop_id: id,
+              shop_name: name || id,
+              due: 0,
+              unpaid_n: 0,
+              paid_n: 0,
+              challan_due: 0,
+              draft_due: 0,
+              invoice_due: 0,
+              challan_n: 0,
+              draft_n: 0,
+              invoice_n: 0,
+              docs: []
+            };
+          }
           _brandInvOrders.forEach(function(o){
             var id = sid(o);
             if (!id) return;
-            if (!map[id]) {
-              map[id] = {
-                shop_id: id,
-                shop_name: o.shop_name || id,
-                due: 0,
-                unpaid_n: 0,
-                paid_n: 0,
-                docs: []
-              };
-            }
+            if (!map[id]) map[id] = emptyShopRow(id, o.shop_name || id);
             var st = String(o.payment_status||'').toLowerCase();
             var due = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
             if (isNaN(due)) due = 0;
             var paid = st === 'paid' || due <= 0.009;
-            // For paid filter we only care about recent paid
-            var created = o.created_at ? new Date(o.created_at).getTime() : 0;
             map[id].docs.push(o);
             if (paid) {
               map[id].paid_n++;
-            } else {
+            } else if (due > 0.009) {
               map[id].due += due;
               map[id].unpaid_n++;
+              var kind = _brandDocKind(o);
+              if (kind === 'challan') { map[id].challan_due += due; map[id].challan_n++; }
+              else if (kind === 'draft') { map[id].draft_due += due; map[id].draft_n++; }
+              else { map[id].invoice_due += due; map[id].invoice_n++; }
             }
           });
           // Enrich names from shop list
@@ -1201,17 +1578,14 @@
             if (map[id]) {
               map[id].shop_name = s.name || map[id].shop_name;
               map[id].mobile = s.mobile || '';
+              map[id].driver = s.assigned_driver || '';
+              map[id].area = s.area || s.address || '';
             } else {
-              // shop with no invoice yet — still list under "all" if needed
-              map[id] = map[id] || {
-                shop_id: id,
-                shop_name: s.name || id,
-                mobile: s.mobile || '',
-                due: 0,
-                unpaid_n: 0,
-                paid_n: 0,
-                docs: []
-              };
+              var row = emptyShopRow(id, s.name || id);
+              row.mobile = s.mobile || '';
+              row.driver = s.assigned_driver || '';
+              row.area = s.area || s.address || '';
+              map[id] = row;
             }
           });
           _brandInvRows = Object.keys(map).map(function(k){ return map[k]; });
@@ -1225,13 +1599,32 @@
     function renderInvoiceList(){
       var el = document.getElementById('inv-list');
       var sum = document.getElementById('inv-summary');
+      var stats = document.getElementById('inv-stats');
       if (!el) return;
       var q = ((document.getElementById('inv-search')||{}).value||'').trim().toLowerCase();
       var fil = ((document.getElementById('inv-filter')||{}).value||'unpaid');
       var weekAgo = Date.now() - 7*24*60*60*1000;
-      var rows = (_brandInvRows || []).filter(function(r){
+      // Global stats (all brand shops, not only filtered)
+      var allRows = _brandInvRows || [];
+      var shopsDue = allRows.filter(function(r){ return (r.due||0) > 0.009; }).length;
+      var totalDueAll = allRows.reduce(function(s,r){ return s + (r.due||0); }, 0);
+      var unpaidDocs = 0;
+      allRows.forEach(function(r){ unpaidDocs += (r.unpaid_n||0); });
+      var challanAll = allRows.reduce(function(s,r){ return s + (r.challan_due||0); }, 0);
+      var draftAll = allRows.reduce(function(s,r){ return s + (r.draft_due||0); }, 0);
+      var invAll = allRows.reduce(function(s,r){ return s + (r.invoice_due||0); }, 0);
+      if (stats) {
+        stats.innerHTML =
+          '<div class="stat-box" style="cursor:default"><div class="stat-num" style="color:#c8382a;font-size:15px">'+_invMoney(totalDueAll)+'</div><div class="stat-lbl">Total due</div></div>'+
+          '<div class="stat-box" style="cursor:default"><div class="stat-num" style="color:#7a4800;font-size:14px">'+_invMoney(challanAll)+'</div><div class="stat-lbl">Challan</div></div>'+
+          '<div class="stat-box" style="cursor:default"><div class="stat-num" style="color:#616161;font-size:14px">'+_invMoney(draftAll)+'</div><div class="stat-lbl">Draft</div></div>'+
+          '<div class="stat-box" style="cursor:default"><div class="stat-num" style="color:#c8382a;font-size:14px">'+_invMoney(invAll)+'</div><div class="stat-lbl">Invoice</div></div>';
+        stats.style.gridTemplateColumns = 'repeat(2,1fr)';
+      }
+      var rows = allRows.filter(function(r){
         if (q) {
-          var blob = [r.shop_name, r.mobile, r.shop_id].join(' ').toLowerCase();
+          var docBlob = (r.docs||[]).map(function(o){ return o.zoho_invoice_number||''; }).join(' ');
+          var blob = [r.shop_name, r.mobile, r.shop_id, docBlob].join(' ').toLowerCase();
           if (blob.indexOf(q) < 0) return false;
         }
         if (fil === 'unpaid') return (r.due||0) > 0.009 || r.unpaid_n > 0;
@@ -1240,16 +1633,15 @@
             var st = String(o.payment_status||'').toLowerCase();
             var due = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
             var paid = st === 'paid' || (!(isNaN(due)) && due <= 0.009);
-            var created = o.created_at ? new Date(o.created_at).getTime() : 0;
+            var created = o.created_at ? new Date(o.created_at).getTime() : (o.paid_at ? new Date(o.paid_at).getTime() : 0);
             return paid && created >= weekAgo;
           });
         }
-        // all with invoice
         return (r.docs||[]).length > 0;
       });
       var totalDue = rows.reduce(function(s,r){ return s + (r.due||0); }, 0);
       if (sum) {
-        sum.textContent = rows.length + ' shops · Total due ' + _invMoney(totalDue);
+        sum.textContent = rows.length + ' shop'+(rows.length===1?'':'s')+' · showing ' + _invMoney(totalDue) + (fil==='unpaid'?' due':'');
       }
       if (!rows.length) {
         el.innerHTML = '<div class="card"><div class="empty-msg">No matching invoices for this brand.</div></div>';
@@ -1259,12 +1651,12 @@
         var statusBits = '';
         if (r.unpaid_n) statusBits += '<span class="inv-badge unpaid">'+r.unpaid_n+' unpaid</span>';
         if (r.paid_n) statusBits += '<span class="inv-badge paid">'+r.paid_n+' paid</span>';
-        // Latest doc status
         var latest = (r.docs||[]).slice().sort(function(a,b){
           return String(b.created_at||'').localeCompare(String(a.created_at||''));
         })[0];
         var zst = latest && latest.zoho_invoice_status ? String(latest.zoho_invoice_status) : '';
         if (zst) statusBits += '<span class="inv-badge zoho">Zoho: '+esc(zst)+'</span>';
+        var sidSafe = String(r.shop_id||'').replace(/'/g,'');
         var lines = (r.docs||[]).filter(function(o){
           if (fil === 'unpaid') {
             var st = String(o.payment_status||'').toLowerCase();
@@ -1276,11 +1668,11 @@
             var st2 = String(o.payment_status||'').toLowerCase();
             var due2 = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
             var paid = st2 === 'paid' || (!(isNaN(due2)) && due2 <= 0.009);
-            var created = o.created_at ? new Date(o.created_at).getTime() : 0;
+            var created = o.created_at ? new Date(o.created_at).getTime() : (o.paid_at ? new Date(o.paid_at).getTime() : 0);
             return paid && created >= weekAgo;
           }
           return true;
-        }).slice(0, 8).map(function(o){
+        }).slice(0, 12).map(function(o){
           var st = String(o.payment_status||'unpaid').toLowerCase();
           var due = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
           if (isNaN(due)) due = 0;
@@ -1288,27 +1680,49 @@
           var z = o.zoho_invoice_status ? String(o.zoho_invoice_status) : '';
           var paid = st === 'paid' || due <= 0.009;
           var oid = String(o.id).replace(/'/g,'');
+          var kind = _brandDocKind(o);
+          var kindBadge = kind === 'challan'
+            ? '<span class="inv-badge" style="background:#fff8e1;color:#7a4800">Challan</span>'
+            : (kind === 'draft'
+              ? '<span class="inv-badge" style="background:#f5f5f5;color:#616161">Draft</span>'
+              : '<span class="inv-badge" style="background:#fde8e8;color:#c8382a">Invoice</span>');
           return '<div class="inv-doc-row">'+
             '<div style="min-width:0;flex:1">'+
-              '<div style="font-size:12px;font-weight:800;color:#4a2f14">'+esc(doc)+'</div>'+
-              '<div style="font-size:10px;color:#8a7a6a;margin-top:2px">'+esc(o.delivery_date||'—')+(z?' · Zoho: '+esc(z):'')+' · <b style="color:'+(paid?'#1a5a38':'#c8382a')+'">'+_invMoney(due)+'</b></div>'+
+              '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+
+                '<div style="font-size:12px;font-weight:800;color:#0f172a">'+esc(doc)+'</div>'+kindBadge+
+              '</div>'+
+              '<div style="font-size:10px;color:#64748b;margin-top:2px">'+esc(o.delivery_date||'—')+(z?' · '+esc(z):'')+' · <b style="color:'+(paid?'#1a5a38':'#c8382a')+'">'+_invMoney(due)+'</b></div>'+
             '</div>'+
-            '<button type="button" class="inv-preview-btn" onclick="openBrandInvPreview(\''+oid+'\')">📄 Preview</button>'+
+            '<div class="inv-doc-actions">'+
+              '<button type="button" class="inv-preview-btn" onclick="openBrandInvPreview(\''+oid+'\')">View</button>'+
+              (!paid ? '<button type="button" class="inv-pay-btn" onclick="openBrandPaySheet([\''+oid+'\'])">Pay</button>' : '')+
+            '</div>'+
           '</div>';
         }).join('');
+        var splitHtml = (r.due > 0.009)
+          ? ('<div class="shop-dues" style="margin-top:10px">'+
+              '<div class="shop-due-box challan"><div class="n">'+_invMoney(r.challan_due||0)+'</div><div class="l">Challan'+(r.challan_n?(' · '+r.challan_n):'')+'</div></div>'+
+              '<div class="shop-due-box draft"><div class="n">'+_invMoney(r.draft_due||0)+'</div><div class="l">Draft'+(r.draft_n?(' · '+r.draft_n):'')+'</div></div>'+
+              '<div class="shop-due-box inv"><div class="n">'+_invMoney(r.invoice_due||0)+'</div><div class="l">Invoice'+(r.invoice_n?(' · '+r.invoice_n):'')+'</div></div>'+
+            '</div>')
+          : '';
         return '<div class="inv-card">'+
           '<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">'+
             '<div style="min-width:0;flex:1">'+
               '<div class="inv-name">'+esc(r.shop_name)+'</div>'+
-              '<div class="inv-meta">'+(r.mobile?esc(r.mobile):esc(r.shop_id||''))+'</div>'+
+              '<div class="inv-meta">'+(r.mobile?esc(r.mobile):esc(r.shop_id||''))+(r.driver?(' · 🚚 '+esc(r.driver)):'')+'</div>'+
               '<div style="margin-top:6px">'+statusBits+'</div>'+
             '</div>'+
             '<div style="text-align:right;flex-shrink:0">'+
               '<div class="inv-due'+(r.due>0.009?'':' zero')+'">'+_invMoney(r.due)+'</div>'+
-              '<div style="font-size:10px;color:#8a7a6a;font-weight:700">due</div>'+
+              '<div style="font-size:10px;color:#64748b;font-weight:700">total due</div>'+
             '</div>'+
           '</div>'+
+          splitHtml+
           (lines ? '<div class="inv-line">'+lines+'</div>' : '<div class="inv-line" style="color:#8a7a6a">No documents in this filter.</div>')+
+          (r.due > 0.009
+            ? '<div class="inv-actions"><button type="button" class="inv-pay-btn" style="background:#0f766e" onclick="openBrandPaySheetForShop(\''+sidSafe+'\')">💰 Record payment · '+_invMoney(r.due)+'</button></div>'
+            : '')+
         '</div>';
       }).join('');
     }
