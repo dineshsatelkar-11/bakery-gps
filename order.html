@@ -642,9 +642,10 @@
                 Scan the <b>QR</b> or use <b>Copy UPI ID</b> / <b>Download QR</b>. Pay in your UPI app, then <b>send request</b> with screenshot. Admin confirms from the bank (usually within <b>~24 working hours</b>).
             </div>
             <div id="pay-total-card" style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:14px;margin-bottom:12px;text-align:center">
-                <div style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase">Total overdue</div>
+                <div style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase">Total due (draft + unpaid)</div>
                 <div id="pay-total-amt" style="font-size:28px;font-weight:800;font-family:monospace;color:#c8382a;margin:4px 0">₹0</div>
                 <div id="pay-total-sub" style="font-size:11px;color:#64748b">0 invoice(s)</div>
+                <div id="pay-total-split" style="font-size:11px;color:#64748b;margin-top:6px;line-height:1.45;display:none"></div>
             </div>
             <div id="payUpiBox" style="display:none;background:#fff;border:1.5px solid #c8e6c9;border-radius:14px;padding:14px;margin-bottom:12px;text-align:center">
                 <div style="font-size:12px;font-weight:800;color:#1a5a38;margin-bottom:8px">Pay with UPI</div>
@@ -673,8 +674,8 @@
                 </div>
             </div>
             <div id="pay-msg" style="display:none;padding:10px;border-radius:8px;font-size:12px;font-weight:700;margin-bottom:10px"></div>
-            <div style="font-size:11px;font-weight:800;color:#64748b;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Unpaid invoices</div>
-            <div id="pay-list"><div style="text-align:center;color:#64748b;padding:20px;font-size:12px">Open this tab to load unpaid documents…</div></div>
+            <div style="font-size:11px;font-weight:800;color:#64748b;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Draft &amp; unpaid invoices</div>
+            <div id="pay-list"><div style="text-align:center;color:#64748b;padding:20px;font-size:12px">Open this tab to load invoices…</div></div>
         </div>
     </div>
     <!-- Pay request sheet -->
@@ -3672,20 +3673,19 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
         if(!Array.isArray(list)) list = [];
         // If shop_id filter returns nothing, try broader fetch and match local ids
         var finish = function(rows){
-          // Pay tab: unpaid SENT invoices only (hide draft + challans — draft amounts change next day)
+          // Pay tab: unpaid + draft invoices (challans still hidden)
           _payInvoices = (rows||[]).filter(function(o){
             var st = String(o.payment_status||'').toLowerCase();
             if(st === 'void' || st === 'stale' || st === 'paid') return false;
             var hasDoc = !!(o.zoho_invoice_id || o.zoho_invoice_number || o.invoice_total != null || o.balance_due != null);
             if(!hasDoc) return false;
             if(_payIsChallanDoc(o)) return false;
-            if(_payIsDraftInvoice(o)) return false;
             var due = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
             if(!isNaN(due) && due <= 0.009) return false;
             return true;
           });
           if(!_payInvoices.length){
-            document.getElementById('pay-list').innerHTML = '<div style="text-align:center;color:#64748b;padding:20px;font-size:12px;line-height:1.5">No unpaid invoices.<br>Drafts and delivery challans are hidden — only sent invoices appear here.</div>';
+            document.getElementById('pay-list').innerHTML = '<div style="text-align:center;color:#64748b;padding:20px;font-size:12px;line-height:1.5">No unpaid or draft invoices.<br>Delivery challans are hidden. Paid docs are in <b>History</b>.</div>';
           }
           renderPaymentsTab();
         };
@@ -3706,7 +3706,7 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
       if(/^dc[-_]/i.test(num) || /challan/i.test(num)) return true;
       return false;
     }
-    /** Draft / not-yet-sent — hide from customer Pay (amounts may change next day) */
+    /** Draft / not-yet-sent invoice (shown on customer Pay with Draft badge) */
     function _payIsDraftInvoice(o){
       var s = String(o.zoho_invoice_status || '').toLowerCase().replace(/\s+/g, '_');
       return s === 'draft' || s === 'pending_approval';
@@ -3716,11 +3716,28 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
         var st = String(o.payment_status||'').toLowerCase();
         if(st === 'paid' || st === 'void' || st === 'stale') return false;
         if(_payIsChallanDoc(o)) return false;
-        if(_payIsDraftInvoice(o)) return false;
         var due = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
         if(!isNaN(due) && due <= 0.009) return false;
         return true;
       });
+    }
+    function _payDraftList(){
+      return _payUnpaidList().filter(function(o){ return _payIsDraftInvoice(o); });
+    }
+    function _paySentUnpaidList(){
+      return _payUnpaidList().filter(function(o){ return !_payIsDraftInvoice(o); });
+    }
+    function _payDraftTotal(){
+      return _payDraftList().reduce(function(s,o){
+        var d = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
+        return s + (isNaN(d)?0:d);
+      }, 0);
+    }
+    function _paySentUnpaidTotal(){
+      return _paySentUnpaidList().reduce(function(s,o){
+        var d = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
+        return s + (isNaN(d)?0:d);
+      }, 0);
     }
     function _payDocLabel(o){
       if(_payIsChallanDoc(o)) return 'Challan';
@@ -4566,14 +4583,38 @@ function _payUnpaidTotal(){
     function renderPaymentsTab(){
       var unpaid = _payUnpaidList();
       var total = _payUnpaidTotal();
+      var draftRows = _payDraftList();
+      var sentRows = _paySentUnpaidList();
+      var draftTot = _payDraftTotal();
+      var sentTot = _paySentUnpaidTotal();
       var amtEl = document.getElementById('pay-total-amt');
       var subEl = document.getElementById('pay-total-sub');
+      var splitEl = document.getElementById('pay-total-split');
       var btn = document.getElementById('payRequestBtn');
       if(amtEl){
         amtEl.textContent = '₹' + total.toLocaleString('en-IN', {maximumFractionDigits:2});
         amtEl.style.color = total > 0 ? '#c8382a' : '#1a5a38';
       }
-      if(subEl) subEl.textContent = unpaid.length + ' unpaid invoice(s) · sent only';
+      if(subEl){
+        var parts = [];
+        if(sentRows.length) parts.push(sentRows.length + ' unpaid');
+        if(draftRows.length) parts.push(draftRows.length + ' draft');
+        subEl.textContent = parts.length
+          ? (parts.join(' · ') + ' · total ₹' + total.toLocaleString('en-IN', {maximumFractionDigits:0}))
+          : 'No open invoices';
+      }
+      if(splitEl){
+        if(total > 0 && (draftRows.length || sentRows.length)){
+          splitEl.style.display = 'block';
+          splitEl.innerHTML =
+            (sentRows.length ? ('Unpaid: <b style="color:#c8382a">₹' + sentTot.toLocaleString('en-IN',{maximumFractionDigits:2}) + '</b>') : 'Unpaid: ₹0') +
+            ' · ' +
+            (draftRows.length ? ('Draft: <b style="color:#616161">₹' + draftTot.toLocaleString('en-IN',{maximumFractionDigits:2}) + '</b>') : 'Draft: ₹0');
+        } else {
+          splitEl.style.display = 'none';
+          splitEl.innerHTML = '';
+        }
+      }
       if(btn){
         btn.disabled = total <= 0;
         btn.style.opacity = total > 0 ? '1' : '0.5';
@@ -4607,19 +4648,25 @@ function _payUnpaidTotal(){
 
       var unpaidRows = _payUnpaidList();
       if(!unpaidRows.length){
-        document.getElementById('pay-list').innerHTML = '<div style="text-align:center;color:#64748b;padding:20px;font-size:12px;line-height:1.5">No unpaid invoices.<br>Drafts &amp; challans are hidden. Paid docs are in <b>History</b>.</div>';
+        document.getElementById('pay-list').innerHTML = '<div style="text-align:center;color:#64748b;padding:20px;font-size:12px;line-height:1.5">No unpaid or draft invoices.<br>Delivery challans are hidden. Paid docs are in <b>History</b>.</div>';
         try { renderPayUpiBox(); } catch(e){}
         return;
       }
-      // Unpaid sent invoices only
+      // Draft + unpaid invoices (challans still hidden)
       document.getElementById('pay-list').innerHTML = unpaidRows.map(function(o){
         var due = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
         if(isNaN(due)) due = 0;
         var claim = !!o.customer_claimed_paid;
+        var isDraft = _payIsDraftInvoice(o);
         var docType = _payDocLabel(o);
-        var badge = claim
-          ? '<span style="background:#e3f2fd;color:#1565c0;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">Request sent</span>'
-          : '<span style="background:#fde8e8;color:#c8382a;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">Unpaid</span>';
+        var badge = '';
+        if(isDraft){
+          badge = '<span style="background:#f5f5f5;color:#616161;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">Draft</span>';
+        } else if(claim){
+          badge = '<span style="background:#e3f2fd;color:#1565c0;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">Request sent</span>';
+        } else {
+          badge = '<span style="background:#fde8e8;color:#c8382a;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">Unpaid</span>';
+        }
         badge += ' <span style="background:#f1f5f9;color:#1e293b;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:800">'+esc(docType)+'</span>';
         var zst = o.zoho_invoice_status ? (' · Zoho: ' + esc(String(o.zoho_invoice_status))) : '';
         var taxLine = '';
@@ -4637,13 +4684,18 @@ function _payUnpaidTotal(){
         } else if(o.payment_ref){
           proofLine = '<div style="font-size:10px;color:#64748b;margin-top:6px">UTR: '+esc(o.payment_ref)+'</div>';
         }
+        var draftNote = isDraft
+          ? '<div style="margin-top:6px;font-size:10px;color:#757575;line-height:1.4">Draft — amount may update when the invoice is sent.</div>'
+          : '';
         var oid = String(o.id).replace(/'/g,'');
-        return '<div style="background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:12px;margin-bottom:8px">'+
+        var borderCol = isDraft ? '#e0e0e0' : '#e2e8f0';
+        return '<div style="background:#fff;border:1.5px solid '+borderCol+';border-radius:12px;padding:12px;margin-bottom:8px'+(isDraft?';opacity:.95':'')+'">'+
             '<div style="display:flex;justify-content:space-between;gap:8px;align-items:center">'+
               '<div style="font-size:13px;font-weight:800">'+(o.zoho_invoice_number||('Order #'+o.id))+'</div><div style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end">'+badge+'</div>'+
             '</div>'+
-            '<div style="font-size:11px;color:#64748b;font-family:monospace;margin-top:4px">'+esc(o.delivery_date||'')+zst+' · <b style="color:#c8382a">₹'+due.toLocaleString('en-IN',{maximumFractionDigits:2})+'</b></div>'+
+            '<div style="font-size:11px;color:#64748b;font-family:monospace;margin-top:4px">'+esc(o.delivery_date||'')+zst+' · <b style="color:'+(isDraft?'#616161':'#c8382a')+'">₹'+due.toLocaleString('en-IN',{maximumFractionDigits:2})+'</b></div>'+
             taxLine+
+            draftNote+
             proofLine+
             '<button type="button" onclick="openInvoicePreview(\''+oid+'\')" style="width:100%;margin-top:10px;background:#1e293b;color:#fff;border:none;border-radius:12px;padding:12px 14px;font-size:13px;font-weight:800;cursor:pointer;font-family:-apple-system,sans-serif;-webkit-tap-highlight-color:transparent">📄 View '+esc(docType)+' preview</button>'+
           '</div>';
