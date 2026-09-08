@@ -215,6 +215,7 @@
     <button type="button" data-tab="pay-open" onclick="payShowTab('pay-open')">💸 Unpaid</button>
     <button type="button" data-tab="pay-requests" onclick="payShowTab('pay-requests')">📨 Pay requests</button>
     <button type="button" data-tab="pay-paid" onclick="payShowTab('pay-paid')">✅ Paid</button>
+    <button type="button" data-tab="pay-blocked" onclick="payShowTab('pay-blocked')">🔒 Blocked</button>
     <button type="button" data-tab="pay-link" onclick="payShowTab('pay-link')">🔗 Link Zoho</button>
     <button type="button" data-tab="pay-zoho-list" onclick="payShowTab('pay-zoho-list')" style="border:1px dashed #c8864a">🔎 TEMP Zoho list</button>
   </div>
@@ -398,6 +399,27 @@
     <div id="pay-paid-range-hint" style="margin-top:10px;font-size:11px;font-family:monospace;color:#8a7a6a"></div>
   </div>
   <div id="pay-desk-list-paid"><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Open tab to load…</div></div>
+</div>
+
+
+<div class="page" id="pg-pay-blocked">
+  <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">🔒 Blocked customers</div>
+  <div style="font-size:11px;color:#8a7a6a;margin-bottom:10px;line-height:1.45">
+    Shops blocked from placing orders (manual block from Unpaid). They stay here after they pay, so you can <b>unblock</b> anytime.
+  </div>
+  <div class="card" style="padding:12px;margin-bottom:10px">
+    <div id="pay-blocked-global" style="font-size:12px;font-weight:700;color:#e65100;margin-bottom:10px"></div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">
+      <input type="search" id="pay-blocked-q" placeholder="Search shop name / id…" oninput="renderBlockedShopsList()"
+        style="flex:1;min-width:160px;padding:9px 10px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:13px;background:#fff">
+      <button type="button" class="btn-sm btn-grey" style="padding:10px 12px" onclick="loadBlockedShopsTab()">↻ Refresh</button>
+      <button type="button" class="btn-sm" style="padding:10px 12px;background:#2e7d32;color:#fff;font-weight:800" onclick="payDeskUnblockSelectedFromTab()">Unblock selected</button>
+      <button type="button" class="btn-sm" style="padding:10px 12px;background:#c8382a;color:#fff;font-weight:800" onclick="payDeskUnblockAllBlocked()">Unblock all</button>
+    </div>
+    <div id="pay-blocked-hint" style="font-size:11px;font-family:monospace;color:#8a7a6a"></div>
+  </div>
+  <div id="pay-desk-msg-blocked" style="display:none;margin-bottom:8px;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:700"></div>
+  <div id="pay-blocked-list"><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Open tab to load…</div></div>
 </div>
 
 <div class="page" id="pg-pay-link">
@@ -5009,6 +5031,200 @@ function payDeskLoadBlockSettings() {
         }).catch(function(e){ _payDeskMsg('Failed: '+(e.message||e), false); });
     }
 
+    function _blockedMsg(text, ok) {
+      var el = document.getElementById('pay-desk-msg-blocked');
+      if (!el) return;
+      el.style.display = text ? 'block' : 'none';
+      el.textContent = text || '';
+      if (ok === true) { el.style.background = '#e8f5e9'; el.style.color = '#1a5a38'; }
+      else if (ok === false) { el.style.background = '#fde8e8'; el.style.color = '#c8382a'; }
+      else { el.style.background = '#fff8e1'; el.style.color = '#7a4800'; }
+    }
+
+    function loadBlockedShopsTab() {
+      var listEl = document.getElementById('pay-blocked-list');
+      if (listEl) listEl.innerHTML = '<div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Loading…</div>';
+      return Promise.all([
+        api({action:'getSetting', key:'order_blocked_shops'}).catch(function(){return null;}),
+        api({action:'getSetting', key:'block_orders_when_unpaid'}).catch(function(){return null;}),
+        api({action:'getShops'}).catch(function(){return [];}),
+        // dues map from loaded payments desk if available; else fetch recent unpaid-ish orders
+        (window._payDeskRows && window._payDeskRows.length)
+          ? Promise.resolve(window._payDeskRows)
+          : api({action:'getCustomerOrders', limit: 400}).catch(function(){return [];})
+      ]).then(function(res){
+        function val(row){
+          if(!row) return '';
+          if(Array.isArray(row)) return row[0] ? String(row[0].value||'') : '';
+          return String(row.value||'');
+        }
+        var list = [];
+        try { list = JSON.parse(val(res[0])||'[]'); } catch(e){ list = []; }
+        if(!Array.isArray(list)) list = [];
+        list = list.map(function(x){ return String(x).trim(); }).filter(Boolean);
+        window._orderBlockedShops = list;
+
+        var globalOn = String(val(res[1])||'').toLowerCase() === 'true' || String(val(res[1])||'') === '1';
+        var gEl = document.getElementById('pay-blocked-global');
+        if (gEl) {
+          gEl.innerHTML = globalOn
+            ? '⚠ Global unpaid block is <b>ON</b> — any shop with unpaid balance is blocked (even if not listed below).'
+            : 'Global unpaid block is <b>OFF</b>. Only shops listed below are manually blocked.';
+        }
+
+        var shops = Array.isArray(res[2]) ? res[2] : [];
+        var orders = Array.isArray(res[3]) ? res[3] : [];
+        var nameById = {};
+        var mobileById = {};
+        shops.forEach(function(s){
+          var a = String(s.shop_id||'').trim();
+          var b = String(s.customer_id||'').trim();
+          var nm = s.name || s.shop_name || a || b;
+          if (a) { nameById[a] = nm; if (s.mobile) mobileById[a] = s.mobile; }
+          if (b) { nameById[b] = nm; if (s.mobile) mobileById[b] = s.mobile; }
+        });
+        orders.forEach(function(o){
+          var id = String(o.shop_id||'').trim();
+          if (id && !nameById[id] && o.shop_name) nameById[id] = o.shop_name;
+        });
+        // dues per blocked id
+        function unpaidDue(id){
+          var due = 0, n = 0;
+          orders.forEach(function(o){
+            if (String(o.shop_id||'') !== String(id)) return;
+            var st = String(o.payment_status||'').toLowerCase();
+            if (st === 'paid' || st === 'void') return;
+            var zs = String(o.zoho_invoice_status||'').toLowerCase().replace(/\s+/g,'_');
+            if (zs === 'draft' || zs === 'pending_approval') return;
+            var dt = String(o.zoho_doc_type||'').toLowerCase();
+            if (dt.indexOf('challan') >= 0) return;
+            var d = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
+            if (!isNaN(d) && d > 0.01) { due += d; n++; }
+          });
+          return { due: due, n: n };
+        }
+
+        // Collapse aliases: prefer showing unique shops by resolved name
+        window._blockedShopRows = list.map(function(id){
+          var dues = unpaidDue(id);
+          return {
+            id: id,
+            name: nameById[id] || id,
+            mobile: mobileById[id] || '',
+            due: dues.due,
+            unpaid_n: dues.n
+          };
+        }).sort(function(a,b){
+          return String(a.name).localeCompare(String(b.name), undefined, {sensitivity:'base'});
+        });
+        renderBlockedShopsList();
+      }).catch(function(e){
+        if (listEl) listEl.innerHTML = '<div class="card" style="color:#c8382a">Failed to load: '+(e && e.message ? e.message : e)+'</div>';
+      });
+    }
+    window.loadBlockedShopsTab = loadBlockedShopsTab;
+
+    function renderBlockedShopsList(){
+      var el = document.getElementById('pay-blocked-list');
+      var hint = document.getElementById('pay-blocked-hint');
+      if (!el) return;
+      var q = ((document.getElementById('pay-blocked-q')||{}).value||'').trim().toLowerCase();
+      var rows = (window._blockedShopRows || []).filter(function(r){
+        if (!q) return true;
+        return [r.name, r.id, r.mobile].join(' ').toLowerCase().indexOf(q) >= 0;
+      });
+      if (hint) hint.textContent = rows.length + ' blocked id(s)' + (q ? ' matching search' : '');
+      if (!rows.length) {
+        el.innerHTML = '<div class="card" style="text-align:center;padding:20px;color:#8a7a6a;font-size:12px">'
+          + (q ? 'No blocked shops match this search.' : 'No shops are manually blocked right now.')
+          + '</div>';
+        return;
+      }
+      el.innerHTML = rows.map(function(r){
+        var dueLbl = r.due > 0.01
+          ? ('<span style="color:#c8382a;font-weight:800">₹'+r.due.toLocaleString('en-IN',{maximumFractionDigits:0})+' due</span>'
+             + (r.unpaid_n ? (' · '+r.unpaid_n+' inv') : ''))
+          : '<span style="color:#1a5a38;font-weight:800">Clear (paid)</span>';
+        var idSafe = String(r.id).replace(/'/g, "\\'");
+        return '<div class="card" style="padding:12px;margin-bottom:8px">'
+          + '<div style="display:flex;align-items:flex-start;gap:10px">'
+          + '<label style="display:flex;align-items:center;gap:8px;flex:1;min-width:0;cursor:pointer">'
+          + '<input type="checkbox" class="pay-blocked-cb" data-id="'+String(r.id).replace(/"/g,'&quot;')+'" style="width:18px;height:18px;accent-color:#c8382a;flex-shrink:0">'
+          + '<div style="min-width:0">'
+          + '<div style="font-size:14px;font-weight:900;color:#4a2f14">'+esc(r.name)+'</div>'
+          + '<div style="font-size:11px;color:#8a7a6a;font-family:monospace;margin-top:2px">ID: '+esc(r.id)
+          + (r.mobile ? (' · '+esc(r.mobile)) : '')+'</div>'
+          + '<div style="font-size:12px;margin-top:4px">'+dueLbl+'</div>'
+          + '</div></label>'
+          + '<button type="button" class="btn-sm" style="background:#e8f5e9;color:#1a5a38;border:1px solid #a5d6a7;font-weight:800;flex-shrink:0;padding:8px 12px" onclick="payDeskUnblockOne(\''+idSafe+'\')">Unblock</button>'
+          + '</div></div>';
+      }).join('');
+    }
+    window.renderBlockedShopsList = renderBlockedShopsList;
+
+    function payDeskUnblockOne(id){
+      id = String(id||'').trim();
+      if (!id) return;
+      var cur = (window._orderBlockedShops || []).map(String);
+      var next = cur.filter(function(s){
+        return s !== id && s.toLowerCase() !== id.toLowerCase();
+      });
+      if (next.length === cur.length) {
+        _blockedMsg('This id was not in the blocked list.', false);
+        return;
+      }
+      apiPost({ action:'setSetting', key:'order_blocked_shops', value: JSON.stringify(next) })
+        .then(function(){
+          window._orderBlockedShops = next;
+          _blockedMsg('Unblocked '+id, true);
+          try { payDeskLoadBlockSettings(); } catch(e){}
+          loadBlockedShopsTab();
+        }).catch(function(e){ _blockedMsg('Failed: '+(e.message||e), false); });
+    }
+    window.payDeskUnblockOne = payDeskUnblockOne;
+
+    function payDeskUnblockSelectedFromTab(){
+      var ids = [];
+      document.querySelectorAll('.pay-blocked-cb:checked').forEach(function(cb){
+        var id = cb.getAttribute('data-id');
+        if (id && ids.indexOf(id)<0) ids.push(String(id));
+      });
+      if (!ids.length) {
+        _blockedMsg('Select shop(s) first.', false);
+        return;
+      }
+      var remove = {};
+      ids.forEach(function(id){ remove[id]=1; remove[id.toLowerCase()]=1; });
+      var cur = (window._orderBlockedShops || []).map(String);
+      var next = cur.filter(function(s){ return !remove[s] && !remove[String(s).toLowerCase()]; });
+      apiPost({ action:'setSetting', key:'order_blocked_shops', value: JSON.stringify(next) })
+        .then(function(){
+          window._orderBlockedShops = next;
+          _blockedMsg('Unblocked '+ids.length+' shop(s).', true);
+          try { payDeskLoadBlockSettings(); } catch(e){}
+          loadBlockedShopsTab();
+        }).catch(function(e){ _blockedMsg('Failed: '+(e.message||e), false); });
+    }
+    window.payDeskUnblockSelectedFromTab = payDeskUnblockSelectedFromTab;
+
+    function payDeskUnblockAllBlocked(){
+      var cur = window._orderBlockedShops || [];
+      if (!cur.length) {
+        _blockedMsg('Blocked list is already empty.', true);
+        return;
+      }
+      if (!confirm('Unblock all '+cur.length+' manually blocked shop id(s)?')) return;
+      apiPost({ action:'setSetting', key:'order_blocked_shops', value: '[]' })
+        .then(function(){
+          window._orderBlockedShops = [];
+          _blockedMsg('All manual blocks cleared.', true);
+          try { payDeskLoadBlockSettings(); } catch(e){}
+          loadBlockedShopsTab();
+        }).catch(function(e){ _blockedMsg('Failed: '+(e.message||e), false); });
+    }
+    window.payDeskUnblockAllBlocked = payDeskUnblockAllBlocked;
+
+
 
     /* ── Link Zoho document by number → customer order ── */
     function _payLinkMsg(text, ok) {
@@ -5763,7 +5979,7 @@ function payDeskLoadBlockSettings() {
 
 
       window.payShowTab = function(tab) {
-        ['pay-challan','pay-draft','pay-open','pay-requests','pay-paid','pay-link','pay-zoho-list'].forEach(function(t){
+        ['pay-challan','pay-draft','pay-open','pay-requests','pay-paid','pay-blocked','pay-link','pay-zoho-list'].forEach(function(t){
           var pg = document.getElementById('pg-' + t);
           if (pg) pg.classList.toggle('active', t === tab);
         });
@@ -5771,7 +5987,9 @@ function payDeskLoadBlockSettings() {
           b.classList.toggle('active', b.getAttribute('data-tab') === tab);
         });
         if (tab === 'pay-challan') loadChallanDesk();
-        else if (tab === 'pay-link') {
+        else if (tab === 'pay-blocked') {
+          try { loadBlockedShopsTab(); } catch (eB) {}
+        } else if (tab === 'pay-link') {
           /* link tool is on-demand — no bulk load */
         } else if (tab === 'pay-zoho-list') {
           try { zohoListFillShops(); } catch (e) {}
@@ -5806,6 +6024,7 @@ function payDeskLoadBlockSettings() {
       if (hash === 'draft' || hash === 'pay-draft') start = 'pay-draft';
       if (hash === 'requests' || hash === 'pay-requests') start = 'pay-requests';
       if (hash === 'paid' || hash === 'pay-paid') start = 'pay-paid';
+      if (hash === 'blocked' || hash === 'pay-blocked') start = 'pay-blocked';
       if (hash === 'link' || hash === 'pay-link') start = 'pay-link';
       if (hash === 'zoho-list' || hash === 'pay-zoho-list') start = 'pay-zoho-list';
 
