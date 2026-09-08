@@ -355,13 +355,47 @@
 </div>
 <div class="page" id="pg-pay-paid">
   <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">✅ Paid</div>
-  <div style="font-size:11px;color:#8a7a6a;margin-bottom:8px;line-height:1.45">By default: <b>last 7 days</b> only.</div>
-  <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px">
-    <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#4a2f14;cursor:pointer">
-      <input type="checkbox" id="pay-paid-all" onchange="window._payPaidShowAll=this.checked;renderPaymentsDesk()" style="width:16px;height:16px;accent-color:#2d7a4f">
-      Show all paid
-    </label>
-    <span id="pay-paid-range-hint" style="font-size:11px;font-family:monospace;color:#8a7a6a"></span>
+  <div style="font-size:11px;color:#8a7a6a;margin-bottom:10px;line-height:1.45">Filter by period, date, month, shop — or show all.</div>
+  <div class="card" style="padding:12px;margin-bottom:10px">
+    <div style="font-size:10px;font-weight:800;color:#8a7a6a;letter-spacing:.3px;margin-bottom:6px">PERIOD</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px" id="pay-paid-period-chips">
+      <button type="button" class="btn-sm pay-paid-chip on" data-period="7d" onclick="payPaidSetPeriod('7d')" style="padding:8px 12px;border-radius:20px;font-size:11px;font-weight:800;border:1.5px solid #a5d6a7;background:#e8f5e9;color:#1a5a38">Last 7 days</button>
+      <button type="button" class="btn-sm pay-paid-chip" data-period="today" onclick="payPaidSetPeriod('today')" style="padding:8px 12px;border-radius:20px;font-size:11px;font-weight:800;border:1.5px solid #e8dfd2;background:#fff;color:#4a2f14">Today</button>
+      <button type="button" class="btn-sm pay-paid-chip" data-period="month" onclick="payPaidSetPeriod('month')" style="padding:8px 12px;border-radius:20px;font-size:11px;font-weight:800;border:1.5px solid #e8dfd2;background:#fff;color:#4a2f14">This month</button>
+      <button type="button" class="btn-sm pay-paid-chip" data-period="lastmonth" onclick="payPaidSetPeriod('lastmonth')" style="padding:8px 12px;border-radius:20px;font-size:11px;font-weight:800;border:1.5px solid #e8dfd2;background:#fff;color:#4a2f14">Last month</button>
+      <button type="button" class="btn-sm pay-paid-chip" data-period="all" onclick="payPaidSetPeriod('all')" style="padding:8px 12px;border-radius:20px;font-size:11px;font-weight:800;border:1.5px solid #e8dfd2;background:#fff;color:#4a2f14">All</button>
+      <button type="button" class="btn-sm pay-paid-chip" data-period="custom" onclick="payPaidSetPeriod('custom')" style="padding:8px 12px;border-radius:20px;font-size:11px;font-weight:800;border:1.5px solid #e8dfd2;background:#fff;color:#4a2f14">Custom range</button>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:10px">
+      <div style="min-width:130px;flex:1">
+        <div style="font-size:10px;font-weight:800;color:#8a7a6a;margin-bottom:4px">SPECIFIC DATE</div>
+        <input type="date" id="pay-paid-date" onchange="payPaidOnSpecificDate()" style="width:100%;padding:9px 10px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:13px;font-weight:700;box-sizing:border-box;background:#fff">
+      </div>
+      <div style="min-width:120px;flex:1">
+        <div style="font-size:10px;font-weight:800;color:#8a7a6a;margin-bottom:4px">MONTH</div>
+        <input type="month" id="pay-paid-month" onchange="payPaidOnMonth()" style="width:100%;padding:9px 10px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:13px;font-weight:700;box-sizing:border-box;background:#fff">
+      </div>
+    </div>
+    <div id="pay-paid-range-row" style="display:none;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:10px">
+      <div style="min-width:130px;flex:1">
+        <div style="font-size:10px;font-weight:800;color:#8a7a6a;margin-bottom:4px">FROM</div>
+        <input type="date" id="pay-paid-from" onchange="payPaidSetPeriod('custom')" style="width:100%;padding:9px 10px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:13px;font-weight:700;box-sizing:border-box;background:#fff">
+      </div>
+      <div style="min-width:130px;flex:1">
+        <div style="font-size:10px;font-weight:800;color:#8a7a6a;margin-bottom:4px">TO</div>
+        <input type="date" id="pay-paid-to" onchange="payPaidSetPeriod('custom')" style="width:100%;padding:9px 10px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:13px;font-weight:700;box-sizing:border-box;background:#fff">
+      </div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
+      <div style="flex:1;min-width:160px">
+        <div style="font-size:10px;font-weight:800;color:#8a7a6a;margin-bottom:4px">SHOP</div>
+        <input type="search" id="pay-paid-shop" list="pay-paid-shop-list" placeholder="Shop name / id…" oninput="renderPaymentsDesk()" style="width:100%;padding:9px 10px;border:1.5px solid #e8dfd2;border-radius:10px;font-size:13px;box-sizing:border-box;background:#fff">
+        <datalist id="pay-paid-shop-list"></datalist>
+      </div>
+      <button type="button" class="btn-sm btn-grey" style="padding:10px 12px" onclick="payPaidClearFilters()">Clear filters</button>
+      <button type="button" class="btn-sm btn-grey" style="padding:10px 12px" onclick="loadPaymentsDesk('pay-paid')">↻ Refresh</button>
+    </div>
+    <div id="pay-paid-range-hint" style="margin-top:10px;font-size:11px;font-family:monospace;color:#8a7a6a"></div>
   </div>
   <div id="pay-desk-list-paid"><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Open tab to load…</div></div>
 </div>
@@ -2829,6 +2863,89 @@
       }
     }
 
+    window._payPaidPeriod = window._payPaidPeriod || '7d';
+
+    function payPaidPaintChips(){
+      var period = window._payPaidPeriod || '7d';
+      document.querySelectorAll('#pay-paid-period-chips .pay-paid-chip').forEach(function(btn){
+        var on = btn.getAttribute('data-period') === period;
+        btn.classList.toggle('on', on);
+        if (on) {
+          btn.style.background = '#e8f5e9';
+          btn.style.borderColor = '#a5d6a7';
+          btn.style.color = '#1a5a38';
+        } else {
+          btn.style.background = '#fff';
+          btn.style.borderColor = '#e8dfd2';
+          btn.style.color = '#4a2f14';
+        }
+      });
+      var row = document.getElementById('pay-paid-range-row');
+      if (row) row.style.display = period === 'custom' ? 'flex' : 'none';
+    }
+    function payPaidSetPeriod(p){
+      window._payPaidPeriod = p || '7d';
+      // Clear conflicting single-date/month when using presets
+      if (p === '7d' || p === 'today' || p === 'month' || p === 'lastmonth' || p === 'all') {
+        var dEl = document.getElementById('pay-paid-date');
+        var mEl = document.getElementById('pay-paid-month');
+        if (dEl) dEl.value = '';
+        if (mEl) mEl.value = '';
+      }
+      if (p === 'custom') {
+        var fromEl = document.getElementById('pay-paid-from');
+        var toEl = document.getElementById('pay-paid-to');
+        if (fromEl && !fromEl.value) {
+          var t = new Date();
+          t.setDate(t.getDate() - 30);
+          fromEl.value = t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0');
+        }
+        if (toEl && !toEl.value) {
+          var n = new Date();
+          toEl.value = n.getFullYear() + '-' + String(n.getMonth()+1).padStart(2,'0') + '-' + String(n.getDate()).padStart(2,'0');
+        }
+      }
+      payPaidPaintChips();
+      renderPaymentsDesk();
+    }
+    window.payPaidSetPeriod = payPaidSetPeriod;
+    function payPaidOnSpecificDate(){
+      var v = ((document.getElementById('pay-paid-date') || {}).value || '').trim();
+      if (!v) {
+        window._payPaidPeriod = '7d';
+      } else {
+        window._payPaidPeriod = 'date';
+        var mEl = document.getElementById('pay-paid-month');
+        if (mEl) mEl.value = '';
+      }
+      payPaidPaintChips();
+      renderPaymentsDesk();
+    }
+    window.payPaidOnSpecificDate = payPaidOnSpecificDate;
+    function payPaidOnMonth(){
+      var v = ((document.getElementById('pay-paid-month') || {}).value || '').trim();
+      if (!v) {
+        window._payPaidPeriod = '7d';
+      } else {
+        window._payPaidPeriod = 'monthpick';
+        var dEl = document.getElementById('pay-paid-date');
+        if (dEl) dEl.value = '';
+      }
+      payPaidPaintChips();
+      renderPaymentsDesk();
+    }
+    window.payPaidOnMonth = payPaidOnMonth;
+    function payPaidClearFilters(){
+      window._payPaidPeriod = '7d';
+      ['pay-paid-date','pay-paid-month','pay-paid-from','pay-paid-to','pay-paid-shop'].forEach(function(id){
+        var el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+      payPaidPaintChips();
+      renderPaymentsDesk();
+    }
+    window.payPaidClearFilters = payPaidClearFilters;
+
     function renderPaymentsDesk() {
       var q = ((document.getElementById('pay-desk-q') || {}).value || '').toLowerCase().trim();
       // Unpaid = sent invoices only; draft tab separate; challans on Challans tab
@@ -2836,29 +2953,123 @@
       var unpaid = _payDeskRows.filter(function(o){ return !_payIsChallan(o) && !_payIsPaid(o) && !_payIsVoid(o) && !_payIsDraft(o); });
       var claims = _payDeskRows.filter(function(o){ return o.customer_claimed_paid && !_payIsPaid(o) && !_payIsVoid(o) && !_payIsDraft(o); });
       var paidAll = _payDeskRows.filter(function(o){ return !_payIsChallan(o) && _payIsPaid(o); });
-      var showAllPaid = !!(window._payPaidShowAll || (document.getElementById('pay-paid-all') && document.getElementById('pay-paid-all').checked));
-      var paidCutoff = new Date();
-      paidCutoff.setHours(0,0,0,0);
-      paidCutoff.setDate(paidCutoff.getDate() - 6); // last 7 calendar days including today
       function _payPaidDate(o) {
         var raw = o.paid_at || o.payment_confirmed_at || o.updated_at || o.delivery_date || '';
         if (!raw) return null;
         var d = new Date(raw);
-        if (isNaN(d.getTime()) && String(raw).length >= 10) d = new Date(String(raw).slice(0,10));
+        if (isNaN(d.getTime()) && String(raw).length >= 10) d = new Date(String(raw).slice(0,10) + 'T12:00:00');
         return isNaN(d.getTime()) ? null : d;
       }
-      var paid = showAllPaid ? paidAll : paidAll.filter(function(o){
-        var d = _payPaidDate(o);
-        if (!d) return true; // keep undated paid in default view so they are not lost
-        var day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-        return day.getTime() >= paidCutoff.getTime();
+      function _payPaidYmd(d) {
+        if (!d) return '';
+        return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+      }
+      function _payPaidDayStart(d) {
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+      }
+      // Period / date / month / range filters
+      var period = window._payPaidPeriod || '7d';
+      var range = null; // { from: Date, to: Date } inclusive days, or null = no date filter
+      var now = new Date();
+      var todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      if (period === 'all') {
+        range = null;
+      } else if (period === 'today') {
+        range = { from: todayStart, to: todayStart };
+      } else if (period === '7d') {
+        var c7 = new Date(todayStart);
+        c7.setDate(c7.getDate() - 6);
+        range = { from: c7, to: todayStart };
+      } else if (period === 'month') {
+        range = {
+          from: new Date(now.getFullYear(), now.getMonth(), 1),
+          to: todayStart
+        };
+      } else if (period === 'lastmonth') {
+        range = {
+          from: new Date(now.getFullYear(), now.getMonth() - 1, 1),
+          to: new Date(now.getFullYear(), now.getMonth(), 0)
+        };
+      } else if (period === 'date') {
+        var one = ((document.getElementById('pay-paid-date') || {}).value || '').trim();
+        if (one) {
+          var od = new Date(one + 'T12:00:00');
+          if (!isNaN(od.getTime())) range = { from: od, to: od };
+        }
+      } else if (period === 'monthpick') {
+        var ym = ((document.getElementById('pay-paid-month') || {}).value || '').trim(); // YYYY-MM
+        if (/^\d{4}-\d{2}$/.test(ym)) {
+          var y = parseInt(ym.slice(0,4), 10);
+          var m = parseInt(ym.slice(5,7), 10) - 1;
+          range = {
+            from: new Date(y, m, 1),
+            to: new Date(y, m + 1, 0)
+          };
+        }
+      } else if (period === 'custom') {
+        var fromV = ((document.getElementById('pay-paid-from') || {}).value || '').trim();
+        var toV = ((document.getElementById('pay-paid-to') || {}).value || '').trim();
+        var fd = fromV ? new Date(fromV + 'T12:00:00') : null;
+        var td = toV ? new Date(toV + 'T12:00:00') : null;
+        if (fd && isNaN(fd.getTime())) fd = null;
+        if (td && isNaN(td.getTime())) td = null;
+        if (fd || td) {
+          range = {
+            from: fd || new Date(2000, 0, 1),
+            to: td || todayStart
+          };
+        }
+      }
+      var shopQ = ((document.getElementById('pay-paid-shop') || {}).value || '').toLowerCase().trim();
+      var paid = paidAll.filter(function(o){
+        if (range) {
+          var d = _payPaidDate(o);
+          if (!d) return period === 'all'; // undated only in All
+          var t = _payPaidDayStart(d);
+          if (t < _payPaidDayStart(range.from) || t > _payPaidDayStart(range.to)) return false;
+        }
+        if (shopQ) {
+          var hay = [o.shop_name, o.shop_id, o.customer_id].join(' ').toLowerCase();
+          if (hay.indexOf(shopQ) < 0) return false;
+        }
+        return true;
       });
+      // Populate shop datalist from paidAll
+      try {
+        var dl = document.getElementById('pay-paid-shop-list');
+        if (dl) {
+          var names = {};
+          paidAll.forEach(function(o){
+            var n = String(o.shop_name || o.shop_id || '').trim();
+            if (n) names[n] = 1;
+          });
+          dl.innerHTML = Object.keys(names).sort(function(a,b){ return a.localeCompare(b); }).map(function(n){
+            return '<option value="'+String(n).replace(/"/g,'&quot;')+'"></option>';
+          }).join('');
+        }
+      } catch (eDl) {}
       var due = unpaid.reduce(function(s,o){ return s + _payDue(o); }, 0);
       var paidHint = document.getElementById('pay-paid-range-hint');
       if (paidHint) {
-        paidHint.textContent = showAllPaid
-          ? ('Showing all · ' + paidAll.length + ' paid')
-          : ('Last 7 days · ' + paid.length + ' of ' + paidAll.length + ' paid');
+        var bits = [];
+        if (period === 'all') bits.push('All paid');
+        else if (period === 'today') bits.push('Today');
+        else if (period === '7d') bits.push('Last 7 days');
+        else if (period === 'month') bits.push('This month');
+        else if (period === 'lastmonth') bits.push('Last month');
+        else if (period === 'date') bits.push('Date ' + (((document.getElementById('pay-paid-date')||{}).value)||'—'));
+        else if (period === 'monthpick') bits.push('Month ' + (((document.getElementById('pay-paid-month')||{}).value)||'—'));
+        else if (period === 'custom') {
+          bits.push('Range ' + (((document.getElementById('pay-paid-from')||{}).value)||'…') + ' → ' + (((document.getElementById('pay-paid-to')||{}).value)||'…'));
+        }
+        if (shopQ) bits.push('shop “' + shopQ + '”');
+        bits.push(paid.length + ' of ' + paidAll.length + ' paid');
+        var sumPaid = paid.reduce(function(s,o){
+          var a = parseFloat(o.paid_amount != null ? o.paid_amount : (o.invoice_total != null ? o.invoice_total : 0));
+          return s + (isNaN(a) ? 0 : a);
+        }, 0);
+        if (sumPaid > 0) bits.push('₹' + sumPaid.toLocaleString('en-IN', { maximumFractionDigits: 0 }));
+        paidHint.textContent = bits.join(' · ');
       }
       var st = document.getElementById('pay-desk-stats');
       if (st) {
@@ -5550,6 +5761,9 @@ function payDeskLoadBlockSettings() {
         } else if (tab === 'pay-zoho-list') {
           try { zohoListFillShops(); } catch (e) {}
         } else {
+          if (tab === 'pay-paid') {
+            try { payPaidPaintChips(); } catch (eP) {}
+          }
           loadPaymentsDesk(tab);
           try { payDeskLoadBlockSettings(); payDeskLoadUpi(); } catch(e) {}
           /* requests: simple list only */
