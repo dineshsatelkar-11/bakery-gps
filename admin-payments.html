@@ -4964,6 +4964,10 @@ function payDeskLoadBlockSettings() {
     }
     function payDeskBlockSelected(block) {
       var shopIds = [];
+      function pushId(v){
+        v = String(v || '').trim();
+        if (v && shopIds.indexOf(v) < 0) shopIds.push(v);
+      }
       document.querySelectorAll('.pay-desk-shop-cb:checked').forEach(function(scb){
         var sid = scb.getAttribute('data-shop');
         if (!sid) {
@@ -4974,7 +4978,13 @@ function payDeskLoadBlockSettings() {
             if (o) sid = o.shop_id;
           }
         }
-        if (sid && shopIds.indexOf(String(sid)) < 0) shopIds.push(String(sid));
+        pushId(sid);
+        // Also store customer_id if present on any order for this shop (login may use either key)
+        if (sid) {
+          (_payDeskRows || []).forEach(function(r){
+            if (String(r.shop_id) === String(sid) && r.customer_id) pushId(r.customer_id);
+          });
+        }
       });
       if(!shopIds.length){
         _payDeskMsg('Select shop(s) first (parent checkbox) to block/unblock.', false);
@@ -4982,14 +4992,19 @@ function payDeskLoadBlockSettings() {
       }
       var cur = window._orderBlockedShops || [];
       if(!Array.isArray(cur)) cur = [];
+      cur = cur.map(function(s){ return String(s); });
       if(block){
         shopIds.forEach(function(s){ if(cur.indexOf(s)<0) cur.push(s); });
       } else {
-        cur = cur.filter(function(s){ return shopIds.indexOf(String(s))<0; });
+        var removeSet = {};
+        shopIds.forEach(function(s){ removeSet[s] = 1; removeSet[String(s).toLowerCase()] = 1; });
+        cur = cur.filter(function(s){
+          return !removeSet[String(s)] && !removeSet[String(s).toLowerCase()];
+        });
       }
       apiPost({ action:'setSetting', key:'order_blocked_shops', value: JSON.stringify(cur) })
         .then(function(){
-          _payDeskMsg((block?'Blocked ':'Unblocked ')+shopIds.length+' shop(s) from placing orders.', true);
+          _payDeskMsg((block?'Blocked ':'Unblocked ')+shopIds.length+' id(s) from placing orders.', true);
           payDeskLoadBlockSettings();
         }).catch(function(e){ _payDeskMsg('Failed: '+(e.message||e), false); });
     }

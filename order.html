@@ -2024,63 +2024,95 @@
 
     var _paymentHoldActive = false;
     var _paymentHoldMsg = '';
+    function _applyPaymentHoldUi(on){
+      var banner = document.getElementById('orderClosedBanner');
+      var pc = document.getElementById('productsCard');
+      var nc = document.getElementById('orderNoteCard');
+      var ob = document.getElementById('orderBar');
+      if (on && !_orderClosed) {
+        if (banner) {
+          banner.textContent = _paymentHoldMsg || '🔒 Ordering on hold due to unpaid invoices.';
+          banner.style.display = 'block';
+        }
+        if (pc) pc.style.display = 'none';
+        if (nc) nc.style.display = 'none';
+        if (ob) ob.style.display = 'none';
+      } else if (!on && !_orderClosed) {
+        // Only clear banner if it was our payment-hold message
+        if (banner && _paymentHoldMsg && banner.textContent === _paymentHoldMsg) {
+          banner.style.display = 'none';
+        }
+      }
+    }
     function checkPaymentOrderHold(){
       if(!session || !session.shop_id) return Promise.resolve(false);
+      var sid = String(session.shop_id || '').trim();
+      var cid = String(session.customer_id || '').trim();
+      var idQueries = [sid];
+      if (cid && cid !== sid) idQueries.push(cid);
       return Promise.all([
         api({ action:'getSetting', key:'block_orders_when_unpaid' }).catch(function(){ return null; }),
-        api({ action:'getSetting', key:'order_blocked_shops' }).catch(function(){ return null; }),
-        api({ action:'getCustomerOrders', shop_id: session.shop_id, limit: 80 }).catch(function(){ return []; })
-      ]).then(function(res){
+        api({ action:'getSetting', key:'order_blocked_shops' }).catch(function(){ return null; })
+      ].concat(idQueries.map(function(id){
+        return api({ action:'getCustomerOrders', shop_id: id, limit: 120 }).catch(function(){ return []; });
+      }))).then(function(res){
         function setVal(row){
           if(!row) return '';
           if(Array.isArray(row)) return row[0] ? String(row[0].value||'') : '';
           return String(row.value||'');
         }
-        var blockAll = setVal(res[0]) === 'true';
+        function truthy(v){
+          v = String(v || '').trim().toLowerCase();
+          return v === 'true' || v === '1' || v === 'yes' || v === 'on';
+        }
+        var blockAll = truthy(setVal(res[0]));
         var blockedList = [];
         try { blockedList = JSON.parse(setVal(res[1]) || '[]'); } catch(e){ blockedList = []; }
         if(!Array.isArray(blockedList)) blockedList = [];
-        var list = Array.isArray(res[2]) ? res[2] : [];
+        var list = [];
+        var seen = {};
+        for (var qi = 2; qi < res.length; qi++) {
+          (Array.isArray(res[qi]) ? res[qi] : []).forEach(function(o){
+            var k = String(o.id);
+            if (seen[k]) return;
+            seen[k] = 1;
+            list.push(o);
+          });
+        }
         var due = 0, n = 0;
         list.forEach(function(o){
-          var st = String(o.payment_status||'').toLowerCase();
-          if(st === 'paid' || st === 'void') return;
+          var st = String(o.payment_status||'').toLowerCase().replace(/\s+/g,'_');
+          if(st === 'paid' || st === 'void' || st === 'cancelled' || st === 'canceled') return;
           var d = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
-          if(isNaN(d) || d <= 0) return;
-          if(!(o.zoho_invoice_id || o.zoho_invoice_number || o.invoice_total != null)) return;
+          if(isNaN(d) || d <= 0.01) return;
+          if(!(o.zoho_invoice_id || o.zoho_invoice_number || o.invoice_total != null || o.balance_due != null)) return;
           // Match Pay tab: ignore challans + draft invoices
           var dt = String(o.zoho_doc_type || o.doc_type || '').toLowerCase().replace(/\s+/g, '_');
-          if(dt.indexOf('challan') >= 0 || dt === 'dc') return;
+          if(dt.indexOf('challan') >= 0 || dt === 'dc' || dt === 'delivery_challan') return;
           var zs = String(o.zoho_invoice_status || '').toLowerCase().replace(/\s+/g, '_');
           if(zs === 'draft' || zs === 'pending_approval') return;
           due += d; n++;
         });
-        var sid = String(session.shop_id || '');
-        var cid = String(session.customer_id || session.shop_id || '');
+        var alts = [sid];
+        if (cid) alts.push(cid);
         var shopBlocked = blockedList.some(function(x){
-          var bx = String(x || '');
-          return bx === sid || bx === cid || bx.toLowerCase() === sid.toLowerCase();
+          var bx = String(x || '').trim();
+          if (!bx) return false;
+          return alts.some(function(a){
+            return a === bx || a.toLowerCase() === bx.toLowerCase();
+          });
         });
         _paymentHoldActive = shopBlocked || (blockAll && due > 0.01);
-        try { console.log('[order-block] shop', sid, 'blockedList', blockedList, 'shopBlocked', shopBlocked, 'blockAll', blockAll, 'due', due); } catch(e){}
-        _paymentHoldMsg = _paymentHoldActive
-          ? ('🔒 Ordering on hold — unpaid balance ₹' + due.toLocaleString('en-IN',{maximumFractionDigits:0})
-             + (n ? (' on '+n+' invoice(s)') : '') + '. Please clear dues from the Pay tab.')
-          : '';
-        var banner = document.getElementById('orderClosedBanner');
-        // Don't override global order closed
-        if(_paymentHoldActive && !_orderClosed){
-          if(banner){
-            banner.textContent = _paymentHoldMsg;
-            banner.style.display = 'block';
-          }
-          var pc = document.getElementById('productsCard');
-          var nc = document.getElementById('orderNoteCard');
-          var ob = document.getElementById('orderBar');
-          if(pc) pc.style.display = 'none';
-          if(nc) nc.style.display = 'none';
-          if(ob) ob.style.display = 'none';
+        try { console.log('[order-block] shop', sid, 'cid', cid, 'blockedList', blockedList, 'shopBlocked', shopBlocked, 'blockAll', blockAll, 'due', due, 'n', n); } catch(e){}
+        if (shopBlocked && !(blockAll && due > 0.01)) {
+          _paymentHoldMsg = '🔒 Ordering blocked for this shop. Clear dues with the bakery, then ask admin to unblock.';
+        } else if (_paymentHoldActive) {
+          _paymentHoldMsg = '🔒 Ordering on hold — unpaid balance ₹' + due.toLocaleString('en-IN',{maximumFractionDigits:0})
+             + (n ? (' on '+n+' invoice(s)') : '') + '. Please clear dues from the Pay tab.';
+        } else {
+          _paymentHoldMsg = '';
         }
+        _applyPaymentHoldUi(_paymentHoldActive);
         return _paymentHoldActive;
       }).catch(function(){ return false; });
     }
@@ -2142,8 +2174,8 @@
       var total = totalItemCount();
       var totalEl = document.getElementById('totalItems');
       if (totalEl) totalEl.textContent = total;
-      // Never show the bar when orders are closed or edit is locked
-      if(_orderClosed || (_editLocked && !_amendMode)){
+      // Never show the bar when orders are closed, payment-blocked, or edit is locked
+      if(_orderClosed || _paymentHoldActive || (_editLocked && !_amendMode)){
         var ob = document.getElementById('orderBar');
         if (ob) ob.style.display = 'none';
         return;
@@ -2262,9 +2294,13 @@
         return;
       }
 
-      // Restore product UI if returning from no_order
-      document.getElementById('productsCard').style.display = '';
-      document.getElementById('orderNoteCard').style.display = '';
+      // Restore product UI if returning from no_order — keep hidden under payment hold
+      if (!_paymentHoldActive) {
+        document.getElementById('productsCard').style.display = '';
+        document.getElementById('orderNoteCard').style.display = '';
+      } else {
+        _applyPaymentHoldUi(true);
+      }
 
       if (s === 'pending') {
         banner.innerHTML = '<div style="background:#e3f2fd;border:1.5px solid #90caf9;border-radius:12px;padding:11px 14px;margin-bottom:10px;font-size:12px;font-weight:700;color:#1565c0;font-family:monospace;line-height:1.6">✏️ You already have an order for tomorrow.<br>You can update quantities below until admin approves it.</div>';
@@ -2983,10 +3019,16 @@
           if(noc) noc.style.display = 'none';
         } else {
           closedEl.style.display = 'none';
-          if(productsCard)  productsCard.style.display  = '';
-          if(orderNoteCard) orderNoteCard.style.display  = '';
-          updateBar(); // re-show bar if items selected
+          // Do not force-show products if payment hold is active
+          if (!_paymentHoldActive) {
+            if(productsCard)  productsCard.style.display  = '';
+            if(orderNoteCard) orderNoteCard.style.display  = '';
+            updateBar(); // re-show bar if items selected
+          } else {
+            _applyPaymentHoldUi(true);
+          }
           renderOrderBanner(); // refresh no-order button visibility
+          try { if (typeof checkPaymentOrderHold === 'function') checkPaymentOrderHold(); } catch (eH) {}
         }
 
         // Broadcast banner — polished card; hide if dismissed for this message
@@ -3361,7 +3403,7 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
         document.body.classList.toggle('tab-order', t === 'order');
       } catch(e) {}
       _custSwipeTab = t;
-      document.getElementById('orderBar').style.display = (t==='order' && totalItemCount()>0 && !_orderClosed && (!_editLocked || _amendMode)) ? 'block' : 'none';
+      document.getElementById('orderBar').style.display = (t==='order' && totalItemCount()>0 && !_orderClosed && !_paymentHoldActive && (!_editLocked || _amendMode)) ? 'block' : 'none';
       if(t==='order'){
         checkPaymentOrderHold();
         loadShopShippingForSession().then(function(){ updateBar(); });

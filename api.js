@@ -149,15 +149,69 @@ function normalizeProducts(list) {
   /** Block place/update order if shop is in order_blocked_shops or global unpaid block */
   function _checkShopOrderBlock(shopId) {
     if (!shopId) return Promise.resolve({ blocked: false });
-    var sid = String(shopId);
+    var sid = String(shopId).trim();
+    function _settingRow(res) {
+      if (!res) return null;
+      if (Array.isArray(res)) return res[0] || null;
+      if (res.value != null) return res;
+      return null;
+    }
+    function _truthySetting(row) {
+      if (!row) return false;
+      var v = String(row.value != null ? row.value : '').trim().toLowerCase();
+      return v === 'true' || v === '1' || v === 'yes' || v === 'on';
+    }
+    function _unpaidDueFromRows(rows) {
+      rows = Array.isArray(rows) ? rows : [];
+      var due = 0;
+      rows.forEach(function(o) {
+        var st = String(o.payment_status || '').toLowerCase().replace(/\s+/g, '_');
+        if (st === 'paid' || st === 'void' || st === 'cancelled' || st === 'canceled') return;
+        // Ignore pure drafts (not yet sent) and challans — same as customer Pay / client hold
+        var zs = String(o.zoho_invoice_status || '').toLowerCase().replace(/\s+/g, '_');
+        if (zs === 'draft' || zs === 'pending_approval') return;
+        var dt = String(o.zoho_doc_type || o.doc_type || '').toLowerCase().replace(/\s+/g, '_');
+        if (dt.indexOf('challan') >= 0 || dt === 'dc' || dt === 'delivery_challan') return;
+        // Need some invoice amount signal
+        if (!(o.zoho_invoice_id || o.zoho_invoice_number || o.invoice_total != null || o.balance_due != null)) return;
+        var d = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
+        if (!isNaN(d) && d > 0.01) due += d;
+      });
+      return due;
+    }
+    function _fetchOrdersForIds(ids) {
+      var uniq = [];
+      (ids || []).forEach(function(id) {
+        id = String(id || '').trim();
+        if (id && uniq.indexOf(id) < 0) uniq.push(id);
+      });
+      if (!uniq.length) return Promise.resolve([]);
+      // Query each shop_id variant (orders may be keyed by shop_id or customer_id)
+      return Promise.all(uniq.map(function(id) {
+        var url = BASE + '/customer_orders?select=id,shop_id,payment_status,balance_due,invoice_total,zoho_invoice_status,zoho_doc_type,zoho_invoice_id,zoho_invoice_number&shop_id=eq.' + encodeURIComponent(id) + '&order=created_at.desc&limit=200';
+        return fetch(url, { headers: hdrs() }).then(function(r){ return r.ok ? r.json() : []; }).catch(function(){ return []; });
+      })).then(function(parts) {
+        var seen = {};
+        var all = [];
+        parts.forEach(function(rows) {
+          (rows || []).forEach(function(o) {
+            var k = String(o.id);
+            if (seen[k]) return;
+            seen[k] = 1;
+            all.push(o);
+          });
+        });
+        return all;
+      });
+    }
     return Promise.all([
       sbGet('settings', { key: 'order_blocked_shops' }).catch(function(){ return []; }),
       sbGet('settings', { key: 'block_orders_when_unpaid' }).catch(function(){ return []; }),
       sbGet('shops', { shop_id: sid }).catch(function(){ return []; }),
       sbGet('shops', { customer_id: sid }).catch(function(){ return []; })
     ]).then(function(res) {
-      var blockedRow = Array.isArray(res[0]) && res[0][0] ? res[0][0] : (res[0] && res[0].value != null ? res[0] : null);
-      var allRow = Array.isArray(res[1]) && res[1][0] ? res[1][0] : (res[1] && res[1].value != null ? res[1] : null);
+      var blockedRow = _settingRow(res[0]);
+      var allRow = _settingRow(res[1]);
       var shop = (Array.isArray(res[2]) && res[2][0]) || (Array.isArray(res[3]) && res[3][0]) || null;
       var list = [];
       try {
@@ -165,12 +219,12 @@ function normalizeProducts(list) {
         list = JSON.parse(raw || '[]');
       } catch (e) { list = []; }
       if (!Array.isArray(list)) list = [];
-      var listNorm = list.map(function(x){ return String(x); });
+      var listNorm = list.map(function(x){ return String(x).trim(); }).filter(Boolean);
       // Match shop_id OR customer_id (admin may block either)
       var alts = [sid];
       if (shop) {
-        if (shop.shop_id) alts.push(String(shop.shop_id));
-        if (shop.customer_id) alts.push(String(shop.customer_id));
+        if (shop.shop_id) alts.push(String(shop.shop_id).trim());
+        if (shop.customer_id) alts.push(String(shop.customer_id).trim());
       }
       var hit = listNorm.some(function(bx) {
         return alts.some(function(a) {
@@ -180,29 +234,23 @@ function normalizeProducts(list) {
       if (hit) {
         return { blocked: true, reason: 'This shop is blocked from placing orders. Clear dues with the bakery.' };
       }
-      var blockAll = allRow && String(allRow.value || '').toLowerCase() === 'true';
+      var blockAll = _truthySetting(allRow);
       if (!blockAll) return { blocked: false };
-      // Global unpaid block — use resolved shop_id for order lookup
-      var orderSid = (shop && shop.shop_id) ? String(shop.shop_id) : sid;
-      return sbGet('customer_orders', { shop_id: orderSid }, 'delivery_date.desc').then(function(rows) {
-        rows = Array.isArray(rows) ? rows : [];
-        var due = 0;
-        rows.forEach(function(o) {
-          var st = String(o.payment_status || '').toLowerCase();
-          if (st === 'paid' || st === 'void') return;
-          var zs = String(o.zoho_invoice_status || '').toLowerCase().replace(/\s+/g, '_');
-          if (zs === 'draft' || zs === 'pending_approval') return;
-          var dt = String(o.zoho_doc_type || '').toLowerCase();
-          if (dt.indexOf('challan') >= 0) return;
-          var d = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
-          if (!isNaN(d) && d > 0.01) due += d;
-        });
+      // Global unpaid block — resolve all id aliases for this shop
+      return _fetchOrdersForIds(alts).then(function(rows) {
+        var due = _unpaidDueFromRows(rows);
         if (due > 0.01) {
           return { blocked: true, reason: 'Ordering on hold — unpaid balance ₹' + due.toFixed(0) + '. Pay from the Pay tab.' };
         }
         return { blocked: false };
-      }).catch(function(){ return { blocked: false }; });
-    }).catch(function(){ return { blocked: false }; });
+      }).catch(function(){
+        // Fail closed when global block is ON and lookup fails — safer than allowing orders
+        return { blocked: true, reason: 'Ordering temporarily on hold — could not verify payment status. Try again or pay from the Pay tab.' };
+      });
+    }).catch(function(){
+      // Network/settings failure: do not block (avoid locking everyone if settings API down)
+      return { blocked: false };
+    });
   }
 
   // Global order window (admin Notify → Open/Close Orders). Missing setting = open (matches client).
