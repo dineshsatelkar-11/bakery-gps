@@ -99,9 +99,13 @@
         .more-hint{font-size:10px;color:#64748b;font-family:monospace;margin-top:10px;line-height:1.4}
         .del-mobile-tools{display:none !important}
         .pay-mobile-tools{display:none;padding:10px 12px 8px;background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;margin:0 0 10px;position:sticky;top:calc(56px + var(--sat) + 8px);z-index:297;box-shadow:0 1px 0 rgba(15,23,42,.04)}
-        .pay-seg{display:flex;gap:6px;width:100%}
-        .pay-seg button{flex:1;min-width:0;padding:10px 4px;border:1.5px solid #e2e8f0;border-radius:12px;background:#f1f5f9;font-size:11px;font-weight:800;color:#64748b;font-family:-apple-system,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent}
+        .pay-seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;width:100%}
+        .pay-seg button{min-width:0;padding:10px 4px;border:1.5px solid #e2e8f0;border-radius:12px;background:#f1f5f9;font-size:11px;font-weight:800;color:#64748b;font-family:-apple-system,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent}
         .pay-seg button.on{background:#0f766e;color:#fff;border-color:#0f766e}
+        .pay-seg-zoho{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;width:100%;margin-top:8px;padding-top:8px;border-top:1px solid #e2e8f0}
+        .pay-seg-zoho button{min-width:0;padding:10px 4px;border:1.5px solid #ffe0b2;border-radius:12px;background:#fffaf0;font-size:11px;font-weight:800;color:#7a4800;font-family:-apple-system,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent}
+        .pay-seg-zoho button.on{background:#e65100;color:#fff;border-color:#e65100}
+        .pay-seg-label{font-size:9px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;color:#94a3b8;margin:0 0 6px}
         .del-mobile-seg-wrap,.ord-mobile-seg-wrap,.mng-mobile-seg-wrap{display:none;padding:10px 12px 8px;background:#fff;border:1.5px solid #e2e8f0;border-radius:14px;margin:0 0 10px;position:sticky;top:calc(56px + var(--sat) + 8px);z-index:297;box-shadow:0 1px 0 rgba(15,23,42,.04)}
         .del-mobile-seg,.ord-mobile-seg,.mng-mobile-seg{display:flex;gap:6px;width:100%}
         .del-mobile-seg button,.ord-mobile-seg button,.mng-mobile-seg button{flex:1;min-width:0;padding:10px 4px;border:1.5px solid #e2e8f0;border-radius:12px;background:#f1f5f9;font-size:11px;font-weight:800;color:#64748b;font-family:-apple-system,sans-serif;cursor:pointer;-webkit-tap-highlight-color:transparent}
@@ -1259,15 +1263,20 @@
 <!-- Payments — same admin UI; module loaded in embed frame (no second app chrome) -->
 <div class="page" id="pg-pay-challan">
     <div class="pay-mobile-tools" id="payMobileTools">
-        <div class="pay-seg" role="tablist">
+        <div class="pay-seg-label">Payments</div>
+        <div class="pay-seg" role="tablist" aria-label="Payments">
             <button type="button" class="on" id="paySeg-challan" onclick="showTab('pay-challan')">📋 Challans</button>
             <button type="button" id="paySeg-draft" onclick="showTab('pay-draft')">📝 Draft</button>
             <button type="button" id="paySeg-open" onclick="showTab('pay-open')">💸 Unpaid</button>
             <button type="button" id="paySeg-requests" onclick="showTab('pay-requests')">📨 Requests</button>
             <button type="button" id="paySeg-paid" onclick="showTab('pay-paid')">✅ Paid</button>
             <button type="button" id="paySeg-blocked" onclick="showTab('pay-blocked')">🔒 Blocked</button>
+        </div>
+        <div class="pay-seg-label" style="margin-top:10px">Zoho</div>
+        <div class="pay-seg-zoho" role="tablist" aria-label="Zoho">
             <button type="button" id="paySeg-link" onclick="showTab('pay-link')">🔗 Link</button>
-            <button type="button" id="paySeg-zoho-list" onclick="showTab('pay-zoho-list')" style="border-style:dashed">🔎 Zoho list</button>
+            <button type="button" id="paySeg-zoho-list" onclick="showTab('pay-zoho-list')">🔎 List</button>
+            <button type="button" id="paySeg-zoho" onclick="showTab('zoho')">⚙ Setup</button>
         </div>
     </div>
     <iframe id="payEmbedFrame" title="Payments" src="admin-payments.html?embed=1&tab=pay-challan"
@@ -2829,7 +2838,7 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
       }
       // Highlight payment segment buttons (mobile in-page header)
       try {
-        var segMap = {'pay-challan':'paySeg-challan','pay-draft':'paySeg-draft','pay-open':'paySeg-open','pay-requests':'paySeg-requests','pay-paid':'paySeg-paid','pay-blocked':'paySeg-blocked','pay-link':'paySeg-link','pay-zoho-list':'paySeg-zoho-list'};
+        var segMap = {'pay-challan':'paySeg-challan','pay-draft':'paySeg-draft','pay-open':'paySeg-open','pay-requests':'paySeg-requests','pay-paid':'paySeg-paid','pay-blocked':'paySeg-blocked','pay-link':'paySeg-link','pay-zoho-list':'paySeg-zoho-list','zoho':'paySeg-zoho'};
         Object.keys(segMap).forEach(function(k){
           var b = document.getElementById(segMap[k]);
           if (b) b.classList.toggle('on', k === t);

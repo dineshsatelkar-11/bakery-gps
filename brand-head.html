@@ -501,7 +501,7 @@
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px">
         <div style="min-width:0">
           <div style="font-size:15px;font-weight:900;color:#0f172a;letter-spacing:-.2px">Payments</div>
-          <div style="font-size:12px;color:#64748b;line-height:1.45;margin-top:3px">Record cash / UPI / bank for your brand shops. Stored on the same invoices as HQ admin.</div>
+          <div style="font-size:12px;color:#64748b;line-height:1.45;margin-top:3px">Shop-wise outstanding for your brand. Totals only — invoice-level payment is handled by HQ.</div>
         </div>
         <button class="refresh-btn" onclick="loadInvoices()" title="Refresh">🔄</button>
       </div>
@@ -844,14 +844,11 @@
         }
       }
       totals += '</div>';
-      var payBtn = (!paid && due > 0.009)
-        ? '<button type="button" class="inv-pay-btn" style="width:100%;padding:12px;margin-top:12px;border-radius:12px;font-size:13px" onclick="closeBrandInvPreview();openBrandPaySheet([\''+String(o.id).replace(/'/g,'')+'\'])">💰 Record payment</button>'
-        : '';
       body.innerHTML =
         '<div style="font-size:11px;color:#8a7a6a;margin-bottom:10px">Shop: <b style="color:#0f172a">'+esc(o.shop_name||'')+'</b>'+
         (o.zoho_invoice_status ? ' · Zoho: '+esc(String(o.zoho_invoice_status)) : '')+'</div>' +
-        linesHtml + totals + payBtn +
-        '<div style="font-size:10px;color:#8a7a6a;margin-top:12px;line-height:1.45">Summary from app data. Official tax invoice is in Zoho Books.</div>';
+        linesHtml + totals +
+        '<div style="font-size:10px;color:#8a7a6a;margin-top:12px;line-height:1.45">Outstanding is tracked by shop total. Payment is handled by HQ. Official tax invoice is in Zoho Books.</div>';
       sh.classList.add('open');
       sh.style.display = 'flex';
       document.body.classList.add('modal-open');
@@ -1497,9 +1494,6 @@
         if (callHref) html += '<a class="shop-action call" href="'+escAttr(callHref)+'" style="text-decoration:none;text-align:center">📞 Call</a>';
         html += '<button type="button" class="shop-action" onclick="openShopEdit(\''+escAttr(id)+'\')">✏️ Edit</button>';
         html += '<button type="button" class="shop-action secondary" onclick="openShopHistory(\''+escAttr(id)+'\')">🕘 History</button>';
-        if (dues.due > 0.009) {
-          html += '<button type="button" class="shop-action pay" onclick="showTab(\'invoices\');setTimeout(function(){openBrandPaySheetForShop(\''+escAttr(id)+'\')},200)">💰 Pay</button>';
-        }
         html += '</div></div>';
       });
       el.innerHTML = html;
@@ -1860,27 +1854,23 @@
       var q = ((document.getElementById('inv-search')||{}).value||'').trim().toLowerCase();
       var fil = ((document.getElementById('inv-filter')||{}).value||'unpaid');
       var weekAgo = Date.now() - 7*24*60*60*1000;
-      // Global stats (all brand shops, not only filtered)
       var allRows = _brandInvRows || [];
       var shopsDue = allRows.filter(function(r){ return (r.due||0) > 0.009; }).length;
       var totalDueAll = allRows.reduce(function(s,r){ return s + (r.due||0); }, 0);
-      var unpaidDocs = 0;
-      allRows.forEach(function(r){ unpaidDocs += (r.unpaid_n||0); });
       var challanAll = allRows.reduce(function(s,r){ return s + (r.challan_due||0); }, 0);
       var draftAll = allRows.reduce(function(s,r){ return s + (r.draft_due||0); }, 0);
       var invAll = allRows.reduce(function(s,r){ return s + (r.invoice_due||0); }, 0);
       if (stats) {
         stats.innerHTML =
-          '<div class="stat-box" style="cursor:default"><div class="stat-num" style="color:#c8382a;font-size:15px">'+_invMoney(totalDueAll)+'</div><div class="stat-lbl">Total due</div></div>'+
-          '<div class="stat-box" style="cursor:default"><div class="stat-num" style="color:#7a4800;font-size:14px">'+_invMoney(challanAll)+'</div><div class="stat-lbl">Challan</div></div>'+
-          '<div class="stat-box" style="cursor:default"><div class="stat-num" style="color:#616161;font-size:14px">'+_invMoney(draftAll)+'</div><div class="stat-lbl">Draft</div></div>'+
-          '<div class="stat-box" style="cursor:default"><div class="stat-num" style="color:#c8382a;font-size:14px">'+_invMoney(invAll)+'</div><div class="stat-lbl">Invoice</div></div>';
+          '<div class="stat-box" style="cursor:default"><div class="stat-num" style="color:#c8382a;font-size:16px">'+_invMoney(totalDueAll)+'</div><div class="stat-lbl">Outstanding</div></div>'+
+          '<div class="stat-box" style="cursor:default"><div class="stat-num" style="color:#0f766e">'+shopsDue+'</div><div class="stat-lbl">Shops due</div></div>'+
+          '<div class="stat-box" style="cursor:default"><div class="stat-num" style="color:#7a4800;font-size:13px">'+_invMoney(challanAll)+'</div><div class="stat-lbl">Challan</div></div>'+
+          '<div class="stat-box" style="cursor:default"><div class="stat-num" style="color:#c8382a;font-size:13px">'+_invMoney(invAll)+'</div><div class="stat-lbl">Invoice</div></div>';
         stats.style.gridTemplateColumns = 'repeat(2,1fr)';
       }
       var rows = allRows.filter(function(r){
         if (q) {
-          var docBlob = (r.docs||[]).map(function(o){ return o.zoho_invoice_number||''; }).join(' ');
-          var blob = [r.shop_name, r.mobile, r.shop_id, docBlob].join(' ').toLowerCase();
+          var blob = [r.shop_name, r.mobile, r.shop_id].join(' ').toLowerCase();
           if (blob.indexOf(q) < 0) return false;
         }
         if (fil === 'unpaid') return (r.due||0) > 0.009 || r.unpaid_n > 0;
@@ -1893,95 +1883,48 @@
             return paid && created >= weekAgo;
           });
         }
-        return (r.docs||[]).length > 0;
+        return (r.docs||[]).length > 0 || (r.due||0) > 0.009;
       });
+      // Outstanding-first sort
+      rows = rows.slice().sort(function(a,b){ return (b.due||0) - (a.due||0); });
       var totalDue = rows.reduce(function(s,r){ return s + (r.due||0); }, 0);
       if (sum) {
-        sum.textContent = rows.length + ' shop'+(rows.length===1?'':'s')+' · showing ' + _invMoney(totalDue) + (fil==='unpaid'?' due':'');
+        sum.textContent = rows.length + ' shop'+(rows.length===1?'':'s')+' · outstanding ' + _invMoney(totalDue);
       }
       if (!rows.length) {
-        el.innerHTML = '<div class="card"><div class="empty-msg">No matching invoices for this brand.</div></div>';
+        el.innerHTML = '<div class="card"><div class="empty-msg">No outstanding balances for this brand.</div></div>';
         return;
       }
       el.innerHTML = rows.map(function(r){
-        var statusBits = '';
-        if (r.unpaid_n) statusBits += '<span class="inv-badge unpaid">'+r.unpaid_n+' unpaid</span>';
-        if (r.paid_n) statusBits += '<span class="inv-badge paid">'+r.paid_n+' paid</span>';
-        var latest = (r.docs||[]).slice().sort(function(a,b){
-          return String(b.created_at||'').localeCompare(String(a.created_at||''));
-        })[0];
-        var zst = latest && latest.zoho_invoice_status ? String(latest.zoho_invoice_status) : '';
-        if (zst) statusBits += '<span class="inv-badge zoho">Zoho: '+esc(zst)+'</span>';
-        var sidSafe = String(r.shop_id||'').replace(/'/g,'');
-        var lines = (r.docs||[]).filter(function(o){
-          if (fil === 'unpaid') {
-            var st = String(o.payment_status||'').toLowerCase();
-            var due = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
-            if (isNaN(due)) due = 0;
-            return st !== 'paid' && due > 0.009;
-          }
-          if (fil === 'paid') {
-            var st2 = String(o.payment_status||'').toLowerCase();
-            var due2 = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
-            var paid = st2 === 'paid' || (!(isNaN(due2)) && due2 <= 0.009);
-            var created = o.created_at ? new Date(o.created_at).getTime() : (o.paid_at ? new Date(o.paid_at).getTime() : 0);
-            return paid && created >= weekAgo;
-          }
-          return true;
-        }).slice(0, 12).map(function(o){
-          var st = String(o.payment_status||'unpaid').toLowerCase();
-          var due = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
-          if (isNaN(due)) due = 0;
-          var doc = o.zoho_invoice_number || ('#'+o.id);
-          var z = o.zoho_invoice_status ? String(o.zoho_invoice_status) : '';
-          var paid = st === 'paid' || due <= 0.009;
-          var oid = String(o.id).replace(/'/g,'');
-          var kind = _brandDocKind(o);
-          var kindBadge = kind === 'challan'
-            ? '<span class="inv-badge" style="background:#fff8e1;color:#7a4800">Challan</span>'
-            : (kind === 'draft'
-              ? '<span class="inv-badge" style="background:#f5f5f5;color:#616161">Draft</span>'
-              : '<span class="inv-badge" style="background:#fde8e8;color:#c8382a">Invoice</span>');
-          return '<div class="inv-doc-row">'+
-            '<div style="min-width:0;flex:1">'+
-              '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">'+
-                '<div style="font-size:12px;font-weight:800;color:#0f172a">'+esc(doc)+'</div>'+kindBadge+
-              '</div>'+
-              '<div style="font-size:10px;color:#64748b;margin-top:2px">'+esc(o.delivery_date||'—')+(z?' · '+esc(z):'')+' · <b style="color:'+(paid?'#1a5a38':'#c8382a')+'">'+_invMoney(due)+'</b></div>'+
-            '</div>'+
-            '<div class="inv-doc-actions">'+
-              '<button type="button" class="inv-preview-btn" onclick="openBrandInvPreview(\''+oid+'\')">View</button>'+
-              (!paid ? '<button type="button" class="inv-pay-btn" onclick="openBrandPaySheet([\''+oid+'\'])">Pay</button>' : '')+
-            '</div>'+
+        var outstanding = r.due || 0;
+        var clear = outstanding <= 0.009;
+        var bits = '';
+        if (r.unpaid_n) bits += '<span class="inv-badge unpaid">'+r.unpaid_n+' open doc'+(r.unpaid_n===1?'':'s')+'</span>';
+        if (clear) bits += '<span class="inv-badge paid">Clear</span>';
+        // Always show split of outstanding
+        var splitHtml =
+          '<div class="shop-dues" style="margin-top:12px">'+
+            '<div class="shop-due-box challan"><div class="n">'+_invMoney(r.challan_due||0)+'</div><div class="l">Challan</div></div>'+
+            '<div class="shop-due-box draft"><div class="n">'+_invMoney(r.draft_due||0)+'</div><div class="l">Draft</div></div>'+
+            '<div class="shop-due-box inv"><div class="n">'+_invMoney(r.invoice_due||0)+'</div><div class="l">Invoice</div></div>'+
           '</div>';
-        }).join('');
-        var splitHtml = (r.due > 0.009)
-          ? ('<div class="shop-dues" style="margin-top:10px">'+
-              '<div class="shop-due-box challan"><div class="n">'+_invMoney(r.challan_due||0)+'</div><div class="l">Challan'+(r.challan_n?(' · '+r.challan_n):'')+'</div></div>'+
-              '<div class="shop-due-box draft"><div class="n">'+_invMoney(r.draft_due||0)+'</div><div class="l">Draft'+(r.draft_n?(' · '+r.draft_n):'')+'</div></div>'+
-              '<div class="shop-due-box inv"><div class="n">'+_invMoney(r.invoice_due||0)+'</div><div class="l">Invoice'+(r.invoice_n?(' · '+r.invoice_n):'')+'</div></div>'+
-            '</div>')
-          : '';
         return '<div class="inv-card">'+
-          '<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">'+
+          '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">'+
             '<div style="min-width:0;flex:1">'+
               '<div class="inv-name">'+esc(r.shop_name)+'</div>'+
               '<div class="inv-meta">'+(r.mobile?esc(r.mobile):esc(r.shop_id||''))+(r.driver?(' · 🚚 '+esc(r.driver)):'')+'</div>'+
-              '<div style="margin-top:6px">'+statusBits+'</div>'+
+              (bits ? '<div style="margin-top:6px">'+bits+'</div>' : '')+
             '</div>'+
             '<div style="text-align:right;flex-shrink:0">'+
-              '<div class="inv-due'+(r.due>0.009?'':' zero')+'">'+_invMoney(r.due)+'</div>'+
-              '<div style="font-size:10px;color:#64748b;font-weight:700">total due</div>'+
+              '<div style="font-size:10px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.3px">Outstanding</div>'+
+              '<div class="inv-due'+(clear?' zero':'')+'" style="font-size:22px;margin-top:2px">'+(clear?'₹0':_invMoney(outstanding))+'</div>'+
             '</div>'+
           '</div>'+
           splitHtml+
-          (lines ? '<div class="inv-line">'+lines+'</div>' : '<div class="inv-line" style="color:#8a7a6a">No documents in this filter.</div>')+
-          (r.due > 0.009
-            ? '<div class="inv-actions"><button type="button" class="inv-pay-btn" style="background:#0f766e" onclick="openBrandPaySheetForShop(\''+sidSafe+'\')">💰 Record payment · '+_invMoney(r.due)+'</button></div>'
-            : '')+
         '</div>';
       }).join('');
     }
+
     window.loadInvoices = loadInvoices;
     window.renderInvoiceList = renderInvoiceList;
 
