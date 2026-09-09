@@ -1832,13 +1832,48 @@
       if (tab) _payDeskTab = tab;
       _payCustomerPaymentsEnabled = null; // re-read setting
       _payDeskMsg('Loading…', null);
+      var activeTab = _payDeskTab || 'pay-open';
       var shopsP = (typeof loadCustomerMaster === 'function') ? loadCustomerMaster() : Promise.resolve();
+      // Tab-specific fetch — Unpaid loads ONLY unpaid/partial from DB
       shopsP.catch(function(){}).then(function(){
-      return api({ action: 'getCustomerOrders', limit: 500 });
-      }).then(function(list) {
-        if (!Array.isArray(list)) list = [];
+        if (activeTab === 'pay-open') {
+          return Promise.all([
+            api({ action: 'getCustomerOrders', payment_status_in: ['unpaid', 'partial'], limit: 5000 }).catch(function(){ return []; }),
+            api({ action: 'getCustomerOrders', payment_status_in: ['unpaid', 'partial'], limit: 2000, offset: 5000 }).catch(function(){ return []; })
+          ]);
+        }
+        if (activeTab === 'pay-draft') {
+          return Promise.all([
+            api({ action: 'getCustomerOrders', payment_status_in: ['unpaid', 'partial'], limit: 5000 }).catch(function(){ return []; })
+          ]);
+        }
+        if (activeTab === 'pay-paid') {
+          return Promise.all([
+            api({ action: 'getCustomerOrders', payment_status_in: ['paid'], limit: 3000 }).catch(function(){ return []; })
+          ]);
+        }
+        if (activeTab === 'pay-requests') {
+          return Promise.all([
+            api({ action: 'getCustomerOrders', customer_claimed_paid: true, limit: 1000 }).catch(function(){ return []; })
+          ]);
+        }
+        // Challans / other: Zoho docs + open balances
+        return Promise.all([
+          api({ action: 'getCustomerOrders', has_zoho_doc: true, limit: 3000 }).catch(function(){ return []; }),
+          api({ action: 'getCustomerOrders', payment_status_in: ['unpaid', 'partial'], limit: 2000 }).catch(function(){ return []; })
+        ]);
+      }).then(function(parts) {
+        var byId = {};
+        (parts || []).forEach(function(list){
+          if (!Array.isArray(list)) return;
+          list.forEach(function(o){
+            if (!o || o.id == null) return;
+            byId[String(o.id)] = o;
+          });
+        });
+        var list = Object.keys(byId).map(function(k){ return byId[k]; });
         _payDeskRows = list.filter(_payHasDoc);
-        var tab = _payDeskTab || '';
+        var tab = activeTab;
         var msg;
         if (tab === 'pay-requests') {
           var nReq = _payDeskRows.filter(function(o){
@@ -1852,8 +1887,13 @@
           var nDraft = _payDeskRows.filter(function(o){ return !_payIsChallan(o) && !_payIsPaid(o) && !_payIsVoid(o) && _payIsDraft(o); }).length;
           msg = nDraft + ' draft invoice(s)';
         } else if (tab === 'pay-open') {
-          var nOpen = _payDeskRows.filter(function(o){ return !_payIsChallan(o) && !_payIsPaid(o) && !_payIsVoid(o) && !_payIsDraft(o); }).length;
-          msg = nOpen + ' unpaid (sent) invoice(s)';
+          // Strict: only unpaid / partial rows from server
+          _payDeskRows = _payDeskRows.filter(function(o){
+            var st = String(o.payment_status || '').toLowerCase();
+            return st === 'unpaid' || st === 'partial';
+          });
+          var nOpen = _payDeskRows.filter(function(o){ return !_payIsChallan(o) && !_payIsVoid(o) && !_payIsDraft(o); }).length;
+          msg = nOpen + ' unpaid invoice(s)';
         } else {
           msg = 'Loaded ' + _payDeskRows.length + ' document(s)';
         }
@@ -3326,6 +3366,18 @@
         var due = g.rows.reduce(function(s,o){ return s + _payDue(o); }, 0);
         var n = g.rows.length;
         var claims = g.rows.filter(function(o){ return o.customer_claimed_paid; }).length;
+        // Drafts for same shop (on Draft tab, not listed here)
+        var shopKeys = {};
+        g.rows.forEach(function(o){
+          if (o.shop_id) shopKeys[String(o.shop_id)] = 1;
+          if (o.shop_name) shopKeys[String(o.shop_name).toLowerCase()] = 1;
+        });
+        var shopDrafts = (typeof drafts !== 'undefined' ? drafts : []).filter(function(d){
+          if (d.shop_id && shopKeys[String(d.shop_id)]) return true;
+          if (d.shop_name && shopKeys[String(d.shop_name).toLowerCase()]) return true;
+          return false;
+        });
+        var draftDue = shopDrafts.reduce(function(s,o){ return s + _payDue(o); }, 0);
         var zStatuses = [];
         g.rows.forEach(function(o){
           var zs = String(o.zoho_invoice_status||'').toLowerCase();
@@ -3335,6 +3387,7 @@
         var open = window._payCustOpen && window._payCustOpen[sid];
         var badges = '';
         if (claims) badges += '<span style="display:inline-flex;align-items:center;background:#e3f2fd;color:#1565c0;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:800;margin-right:4px">'+claims+' request</span>';
+        if (shopDrafts.length) badges += '<span style="display:inline-flex;background:#fff8e1;color:#7a4800;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:800;margin-right:4px" title="Also on Draft tab">+'+shopDrafts.length+' draft</span>';
         var syncSt = typeof payDeskShopSyncStatus === 'function' ? payDeskShopSyncStatus(String(g.shop_id || g.shop_name || '')) : 'none';
         if (syncSt === 'ok') badges += '<span style="display:inline-flex;background:#e8f5e9;color:#1a5a38;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:800;margin-right:4px">Sync OK</span>';
         else if (syncSt === 'fail') badges += '<span style="display:inline-flex;background:#fde8e8;color:#c8382a;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:800;margin-right:4px">Sync fail</span>';
@@ -3342,6 +3395,9 @@
         if (zStatuses.length) {
           zStatuses.slice(0,2).forEach(function(zs){ badges += _payZohoStatusBadge(zs); });
         }
+        var draftNote = shopDrafts.length
+          ? '<div style="font-size:11px;color:#7a4800;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:6px 10px;margin:0 14px 10px">Also <b>'+shopDrafts.length+' draft</b> on Draft tab · ₹'+draftDue.toLocaleString('en-IN',{maximumFractionDigits:0})+' · total with drafts ₹'+(due+draftDue).toLocaleString('en-IN',{maximumFractionDigits:0})+'</div>'
+          : '';
         var details = g.rows.map(invoiceLineHtml).join('');
         var idList = g.rows.map(function(r){ return String(r.id); }).join(',');
         var accent = claims ? '#1565c0' : (due > 0 ? '#e07050' : '#c8b8a8');
@@ -3370,6 +3426,7 @@
                 '<button type="button" class="btn-sm" style="background:#f5efe6;color:#4a2f14;border:1px solid #e0d4c4;font-weight:800;border-radius:10px;padding:7px 12px" onclick="event.stopPropagation();payDeskSyncShopStatuses(\''+sid+'\')">↻ Sync shop</button>'+
                 '<button type="button" class="btn-sm" style="background:#fff;color:#6b5a4a;border:1px solid #e8dfd2;font-weight:700;border-radius:10px;padding:7px 12px" onclick="event.stopPropagation();payDeskToggleCust(\''+sid+'\')">'+(open?'Collapse':'Invoices')+'</button>'+
               '</div>'+
+              draftNote+
               '<div id="pay-cust-'+sid+'" style="display:'+(open?'block':'none')+';background:linear-gradient(180deg,#faf7f2 0%,#f5f0e8 100%);border-top:1px solid #ebe3d8;padding:12px 14px 14px">'+
                 '<div style="font-size:10px;font-weight:800;color:#8a7a6a;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:10px">Invoices</div>'+
                 details+

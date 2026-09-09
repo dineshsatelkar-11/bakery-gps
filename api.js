@@ -401,8 +401,8 @@ function normalizeProducts(list) {
         }).then(function(r){ return r.ok ? r.json() : []; }).catch(function(){ return []; });
 
       case 'getCustomerOrders': {
-        // Optional p.select (comma columns), p.customer_claimed_paid, p.payment_status_not_in
-        // keep default select=* so existing callers stay unchanged
+        // Optional p.select, p.customer_claimed_paid, p.payment_status_not_in / payment_status_in,
+        // p.has_zoho_doc, p.offset — default select=* for existing callers
         var sel = (p.select && String(p.select).trim()) ? String(p.select).trim() : '*';
         var url = BASE + '/customer_orders?select=' + encodeURIComponent(sel) + '&order=created_at.desc';
         if (p.status)         url += '&status=eq.'         + encodeURIComponent(p.status);
@@ -412,9 +412,15 @@ function normalizeProducts(list) {
           url += '&status=in.(' + p.statuses.map(encodeURIComponent).join(',') + ')';
         if (p.customer_claimed_paid === true || p.customer_claimed_paid === 'true')
           url += '&customer_claimed_paid=eq.true';
+        if (p.payment_status_in && p.payment_status_in.length)
+          url += '&payment_status=in.(' + p.payment_status_in.map(encodeURIComponent).join(',') + ')';
         if (p.payment_status_not_in && p.payment_status_not_in.length)
           url += '&payment_status=not.in.(' + p.payment_status_not_in.map(encodeURIComponent).join(',') + ')';
-        if (p.limit)          url += '&limit=' + parseInt(p.limit);
+        // Prefer rows that have a Zoho doc / invoice number (payments desk)
+        if (p.has_zoho_doc === true || p.has_zoho_doc === 'true')
+          url += '&or=(zoho_invoice_number.not.is.null,zoho_invoice_id.not.is.null,balance_due.not.is.null,payment_status.not.is.null)';
+        if (p.limit)  url += '&limit='  + parseInt(p.limit, 10);
+        if (p.offset) url += '&offset=' + parseInt(p.offset, 10);
         return fetch(url, { headers: hdrs() })
           .then(function(r){ return r.ok ? r.json() : []; })
           .catch(function(){ return []; });

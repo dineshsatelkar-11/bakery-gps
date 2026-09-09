@@ -1092,10 +1092,10 @@ body.dark .search-item:hover{background:#3d4a5c}
           <input type="text" id="er-upi-vpa" placeholder="name@ybl" autocomplete="off">
           <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
             <button type="button" class="btn btn-blue" style="flex:1;background:#5f259f;margin-bottom:0;min-width:90px" onclick="payExtraRouteApp('phonepe')">📱 PhonePe</button>
-            <button type="button" class="btn btn-blue" style="flex:1;background:#00baf2;margin-bottom:0;min-width:90px" onclick="payExtraRouteApp('paytm')">📱 Paytm</button>
+            <button type="button" class="btn btn-blue" style="flex:1;background:#00baf2;margin-bottom:0;min-width:90px" onclick="payExtraRouteApp('paytm')">💙 Paytm (QR)</button>
             <button type="button" class="btn btn-grey" style="flex:1;margin-bottom:0;min-width:90px" onclick="copyExtraRouteUpi()">📋 Copy UPI</button>
           </div>
-          <div style="font-size:10px;color:#64748b;margin-top:6px">If Paytm shows <b>security error</b>: tap Copy UPI → open Paytm → Pay to UPI ID → paste → Pay. Then <b>Mark Paid & Save</b>.</div>
+          <div style="font-size:10px;color:#64748b;margin-top:6px"><b>Paytm</b> opens a pay sheet (QR + copy) — does not deep-link (avoids security error). After pay, tap <b>Mark Paid & Save</b>.</div>
         </div>
         <button class="btn btn-green" style="width:100%" onclick="saveExtraRoutePay()">✅ Mark Paid & Save</button>
         <div id="er-msg"></div>
@@ -4897,79 +4897,83 @@ function copyUpiPayDetails(vpa, amount){
 }
 function upiSecurityHelpMsg(app, pa, ams){
   var appName=app==='paytm'?'Paytm':app==='phonepe'?'PhonePe':app==='gpay'?'GPay':'UPI app';
-  return 'UPI <b>'+esc(pa)+'</b> + ₹'+ams+' copied.\n'+
-    'If '+appName+' shows <b>security error</b>:\n'+
-    '1) Open '+appName+' yourself\n'+
-    '2) Pay → To UPI ID / To mobile\n'+
-    '3) Paste UPI → amount ₹'+ams+' → Pay\n'+
-    '4) Return here and Save';
+  return 'UPI <b>'+esc(pa)+'</b> + ₹'+ams+' ready. Use the pay sheet (copy / scan QR).';
 }
-/** Open UPI — soft P2P links + clipboard (works around Paytm/PhonePe “security policy”). */
+/** Pay sheet: no deep-link (avoids Paytm security error). Copy UPI + QR to scan in app. */
+function showUpiPaySheet(app, pa, payeeName, amount){
+  var am=parseFloat(amount);
+  var ams=am>0?am.toFixed(2):'0.00';
+  var appName=app==='paytm'?'Paytm':app==='phonepe'?'PhonePe':app==='gpay'?'GPay':'UPI';
+  var softQ='pa='+encodeURIComponent(pa)+
+    '&pn='+encodeURIComponent(String(payeeName||'Payee').slice(0,50))+
+    '&am='+ams+'&cu=INR';
+  var upiUrl='upi://pay?'+softQ;
+  copyUpiPayDetails(pa, am);
+  var qrSrc='https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data='+encodeURIComponent(upiUrl);
+  var html=
+    '<div style="text-align:center">'+
+      '<div style="font-size:12px;color:#64748b;margin-bottom:8px">Pay with <b>'+esc(appName)+'</b> — deep-link blocked by app security, so use copy or QR</div>'+
+      '<div style="font-size:18px;font-weight:900;color:#0f766e;word-break:break-all;margin:6px 0">'+esc(pa)+'</div>'+
+      '<div style="font-size:28px;font-weight:900;color:#1e293b;margin:4px 0 12px">₹'+ams+'</div>'+
+      '<img src="'+qrSrc+'" alt="UPI QR" width="220" height="220" style="border-radius:12px;border:1px solid #e2e8f0;background:#fff;max-width:100%">'+
+      '<div style="font-size:11px;color:#64748b;margin:10px 0 12px;line-height:1.45;text-align:left">'+
+        '<b>Option A (best for Paytm):</b><br>'+
+        '1. Open <b>'+esc(appName)+'</b> yourself<br>'+
+        '2. Pay → <b>To UPI ID</b><br>'+
+        '3. Paste UPI (already copied) → amount ₹'+ams+' → Pay<br><br>'+
+        '<b>Option B:</b> In '+esc(appName)+', open <b>Scan QR</b> and scan the code above.'+
+      '</div>'+
+      '<div id="upiSheetCopyMsg" style="font-size:12px;font-weight:700;color:#047857;min-height:18px;margin-bottom:6px">UPI + amount copied ✓</div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+        '<button type="button" class="btn btn-blue" style="flex:1;margin:0" onclick="copyUpiPayDetails(\''+String(pa).replace(/'/g,"\\'")+'\','+am+');var el=document.getElementById(\'upiSheetCopyMsg\');if(el)el.textContent=\'Copied again ✓\'">📋 Copy UPI again</button>'+
+        '<button type="button" class="btn btn-grey" style="flex:1;margin:0" onclick="closeModal()">Done</button>'+
+      '</div>'+
+      '<div style="font-size:10px;color:#94a3b8;margin-top:10px">After paying, close this and tap <b>Mark Paid & Save</b> / Save.</div>'+
+    '</div>';
+  openModal('📱 Pay · '+esc(appName), html);
+}
+/** Open UPI — Paytm never deep-links (security error). Shows pay sheet with QR + copy. */
 function openAppUpiUrl(app, vpa, payeeName, amount, note){
   var pa=parseUpiVpa(vpa);
   if(!pa||pa.indexOf('@')<0) return {ok:false, err:'Valid UPI ID required (name@bank)'};
   var am=parseFloat(amount);
   if(!(am>0)) return {ok:false, err:'Enter amount first'};
-  var ios=isIosDevice();
-  var pn=encodeURIComponent(String(payeeName||'Driver').slice(0,50));
   var ams=am.toFixed(2);
-  // Soft query only — no tn/tr (those often cause security blocks on Paytm)
-  var softQ='pa='+encodeURIComponent(pa)+'&pn='+pn+'&am='+ams+'&cu=INR';
   copyUpiPayDetails(pa, am);
+
+  // Paytm: NEVER open deep-link — app rejects browser opens with "security" error
+  if(app==='paytm'){
+    showUpiPaySheet('paytm', pa, payeeName||'Payee', am);
+    return {ok:true, msg:'Pay sheet opened. Copy UPI or scan QR inside Paytm.', pa:pa, amount:ams};
+  }
+
+  var pn=encodeURIComponent(String(payeeName||'Driver').slice(0,50));
+  var softQ='pa='+encodeURIComponent(pa)+'&pn='+pn+'&am='+ams+'&cu=INR';
+  var ios=isIosDevice();
 
   function tryOpen(url){
     if(!url) return false;
-    try{
-      // Always prefer location for custom schemes (more reliable than <a> for paytmmp://)
-      window.location.href=url;
-      return true;
-    }catch(e){
-      try{
-        var a=document.createElement('a');
-        a.href=url; a.rel='noopener'; a.style.display='none';
-        document.body.appendChild(a); a.click();
-        setTimeout(function(){ try{document.body.removeChild(a);}catch(e2){} }, 800);
-        return true;
-      }catch(e3){ return false; }
-    }
+    try{ window.location.href=url; return true; }catch(e){ return false; }
   }
 
-  // Ordered fallbacks: soft app scheme → alternate paths → generic upi:// (user picks app)
-  var urls=[];
-  if(app==='paytm'){
-    // Paytm is strictest — try multiple soft formats then universal UPI
-    urls.push('paytmmp://upi/pay?'+softQ);
-    urls.push('paytmmp://pay?'+softQ);
-    urls.push('paytm://upi/pay?'+softQ);
-    if(!ios){
-      urls.push('intent://upi/pay?'+softQ+'#Intent;scheme=paytmmp;package=net.one97.paytm;end');
-    }
-    urls.push('upi://pay?'+softQ);
-  } else if(app==='phonepe'){
-    urls.push('phonepe://pay?'+softQ);
-    if(!ios){
-      urls.push('intent://pay?'+softQ+'#Intent;scheme=phonepe;package=com.phonepe.app;end');
-    }
-    urls.push('upi://pay?'+softQ);
+  // PhonePe / GPay: try soft open; if user still hits issues they can use pay sheet
+  var opened=false;
+  if(app==='phonepe'){
+    opened=tryOpen('phonepe://pay?'+softQ);
   } else if(app==='gpay'){
-    urls.push('gpay://upi/pay?'+softQ);
-    urls.push('tez://upi/pay?'+softQ);
-    if(!ios){
-      urls.push('intent://upi/pay?'+softQ+'#Intent;scheme=tez;package=com.google.android.apps.nbu.paisa.user;end');
-    }
-    urls.push('upi://pay?'+softQ);
+    opened=tryOpen(ios?'gpay://upi/pay?'+softQ:'tez://upi/pay?'+softQ);
   } else {
-    urls.push('upi://pay?'+softQ);
+    opened=tryOpen('upi://pay?'+softQ);
   }
 
-  // Open primary only (chaining multiple location.href confuses the browser)
-  var opened=tryOpen(urls[0]);
-  if(!opened && urls[1]) opened=tryOpen(urls[1]);
+  // Always also show pay sheet so user has QR + copy if app blocked
+  setTimeout(function(){
+    showUpiPaySheet(app||'upi', pa, payeeName||'Payee', am);
+  }, opened?600:0);
 
-  // Always return ok with manual fallback instructions — deep-link success is hard to detect
   return {
     ok:true,
-    msg: upiSecurityHelpMsg(app, pa, ams),
+    msg: 'UPI copied. If app did not open, use the pay sheet (QR / paste).',
     pa:pa,
     amount:ams
   };
@@ -4984,7 +4988,7 @@ function payExtraRouteApp(app){
   var note='Extra route '+drv+(v('er-note')?' '+v('er-note'):'');
   var res=openAppUpiUrl(app, vpa, name, amt, note);
   if(!res.ok){showMsg('er-msg',res.err||'Valid UPI ID required','er');return;}
-  showMsg('er-msg', res.msg||'Opened. After payment, tap Mark Paid & Save.','ok');
+  showMsg('er-msg', res.msg||'Use pay sheet → then Mark Paid & Save.','ok');
 }
 function copyExtraRouteUpi(){
   var drv=v('er-driver'); var amt=parseFloat(v('er-amount'))||250;
@@ -4994,7 +4998,8 @@ function copyExtraRouteUpi(){
   var pa=parseUpiVpa(vpa);
   if(!pa){ showMsg('er-msg','No UPI ID — select driver or type UPI','er'); return; }
   copyUpiPayDetails(pa, amt);
-  showMsg('er-msg','Copied <b>'+esc(pa)+'</b>'+(amt>0?' · ₹'+amt.toFixed(2):'')+'. Open Paytm → Pay → To UPI ID → paste.','ok');
+  showUpiPaySheet('paytm', pa, (d&&d.upi_payee_name)||drv||'Payee', amt);
+  showMsg('er-msg','Copied <b>'+esc(pa)+'</b> · ₹'+(amt>0?amt.toFixed(2):'0')+'. Pay sheet open.','ok');
 }
 function saveExtraRoutePay(){
   var drv=v('er-driver');

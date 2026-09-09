@@ -6047,7 +6047,25 @@ function renderCdHistory(){
         '<div style="font-size:11px;color:#64748b;margin-top:4px">Placed '+esc(_cdFmtStamp(o.created_at))+(tot?(' · '+tot+' pcs'):'')+'</div>'+
         _cdItemLines(o.items, o.qty)+
         (o.note ? '<div style="font-size:11px;color:#64748b;margin-top:6px">📝 '+esc(o.note)+'</div>' : '')+
-        (o.zoho_invoice_number ? '<div style="font-size:11px;color:#64748b;margin-top:4px">📄 '+esc(o.zoho_invoice_number)+(o.payment_status?(' · '+esc(o.payment_status)):'')+'</div>' : '')+
+        (function(){
+          if (!o.zoho_invoice_number && !o.zoho_invoice_id) return '';
+          var inv = o.zoho_invoice_number || o.zoho_invoice_id || '';
+          var pst = String(o.payment_status || '').toLowerCase();
+          var zst = String(o.zoho_invoice_status || '').toLowerCase().replace(/\s+/g, '_');
+          var dt = String(o.zoho_doc_type || '').toLowerCase();
+          var label = 'unpaid';
+          var color = '#c8382a';
+          if (pst === 'paid') { label = 'paid'; color = '#1a5a38'; }
+          else if (pst === 'void' || zst === 'void') { label = 'void'; color = '#5d4037'; }
+          else if (dt.indexOf('challan') >= 0) { label = 'challan'; color = '#6a1b9a'; }
+          else if (zst === 'draft' || zst === 'pending_approval') { label = 'draft (not on Unpaid tab)'; color = '#7a4800'; }
+          else if (zst === 'sent' || zst === 'viewed' || zst === 'overdue' || zst === 'partially_paid' || zst === 'open' || zst === 'approved') {
+            label = pst === 'partial' ? 'partial' : 'unpaid';
+          } else if (pst) {
+            label = pst;
+          }
+          return '<div style="font-size:11px;margin-top:4px">📄 <span style="color:#64748b">'+esc(inv)+'</span> · <span style="font-weight:800;color:'+color+'">'+esc(label)+'</span></div>';
+        })()+
       '</div>';
     }).join('');
     return;
