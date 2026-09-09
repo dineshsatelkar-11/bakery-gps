@@ -1219,14 +1219,17 @@ function normalizeProducts(list) {
              .catch(function(){ return { ok: false, error: 'Network error' }; });
 
            // Customer places order
+           // Admin can pass admin_placed / bypass_order_window = true to place
+           // even when order window is closed (customers still blocked).
            case 'placeCustomerOrder':
          if (!b.item_ids) console.warn('[api] placeCustomerOrder: item_ids missing');
-             return _checkOrdersOpen().then(function(ow) {
-               if (!ow || !ow.open) {
-                 return { ok: false, error: (ow && ow.reason) || 'Orders are currently closed.' };
-               }
+             var adminPlaced = b.admin_placed === true || b.admin_placed === 'true' ||
+               b.bypass_order_window === true || b.bypass_order_window === 'true' ||
+               b.placed_by_admin === true || b.placed_by_admin === 'true';
+             var afterWindow = function() {
              return _checkShopOrderBlock(b.shop_id).then(function(blk) {
-               if (blk && blk.blocked) {
+               // Unpaid/manual block still applies to customers; admin override skips shop block too
+               if (blk && blk.blocked && !adminPlaced) {
                  return { ok: false, error: blk.reason || 'Ordering blocked for this shop' };
                }
              // Resolve doc type: explicit body → shop master → invoice
@@ -1251,11 +1254,15 @@ function normalizeProducts(list) {
                if (dt !== 'delivery_challan' && dt !== 'invoice') dt = 'invoice';
                var st = String(b.status || 'pending').toLowerCase().trim();
                if (st !== 'pending' && st !== 'approved' && st !== 'no_order') st = 'pending';
+               var note = b.note || '';
+               if (adminPlaced && note && note.indexOf('admin') < 0) {
+                 // keep existing note; admin note often already set by UI
+               }
                var rowBody = {
                  shop_id: b.shop_id, shop_name: b.shop_name,
                  delivery_date: b.delivery_date,
                  items: b.items, qty: b.qty, item_ids: b.item_ids || '',
-                 note: b.note || '',
+                 note: note,
                  status: st,
                  zoho_doc_type: dt
                };
@@ -1272,12 +1279,21 @@ function normalizeProducts(list) {
                  }
                  return r.json().then(function(rows) {
                    var row = Array.isArray(rows) ? rows[0] : rows;
-                   return { ok: true, id: row && row.id, row: row };
-                 }).catch(function(){ return { ok: true }; });
+                   return { ok: true, id: row && row.id, row: row, admin_placed: !!adminPlaced };
+                 }).catch(function(){ return { ok: true, admin_placed: !!adminPlaced }; });
                }).catch(function(){ return { ok: false, error: 'Network error' }; });
              });
              }); // end _checkShopOrderBlock
-             }); // end _checkOrdersOpen
+             };
+             if (adminPlaced) {
+               return afterWindow();
+             }
+             return _checkOrdersOpen().then(function(ow) {
+               if (!ow || !ow.open) {
+                 return { ok: false, error: (ow && ow.reason) || 'Orders are currently closed.' };
+               }
+               return afterWindow();
+             });
 
       // Customer marks "no order" for a delivery date (explicit skip)
       case 'markNoOrder': {
@@ -1338,21 +1354,29 @@ function normalizeProducts(list) {
           // Order changed after approve — hold invoice until re-approve
           upd2.payment_status = 'stale';
         }
-        // Enforce order window + shop block on edits too (client can be bypassed)
-        return _checkOrdersOpen().then(function(ow) {
-          if (!ow || !ow.open) {
-            return { ok: false, error: (ow && ow.reason) || 'Orders are currently closed.' };
-          }
+        // Enforce order window + shop block on customer edits (client can be bypassed).
+        // Admin can pass admin_placed / bypass_order_window to edit after close.
+        var adminEdit = b.admin_placed === true || b.admin_placed === 'true' ||
+          b.bypass_order_window === true || b.bypass_order_window === 'true' ||
+          b.placed_by_admin === true || b.placed_by_admin === 'true';
+        var doUpdate = function() {
           return sbGet('customer_orders', { id: b.id }).then(function(rows) {
             var o = Array.isArray(rows) && rows[0] ? rows[0] : null;
             var sid = o && o.shop_id ? o.shop_id : b.shop_id;
             return _checkShopOrderBlock(sid).then(function(blk) {
-              if (blk && blk.blocked) {
+              if (blk && blk.blocked && !adminEdit) {
                 return { ok: false, error: blk.reason || 'Ordering blocked for this shop' };
               }
               return sbPatch('customer_orders', { id: b.id }, upd2);
             });
           });
+        };
+        if (adminEdit) return doUpdate();
+        return _checkOrdersOpen().then(function(ow) {
+          if (!ow || !ow.open) {
+            return { ok: false, error: (ow && ow.reason) || 'Orders are currently closed.' };
+          }
+          return doUpdate();
         });
       }
 
