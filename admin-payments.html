@@ -3013,7 +3013,8 @@
       // Unpaid = sent invoices only; draft tab separate; challans on Challans tab
       var drafts = _payDeskRows.filter(function(o){ return !_payIsChallan(o) && !_payIsPaid(o) && !_payIsVoid(o) && _payIsDraft(o); });
       var unpaid = _payDeskRows.filter(function(o){ return !_payIsChallan(o) && !_payIsPaid(o) && !_payIsVoid(o) && !_payIsDraft(o); });
-      var claims = _payDeskRows.filter(function(o){ return o.customer_claimed_paid && !_payIsPaid(o) && !_payIsVoid(o) && !_payIsDraft(o); });
+      // Include drafts: customers can claim paid on draft invoices; badge count already includes them
+      var claims = _payDeskRows.filter(function(o){ return o.customer_claimed_paid && !_payIsPaid(o) && !_payIsVoid(o); });
       var paidAll = _payDeskRows.filter(function(o){ return !_payIsChallan(o) && _payIsPaid(o); });
       function _payPaidDate(o) {
         var raw = o.paid_at || o.payment_confirmed_at || o.updated_at || o.delivery_date || '';
@@ -3171,7 +3172,9 @@
         if (na !== nb) return na.localeCompare(nb);
         return String(b.delivery_date||'').localeCompare(String(a.delivery_date||''));
       });
-      var listReq = claims.filter(matchQ).sort(function(a,b){
+      // Do NOT apply Unpaid-tab search (pay-desk-q) here — Requests page has no search box;
+      // leftover text in that input was silently emptying the list while the count stayed > 0.
+      var listReq = claims.slice().sort(function(a,b){
         // Request order: newest customer claim first
         var ta = String(a.customer_claimed_at || a.updated_at || a.created_at || '');
         var tb = String(b.customer_claimed_at || b.updated_at || b.created_at || '');
