@@ -928,6 +928,13 @@ function normalizeProducts(list) {
         }
         return Promise.resolve({ ok: false, error: 'order_id or shop_id+date required' });
 
+      case 'syncCustomerOrderDriver':
+        // Force a customer-portal order onto a driver for a delivery date.
+        // Creates/patches the logistics `orders` row. Does not change shops.assigned_driver.
+        b.force_driver = true;
+        return syncCustomerOrderToDriverOrders(b).then(function(){ return { ok: true }; })
+          .catch(function(e){ return { ok: false, error: (e && e.message) || 'sync failed' }; });
+
       case 'substituteDriver':
         // Reassign ALL orders for absent driver on a date → substitute.
         // Why shops were missed before:

@@ -806,11 +806,12 @@
                 <div id="sub-msg" style="display:none;margin-top:6px" class="msg ok"></div>
             </div>
 
-            <!-- Move Specific Orders -->
+            <!-- Reassign shop / Move Specific Orders -->
             <div class="card" style="margin-bottom:0;border-color:#b0c4f0;box-shadow:none">
-                <div class="lbl" style="margin-bottom:8px">📦 Move Specific Orders</div>
+                <div class="lbl" style="margin-bottom:8px">🔀 Reassign shop (this date)</div>
                 <div style="font-size:11px;color:#64748b;margin-bottom:10px;line-height:1.5">
-                    Select undelivered orders from one driver and move them to another for the selected date.
+                    Same shops as Summary for the date below — logistics DC <b>and</b> customer portal orders.<br>
+                    Use tomorrow if you just looked at Summary. Does <strong>not</strong> change permanent shop assignment.
                 </div>
                 <div class="filter-row" style="margin-bottom:8px">
                     <select id="mov-from" style="margin-bottom:0;flex:1" onchange="loadMoveOrders()">
@@ -2327,7 +2328,7 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
     }
 
     document.getElementById('topDate').textContent=new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'short'});
-    ['f-rt-date','f-del-date','sub-date','mov-date','f-queue-date'].forEach(function(id){var el=document.getElementById(id);if(el && !el.value)el.value=(id==='f-queue-date'?tomorrowStr():todayStr());});
+    ['f-rt-date','f-del-date','sub-date','mov-date','f-queue-date'].forEach(function(id){var el=document.getElementById(id);if(el && !el.value)el.value=((id==='f-queue-date'||id==='sub-date'||id==='mov-date')?tomorrowStr():todayStr());});
     var _ordEl=document.getElementById('f-ord-date');if(_ordEl)_ordEl.value=tomorrowStr();
     var _sumEl=document.getElementById('f-sum-date');if(_sumEl)_sumEl.value=tomorrowStr();
     var _coEl=document.getElementById('co-date');if(_coEl)_coEl.value=tomorrowStr();
@@ -4676,6 +4677,16 @@ if(tbQueue) tbQueue.textContent = '⚠️ Queue ('+data.length+')';
       else open = (body.style.display === 'none' || body.style.display === '');
       body.style.display = open ? 'block' : 'none';
       if (chev) chev.textContent = open ? '▾' : '▸';
+      if (open) {
+        // Match Summary date (tomorrow) so the 5th driver's portal shop shows up
+        var sumEl = document.getElementById('f-sum-date');
+        var want = (sumEl && sumEl.value) ? sumEl.value : tomorrowStr();
+        ['mov-date','sub-date'].forEach(function(id){
+          var el = document.getElementById(id);
+          if (el) el.value = want;
+        });
+        if (document.getElementById('mov-from') && document.getElementById('mov-from').value) loadMoveOrders();
+      }
     }
     function loadRoutes(){
       var el=document.getElementById('routesList');
@@ -6528,7 +6539,7 @@ function shareAllCustLogins(){
     function previewSubstitute(){
       var from=document.getElementById('sub-from').value;
       var to=document.getElementById('sub-to').value;
-      var date=document.getElementById('sub-date').value||todayStr();
+      var date=document.getElementById('sub-date').value||tomorrowStr();
       var preview=document.getElementById('sub-preview');
       var btn=document.getElementById('sub-btn');
       var msg=document.getElementById('sub-msg');
@@ -6582,7 +6593,7 @@ function shareAllCustLogins(){
     function confirmSubstitute(){
       var from=document.getElementById('sub-from').value;
       var to=document.getElementById('sub-to').value;
-      var date=document.getElementById('sub-date').value||todayStr();
+      var date=document.getElementById('sub-date').value||tomorrowStr();
       var btn=document.getElementById('sub-btn');
       var msg=document.getElementById('sub-msg');
       if(!confirm('Reassign all orders from '+from+' → '+to+' on '+date+'?\nPermanent assignments are NOT changed.'))return;
@@ -6611,7 +6622,7 @@ function shareAllCustLogins(){
 
     function loadMoveOrders(){
       var from = document.getElementById('mov-from').value;
-      var date = document.getElementById('mov-date').value || todayStr();
+      var date = document.getElementById('mov-date').value || tomorrowStr();
       var listEl = document.getElementById('mov-order-list');
       var countEl = document.getElementById('mov-count');
       document.getElementById('mov-msg').style.display = 'none';
@@ -6619,36 +6630,90 @@ function shareAllCustLogins(){
       listEl.style.display = 'block';
       listEl.innerHTML = '<div style="padding:12px;text-align:center;font-size:12px;color:#64748b;font-family:monospace">Loading…</div>';
       Promise.all([
-        api({action:'getOrders', date:date, driver:from}),
-        api({action:'getDeliveries', date:date, driver:from})
+        api({action:'getOrders', date:date}),
+        api({action:'getDeliveries', date:date}),
+        api({action:'getCustomerOrders', delivery_date:date, limit:1000}),
+        loadCustomerMaster()
       ]).then(function(res){
         var orders = Array.isArray(res[0]) ? res[0] : [];
         var delivs  = Array.isArray(res[1]) ? res[1] : [];
-        // Delivered by shop_id OR customer_id (Tea Post ids often differ across rows)
+        var custOrds = Array.isArray(res[2]) ? res[2] : [];
+        var shopDriver = {};
+        (allCustomers||[]).forEach(function(c){
+          var sid = String(c.shop_id || c.customer_id || '');
+          if (sid) shopDriver[sid] = String(c.assigned_driver || '').trim();
+        });
         _movDelivered = {};
         delivs.forEach(function(d){
           if (d.shop_id) _movDelivered[String(d.shop_id)] = true;
           if (d.customer_id) _movDelivered[String(d.customer_id)] = true;
+          if (d.shop_name) _movDelivered['name:'+String(d.shop_name)] = true;
         });
-        _movOrders = orders.filter(function(o){
+        function isDelivered(o){
           var a = String(o.shop_id || '');
           var b = String(o.customer_id || '');
-          return !(_movDelivered[a] || _movDelivered[b]);
+          var n = o.shop_name ? ('name:'+String(o.shop_name)) : '';
+          return !!( _movDelivered[a] || _movDelivered[b] || (n && _movDelivered[n]) );
+        }
+        var seen = {};
+        var list = [];
+        function addRow(o){
+          if (!o) return;
+          var sid = String(o.shop_id || o.customer_id || '');
+          var key = sid || String(o.order_id || o.co_id || o.shop_name || '');
+          if (!key || seen[key]) return;
+          if (isDelivered(o)) return;
+          seen[key] = true;
+          list.push(o);
+        }
+        // 1) Logistics orders tagged with this driver, OR blank driver on a shop assigned to them
+        orders.forEach(function(o){
+          var sid = String(o.shop_id || o.customer_id || '');
+          var d = String(o.driver || '').trim();
+          var master = shopDriver[sid] || '';
+          if (d === from || (!d && master === from)) addRow(Object.assign({}, o, {_source:'orders'}));
         });
+        // 2) Customer portal shops assigned to this driver (Summary includes these; old list did not)
+        custOrds.forEach(function(o){
+          var st = String(o.status || '').toLowerCase();
+          if (!st || st === 'rejected' || st === 'no_order') return;
+          if (!(String(o.items||'').trim() && String(o.qty||'').trim())) return;
+          var sid = String(o.shop_id || '');
+          var master = shopDriver[sid] || String(o.driver || '').trim();
+          if (master !== from) return;
+          addRow({
+            shop_name: o.shop_name || sid,
+            shop_id: sid,
+            customer_id: sid,
+            driver: master,
+            items: o.items,
+            qty: o.qty,
+            item_ids: o.item_ids || '',
+            note: o.note || '',
+            date: o.delivery_date || date,
+            order_id: null,
+            co_id: o.id,
+            dc_num: 'CO-'+o.id,
+            _source: 'customer_orders'
+          });
+        });
+        _movOrders = list;
         if(!_movOrders.length){
-          listEl.innerHTML = '<div style="padding:12px;text-align:center;font-size:12px;color:#64748b;font-family:monospace">No undelivered orders for this driver on '+date+'.</div>';
+          listEl.innerHTML = '<div style="padding:12px;text-align:center;font-size:12px;color:#64748b;font-family:monospace;line-height:1.5">No undelivered shops for <b>'+esc(from)+'</b> on <b>'+esc(date)+'</b>.<br><span style="font-size:11px">Summary is usually <b>tomorrow</b> — change the date above if the shop is on Summary.</span></div>';
           countEl.textContent = '';
           return;
         }
         listEl.innerHTML = _movOrders.map(function(o, idx){
-          var key = o.order_id ? ('id:'+o.order_id) : ('shop:'+String(o.shop_id||o.customer_id||'')+':'+idx);
+          var src = o._source === 'customer_orders' ? '<span style="font-size:9px;background:#fff3e0;color:#0f766e;border-radius:4px;padding:1px 5px;margin-left:6px">portal</span>' : '';
           return '<label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #f0e8dc;cursor:pointer">'+
-            '<input type="checkbox" class="mov-chk" data-idx="'+idx+'" value="'+esc(key)+'" onchange="updateMovCount()" style="width:16px;height:16px;flex-shrink:0">'+
-            '<span style="font-size:13px;font-weight:700;color:#0f172a;flex:1">'+esc(o.shop_name||o.shop_id)+'</span>'+
+            '<input type="checkbox" class="mov-chk" data-idx="'+idx+'" onchange="updateMovCount()" style="width:16px;height:16px;flex-shrink:0">'+
+            '<span style="font-size:13px;font-weight:700;color:#0f172a;flex:1">'+esc(o.shop_name||o.shop_id)+src+'</span>'+
             '<span style="font-size:10px;font-family:monospace;color:#64748b">'+esc(String(o.shop_id||o.customer_id||''))+'</span>'+
             '</label>';
         }).join('');
         updateMovCount();
+      }).catch(function(){
+        listEl.innerHTML = '<div style="padding:12px;text-align:center;font-size:12px;color:#c8382a;font-family:monospace">Could not load shops. Try Refresh.</div>';
       });
     }
 
@@ -6675,7 +6740,7 @@ function shareAllCustLogins(){
       if(!checked.length){ msg.textContent='Select at least one order.'; msg.className='msg er'; msg.style.display='block'; return; }
       if(!confirm('Move '+checked.length+' order(s) from '+from+' → '+to+'?')) return;
       msg.textContent='⏳ Moving…'; msg.className='msg in'; msg.style.display='block';
-      var date = document.getElementById('mov-date').value || todayStr();
+      var date = document.getElementById('mov-date').value || tomorrowStr();
       var toMove = [];
       document.querySelectorAll('.mov-chk:checked').forEach(function(c){
         var idx = parseInt(c.getAttribute('data-idx'), 10);
@@ -6689,12 +6754,36 @@ function shareAllCustLogins(){
         });
       }
       Promise.all(toMove.map(function(o){
-        return apiPost({
-          action: 'updateOrderDriver',
-          order_id: o.order_id || undefined,
-          shop_id: o.shop_id || o.customer_id || undefined,
-          date: date,
-          driver: to
+        var realId = o.order_id && String(o.order_id).indexOf('CO-') !== 0 ? o.order_id : undefined;
+        var shopId = o.shop_id || o.customer_id || undefined;
+        var tasks = [];
+        if (realId || (shopId && date)) {
+          tasks.push(apiPost({
+            action: 'updateOrderDriver',
+            order_id: realId,
+            shop_id: shopId,
+            date: date,
+            driver: to
+          }));
+        }
+        if (o.co_id) {
+          tasks.push(apiPost({
+            action: 'syncCustomerOrderDriver',
+            id: o.co_id,
+            shop_id: shopId,
+            shop_name: o.shop_name,
+            delivery_date: date,
+            items: o.items,
+            qty: o.qty,
+            item_ids: o.item_ids,
+            note: o.note,
+            driver: to,
+            force_driver: true
+          }));
+        }
+        return Promise.all(tasks).then(function(parts){
+          var bad = (parts||[]).some(function(r){ return r && r.ok === false; });
+          return { ok: !bad };
         });
       })).then(function(results){
         var failed = results.filter(function(r){ return !r.ok; }).length;
