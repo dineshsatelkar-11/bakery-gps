@@ -654,17 +654,25 @@
                 <div style="font-size:12px;font-weight:800;color:#1a5a38;margin-bottom:8px">Pay with UPI</div>
                 <div id="payQrWrap" style="display:inline-block;padding:10px;background:#fff;border-radius:12px;border:1px solid #e2e8f0;min-height:160px;min-width:160px"></div>
                 <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:10px 0 6px">
-                  <button type="button" id="payUpiCopyBtn" onclick="copyUpiIdOnly()" style="padding:10px 14px;border-radius:10px;border:1.5px solid #a5d6a7;background:#e8f5e9;color:#1a5a38;font-weight:800;font-size:12px;cursor:pointer">📋 Copy UPI ID</button>
-                  <button type="button" id="payUpiDlQrBtn" onclick="downloadPayQr()" style="padding:10px 14px;border-radius:10px;border:1.5px solid #c8e6c9;background:#fff;color:#1a5a38;font-weight:800;font-size:12px;cursor:pointer">⬇ Download QR</button>
+                    <button type="button" id="payUpiCopyBtn" onclick="copyUpiIdOnly()" style="padding:10px 14px;border-radius:10px;border:1.5px solid #a5d6a7;background:#e8f5e9;color:#1a5a38;font-weight:800;font-size:12px;cursor:pointer">📋 Copy UPI ID</button>
+                    <button type="button" id="payUpiDlQrBtn" onclick="downloadPayQr()" style="padding:10px 14px;border-radius:10px;border:1.5px solid #c8e6c9;background:#fff;color:#1a5a38;font-weight:800;font-size:12px;cursor:pointer">⬇ Download QR</button>
                 </div>
                 <div id="payUpiAmtLbl" style="font-size:14px;font-weight:800;font-family:monospace;color:#c8382a;margin:6px 0 4px">₹0</div>
                 <div id="payUpiMeta" style="font-size:11px;color:#64748b;font-family:monospace;margin-bottom:10px"></div>
                 <div id="payUpiAppBtns" style="display:none"></div>
                 <div id="payUpiOsHint" style="font-size:11px;color:#64748b;line-height:1.45;margin-bottom:6px"></div>
                 <div id="payUpiSteps" style="text-align:left;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;font-size:14px;color:#334155;line-height:1.55">
-                  <div style="font-weight:800;color:#1a5a38;margin-bottom:10px;font-size:13px;letter-spacing:.3px;text-transform:uppercase">Payment guide</div>
-                  <div id="payUpiStepsBody" style="color:#1e293b;font-size:14px;line-height:1.55"></div>
+                    <div style="font-weight:800;color:#1a5a38;margin-bottom:10px;font-size:13px;letter-spacing:.3px;text-transform:uppercase">Payment guide</div>
+                    <div id="payUpiStepsBody" style="color:#1e293b;font-size:14px;line-height:1.55"></div>
                 </div>
+            </div>
+            <!-- PayU Hosted Checkout — demo customer (xyz111) only -->
+            <div id="payuBox" style="display:none;background:#fff;border:1.5px solid #c7d2fe;border-radius:14px;padding:14px;margin-bottom:12px;text-align:center">
+                <div style="font-size:12px;font-weight:800;color:#3730a3;margin-bottom:6px">Pay with PayU <span style="background:#e0e7ff;color:#3730a3;border-radius:6px;padding:2px 8px;font-size:10px">TEST</span></div>
+                <div style="font-size:11px;color:#64748b;line-height:1.45;margin-bottom:10px">Secure checkout (UPI / Cards / NetBanking). Demo account only.</div>
+                <div id="payuAmtLbl" style="font-size:18px;font-weight:800;font-family:monospace;color:#c8382a;margin-bottom:10px">₹0</div>
+                <button type="button" id="payuPayBtn" onclick="startPayUPayment()" style="width:100%;padding:14px;border:none;border-radius:12px;background:#4f46e5;color:#fff;font-weight:800;font-size:15px;cursor:pointer">🔒 Pay securely with PayU</button>
+                <div id="payuMsg" style="display:none;margin-top:10px;font-size:12px;font-weight:700;line-height:1.4"></div>
             </div>
             <button type="button" class="btn" id="payRequestBtn" style="width:100%;background:#1e293b;color:#fff;font-weight:800;padding:14px;margin-bottom:10px;border:none;border-radius:14px;font-size:15px" onclick="openPayRequestSheet()">📨 After paying — send request to admin</button>
             <div id="payStatusPoll" style="display:none;margin-bottom:10px;padding:12px;border-radius:12px;border:1.5px solid #90caf9;background:#e3f2fd">
@@ -4787,7 +4795,134 @@ function _payUnpaidTotal(){
           '</div>';
       }).join('');
       try { renderPayUpiBox(); } catch(e){}
+      try { renderPayUBox(); } catch(e){}
     }
+
+    // ── PayU Hosted Checkout (demo customer xyz111 only) ─────────────────
+    function _isPayUDemoCustomer(){
+      if (!session) return false;
+      var u = String(session.login_username || session.username || '').trim().toLowerCase();
+      return u === 'xyz111';
+    }
+    function renderPayUBox(){
+      var box = document.getElementById('payuBox');
+      if (!box) return;
+      if (!_isPayUDemoCustomer()) {
+        box.style.display = 'none';
+        return;
+      }
+      var total = typeof _payUnpaidTotal === 'function' ? _payUnpaidTotal() : 0;
+      var amtEl = document.getElementById('payuAmtLbl');
+      var btn = document.getElementById('payuPayBtn');
+      if (amtEl) amtEl.textContent = '₹' + (total || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+      box.style.display = 'block';
+      if (btn) {
+        btn.disabled = total < 1;
+        btn.style.opacity = total >= 1 ? '1' : '0.5';
+        btn.textContent = total >= 1
+          ? ('🔒 Pay ₹' + total.toLocaleString('en-IN', { maximumFractionDigits: 0 }) + ' with PayU')
+          : '🔒 No amount due';
+      }
+    }
+    function _payuShowMsg(text, ok){
+      var el = document.getElementById('payuMsg');
+      if (!el) return;
+      el.style.display = 'block';
+      el.style.color = ok ? '#1a5a38' : '#c8382a';
+      el.textContent = text || '';
+    }
+    function startPayUPayment(){
+      if (!_isPayUDemoCustomer()) {
+        _payuShowMsg('PayU test is only for demo customer.', false);
+        return;
+      }
+      var total = typeof _payUnpaidTotal === 'function' ? _payUnpaidTotal() : 0;
+      if (total < 1) {
+        _payuShowMsg('No amount due.', false);
+        return;
+      }
+      var unpaid = typeof _payUnpaidList === 'function' ? _payUnpaidList() : [];
+      var invoiceIds = unpaid.map(function(o){ return o.id; }).filter(Boolean);
+      var btn = document.getElementById('payuPayBtn');
+      if (btn) { btn.disabled = true; btn.textContent = 'Preparing PayU…'; }
+      _payuShowMsg('Creating secure payment…', true);
+
+      var origin = window.location.origin || '';
+      // Prefer clean path on Vercel; keep .html for local
+      var body = {
+        login_username: session.login_username || session.username || 'xyz111',
+        shop_id: session.shop_id,
+        shop_name: session.shop_name || 'Customer',
+        amount: total,
+        productinfo: 'IBCAB invoices',
+        firstname: (session.shop_name || 'Customer').slice(0, 60),
+        email: session.email || 'demo@ibcab.test',
+        phone: session.mobile || '9999999999',
+        invoice_ids: invoiceIds,
+        origin: origin
+      };
+
+      fetch(CONFIG.SUPABASE_URL + '/functions/v1/payu-create-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + (CONFIG.SUPABASE_ANON_KEY || ''),
+          'apikey': CONFIG.SUPABASE_ANON_KEY || ''
+        },
+        body: JSON.stringify(body)
+      }).then(function(r){ return r.json().then(function(j){ return { ok: r.ok, status: r.status, j: j }; }); })
+      .then(function(res){
+        if (!res.ok || !res.j || !res.j.ok || !res.j.form) {
+          var err = (res.j && (res.j.error || res.j.hint)) || ('HTTP ' + res.status);
+          _payuShowMsg('PayU error: ' + err, false);
+          if (btn) { btn.disabled = false; renderPayUBox(); }
+          return;
+        }
+        _payuShowMsg('Redirecting to PayU…', true);
+        // Build and auto-submit form to PayU
+        var f = document.createElement('form');
+        f.method = 'POST';
+        f.action = res.j.payu_url;
+        f.style.display = 'none';
+        var fields = res.j.form;
+        Object.keys(fields).forEach(function(k){
+          var inp = document.createElement('input');
+          inp.type = 'hidden';
+          inp.name = k;
+          inp.value = fields[k] == null ? '' : String(fields[k]);
+          f.appendChild(inp);
+        });
+        document.body.appendChild(f);
+        f.submit();
+      }).catch(function(e){
+        _payuShowMsg('Network error: ' + (e && e.message ? e.message : e), false);
+        if (btn) { btn.disabled = false; renderPayUBox(); }
+      });
+    }
+    // Handle return from PayU (surl / furl)
+    (function handlePayUReturn(){
+      try {
+        var q = new URLSearchParams(window.location.search || '');
+        var payu = q.get('payu');
+        if (!payu) return;
+        // Clean URL without reloading
+        if (window.history && window.history.replaceState) {
+          var clean = window.location.pathname + window.location.hash;
+          window.history.replaceState({}, '', clean);
+        }
+        setTimeout(function(){
+          if (payu === 'success') {
+            try { if (typeof showTab === 'function') showTab('payments'); } catch(e){}
+            _payuShowMsg('✅ Payment submitted on PayU. Status will update after confirmation. (Test mode)', true);
+            try { if (typeof loadPaymentsTab === 'function') loadPaymentsTab(); } catch(e2){}
+          } else if (payu === 'failure') {
+            try { if (typeof showTab === 'function') showTab('payments'); } catch(e){}
+            _payuShowMsg('Payment was not completed on PayU. You can try again.', false);
+          }
+        }, 400);
+      } catch (e) {}
+    })();
+
     function viewPaymentProof(url){
       if (!url) return;
       var existing = document.getElementById('payProofLightbox');
