@@ -66,6 +66,7 @@ function mapStatuses(zStatus: string): {
   zoho_invoice_status: string;
   payment_status: string | null;
   markPaid: boolean;
+  challanFulfilled?: boolean;
 } {
   const s = normalizeStatus(zStatus);
   if ((s === "paid" || s === "closed" || s.indexOf("paid") >= 0) && s.indexOf("partial") < 0) {
@@ -84,9 +85,19 @@ function mapStatuses(zStatus: string): {
       markPaid: false,
     };
   }
-  if (s === "sent" || s === "overdue" || s === "open" || s === "viewed" || s === "unpaid" || s === "fulfilled" || s === "invoiced") {
+  // "fulfilled" / "invoiced" are delivery-challan lifecycle states in Zoho.
+  // Mapped to paid only when applied on a challan row (see apply path); here keep status text.
+  if (s === "fulfilled" || s === "invoiced") {
     return {
-      zoho_invoice_status: s === "overdue" ? "overdue" : s === "fulfilled" ? "fulfilled" : "sent",
+      zoho_invoice_status: s === "fulfilled" ? "fulfilled" : "invoiced",
+      payment_status: "unpaid",
+      markPaid: false,
+      challanFulfilled: true,
+    };
+  }
+  if (s === "sent" || s === "overdue" || s === "open" || s === "viewed" || s === "unpaid") {
+    return {
+      zoho_invoice_status: s === "overdue" ? "overdue" : "sent",
       payment_status: "unpaid",
       markPaid: false,
     };
@@ -354,6 +365,28 @@ Deno.serve(async (req) => {
   const contentType = req.headers.get("content-type") || "";
   let data = flattenPayload(parseBody(rawBody, contentType));
 
+  // Zoho UI sometimes places entity fields under "Headers" — merge useful header params into data
+  // (do not overwrite values already present in the body)
+  try {
+    const interesting = [
+      "total", "balance", "status", "doc_type", "document_type", "module",
+      "invoice_id", "invoice_number", "reference_number",
+      "deliverychallan_id", "delivery_challan_id", "deliverychallan_number",
+      "salesorder_id", "salesorder_number",
+    ];
+    for (const [k, v] of req.headers.entries()) {
+      const kl = k.toLowerCase().replace(/-/g, "_");
+      if (!v || v.length > 500) continue;
+      if (interesting.includes(kl) || interesting.some((w) => kl.endsWith("_" + w) || kl === w)) {
+        if (data[kl] == null || data[kl] === "") data[kl] = v;
+        // also keep original key shape
+        if (data[k] == null || data[k] === "") data[k] = v;
+      }
+    }
+  } catch {
+    /* ignore header merge errors */
+  }
+
   if (webhookSecret) {
     const hdr = req.headers.get("x-webhook-secret") || "";
     const bodySecret = pick(data, ["secret", "webhook_secret", "ZOHO_WEBHOOK_SECRET"]);
@@ -461,7 +494,7 @@ Deno.serve(async (req) => {
   // Match order
   let order: Record<string, unknown> | null = null;
   const selectCols =
-    "id,shop_id,shop_name,payment_status,zoho_invoice_id,zoho_invoice_number,balance_due,invoice_total,items,qty,item_ids,zoho_doc_type";
+    "id,shop_id,shop_name,payment_status,zoho_invoice_id,zoho_invoice_number,zoho_invoice_status,balance_due,invoice_total,items,qty,item_ids,zoho_doc_type";
 
   if (invoiceId) {
     const { data: rows } = await supabase
@@ -534,15 +567,15 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Status optional if we at least got balance/total/lines from fetch
+  // Status optional if we at least got balance/total/lines from fetch.
+  // Do NOT return 400 when order matched but Zoho rate-limited the re-fetch —
+  // keep prior status and still apply balance/total if present (avoids DC Bad Request storms).
   if (!statusRaw && !fetchedDoc) {
-    return new Response(
-      JSON.stringify({
-        code: 1,
-        error: "Missing status and could not re-fetch Zoho document",
-      }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    statusRaw = String(order.zoho_invoice_status || "sent");
+    console.warn("[zoho-status-webhook] no status in payload and fetch failed; using existing", {
+      orderId: order.id,
+      statusRaw,
+    });
   }
 
   const mapped = mapStatuses(statusRaw || String(fetchedDoc?.status || "sent"));
@@ -552,6 +585,17 @@ Deno.serve(async (req) => {
     mapped.markPaid = true;
     mapped.payment_status = "paid";
     mapped.zoho_invoice_status = mapped.zoho_invoice_status === "void" ? "void" : "paid";
+  }
+
+  // Permanent rule: delivery challan fulfilled/invoiced in Zoho is not payable.
+  // Tax invoice is the payment document — close challan balance so customer Pay stays correct.
+  const docType = String(order.zoho_doc_type || "").toLowerCase();
+  const isChallanRow =
+    docType.indexOf("challan") >= 0 ||
+    String(order.zoho_invoice_number || "").toUpperCase().indexOf("DC") === 0;
+  if (isChallanRow && mapped.challanFulfilled) {
+    mapped.markPaid = true;
+    mapped.payment_status = "paid";
   }
 
   const wasPaid = String(order.payment_status || "").toLowerCase() === "paid";

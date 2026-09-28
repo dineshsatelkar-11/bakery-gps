@@ -576,7 +576,7 @@
       <div class="lbl">Note (optional)</div>
       <input type="text" id="bpsNote" placeholder="Who paid / extra note" autocomplete="off" style="width:100%;padding:11px 12px;border:1.5px solid #e2e8f0;border-radius:12px;font-size:14px;margin-bottom:12px;background:#fff">
 
-      <div class="lbl">Payment screenshot</div>
+      <div class="lbl">Payment screenshot <span style="color:#c8382a">(required)</span></div>
       <div style="margin-bottom:12px">
         <label style="display:block;width:100%;padding:14px;border:1.5px dashed #94a3b8;border-radius:12px;background:#f8fafc;text-align:center;cursor:pointer;font-size:13px;font-weight:800;color:#334155">
           📷 Choose screenshot (gallery or camera)
@@ -1144,8 +1144,9 @@
       var msg = document.getElementById('bpsMsg');
       var isRequest = mode === 'request';
 
-      if (isRequest && !_brandProofBase64) {
-        if (msg) { msg.style.display = 'block'; msg.className = 'msg er'; msg.textContent = 'Attach payment screenshot before sending request to HQ.'; }
+      // Screenshot attachment is mandatory for mark-paid and request
+      if (!_brandProofBase64) {
+        if (msg) { msg.style.display = 'block'; msg.className = 'msg er'; msg.textContent = 'Attach payment screenshot first (required).'; }
         return;
       }
       if (isRequest) {
@@ -1156,11 +1157,10 @@
       _brandPaySetBusy(true, isRequest ? 'Sending…' : 'Saving…');
       if (msg) { msg.style.display = 'block'; msg.className = 'msg in'; msg.textContent = isRequest ? 'Uploading screenshot & sending request…' : 'Saving payment…'; }
 
-      var upPromise = _brandProofBase64 ? brandUploadProof().catch(function(e){
-        if (isRequest) throw e;
-        // mark paid can continue without proof if upload fails
-        return { url:'', file_id:'' };
-      }) : Promise.resolve({ url:'', file_id:'' });
+      var upPromise = brandUploadProof().catch(function(e){
+        // Attachment is mandatory — do not continue without successful upload
+        throw e;
+      });
 
       upPromise.then(function(up){
         if (isRequest) {
@@ -2555,17 +2555,8 @@
     var sal = env.left;
     var sar = env.right;
 
-    // When mobile browser chrome collapses, keep a sensible bottom inset
-    // using visualViewport (does not replace home-indicator inset when larger).
-    try {
-      var vv = window.visualViewport;
-      if (vv && window.innerHeight) {
-        var gap = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
-        // Only boost bottom when browser UI leaves a gap larger than env bottom
-        // and gap is small (typical toolbar), not full keyboard.
-        if (gap > sab && gap < 120) sab = gap;
-      }
-    } catch (e) {}
+    /* Do NOT boost --sab from visualViewport during scroll (browser chrome).
+       That made bottom chrome resize/jump and stick mid-way while scrolling. */
 
     root.style.setProperty('--sat', px(sat));
     root.style.setProperty('--sab', px(sab));
@@ -2601,7 +2592,7 @@
     window.addEventListener('pageshow', schedule, { passive: true });
     if (window.visualViewport) {
       visualViewport.addEventListener('resize', schedule, { passive: true });
-      visualViewport.addEventListener('scroll', schedule, { passive: true });
+      /* no visualViewport.scroll — fixed chrome must not jitter with page scroll */
     }
     // Late paint (PWA / standalone)
     setTimeout(apply, 100);

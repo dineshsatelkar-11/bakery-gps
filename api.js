@@ -928,13 +928,6 @@ function normalizeProducts(list) {
         }
         return Promise.resolve({ ok: false, error: 'order_id or shop_id+date required' });
 
-      case 'syncCustomerOrderDriver':
-        // Force a customer-portal order onto a driver for a delivery date.
-        // Creates/patches the logistics `orders` row. Does not change shops.assigned_driver.
-        b.force_driver = true;
-        return syncCustomerOrderToDriverOrders(b).then(function(){ return { ok: true }; })
-          .catch(function(e){ return { ok: false, error: (e && e.message) || 'sync failed' }; });
-
       case 'substituteDriver':
         // Reassign ALL orders for absent driver on a date → substitute.
         // Why shops were missed before:
@@ -1273,22 +1266,62 @@ function normalizeProducts(list) {
                  status: st,
                  zoho_doc_type: dt
                };
-               // return=representation so admin Link-Zoho can read new id
-               return fetch(BASE + '/customer_orders', {
-                 method: 'POST',
-                 headers: hdrs({ 'Prefer': 'return=representation' }),
-                 body: JSON.stringify(rowBody)
-               }).then(function(r) {
-                 if (!r.ok) {
-                   return r.json().then(function(e) {
-                     return { ok: false, error: (e && (e.message || e.error)) || 'Insert failed' };
-                   }).catch(function(){ return { ok: false, error: 'Insert failed' }; });
-                 }
-                 return r.json().then(function(rows) {
-                   var row = Array.isArray(rows) ? rows[0] : rows;
-                   return { ok: true, id: row && row.id, row: row, admin_placed: !!adminPlaced };
-                 }).catch(function(){ return { ok: true, admin_placed: !!adminPlaced }; });
-               }).catch(function(){ return { ok: false, error: 'Network error' }; });
+               // Dedupe: same shop + delivery_date → update existing pending/rejected/no_order
+               // instead of inserting a second row (fixes hung-UI double-submit from another device).
+               // Active pipeline rows (approved/kitchen/packaging/dispatched) block a new place.
+               var findUrl = BASE + '/customer_orders?shop_id=eq.' + encodeURIComponent(b.shop_id) +
+                 '&delivery_date=eq.' + encodeURIComponent(b.delivery_date) +
+                 '&select=id,status&order=created_at.desc&limit=20';
+               return fetch(findUrl, { headers: hdrs() })
+                 .then(function(r){ return r.ok ? r.json() : []; })
+                 .then(function(rows){
+                   var list = Array.isArray(rows) ? rows : [];
+                   var reusable = null;
+                   var active = null;
+                   for (var i = 0; i < list.length; i++) {
+                     var es = String(list[i].status || '').toLowerCase();
+                     if (es === 'pending' || es === 'rejected' || es === 'no_order') {
+                       if (!reusable) reusable = list[i];
+                     } else if (es === 'approved' || es === 'kitchen' || es === 'packaging' || es === 'dispatched') {
+                       if (!active) active = list[i];
+                     }
+                   }
+                   if (active && !adminPlaced) {
+                     return { ok: false, error: 'Order already approved for this date — contact admin to change' };
+                   }
+                   if (reusable) {
+                     var upd = {
+                       items: rowBody.items,
+                       qty: rowBody.qty,
+                       item_ids: rowBody.item_ids,
+                       note: rowBody.note,
+                       status: 'pending',
+                       shop_name: rowBody.shop_name,
+                       zoho_doc_type: rowBody.zoho_doc_type,
+                       updated_at: new Date().toISOString()
+                     };
+                     return sbPatch('customer_orders', { id: reusable.id }, upd).then(function(res){
+                       if (res && res.ok === false) return res;
+                       return { ok: true, id: reusable.id, reused: true, admin_placed: !!adminPlaced };
+                     });
+                   }
+                   // No reusable row — insert new
+                   return fetch(BASE + '/customer_orders', {
+                     method: 'POST',
+                     headers: hdrs({ 'Prefer': 'return=representation' }),
+                     body: JSON.stringify(rowBody)
+                   }).then(function(r) {
+                     if (!r.ok) {
+                       return r.json().then(function(e) {
+                         return { ok: false, error: (e && (e.message || e.error)) || 'Insert failed' };
+                       }).catch(function(){ return { ok: false, error: 'Insert failed' }; });
+                     }
+                     return r.json().then(function(rows2) {
+                       var row = Array.isArray(rows2) ? rows2[0] : rows2;
+                       return { ok: true, id: row && row.id, row: row, admin_placed: !!adminPlaced };
+                     }).catch(function(){ return { ok: true, admin_placed: !!adminPlaced }; });
+                   }).catch(function(){ return { ok: false, error: 'Network error' }; });
+                 });
              });
              }); // end _checkShopOrderBlock
              };

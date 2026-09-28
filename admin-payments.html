@@ -113,11 +113,25 @@
     .btn-grey { background: #f0e8dc; color: #4a2f14; }
     .filter-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     .bottom-nav {
-      position: fixed; left: 0; right: 0; bottom: 0; z-index: 200;
-      background: #fff; border-top: 1.5px solid #e8dfd2;
-      padding: 6px 4px max(6px, var(--sab));
-      max-width: 520px; margin: 0 auto;
+      position: fixed !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: 0 !important;
+      top: auto !important;
+      z-index: 200;
+      background: #fff;
+      border-top: 1.5px solid #e8dfd2;
+      padding: 6px 4px max(6px, env(safe-area-inset-bottom, 0px));
+      width: 100%;
+      max-width: none;
+      margin: 0;
       box-shadow: 0 -4px 16px rgba(74,47,20,.08);
+      -webkit-transform: translate3d(0,0,0);
+      transform: translate3d(0,0,0);
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      box-sizing: border-box;
+      contain: layout style;
     }
     .bottom-nav-inner { display: flex; justify-content: space-around; }
     .bnav-item {
@@ -470,6 +484,7 @@
   </div>
   <div id="zoho-list-result"></div>
 </div>
+
 
 <!-- Invoice detail sheet — sticky footer above bottom nav (incl. parent iframe nav ~64px) -->
 <div id="payInvDetailSheet" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(30,22,17,.55);align-items:center;justify-content:center;padding:16px;box-sizing:border-box" onclick="if(event.target===this)closePayInvDetail()">
@@ -1323,11 +1338,24 @@
         })
         .then(function(data){
           if (!_challanAlreadyInvoiced(o) && !_challanExtractLinkedInvoice(data).invoice_id) {
+            // Still open in Zoho as challan — keep status only
             return { kind: 'status', o: o, detail: o.zoho_invoice_status || '—' };
+          }
+          // Fulfilled/invoiced but linked invoice id not on payload yet — close challan dues
+          // so customer Pay never keeps a stale DC open (invoice is the payment document)
+          if (_payIsChallanFulfilledStatus(o.zoho_invoice_status) &&
+              String(o.payment_status || '').toLowerCase() !== 'paid') {
+            // _payApplyZohoDocToOrder above should already have closed; ensure local flags
+            o.payment_status = 'paid';
+            o.balance_due = 0;
           }
           return _challanFindInvoiceForChallan(o, data).then(function(linked){
             if (!linked || !linked.invoice_id) {
-              return { kind: 'status', o: o, detail: (o.zoho_invoice_status || 'fulfilled') + ' (no invoice id yet)' };
+              return {
+                kind: 'status',
+                o: o,
+                detail: (o.zoho_invoice_status || 'fulfilled') + ' (no invoice id yet; challan closed for Pay)'
+              };
             }
             o.zoho_linked_invoice_id = linked.invoice_id;
             o.zoho_linked_invoice_number = linked.invoice_number || '';
@@ -1960,6 +1988,10 @@
       if (s === 'void') return 'void';
       if (s === 'paid') return 'paid';
       if (s === 'partially_paid' || s.indexOf('partial') >= 0) return 'partial';
+      // Delivery challan converted in Zoho — no longer a payment document
+      if (s === 'fulfilled' || s === 'invoiced' || s === 'closed' || s.indexOf('fulfill') >= 0 || s.indexOf('invoic') >= 0 && s.indexOf('partial') < 0) {
+        return 'paid';
+      }
       if (s === 'overdue') return 'unpaid';
       if (s === 'draft' || s === 'pending_approval' || s === 'approved' || s === 'sent' || s === 'viewed' || s === 'unpaid') {
         if (!isNaN(bal) && bal <= 0 && (s === 'sent' || s === 'viewed' || s === 'approved')) return 'paid';
@@ -1968,6 +2000,12 @@
       if (!isNaN(bal) && bal <= 0 && s) return 'paid';
       if (!isNaN(bal) && bal > 0) return 'unpaid';
       return 'unpaid';
+    }
+    /** True when Zoho has converted this delivery challan to a tax invoice */
+    function _payIsChallanFulfilledStatus(zStatus) {
+      var s = _payNormalizeZohoStatus(zStatus);
+      return s === 'fulfilled' || s === 'invoiced' || s === 'closed' ||
+        /fulfill|invoic|converted/.test(s);
     }
     /** Detect Zoho rate-limit / access-denied style errors */
     function _payIsZohoRateLimit(errOrData) {
@@ -2099,8 +2137,14 @@
       if (isNaN(adjustment)) adjustment = null;
       var zStatus = _payNormalizeZohoStatus(doc.status || doc.challan_status || doc.current_sub_status || '');
       var paySt = _payMapZohoStatus(zStatus, balance);
+      var isDc = !!(data && data.deliverychallan) || String(o.zoho_doc_type || '').toLowerCase().indexOf('challan') >= 0;
+      // Permanent rule: fulfilled/invoiced delivery challan is not payable — close balance
+      // (tax invoice is the payment document; prevents stale DC on customer Pay tab)
+      if (isDc && _payIsChallanFulfilledStatus(zStatus)) {
+        paySt = 'paid';
+        balance = 0;
+      }
       if (paySt === 'paid') balance = 0;
-      var isDc = !!(data && data.deliverychallan) || String(o.zoho_doc_type || '').toLowerCase() === 'delivery_challan';
       var body = {
         action: 'updateCustomerOrderStatus',
         id: o.id,
@@ -2113,6 +2157,11 @@
       // Source of truth = Zoho (includes round-off) — overwrites local calc mismatch
       if (total != null) body.invoice_total = total;
       if (balance != null) body.balance_due = balance;
+      if (isDc && paySt === 'paid' && _payIsChallanFulfilledStatus(zStatus)) {
+        body.payment_mode = body.payment_mode || 'adjustment';
+        body.payment_ref = body.payment_ref || 'Challan fulfilled in Zoho — closed (invoice is payment doc)';
+        body.paid_amount = total != null ? total : (o.invoice_total != null ? o.invoice_total : 0);
+      }
       if (subtotal != null) body.invoice_subtotal = subtotal;
       if (taxTotal != null) {
         body.tax_amount = taxTotal;
@@ -4501,6 +4550,7 @@
       });
     }
 
+
 function payDeskMarkPaid(id) {
       var o = _payDeskRows.find(function(r){ return String(r.id) === String(id); });
       if (!o) return;
@@ -4532,6 +4582,8 @@ function payDeskMarkPaid(id) {
           _payDeskMsg('Failed: '+(e && e.message ? e.message : e), false);
         });
     }
+
+
 
 
 

@@ -654,16 +654,16 @@
                 <div style="font-size:12px;font-weight:800;color:#1a5a38;margin-bottom:8px">Pay with UPI</div>
                 <div id="payQrWrap" style="display:inline-block;padding:10px;background:#fff;border-radius:12px;border:1px solid #e2e8f0;min-height:160px;min-width:160px"></div>
                 <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:10px 0 6px">
-                    <button type="button" id="payUpiCopyBtn" onclick="copyUpiIdOnly()" style="padding:10px 14px;border-radius:10px;border:1.5px solid #a5d6a7;background:#e8f5e9;color:#1a5a38;font-weight:800;font-size:12px;cursor:pointer">📋 Copy UPI ID</button>
-                    <button type="button" id="payUpiDlQrBtn" onclick="downloadPayQr()" style="padding:10px 14px;border-radius:10px;border:1.5px solid #c8e6c9;background:#fff;color:#1a5a38;font-weight:800;font-size:12px;cursor:pointer">⬇ Download QR</button>
+                  <button type="button" id="payUpiCopyBtn" onclick="copyUpiIdOnly()" style="padding:10px 14px;border-radius:10px;border:1.5px solid #a5d6a7;background:#e8f5e9;color:#1a5a38;font-weight:800;font-size:12px;cursor:pointer">📋 Copy UPI ID</button>
+                  <button type="button" id="payUpiDlQrBtn" onclick="downloadPayQr()" style="padding:10px 14px;border-radius:10px;border:1.5px solid #c8e6c9;background:#fff;color:#1a5a38;font-weight:800;font-size:12px;cursor:pointer">⬇ Download QR</button>
                 </div>
                 <div id="payUpiAmtLbl" style="font-size:14px;font-weight:800;font-family:monospace;color:#c8382a;margin:6px 0 4px">₹0</div>
                 <div id="payUpiMeta" style="font-size:11px;color:#64748b;font-family:monospace;margin-bottom:10px"></div>
                 <div id="payUpiAppBtns" style="display:none"></div>
                 <div id="payUpiOsHint" style="font-size:11px;color:#64748b;line-height:1.45;margin-bottom:6px"></div>
                 <div id="payUpiSteps" style="text-align:left;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px 16px;font-size:14px;color:#334155;line-height:1.55">
-                    <div style="font-weight:800;color:#1a5a38;margin-bottom:10px;font-size:13px;letter-spacing:.3px;text-transform:uppercase">Payment guide</div>
-                    <div id="payUpiStepsBody" style="color:#1e293b;font-size:14px;line-height:1.55"></div>
+                  <div style="font-weight:800;color:#1a5a38;margin-bottom:10px;font-size:13px;letter-spacing:.3px;text-transform:uppercase">Payment guide</div>
+                  <div id="payUpiStepsBody" style="color:#1e293b;font-size:14px;line-height:1.55"></div>
                 </div>
             </div>
             <!-- PayU Hosted Checkout — demo customer (xyz111) only -->
@@ -2689,7 +2689,8 @@
       });
     }
 
-    function loadHistory(){
+    
+function loadHistory(){
       var el  = document.getElementById('historyList');
       var sb  = document.getElementById('histSummaryBar');
       if (!el) return;
@@ -3726,12 +3727,14 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
         if(!Array.isArray(list)) list = [];
         // If shop_id filter returns nothing, try broader fetch and match local ids
         var finish = function(rows){
-          // Pay tab: unpaid + draft invoices + delivery challans
+          // Pay tab: unpaid + draft invoices + open delivery challans
+          // Skip challans already fulfilled/invoiced in Zoho (invoice exists; stale challan must not inflate due)
           _payInvoices = (rows||[]).filter(function(o){
             var st = String(o.payment_status||'').toLowerCase();
             if(st === 'void' || st === 'stale' || st === 'paid') return false;
             var hasDoc = !!(o.zoho_invoice_id || o.zoho_invoice_number || o.invoice_total != null || o.balance_due != null);
             if(!hasDoc) return false;
+            if(typeof _payIsFulfilledChallan === 'function' && _payIsFulfilledChallan(o)) return false;
             var due = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
             if(!isNaN(due) && due <= 0.009) return false;
             return true;
@@ -3758,6 +3761,14 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
       if(/^dc[-_]/i.test(num) || /challan/i.test(num)) return true;
       return false;
     }
+    /** Challan already converted to invoice in Zoho — must not stay on customer Pay as due */
+    function _payIsFulfilledChallan(o){
+      if(!_payIsChallanDoc(o)) return false;
+      var zs = String(o.zoho_invoice_status || '').toLowerCase().replace(/\s+/g, '_').replace(/-/g, '_');
+      // Zoho marks converted challans as fulfilled / invoiced / closed — hide from Pay due list
+      if(/fulfill|invoic|closed|converted|partially_invoic/.test(zs)) return true;
+      return false;
+    }
     /** Draft / not-yet-sent invoice (shown on customer Pay with Draft badge) */
     function _payIsDraftInvoice(o){
       var s = String(o.zoho_invoice_status || '').toLowerCase().replace(/\s+/g, '_');
@@ -3767,6 +3778,7 @@ if(t==='payments' && !_customerPayEnabled){ t = 'order'; }
       return (_payInvoices||[]).filter(function(o){
         var st = String(o.payment_status||'').toLowerCase();
         if(st === 'paid' || st === 'void' || st === 'stale') return false;
+        if(typeof _payIsFulfilledChallan === 'function' && _payIsFulfilledChallan(o)) return false;
         var due = o.balance_due != null ? parseFloat(o.balance_due) : parseFloat(o.invoice_total);
         if(!isNaN(due) && due <= 0.009) return false;
         return true;
@@ -4879,6 +4891,16 @@ function _payUnpaidTotal(){
           return;
         }
         _payuShowMsg('Redirecting to PayU…', true);
+        try {
+          sessionStorage.setItem('payuLastAttempt', JSON.stringify({
+            ok: null,
+            txnid: res.j.txnid || '',
+            amount: res.j.amount || String(total),
+            mihpayid: '',
+            msg: 'started',
+            at: Date.now()
+          }));
+        } catch (eStore) {}
         // Build and auto-submit form to PayU
         var f = document.createElement('form');
         f.method = 'POST';
@@ -4900,25 +4922,75 @@ function _payUnpaidTotal(){
       });
     }
     // Handle return from PayU (surl / furl)
+    // PayU may append status, txnid, amount, mihpayid, etc. as query params (or POST).
     (function handlePayUReturn(){
       try {
         var q = new URLSearchParams(window.location.search || '');
         var payu = q.get('payu');
-        if (!payu) return;
+        var status = (q.get('status') || '').toLowerCase();
+        var txnid = q.get('txnid') || q.get('txnId') || '';
+        var amount = q.get('amount') || '';
+        var mihpayid = q.get('mihpayid') || q.get('payuMoneyId') || '';
+        var errorMsg = q.get('error_Message') || q.get('error') || q.get('field9') || '';
+
+        // Also recover last attempt we stored before redirect
+        var last = null;
+        try { last = JSON.parse(sessionStorage.getItem('payuLastAttempt') || 'null'); } catch(e) {}
+
+        if (!payu && !status && !txnid) {
+          // Show previous attempt message if still on Pay tab after reload
+          if (last && last.at && (Date.now() - last.at) < 15 * 60 * 1000) {
+            setTimeout(function(){
+              try { if (typeof showTab === 'function') showTab('payments'); } catch(e){}
+              if (last.ok) {
+                _payuShowMsg('✅ Last PayU attempt: SUCCESS (txn ' + (last.txnid || '') + '). Amount ₹' + (last.amount || '') + ' — invoice still shows due until admin/webhook marks paid. (Test mode)', true);
+              } else {
+                _payuShowMsg('❌ Last PayU attempt failed. ' + (last.msg || 'Try again with test card.'), false);
+              }
+            }, 500);
+          }
+          return;
+        }
+
+        var isSuccess = (payu === 'success') || (status === 'success') || (status === 'captured');
+        var isFailure = (payu === 'failure') || (status === 'failure') || (status === 'failed') || (status === 'pending' && !isSuccess);
+
+        // Persist for refresh
+        try {
+          sessionStorage.setItem('payuLastAttempt', JSON.stringify({
+            ok: !!isSuccess,
+            txnid: txnid || (last && last.txnid) || '',
+            amount: amount || (last && last.amount) || '',
+            mihpayid: mihpayid,
+            msg: errorMsg || '',
+            at: Date.now()
+          }));
+        } catch (eS) {}
+
         // Clean URL without reloading
         if (window.history && window.history.replaceState) {
-          var clean = window.location.pathname + window.location.hash;
+          var clean = window.location.pathname + (window.location.hash || '');
           window.history.replaceState({}, '', clean);
         }
+
         setTimeout(function(){
-          if (payu === 'success') {
-            try { if (typeof showTab === 'function') showTab('payments'); } catch(e){}
-            _payuShowMsg('✅ Payment submitted on PayU. Status will update after confirmation. (Test mode)', true);
-            try { if (typeof loadPaymentsTab === 'function') loadPaymentsTab(); } catch(e2){}
-          } else if (payu === 'failure') {
-            try { if (typeof showTab === 'function') showTab('payments'); } catch(e){}
-            _payuShowMsg('Payment was not completed on PayU. You can try again.', false);
+          try { if (typeof showTab === 'function') showTab('payments'); } catch(e){}
+          if (isSuccess) {
+            var okMsg = '✅ PayU payment SUCCESS';
+            if (amount) okMsg += ' · ₹' + amount;
+            if (txnid) okMsg += ' · txn ' + txnid;
+            if (mihpayid) okMsg += ' · id ' + mihpayid;
+            okMsg += '. Invoice still shows due until marked paid (webhook not live yet). This is normal in test.';
+            _payuShowMsg(okMsg, true);
+          } else {
+            var failMsg = '❌ PayU payment NOT completed.';
+            if (status) failMsg += ' Status: ' + status + '.';
+            if (errorMsg) failMsg += ' ' + errorMsg;
+            failMsg += ' Try again with test card 5123456789012346.';
+            _payuShowMsg(failMsg, false);
           }
+          try { if (typeof loadPaymentsTab === 'function') loadPaymentsTab(); } catch(e2){}
+          try { if (typeof renderPayUBox === 'function') renderPayUBox(); } catch(e3){}
         }, 400);
       } catch (e) {}
     })();
@@ -5144,10 +5216,14 @@ function _payUnpaidTotal(){
       var paymentRef = (refEl && refEl.value) ? refEl.value.trim() : '';
       var total = _payUnpaidTotal();
       var hadPhoto = _hasPayProofAttached();
-      // Screenshot required (PhonePe share or manual pick)
+      // Screenshot attachment is mandatory
       if (!hadPhoto) {
-        _payMsg('Attach payment screenshot first (share from PhonePe or pick photo). Send stays disabled until then.', false);
+        _payMsg('Payment screenshot is required. Attach screenshot (share from PhonePe / GPay or pick from gallery) before sending.', false);
         _updatePayRequestSendBtn();
+        try {
+          var prev = document.getElementById('paySheetPhotoPreview');
+          if (prev) { prev.style.display = 'block'; prev.innerHTML = '<div style="padding:10px;background:#fde8e8;border:1px solid #f0b0b0;border-radius:10px;color:#c8382a;font-size:12px;font-weight:700">⚠ Screenshot required</div>'; }
+        } catch(e){}
         return;
       }
       if (!window._payProofBase64 && window._sharedPayImage) {

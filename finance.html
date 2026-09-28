@@ -76,16 +76,25 @@ body{
 /* Search under chrome */
 #searchBar{position:relative;z-index:50}
 
-/* Mobile bottom nav */
+/* Mobile bottom nav — pinned; padding uses env() so address-bar scroll cannot resize it */
 .fin-bnav{
   display:none;
-  position:fixed;left:0;right:0;bottom:0;z-index:999;
+  position:fixed !important;
+  left:0 !important;
+  right:0 !important;
+  bottom:0 !important;
+  top:auto !important;
+  z-index:999;
   background:#fff;border-top:1px solid #e2e8f0;
-  padding:6px 0 max(8px, var(--sab));
-  padding-left:var(--sal);padding-right:var(--sar);
+  padding:6px 0 max(8px, env(safe-area-inset-bottom, 0px));
+  padding-left:env(safe-area-inset-left, 0px);
+  padding-right:env(safe-area-inset-right, 0px);
   box-shadow:0 -4px 20px rgba(15,23,42,.06);
   transform:translate3d(0,0,0);-webkit-transform:translate3d(0,0,0);
-  width:100%;max-width:var(--fin-phone);margin:0 auto;
+  -webkit-backface-visibility:hidden;backface-visibility:hidden;
+  width:100%;max-width:none;margin:0;
+  box-sizing:border-box;
+  contain:layout style;
 }
 .fin-bnav-inner{display:flex;width:100%;align-items:stretch}
 .fin-bnav-item{
@@ -8985,13 +8994,8 @@ function matchExpCat(raw){
     var sar = parseFloat(cs.paddingRight) || 0;
     var sab = parseFloat(cs.paddingBottom) || 0;
     var sal = parseFloat(cs.paddingLeft) || 0;
-    try {
-      var vv = window.visualViewport;
-      if (vv && window.innerHeight) {
-        var gap = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
-        if (gap > sab && gap < 120) sab = gap;
-      }
-    } catch (e) {}
+    /* Do NOT boost --sab from visualViewport gap during page scroll.
+       Browser chrome show/hide made bottom nav grow/shrink and stick mid-way. */
     root.style.setProperty('--sat', px(sat));
     root.style.setProperty('--sab', px(sab));
     root.style.setProperty('--sal', px(sal));
@@ -9012,7 +9016,7 @@ function matchExpCat(raw){
     window.addEventListener('pageshow', schedule, { passive: true });
     if (window.visualViewport) {
       visualViewport.addEventListener('resize', schedule, { passive: true });
-      visualViewport.addEventListener('scroll', schedule, { passive: true });
+      /* no visualViewport.scroll — causes bottom-nav jitter with address bar */
     }
     setTimeout(apply, 100); setTimeout(apply, 500);
   }
