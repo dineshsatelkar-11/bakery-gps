@@ -587,15 +587,25 @@ Deno.serve(async (req) => {
     mapped.zoho_invoice_status = mapped.zoho_invoice_status === "void" ? "void" : "paid";
   }
 
-  // Permanent rule: delivery challan fulfilled/invoiced in Zoho is not payable.
-  // Tax invoice is the payment document — close challan balance so customer Pay stays correct.
+  // Permanent rule: only close dues when the row is still a delivery challan.
+  // If already converted to tax invoice (INV-… / zoho_doc_type=invoice), keep unpaid + Zoho balance.
   const docType = String(order.zoho_doc_type || "").toLowerCase();
+  const invNo = String(order.zoho_invoice_number || "");
+  const isInvoiceRow =
+    docType === "invoice" || /^INV[-_]/i.test(invNo);
   const isChallanRow =
-    docType.indexOf("challan") >= 0 ||
-    String(order.zoho_invoice_number || "").toUpperCase().indexOf("DC") === 0;
+    !isInvoiceRow &&
+    (docType.indexOf("challan") >= 0 || /^DC[-_]/i.test(invNo));
   if (isChallanRow && mapped.challanFulfilled) {
     mapped.markPaid = true;
     mapped.payment_status = "paid";
+  }
+  // Never force-pay a real invoice just because status text is "fulfilled"
+  if (isInvoiceRow && mapped.challanFulfilled) {
+    mapped.markPaid = false;
+    if (balance != null && balance > 0.01) {
+      mapped.payment_status = "unpaid";
+    }
   }
 
   const wasPaid = String(order.payment_status || "").toLowerCase() === "paid";
