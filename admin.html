@@ -96,20 +96,21 @@
           padding:6px 0 max(8px,env(safe-area-inset-bottom,0px));
           box-shadow:0 -6px 24px rgba(15,23,42,.12);
           min-height:calc(64px + env(safe-area-inset-bottom,0px));
-          -webkit-transform:translate3d(0,0,0);
-          transform:translate3d(0,0,0);
-          -webkit-backface-visibility:hidden;
-          backface-visibility:hidden;
+          /* No GPU transform — avoids “rotating” / jitter on mobile scroll */
+          transform:none !important;
+          -webkit-transform:none !important;
+          will-change:auto !important;
+          -webkit-backface-visibility:visible;
+          backface-visibility:visible;
           box-sizing:border-box;
-          /* Isolate from page scroll / address-bar resize jitter */
           contain:layout style;
         }
-        .bottom-nav-inner{display:flex;align-items:stretch;justify-content:space-between;width:100%;max-width:none;margin:0;min-height:56px;padding:0 env(safe-area-inset-left,0) 0 env(safe-area-inset-right,0);gap:0}
+        .bottom-nav-inner{display:flex;flex-direction:row;align-items:stretch;justify-content:space-between;width:100%;max-width:none;margin:0;min-height:56px;padding:0 env(safe-area-inset-left,0) 0 env(safe-area-inset-right,0);gap:0}
         .bnav-item{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 2px;border:none;background:transparent;cursor:pointer;color:#64748b;font-family:-apple-system,sans-serif;-webkit-tap-highlight-color:transparent;min-height:56px;border-radius:12px;margin:0 2px;transition:background .15s,color .15s}
-        .bnav-item .bnav-ico{font-size:24px;line-height:1;opacity:.75}
+        .bnav-item .bnav-ico{font-size:24px;line-height:1;opacity:.75;transform:none !important}
         .bnav-item .bnav-lbl{font-size:11px;font-weight:800;letter-spacing:0;white-space:nowrap}
         .bnav-item.on{color:#0f766e;background:#f0fdfa}
-        .bnav-item.on .bnav-ico{opacity:1;transform:scale(1.08)}
+        .bnav-item.on .bnav-ico{opacity:1;transform:none !important}
         .bnav-item.on .bnav-lbl{font-weight:900}
         .more-sheet{display:none;position:fixed;inset:0;z-index:4500;background:rgba(30,22,17,.45)}
         .more-sheet.open{display:block}
@@ -149,7 +150,7 @@
           :root{ --admin-topbar-h: 66px; }
           .tabs{display:none !important}
           .topbar-chips{display:none !important}
-          .bottom-nav{display:flex !important;flex-direction:column;width:100%;max-width:none;left:0;right:0;margin:0}
+          .bottom-nav{display:flex !important;flex-direction:row !important;width:100%;max-width:none;left:0;right:0;margin:0;transform:none !important;-webkit-transform:none !important}
           /* Use env() for bottom pad so address-bar show/hide does not resize content under nav */
           body{padding-top:calc(var(--admin-topbar-h) + var(--sat));padding-bottom:calc(76px + env(safe-area-inset-bottom,0px))}
           #subTabs{position:sticky;top:calc(var(--admin-topbar-h) + var(--sat)) !important;z-index:298}
@@ -8253,6 +8254,35 @@ apiPost({
       el.style.border = '1px solid '+(type==='ok'?'#a5d6a7':type==='er'?'#f0b0b0':'#ffe082');
     }
 
+    /** Failure alert email (edge: send-failure-alert). Same helper as payments desk. */
+    var _failAlertLastAdmin = {};
+    function sendFailureAlert(payload) {
+      try {
+        if (typeof CONFIG === 'undefined' || !CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY) return Promise.resolve({ skipped: true });
+        payload = payload || {};
+        var key = String(payload.stage || '') + '|' + String(payload.order_id || '') + '|' + String(payload.error || '').slice(0, 80);
+        var now = Date.now();
+        if (_failAlertLastAdmin[key] && (now - _failAlertLastAdmin[key]) < 5 * 60 * 1000) {
+          return Promise.resolve({ skipped: true, reason: 'throttled' });
+        }
+        _failAlertLastAdmin[key] = now;
+        return fetch(CONFIG.SUPABASE_URL + '/functions/v1/send-failure-alert', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + CONFIG.SUPABASE_ANON_KEY,
+            'apikey': CONFIG.SUPABASE_ANON_KEY
+          },
+          body: JSON.stringify(payload)
+        }).then(function(r){ return r.json().catch(function(){ return {}; }); })
+          .catch(function(e){ console.warn('[sendFailureAlert]', e); return { ok: false }; });
+      } catch (e) {
+        console.warn('[sendFailureAlert]', e);
+        return Promise.resolve({ ok: false });
+      }
+    }
+    window.sendFailureAlert = sendFailureAlert;
+
     function zohoEdge(action, extra){
       return loadZohoCreds().then(function(){
         _zohoAccessToken = null;
@@ -13945,12 +13975,44 @@ function confirmZohoInvPreviewSend(){
       loadCustOrders();
     }, 1800);
   }).catch(function(err){
+    var em = (err && err.message) ? err.message : String(err||'unknown');
     if(msg){
       msg.className='msg er';
-      msg.textContent = '❌ Zoho failed: '+(err && err.message ? err.message : String(err||'unknown'))
+      msg.textContent = '❌ Zoho failed: '+ em
         + ' — Order stays approved in app only.';
     }
     if(btn){ btn.disabled=false; btn.textContent = existingId ? '✏️ Retry update' : '✅ Retry send'; }
+    try {
+      if (typeof sendFailureAlert === 'function') {
+        sendFailureAlert({
+          stage: existingId ? 'invoice_update' : 'invoice_create',
+          subject: '[IBCAB] Zoho ' + (existingId ? 'update' : 'create') + ' failed · ' + (order.shop_name || order.id || ''),
+          order_id: order.id,
+          shop_name: order.shop_name || '',
+          zoho_id_app: existingId || order.zoho_invoice_id || '',
+          zoho_number_app: order.zoho_invoice_number || '',
+          error: em
+        });
+      } else if (typeof CONFIG !== 'undefined' && CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY) {
+        fetch(CONFIG.SUPABASE_URL + '/functions/v1/send-failure-alert', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + CONFIG.SUPABASE_ANON_KEY,
+            'apikey': CONFIG.SUPABASE_ANON_KEY
+          },
+          body: JSON.stringify({
+            stage: existingId ? 'invoice_update' : 'invoice_create',
+            subject: '[IBCAB] Zoho ' + (existingId ? 'update' : 'create') + ' failed · ' + (order.shop_name || order.id || ''),
+            order_id: order.id,
+            shop_name: order.shop_name || '',
+            zoho_id_app: existingId || order.zoho_invoice_id || '',
+            zoho_number_app: order.zoho_invoice_number || '',
+            error: em
+          })
+        }).catch(function(){});
+      }
+    } catch (eA) {}
   });
 }
 

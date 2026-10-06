@@ -530,8 +530,8 @@
   <div class="shop-modal" style="max-height:min(94vh,720px);display:flex;flex-direction:column" onclick="event.stopPropagation()">
     <div class="shop-modal-head" style="flex-shrink:0">
       <div>
-        <div class="shop-modal-title" id="bpsTitle">Pay / record</div>
-        <div class="shop-modal-sub" id="bpsSub">UPI · screenshot · mark paid or request HQ</div>
+        <div class="shop-modal-title" id="bpsTitle">Pay request to HQ</div>
+        <div class="shop-modal-sub" id="bpsSub">UPI · screenshot · HQ confirms from bank</div>
       </div>
       <button type="button" class="modal-close" onclick="closeBrandPaySheet()">×</button>
     </div>
@@ -556,7 +556,7 @@
           <ol style="margin:6px 0 0;padding-left:18px">
             <li>Scan QR in GPay / PhonePe / Paytm, or copy UPI ID</li>
             <li>Pay the amount shown above</li>
-            <li>Attach screenshot + UTR, then save or send request</li>
+            <li>Attach screenshot + UTR, then send request to HQ</li>
           </ol>
         </div>
       </div>
@@ -587,7 +587,6 @@
 
       <div id="bpsMsg" style="display:none;margin-bottom:10px" class="msg in"></div>
 
-      <button type="button" id="bpsSaveBtn" class="shop-save" style="background:#0f766e;margin-bottom:8px" onclick="confirmBrandPay('paid')">✓ Mark paid &amp; save</button>
       <button type="button" id="bpsRequestBtn" class="shop-save" style="background:#1e293b;margin-bottom:8px" onclick="confirmBrandPay('request')">📨 Send payment request to HQ</button>
       <button type="button" onclick="closeBrandPaySheet()" style="width:100%;padding:12px;border:1.5px solid #e2e8f0;border-radius:12px;background:#fff;color:#475569;font-size:13px;font-weight:800;cursor:pointer">Cancel</button>
     </div>
@@ -986,8 +985,8 @@
     window.brandPayPhotoChosen = brandPayPhotoChosen;
 
     function brandUploadProof(){
-      if (!_brandProofBase64) return Promise.resolve({ url:'', file_id:'' });
-      if (_brandProofUrl) return Promise.resolve({ url: _brandProofUrl, file_id: _brandProofFileId });
+      if (!_brandProofBase64) return Promise.reject(new Error('No screenshot data — attach screenshot again'));
+      if (_brandProofUrl && _brandProofFileId) return Promise.resolve({ url: _brandProofUrl, file_id: _brandProofFileId });
       var uploadUrl = (typeof CONFIG !== 'undefined' && CONFIG.DRIVE_UPLOAD_URL) ? CONFIG.DRIVE_UPLOAD_URL : '';
       if (!uploadUrl) return Promise.reject(new Error('Drive upload not configured'));
       return fetch(uploadUrl, {
@@ -1005,9 +1004,9 @@
             throw new Error('Upload response not JSON');
           }
           if (!data || !data.ok) throw new Error((data && data.error) || 'Upload failed');
-          var fid = data.file_id || '';
-          var viewUrl = data.view_url || data.url || (fid ? ('https://drive.google.com/file/d/'+fid+'/view?usp=sharing') : '');
-          if (!viewUrl) throw new Error('Upload failed — no file URL');
+          var fid = String(data.file_id || '').trim();
+          if (!fid) throw new Error('Upload failed — no file_id from Drive');
+          var viewUrl = data.view_url || data.url || ('https://drive.google.com/file/d/'+fid+'/view?usp=sharing');
           _brandProofUrl = viewUrl;
           _brandProofFileId = fid;
           return { url: viewUrl, file_id: fid };
@@ -1065,9 +1064,7 @@
       setBrandPayMode('upi');
       var msg = document.getElementById('bpsMsg');
       if (msg) { msg.style.display = 'none'; msg.textContent = ''; }
-      var btn = document.getElementById('bpsSaveBtn');
       var reqBtn = document.getElementById('bpsRequestBtn');
-      if (btn) { btn.disabled = false; btn.textContent = '✓ Mark paid & save'; }
       if (reqBtn) { reqBtn.disabled = false; reqBtn.textContent = '📨 Send payment request to HQ'; }
       var sh = document.getElementById('brandPaySheet');
       if (sh) { sh.classList.add('open'); sh.style.display = 'flex'; }
@@ -1122,14 +1119,25 @@
         : (sessionStorage.getItem('staffName') || localStorage.getItem('staffNamePersist') || 'Brand Admin');
     }
     function _brandPaySetBusy(busy, label){
-      var btn = document.getElementById('bpsSaveBtn');
       var reqBtn = document.getElementById('bpsRequestBtn');
-      if (btn) { btn.disabled = !!busy; if (!busy) btn.textContent = '✓ Mark paid & save'; else if (label) btn.textContent = label; }
-      if (reqBtn) { reqBtn.disabled = !!busy; if (!busy) reqBtn.textContent = '📨 Send payment request to HQ'; else if (label) reqBtn.textContent = label; }
+      if (reqBtn) {
+        reqBtn.disabled = !!busy;
+        if (!busy) reqBtn.textContent = '📨 Send payment request to HQ';
+        else if (label) reqBtn.textContent = label;
+      }
     }
-    /** mode: 'paid' | 'request' */
+    /** Brand admin can only request payment to HQ — not mark paid. */
     function confirmBrandPay(mode){
-      mode = mode || 'paid';
+      // Ignore any 'paid' calls — mark-paid button removed
+      if (mode && mode !== 'request') {
+        var msgBlock = document.getElementById('bpsMsg');
+        if (msgBlock) {
+          msgBlock.style.display = 'block';
+          msgBlock.className = 'msg er';
+          msgBlock.textContent = 'Brand admin cannot mark paid. Send a payment request to HQ instead.';
+        }
+        return;
+      }
       if (!_brandPayIds.length) return;
       var docs = (_brandInvOrders || []).filter(function(o){ return _brandPayIds.indexOf(String(o.id)) >= 0; });
       docs = _brandPayUnpaidDocs(docs);
@@ -1137,99 +1145,48 @@
         closeBrandPaySheet();
         return;
       }
-      var payMode = _brandPayMode || 'upi';
       var ref = ((document.getElementById('bpsRef')||{}).value || '').trim();
       var note = ((document.getElementById('bpsNote')||{}).value || '').trim();
       var staff = _brandPayStaff();
       var msg = document.getElementById('bpsMsg');
-      var isRequest = mode === 'request';
 
-      // Screenshot attachment is mandatory for mark-paid and request
       if (!_brandProofBase64) {
         if (msg) { msg.style.display = 'block'; msg.className = 'msg er'; msg.textContent = 'Attach payment screenshot first (required).'; }
         return;
       }
-      if (isRequest) {
-        var conf = 'Send payment request for ' + _invMoney(_brandPayTotal) + ' to HQ?\n\nScreenshot will be attached. HQ confirms from bank (like customer Pay).';
-        if (!confirm(conf)) return;
-      }
+      var conf = 'Send payment request for ' + _invMoney(_brandPayTotal) + ' to HQ?\n\nScreenshot will be attached. HQ confirms from bank (like customer Pay).';
+      if (!confirm(conf)) return;
 
-      _brandPaySetBusy(true, isRequest ? 'Sending…' : 'Saving…');
-      if (msg) { msg.style.display = 'block'; msg.className = 'msg in'; msg.textContent = isRequest ? 'Uploading screenshot & sending request…' : 'Saving payment…'; }
+      _brandPaySetBusy(true, 'Sending…');
+      if (msg) { msg.style.display = 'block'; msg.className = 'msg in'; msg.textContent = 'Uploading screenshot & sending request…'; }
 
-      var upPromise = brandUploadProof().catch(function(e){
-        // Attachment is mandatory — do not continue without successful upload
-        throw e;
-      });
-
-      upPromise.then(function(up){
-        if (isRequest) {
-          var claimNote = (note ? note + ' · ' : '') + 'Brand admin: ' + staff;
-          return apiPost({
-            action: 'customerRequestPayment',
-            ids: docs.map(function(o){ return o.id; }),
-            shop_id: _brandPayShopId,
-            note: claimNote.slice(0, 200),
-            payment_ref: ref || undefined,
-            payment_proof_url: up.url || undefined,
-            payment_proof_file_id: up.file_id || undefined
-          }).then(function(res){
-            if (res && res.ok === false) throw new Error(res.error || 'Request failed');
-            return res;
-          });
-        }
-        // Mark paid — store payment now (proof URL stored in payment_ref note if needed)
-        var chain = Promise.resolve();
-        var paidRef = ref;
-        if (note) paidRef = paidRef ? (paidRef + ' · ' + note) : note;
-        if (up.url) paidRef = (paidRef ? paidRef + ' · ' : '') + 'proof attached';
-        paidRef = String(paidRef || '').slice(0, 64);
-        docs.forEach(function(o){
-          var due = _brandPayDue(o);
-          chain = chain.then(function(){
-            return apiPost({
-              action: 'markInvoicePayment',
-              id: o.id,
-              payment_status: 'paid',
-              balance_due: 0,
-              paid_amount: due,
-              payment_mode: payMode,
-              payment_ref: paidRef,
-              paid_by: 'brand:' + String(staff).slice(0, 40)
-            }).then(function(res){
-              if (res && res.ok === false) throw new Error(res.error || 'Save failed');
-              // Attach screenshot URL if available (uses claim fields without undoing paid status)
-              if (up.url) {
-                return apiPost({
-                  action: 'customerClaimPaid',
-                  id: o.id,
-                  note: 'Brand marked paid · ' + staff,
-                  payment_ref: ref || undefined,
-                  payment_proof_url: up.url,
-                  payment_proof_file_id: up.file_id || undefined
-                }).catch(function(){ return res; });
-              }
-              return res;
-            });
-          });
+      brandUploadProof().then(function(up){
+        if (!up || !up.file_id) throw new Error('Screenshot upload incomplete — no file id. Try again.');
+        var claimNote = (note ? note + ' · ' : '') + 'Brand admin: ' + staff;
+        return apiPost({
+          action: 'customerRequestPayment',
+          ids: docs.map(function(o){ return o.id; }),
+          shop_id: _brandPayShopId,
+          note: claimNote.slice(0, 200),
+          payment_ref: ref || undefined,
+          payment_proof_url: up.url || undefined,
+          payment_proof_file_id: up.file_id
+        }).then(function(res){
+          if (res && res.ok === false) throw new Error(res.error || 'Request failed');
+          return res;
         });
-        return chain;
       }).then(function(){
         if (msg) {
           msg.className = 'msg ok';
-          msg.textContent = isRequest
-            ? '✅ Request sent to HQ — they confirm from bank'
-            : '✅ Payment marked paid';
+          msg.textContent = '✅ Request sent to HQ — they confirm from bank';
         }
-        _brandPayToast(isRequest
-          ? ('Request sent for ' + docs.length + ' invoice(s).')
-          : ('Payment recorded for ' + docs.length + ' invoice(s).'), true);
+        _brandPayToast('Request sent for ' + docs.length + ' invoice(s).', true);
         setTimeout(function(){
           closeBrandPaySheet();
           loadInvoices();
         }, 500);
       }).catch(function(e){
-        if (msg) { msg.className = 'msg er'; msg.textContent = '❌ ' + (e.message || e); }
+        if (msg) { msg.className = 'msg er'; msg.textContent = '❌ ' + (e.message || e) + ' — request NOT sent.'; }
         _brandPaySetBusy(false);
       });
     }

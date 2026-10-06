@@ -1718,7 +1718,21 @@
           _challanMsg('Invoice created: ' + (inv.invoice_number || inv.invoice_id || 'OK'), true);
           loadChallanDesk();
         }).catch(function(e) {
-          _challanMsg('Convert failed: ' + (e && e.message ? e.message : e), false);
+          var em = (e && e.message) ? e.message : String(e || 'convert failed');
+          _challanMsg('Convert failed: ' + em, false);
+          try {
+            if (typeof sendFailureAlert === 'function') {
+              sendFailureAlert({
+                stage: 'invoice_create',
+                subject: '[IBCAB] Convert to invoice failed · ' + (o.shop_name || o.id || ''),
+                order_id: o.id,
+                shop_name: o.shop_name || '',
+                zoho_id_app: o.zoho_invoice_id || '',
+                zoho_number_app: o.zoho_invoice_number || '',
+                error: em
+              });
+            }
+          } catch (eA) {}
         });
       };
 
@@ -2140,6 +2154,29 @@
       var paySt = _payMapZohoStatus(zStatus, balance);
       var docTypeNow = String(o.zoho_doc_type || '').toLowerCase();
       var invNo = String(doc.invoice_number || doc.deliverychallan_number || o.zoho_invoice_number || '');
+      // App vs Zoho id/number mismatch → alert email
+      try {
+        var appZid = String(o.zoho_invoice_id || '').trim();
+        var zohoZid = String(doc.invoice_id || doc.deliverychallan_id || '').trim();
+        var appZnum = String(o.zoho_invoice_number || '').trim();
+        var zohoZnum = String(doc.invoice_number || doc.deliverychallan_number || '').trim();
+        var idMismatch = appZid && zohoZid && appZid !== zohoZid;
+        var numMismatch = appZnum && zohoZnum && appZnum !== zohoZnum &&
+          !/^\$\{/.test(appZnum) && !/^\$\{/.test(zohoZnum);
+        if (idMismatch || numMismatch) {
+          sendFailureAlert({
+            stage: 'invoice_id_mismatch',
+            subject: '[IBCAB] Zoho id/number mismatch · ' + (o.shop_name || o.id || ''),
+            order_id: o.id,
+            shop_name: o.shop_name || '',
+            zoho_id_app: appZid,
+            zoho_id_zoho: zohoZid,
+            zoho_number_app: appZnum,
+            zoho_number_zoho: zohoZnum,
+            error: (idMismatch ? 'invoice id differs' : '') + (idMismatch && numMismatch ? '; ' : '') + (numMismatch ? 'invoice number differs' : '')
+          });
+        }
+      } catch (eMis) {}
       var isInvoiceDoc = docTypeNow === 'invoice' || /^INV[-_]/i.test(invNo) || !!(data && data.invoice && !data.deliverychallan);
       var isDc = !isInvoiceDoc && (
         !!(data && data.deliverychallan) ||
@@ -2251,6 +2288,35 @@
     function _payShopSyncKey(o){
       return String((o && (o.shop_id || o.shop_name)) || '').trim() || '_unknown';
     }
+    /** Failure email → edge function send-failure-alert (Gmail SMTP secrets). */
+    var _failAlertLast = {};
+    function sendFailureAlert(payload) {
+      try {
+        if (typeof CONFIG === 'undefined' || !CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY) return Promise.resolve({ skipped: true });
+        payload = payload || {};
+        var key = String(payload.stage || '') + '|' + String(payload.order_id || '') + '|' + String(payload.error || '').slice(0, 80);
+        var now = Date.now();
+        if (_failAlertLast[key] && (now - _failAlertLast[key]) < 5 * 60 * 1000) {
+          return Promise.resolve({ skipped: true, reason: 'throttled' });
+        }
+        _failAlertLast[key] = now;
+        return fetch(CONFIG.SUPABASE_URL + '/functions/v1/send-failure-alert', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + CONFIG.SUPABASE_ANON_KEY,
+            'apikey': CONFIG.SUPABASE_ANON_KEY
+          },
+          body: JSON.stringify(payload)
+        }).then(function(r){ return r.json().catch(function(){ return {}; }); })
+          .catch(function(e){ console.warn('[sendFailureAlert]', e); return { ok: false }; });
+      } catch (e) {
+        console.warn('[sendFailureAlert]', e);
+        return Promise.resolve({ ok: false });
+      }
+    }
+    window.sendFailureAlert = sendFailureAlert;
+
     function _payRecordSyncResult(o, ok, errMsg){
       if (!o) return;
       var log = _payLoadSyncLog();
@@ -2280,6 +2346,19 @@
         };
       }
       _paySaveSyncLog(log);
+      if (!ok) {
+        try {
+          sendFailureAlert({
+            stage: 'invoice_sync',
+            subject: '[IBCAB] Invoice sync failed · ' + (o.shop_name || oid || ''),
+            order_id: oid,
+            shop_name: o.shop_name || '',
+            zoho_id_app: o.zoho_invoice_id || '',
+            zoho_number_app: o.zoho_invoice_number || '',
+            error: String(errMsg || 'sync failed').slice(0, 500)
+          });
+        } catch (eA) {}
+      }
     }
     function _payBeginSyncRun(mode){
       var log = _payLoadSyncLog();

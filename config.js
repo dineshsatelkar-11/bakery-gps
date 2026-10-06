@@ -51,6 +51,10 @@ const CONFIG = {
   // Chart of Accounts → [ 1 ] It's BAKED Craft & Artisanal Bakery
   ZOHO_PAYMENT_ACCOUNT_ID: '3249544000000190499',
 
+  // Failure alerts (Zoho create/sync) → edge function send-failure-alert
+  // SMTP secrets live in Supabase only (SMTP_USER, SMTP_PASS, ALERT_TO) — not here
+  // Default To/From: itsbakedpune5@gmail.com (set in edge secrets)
+
   // ── Web Push (VAPID) ───────────────────────────────────────────────────────
   // 1. Open generate-vapid.html in your browser → click Generate → copy Public Key here
   // 2. Private Key goes into Supabase Edge Function secrets (never here)

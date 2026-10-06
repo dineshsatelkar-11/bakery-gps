@@ -5178,7 +5178,9 @@ function _payUnpaidTotal(){
     }
 
     function payUploadProofToDrive(){
-      if(!window._payProofBase64) return Promise.resolve({ url:'', file_id:'' });
+      if(!window._payProofBase64) {
+        return Promise.reject(new Error('No screenshot data — attach screenshot again'));
+      }
       var uploadUrl = (typeof CONFIG !== 'undefined' && CONFIG.DRIVE_UPLOAD_URL) ? CONFIG.DRIVE_UPLOAD_URL : '';
       if(!uploadUrl) return Promise.reject(new Error('Drive upload not configured — set CONFIG.DRIVE_UPLOAD_URL'));
       // No Content-Type: application/json — Apps Script web apps work best with a simple POST body
@@ -5197,9 +5199,9 @@ function _payUnpaidTotal(){
             throw new Error('Upload response not JSON (check Web App is deployed as Anyone)');
           }
           if(!data || !data.ok) throw new Error((data && data.error) || 'Upload failed');
-          var fid = data.file_id || '';
-          var viewUrl = data.view_url || data.url || (fid ? ('https://drive.google.com/file/d/'+fid+'/view?usp=sharing') : '');
-          if(!viewUrl) throw new Error('Upload failed — no file URL');
+          var fid = String(data.file_id || '').trim();
+          if(!fid) throw new Error('Upload failed — no file_id from Drive (admin cannot see screenshot)');
+          var viewUrl = data.view_url || data.url || ('https://drive.google.com/file/d/'+fid+'/view?usp=sharing');
           window._payProofUrl = viewUrl;
           window._payProofFileId = fid;
           return { url: viewUrl, file_id: fid };
@@ -5229,6 +5231,11 @@ function _payUnpaidTotal(){
       if (!window._payProofBase64 && window._sharedPayImage) {
         window._payProofBase64 = String(window._sharedPayImage).split(',')[1] || null;
       }
+      if (!window._payProofBase64) {
+        _payMsg('Screenshot data missing. Please attach the screenshot again, then send.', false);
+        _updatePayRequestSendBtn();
+        return;
+      }
       // Always confirm before send — UTR must be clear or admin may reject
       var confirmMsg =
         'Send payment request for ₹' + total.toLocaleString('en-IN', { maximumFractionDigits: 2 }) + '?\n\n' +
@@ -5238,9 +5245,12 @@ function _payUnpaidTotal(){
         'If UTR is wrong or not clear, admin may reject this request.\n\n' +
         'Continue and send request?';
       if (!confirm(confirmMsg)) return;
-      _payMsg('Sending request for ₹'+total.toLocaleString('en-IN',{maximumFractionDigits:2})+'…', null);
+      _payMsg('Uploading screenshot & sending request for ₹'+total.toLocaleString('en-IN',{maximumFractionDigits:2})+'…', null);
       payUploadProofToDrive().then(function(up){
-        closePayRequestSheet();
+        // Require real Drive file_id — never send claim without proof admin can open
+        if (!up || !up.file_id) {
+          throw new Error('Screenshot upload incomplete — no file id. Try again.');
+        }
         var body = {
           action: 'customerRequestPayment',
           ids: ids,
@@ -5248,34 +5258,29 @@ function _payUnpaidTotal(){
           note: note,
           payment_ref: paymentRef || undefined,
           payment_proof_url: up.url || undefined,
-          payment_proof_file_id: up.file_id || undefined
+          payment_proof_file_id: up.file_id
         };
         return apiPost(body).then(function(res){
-          if(res && res.ok === false) throw new Error(res.error||'Failed');
+          if(res && res.ok === false) throw new Error(res.error||'Failed to save payment request');
+          closePayRequestSheet();
           clearSharedPay();
-          _payMsg('Request sent for ₹'+total.toLocaleString('en-IN',{maximumFractionDigits:2})+' ('+ids.length+' invoices)'+(hadPhoto?' · screenshot attached':'')+'. Admin usually confirms within 24 working hours.', true);
+          _payMsg('Request sent for ₹'+total.toLocaleString('en-IN',{maximumFractionDigits:2})+' ('+ids.length+' invoices) · screenshot attached. Admin usually confirms within 24 working hours.', true);
           loadPaymentsTab();
           startPaymentStatusPoll('request');
           notifyAdminPaymentRequest(session.shop_name, total, ids.length);
         });
       }).catch(function(err){
-        // fallback without photo if upload failed
-        closePayRequestSheet();
-        return Promise.all(ids.map(function(id){
-          return apiPost({
-            action:'customerClaimPaid', id: id, note: note,
-            payment_ref: paymentRef || undefined,
-            payment_proof_url: window._payProofUrl || undefined
-          });
-        })).then(function(){
-          clearSharedPay();
-          _payMsg('Request sent'+(hadPhoto?' (photo upload may have failed — try again if admin cannot see screenshot)':'')+'. Admin usually confirms within 24 working hours.', true);
-          loadPaymentsTab();
-          startPaymentStatusPoll('request');
-          notifyAdminPaymentRequest(session.shop_name, total, ids.length);
-        });
-      }).catch(function(e2){
-        _payMsg('Failed: '+(e2.message||e2), false);
+        // Do NOT send claim without screenshot — admin would see request with no proof
+        var msg = (err && err.message) ? String(err.message) : String(err || 'Upload failed');
+        _payMsg('Screenshot upload failed: ' + msg + '. Request was NOT sent. Check internet and try again (re-attach screenshot if needed).', false);
+        try {
+          var prev = document.getElementById('paySheetPhotoPreview');
+          if (prev) {
+            prev.style.display = 'block';
+            prev.innerHTML = '<div style="padding:10px;background:#fde8e8;border:1px solid #f0b0b0;border-radius:10px;color:#c8382a;font-size:12px;font-weight:700">⚠ Upload failed — request not sent. Try again.</div>';
+          }
+        } catch(ePrev){}
+        _updatePayRequestSendBtn();
       });
     }
 

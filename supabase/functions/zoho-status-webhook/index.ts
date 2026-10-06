@@ -1,8 +1,8 @@
 /**
- * Zoho Books → app automation
+ * Zoho Books -> app automation
  *
  * Fires when invoice OR delivery challan is created/edited in Zoho:
- *  - status change (draft → sent → paid / void / partial)
+ *  - status change (draft -> sent -> paid / void / partial)
  *  - quantity / line-item change (we re-fetch full document from Zoho API)
  *  - total / balance change
  *
@@ -13,17 +13,17 @@
  *   https://lprcdmwlrrukuhqdekah.supabase.co/functions/v1/zoho-status-webhook
  *
  * Zoho Workflow Rules (do both modules):
- *   1) Invoices → When: Created or Edited → Webhook POST to URL
+ *   1) Invoices -> When: Created or Edited -> Webhook POST to URL
  *   2) Delivery Challans (or Sales Orders if you use SO as challan)
- *      → When: Created or Edited → same Webhook
+ *      -> When: Created or Edited -> same Webhook
  *
  * Body params (entity parameters):
- *   invoice_id / salesorder_id / deliverychallan_id = ${….ID}
- *   invoice_number / salesorder_number               = ${….Number}
- *   status                                          = ${….Status}
- *   balance                                         = ${….Balance}   (invoices)
- *   total                                           = ${….Total}
- *   reference_number                                = ${….Reference Number}
+ *   invoice_id / salesorder_id / deliverychallan_id = ${....ID}
+ *   invoice_number / salesorder_number               = ${....Number}
+ *   status                                          = ${....Status}
+ *   balance                                         = ${....Balance}   (invoices)
+ *   total                                           = ${....Total}
+ *   reference_number                                = ${....Reference Number}
  *   doc_type                                        = invoice | challan  (optional)
  *
  * Optional secret: header X-Webhook-Secret = ZOHO_WEBHOOK_SECRET
@@ -41,14 +41,28 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS, GET",
 };
 
+/** Zoho sometimes sends unresolved merge tags like unresolved Delivery Challan.Status tags - never store those. */
+function isBadZohoParam(v: unknown): boolean {
+  if (v == null) return true;
+  const s = String(v).trim();
+  if (!s) return true;
+  if (s.includes("${")) return true;
+  if (/\$\{?\s*(Delivery\s*Challan|Invoice|Sales\s*Order)\./i.test(s)) return true;
+  if (/^(Delivery Challan|Invoice)\./i.test(s)) return true;
+  return false;
+}
+
 function pick(obj: Record<string, unknown>, keys: string[]): string {
   for (const k of keys) {
     if (obj[k] != null && String(obj[k]).trim() !== "") {
-      return String(obj[k]).trim();
+      const val = String(obj[k]).trim();
+      if (!isBadZohoParam(val)) return val;
+      continue;
     }
     const found = Object.keys(obj).find((x) => x.toLowerCase() === k.toLowerCase());
     if (found && obj[found] != null && String(obj[found]).trim() !== "") {
-      return String(obj[found]).trim();
+      const val = String(obj[found]).trim();
+      if (!isBadZohoParam(val)) return val;
     }
   }
   return "";
@@ -197,7 +211,7 @@ function num(raw: string): number | null {
   return isNaN(n) ? null : n;
 }
 
-/** Extract line items → items / qty / item_ids CSV (same shape as app) */
+/** Extract line items -> items / qty / item_ids CSV (same shape as app) */
 function extractLines(doc: Record<string, unknown>): {
   items: string;
   qty: string;
@@ -365,7 +379,7 @@ Deno.serve(async (req) => {
   const contentType = req.headers.get("content-type") || "";
   let data = flattenPayload(parseBody(rawBody, contentType));
 
-  // Zoho UI sometimes places entity fields under "Headers" — merge useful header params into data
+  // Zoho UI sometimes places entity fields under "Headers" - merge useful header params into data
   // (do not overwrite values already present in the body)
   try {
     const interesting = [
@@ -378,13 +392,48 @@ Deno.serve(async (req) => {
       const kl = k.toLowerCase().replace(/-/g, "_");
       if (!v || v.length > 500) continue;
       if (interesting.includes(kl) || interesting.some((w) => kl.endsWith("_" + w) || kl === w)) {
-        if (data[kl] == null || data[kl] === "") data[kl] = v;
-        // also keep original key shape
-        if (data[k] == null || data[k] === "") data[k] = v;
+        // Never copy unresolved Zoho merge tags into data
+        if (isBadZohoParam(v)) continue;
+        if (data[kl] == null || data[kl] === "" || isBadZohoParam(data[kl])) data[kl] = v;
+        if (data[k] == null || data[k] === "" || isBadZohoParam(data[k])) data[k] = v;
       }
     }
   } catch {
     /* ignore header merge errors */
+  }
+
+  // Force-read nested document fields (Zoho full JSON body). Overwrite any bad header tags.
+  try {
+    const nested =
+      (data.deliverychallan as Record<string, unknown>) ||
+      (data.invoice as Record<string, unknown>) ||
+      (data.salesorder as Record<string, unknown>) ||
+      null;
+    if (nested && typeof nested === "object") {
+      const mapKeys: Array<[string, string[]]> = [
+        ["deliverychallan_id", ["deliverychallan_id", "delivery_challan_id"]],
+        ["deliverychallan_number", ["deliverychallan_number", "delivery_challan_number"]],
+        ["invoice_id", ["invoice_id"]],
+        ["invoice_number", ["invoice_number"]],
+        ["challan_status", ["challan_status", "status"]],
+        ["status", ["status", "challan_status"]],
+        ["reference_number", ["reference_number", "reference"]],
+        ["total", ["total"]],
+        ["balance", ["balance"]],
+      ];
+      for (const [dest, sources] of mapKeys) {
+        for (const src of sources) {
+          const v = nested[src];
+          if (v == null || isBadZohoParam(v)) continue;
+          data[dest] = v;
+          break;
+        }
+      }
+      // Keep nested pointer for line extract without API fetch
+      data._nested_doc = nested;
+    }
+  } catch {
+    /* ignore */
   }
 
   if (webhookSecret) {
@@ -401,11 +450,11 @@ Deno.serve(async (req) => {
   // Also scan any key that looks like an id/number from Zoho field labels
   function pickLoose(keys: string[], extraTest?: (k: string, v: string) => boolean): string {
     const direct = pick(data, keys);
-    if (direct) return direct;
+    if (direct && !isBadZohoParam(direct)) return direct;
     for (const [k, v] of Object.entries(data)) {
       if (v == null) continue;
       const vs = String(v).trim();
-      if (!vs || vs.startsWith("{")) continue;
+      if (!vs || vs.startsWith("{") || isBadZohoParam(vs)) continue;
       const kl = k.toLowerCase().replace(/[\s.]+/g, "_");
       for (const want of keys) {
         const wl = want.toLowerCase().replace(/[\s.]+/g, "_");
@@ -430,21 +479,25 @@ Deno.serve(async (req) => {
     ],
     (k, v) => {
       // Prefer long numeric Zoho ids; avoid short status words
-      if (k === "id" || k.endsWith("_id")) return /^\d{10,}$/.test(v);
+      if (k === "id" || k.endsWith("_id")) return /^[0-9]{10,}$/.test(v);
       return true;
     },
   );
-  const invoiceNumber = pickLoose([
+  // Prefer deliverychallan_number from JSON body before invoice_number (headers may be ${...})
+  let invoiceNumber = pickLoose([
+    "deliverychallan_number",
+    "Delivery Challan Number",
     "invoice_number",
     "invoiceNumber",
     "Invoice Number",
     "salesorder_number",
-    "deliverychallan_number",
-    "Delivery Challan Number",
     "zoho_invoice_number",
     "invoice_number_formatted",
   ]);
+  // Prefer challan_status from full deliverychallan JSON (headers often send unresolved ${...})
   let statusRaw = pick(data, [
+    "challan_status",
+    "challan_status_formatted",
     "status",
     "Status",
     "invoice_status",
@@ -458,12 +511,13 @@ Deno.serve(async (req) => {
     "Balance Due",
   ]);
   let totalRaw = pick(data, ["total", "Total", "invoice_total", "Total Amount"]);
-  const reference = pick(data, [
+  let reference = pick(data, [
     "reference_number",
     "reference",
     "Reference Number",
     "cf_reference",
   ]);
+
   const docTypeHint = pick(data, ["doc_type", "document_type", "module"]).toLowerCase();
   const preferChallan =
     docTypeHint.includes("challan") ||
@@ -480,10 +534,10 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         code: 1,
-        error: "Missing invoice_id / number / reference_number — check Zoho webhook Entity Parameters",
+        error: "Missing invoice_id / number / reference_number - check Zoho webhook Entity Parameters",
         keys: Object.keys(data),
         hint:
-          "In Zoho Workflow → Webhook → add parameters: invoice_id = ${Invoice.Invoice ID}, invoice_number = ${Invoice.Invoice Number}, status = ${Invoice.Status}, reference_number = ${Invoice.Reference Number}",
+          "In Zoho Workflow -> Webhook -> add parameters: invoice_id, invoice_number, status, reference_number from Invoice entity fields",
       }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
@@ -514,17 +568,34 @@ Deno.serve(async (req) => {
   }
   if (!order && reference) {
     const ref = reference.trim();
-    let orderId: string | null = null;
+    // App reference: IBCAB-{customer_orders.id}
     const m = ref.match(/IBCAB-(\d+)/i);
-    if (m) orderId = m[1];
-    if (orderId) {
+    if (m) {
       const { data: rows } = await supabase
         .from("customer_orders")
         .select(selectCols)
-        .eq("id", orderId)
+        .eq("id", m[1])
         .limit(1);
       if (rows && rows.length) order = rows[0] as Record<string, unknown>;
     }
+    // Converted invoice often has reference = old DC number (DC-3189)
+    if (!order && /^DC[-_]?\d+/i.test(ref)) {
+      const { data: rows } = await supabase
+        .from("customer_orders")
+        .select(selectCols)
+        .eq("zoho_invoice_number", ref)
+        .limit(5);
+      if (rows && rows.length) order = rows[0] as Record<string, unknown>;
+    }
+  }
+  // Also try matching invoice number that is a DC number when still stored on the row
+  if (!order && invoiceNumber && /^DC[-_]?\d+/i.test(invoiceNumber)) {
+    const { data: rows } = await supabase
+      .from("customer_orders")
+      .select(selectCols)
+      .eq("zoho_invoice_number", invoiceNumber)
+      .limit(5);
+    if (rows && rows.length) order = rows[0] as Record<string, unknown>;
   }
 
   if (!order) {
@@ -553,8 +624,9 @@ Deno.serve(async (req) => {
   }
 
   if (fetchedDoc) {
-    if (!statusRaw && fetchedDoc.status != null) {
-      statusRaw = String(fetchedDoc.status);
+    const fdStatus = fetchedDoc.challan_status ?? fetchedDoc.status ?? fetchedDoc.current_sub_status;
+    if ((!statusRaw || isBadZohoParam(statusRaw)) && fdStatus != null) {
+      statusRaw = String(fdStatus);
     }
     if (!balanceRaw && fetchedDoc.balance != null) {
       balanceRaw = String(fetchedDoc.balance);
@@ -562,13 +634,20 @@ Deno.serve(async (req) => {
     if (!totalRaw && (fetchedDoc.total != null || fetchedDoc.total_formatted != null)) {
       totalRaw = String(fetchedDoc.total != null ? fetchedDoc.total : fetchedDoc.total_formatted);
     }
-    if (!invoiceNumber && fetchedDoc.invoice_number) {
-      // keep local
+    const fdNum =
+      fetchedDoc.deliverychallan_number ||
+      fetchedDoc.invoice_number ||
+      fetchedDoc.salesorder_number;
+    if ((!invoiceNumber || isBadZohoParam(invoiceNumber)) && fdNum) {
+      invoiceNumber = String(fdNum);
     }
+    const fdId = fetchedDoc.deliverychallan_id || fetchedDoc.invoice_id || fetchedDoc.salesorder_id;
+    // invoiceId is const - handled via patch using order/doc ids below
+    void fdId;
   }
 
   // Status optional if we at least got balance/total/lines from fetch.
-  // Do NOT return 400 when order matched but Zoho rate-limited the re-fetch —
+  // Do NOT return 400 when order matched but Zoho rate-limited the re-fetch -
   // keep prior status and still apply balance/total if present (avoids DC Bad Request storms).
   if (!statusRaw && !fetchedDoc) {
     statusRaw = String(order.zoho_invoice_status || "sent");
@@ -578,47 +657,122 @@ Deno.serve(async (req) => {
     });
   }
 
-  const mapped = mapStatuses(statusRaw || String(fetchedDoc?.status || "sent"));
+  const statusForMap =
+    (statusRaw && !isBadZohoParam(statusRaw) ? statusRaw : "") ||
+    String(fetchedDoc?.challan_status || fetchedDoc?.status || "sent");
+  const mapped = mapStatuses(statusForMap);
   let balance = num(balanceRaw);
   let total = num(totalRaw);
-  if (balance != null && balance <= 0.01 && !mapped.markPaid && mapped.payment_status !== "void") {
+
+  const docType = String(order.zoho_doc_type || "").toLowerCase();
+  const invNoExisting = String(order.zoho_invoice_number || "");
+  const invNoIncoming = String(invoiceNumber || "");
+  const isInvoiceRow =
+    docType === "invoice" ||
+    /^INV[-_]/i.test(invNoExisting) ||
+    /^INV[-_]/i.test(invNoIncoming) ||
+    (!preferChallan && !!pick(data, ["invoice_id"]) && !pick(data, ["deliverychallan_id"]));
+  const isChallanRow =
+    !isInvoiceRow &&
+    (preferChallan ||
+      docType.indexOf("challan") >= 0 ||
+      /^DC[-_]/i.test(invNoExisting) ||
+      /^DC[-_]/i.test(invNoIncoming));
+
+  // Balance 0 only means paid for real tax invoices - delivery challans often have no balance field
+  if (
+    !isChallanRow &&
+    balance != null &&
+    balance <= 0.01 &&
+    !mapped.markPaid &&
+    mapped.payment_status !== "void"
+  ) {
     mapped.markPaid = true;
     mapped.payment_status = "paid";
     mapped.zoho_invoice_status = mapped.zoho_invoice_status === "void" ? "void" : "paid";
   }
 
-  // Permanent rule: only close dues when the row is still a delivery challan.
-  // If already converted to tax invoice (INV-… / zoho_doc_type=invoice), keep unpaid + Zoho balance.
-  const docType = String(order.zoho_doc_type || "").toLowerCase();
-  const invNo = String(order.zoho_invoice_number || "");
-  const isInvoiceRow =
-    docType === "invoice" || /^INV[-_]/i.test(invNo);
-  const isChallanRow =
-    !isInvoiceRow &&
-    (docType.indexOf("challan") >= 0 || /^DC[-_]/i.test(invNo));
-  if (isChallanRow && mapped.challanFulfilled) {
-    mapped.markPaid = true;
-    mapped.payment_status = "paid";
+  // NEVER force-pay because challan is fulfilled/converted.
+  // Fulfilled DC must stay unpaid until the linked tax invoice is actually paid in Zoho.
+  // (Previously this set payment_status=paid + balance 0 and broke Unpaid tab.)
+  if (mapped.challanFulfilled) {
+    mapped.markPaid = false;
+    if (mapped.payment_status === "paid") mapped.payment_status = "unpaid";
+    // Keep zoho_invoice_status as fulfilled/invoiced for challan lifecycle display
   }
-  // Never force-pay a real invoice just because status text is "fulfilled"
   if (isInvoiceRow && mapped.challanFulfilled) {
     mapped.markPaid = false;
-    if (balance != null && balance > 0.01) {
-      mapped.payment_status = "unpaid";
+    mapped.zoho_invoice_status =
+      balance != null && balance <= 0.01 ? "paid" : balance != null && balance > 0.01 ? "sent" : "sent";
+    mapped.payment_status =
+      balance != null && balance <= 0.01 ? "paid" : balance != null && balance > 0 ? "unpaid" : "unpaid";
+  }
+  if (isChallanRow && !mapped.markPaid) {
+    // Challans are ops docs - keep payment unpaid; dues live on the invoice after convert
+    if (mapped.payment_status === "paid" && !mapped.challanFulfilled) {
+      /* real paid only via explicit paid status on invoice path */
     }
   }
 
   const wasPaid = String(order.payment_status || "").toLowerCase() === "paid";
 
+  // Never persist unresolved Zoho merge tags; never keep old bad DB values
+  let safeStatus = mapped.zoho_invoice_status;
+  if (isBadZohoParam(safeStatus)) {
+    const fromBody = pick(data, ["challan_status", "status"]);
+    const fromOrder = String(order.zoho_invoice_status || "");
+    if (fromBody && !isBadZohoParam(fromBody)) safeStatus = fromBody;
+    else if (fromOrder && !isBadZohoParam(fromOrder)) safeStatus = fromOrder;
+    else safeStatus = "draft";
+  }
+  mapped.zoho_invoice_status = safeStatus;
+
+  let safeInvNo = invoiceNumber || "";
+  if (isBadZohoParam(safeInvNo)) {
+    safeInvNo = pick(data, [
+      "deliverychallan_number",
+      "invoice_number",
+      "salesorder_number",
+    ]);
+  }
+  if (isBadZohoParam(safeInvNo)) safeInvNo = "";
+
+  // If existing DB row has placeholder junk, always clear/replace it
+  const existingNo = String(order.zoho_invoice_number || "");
+  const existingSt = String(order.zoho_invoice_status || "");
+
   const patch: Record<string, unknown> = {
-    zoho_invoice_status: mapped.zoho_invoice_status,
+    zoho_invoice_status: safeStatus,
   };
-  if (mapped.payment_status) patch.payment_status = mapped.payment_status;
-  if (invoiceId && !order.zoho_invoice_id) patch.zoho_invoice_id = invoiceId;
-  if (invoiceNumber) patch.zoho_invoice_number = invoiceNumber;
-  if (balance != null) patch.balance_due = balance;
+  if (mapped.payment_status) {
+    patch.payment_status = mapped.payment_status;
+  }
+  if (invoiceId && /^[0-9]{10,}$/.test(invoiceId)) {
+    patch.zoho_invoice_id = invoiceId;
+  }
+  if (safeInvNo) {
+    patch.zoho_invoice_number = safeInvNo;
+  } else if (existingNo && isBadZohoParam(existingNo)) {
+    // Clear junk so it does not stick forever
+    patch.zoho_invoice_number = null;
+  }
+  if (existingSt && isBadZohoParam(existingSt) && isBadZohoParam(safeStatus)) {
+    patch.zoho_invoice_status = "draft";
+  }
+  // Set doc type from payload when known
+  if (preferChallan && isChallanRow) {
+    patch.zoho_doc_type = "delivery_challan";
+  } else if (isInvoiceRow && /^INV[-_]/i.test(safeInvNo)) {
+    patch.zoho_doc_type = "invoice";
+  }
   if (total != null) {
     patch.invoice_total = total;
+  }
+  if (isChallanRow) {
+    // Challan: store total for display; payment due only after convert to invoice
+    if (total != null) patch.balance_due = total;
+  } else if (balance != null) {
+    patch.balance_due = balance;
   }
   if (mapped.markPaid) {
     patch.balance_due = 0;
@@ -627,36 +781,56 @@ Deno.serve(async (req) => {
     else if (order.invoice_total != null) patch.paid_amount = order.invoice_total;
   }
 
-  // Line items / quantity from Zoho full document
-  if (fetchedDoc) {
-    const extracted = extractLines(fetchedDoc);
+  // Line items / quantity from Zoho full document (API) or webhook body nested doc
+  const docForLines =
+    fetchedDoc ||
+    (data._nested_doc as Record<string, unknown>) ||
+    null;
+  if (docForLines) {
+    const extracted = extractLines(docForLines);
     if (extracted) {
       patch.items = extracted.items;
       patch.qty = extracted.qty;
       patch.item_ids = extracted.item_ids;
       linesUpdated = true;
     }
-    if (fetchedDoc.sub_total != null) {
-      const st = Number(fetchedDoc.sub_total);
+    if (docForLines.sub_total != null) {
+      const st = Number(docForLines.sub_total);
       if (!isNaN(st)) patch.invoice_subtotal = st;
     }
-    // tax fields if present
-    if (fetchedDoc.tax_total != null) {
-      const tax = Number(fetchedDoc.tax_total);
+    if (docForLines.tax_total != null) {
+      const tax = Number(docForLines.tax_total);
       if (!isNaN(tax)) patch.tax_amount = tax;
     }
-    if (total == null && fetchedDoc.total != null) {
-      const t = Number(fetchedDoc.total);
+    if (total == null && docForLines.total != null) {
+      const t = Number(docForLines.total);
       if (!isNaN(t)) {
         patch.invoice_total = t;
         total = t;
       }
     }
-    if (balance == null && fetchedDoc.balance != null) {
-      const b = Number(fetchedDoc.balance);
+    if (balance == null && docForLines.balance != null) {
+      const b = Number(docForLines.balance);
       if (!isNaN(b)) {
         patch.balance_due = mapped.markPaid ? 0 : b;
         balance = b;
+      }
+    }
+    // Prefer real document numbers from body/API over any leftover header tags
+    const nNum =
+      docForLines.deliverychallan_number ||
+      docForLines.invoice_number ||
+      docForLines.salesorder_number;
+    if (nNum && !isBadZohoParam(nNum)) {
+      patch.zoho_invoice_number = String(nNum);
+      safeInvNo = String(nNum);
+    }
+    const nStat = docForLines.challan_status || docForLines.status;
+    if (nStat && !isBadZohoParam(nStat)) {
+      const m2 = mapStatuses(String(nStat));
+      // Keep payment rules from main mapped path; only refresh status label when not paid-forced
+      if (!mapped.markPaid) {
+        patch.zoho_invoice_status = m2.zoho_invoice_status;
       }
     }
   }
