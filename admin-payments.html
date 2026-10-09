@@ -231,6 +231,7 @@
     <button type="button" data-tab="pay-paid" onclick="payShowTab('pay-paid')">✅ Paid</button>
     <button type="button" data-tab="pay-blocked" onclick="payShowTab('pay-blocked')">🔒 Blocked</button>
     <button type="button" data-tab="pay-link" onclick="payShowTab('pay-link')">🔗 Link Zoho</button>
+    <button type="button" data-tab="pay-queue" onclick="payShowTab('pay-queue')">📬 Webhook queue</button>
     <button type="button" data-tab="pay-zoho-list" onclick="payShowTab('pay-zoho-list')" style="border:1px dashed #c8864a">🔎 TEMP Zoho list</button>
   </div>
 
@@ -462,6 +463,35 @@
     <div id="pay-link-msg" style="display:none;margin-top:10px;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:700;line-height:1.4"></div>
   </div>
   <div id="pay-link-result" style="display:none"></div>
+</div>
+
+<div class="page" id="pg-pay-queue">
+  <div style="font-size:13px;font-weight:900;color:#4a2f14;margin-bottom:6px">📬 Zoho webhook queue</div>
+  <div style="font-size:11px;color:#8a7a6a;margin-bottom:10px;line-height:1.45">
+    Zoho events are <b>queued</b> then processed <b>one-by-one</b> (avoids Access Denied rate limits).
+    Stuck jobs can be reset and re-run. Clear done history to save space.
+  </div>
+  <div id="pay-queue-stats" class="stats-grid" style="margin-bottom:10px"></div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center">
+    <button type="button" class="btn-sm btn-grey" onclick="payQueueLoad()">↻ Refresh</button>
+    <button type="button" class="btn-sm" style="background:#1a5a38;color:#fff;border:none;font-weight:800" onclick="payQueueDrain()">▶ Run worker now</button>
+    <button type="button" class="btn-sm" style="background:#fff3e0;color:#e65100;border:1px solid #ffcc80;font-weight:700" onclick="payQueueResetStuck()">↺ Reset stuck</button>
+    <button type="button" class="btn-sm" style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;font-weight:700" onclick="payQueueRetryFailed()">↻ Retry failed/dead</button>
+    <label style="font-size:11px;font-weight:700;color:#4a2f14;display:flex;align-items:center;gap:4px">
+      <input type="checkbox" id="pay-queue-today" onchange="payQueueLoad()" style="accent-color:#4a2f14"> Today only
+    </label>
+    <select id="pay-queue-status" onchange="payQueueLoad()" style="padding:8px 10px;border:1.5px solid #e8dfd2;border-radius:8px;font-size:12px;font-weight:700">
+      <option value="all">All statuses</option>
+      <option value="pending">Pending</option>
+      <option value="processing">Processing</option>
+      <option value="done">Done</option>
+      <option value="failed">Failed</option>
+      <option value="dead">Dead</option>
+    </select>
+    <button type="button" class="btn-sm" style="background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0;font-weight:700" onclick="payQueueDeleteHistory()">🗑 Delete done/failed history</button>
+  </div>
+  <div id="pay-queue-msg" style="display:none;margin-bottom:8px;padding:8px 10px;border-radius:8px;font-size:12px;font-weight:700"></div>
+  <div id="pay-queue-list" style="overflow:auto"><div style="text-align:center;padding:16px;color:#8a7a6a;font-size:12px">Open this tab to load…</div></div>
 </div>
 
 <!-- TEMP: remove this page when invoice id mapping is done -->
@@ -6185,8 +6215,126 @@ function payDeskLoadBlockSettings() {
     /* ========== end TEMP Zoho list ========== */
 
 
+      function payQueueFn(body) {
+        if (!CONFIG || !CONFIG.SUPABASE_URL) return Promise.reject(new Error('No CONFIG'));
+        return fetch(CONFIG.SUPABASE_URL + '/functions/v1/webhook-queue', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + (CONFIG.SUPABASE_ANON_KEY || ''),
+            'apikey': CONFIG.SUPABASE_ANON_KEY || ''
+          },
+          body: JSON.stringify(body || {})
+        }).then(function(r){ return r.json().then(function(j){ if (!r.ok) throw new Error((j && j.error) || r.statusText); return j; }); });
+      }
+      function _payQueueMsg(t, ok) {
+        var el = document.getElementById('pay-queue-msg');
+        if (!el) return;
+        el.style.display = 'block';
+        el.textContent = t;
+        el.style.background = ok === false ? '#fde8e8' : (ok ? '#e8f5e9' : '#e8f0ff');
+        el.style.color = ok === false ? '#c8382a' : (ok ? '#1a5a38' : '#1a3a8a');
+      }
+      function payQueueLoad() {
+        _payQueueMsg('Loading queue…', null);
+        var todayOnly = !!(document.getElementById('pay-queue-today') || {}).checked;
+        var status = ((document.getElementById('pay-queue-status') || {}).value || 'all');
+        Promise.all([
+          payQueueFn({ action: 'stats', today_only: todayOnly }),
+          payQueueFn({ action: 'list', today_only: todayOnly, status: status, limit: 150 })
+        ]).then(function(arr) {
+          var st = (arr[0] && arr[0].stats) || {};
+          var rows = (arr[1] && arr[1].rows) || [];
+          var box = document.getElementById('pay-queue-stats');
+          if (box) {
+            box.innerHTML =
+              '<div class="stat" style="background:#fff8e1;border-color:#ffe082"><div class="stat-n" style="color:#7a4800">'+(st.pending||0)+'</div><div class="stat-l">Pending</div></div>'+
+              '<div class="stat" style="background:#e3f2fd;border-color:#90caf9"><div class="stat-n" style="color:#1565c0">'+(st.processing||0)+'</div><div class="stat-l">Processing</div></div>'+
+              '<div class="stat" style="background:#e8f5e9;border-color:#a5d6a7"><div class="stat-n" style="color:#1a5a38">'+(st.done||0)+'</div><div class="stat-l">Done</div></div>'+
+              '<div class="stat" style="background:#fde8e8;border-color:#f0b0b0"><div class="stat-n" style="color:#c8382a">'+((st.failed||0)+(st.dead||0))+'</div><div class="stat-l">Failed/Dead</div></div>'+
+              '<div class="stat"><div class="stat-n">'+(st.today||0)+'</div><div class="stat-l">Today</div></div>';
+          }
+          var list = document.getElementById('pay-queue-list');
+          if (!rows.length) {
+            list.innerHTML = '<div style="text-align:center;padding:20px;color:#8a7a6a;font-size:12px">No queue messages</div>';
+          } else {
+            var html = '<div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px;min-width:720px"><thead><tr style="background:#f5efe6;text-align:left">'+
+              '<th style="padding:8px">ID</th><th style="padding:8px">Status</th><th style="padding:8px">Doc</th><th style="padding:8px">Order</th><th style="padding:8px">Shop</th><th style="padding:8px">Attempts</th><th style="padding:8px">Created</th><th style="padding:8px">Error</th><th style="padding:8px"></th></tr></thead><tbody>';
+            rows.forEach(function(r){
+              var stc = String(r.status||'');
+              var bg = stc==='done'?'#e8f5e9':(stc==='pending'?'#fff8e1':(stc==='processing'?'#e3f2fd':'#fde8e8'));
+              html += '<tr style="border-bottom:1px solid #eee">'+
+                '<td style="padding:8px;font-weight:800">#'+r.id+'</td>'+
+                '<td style="padding:8px"><span style="background:'+bg+';padding:2px 8px;border-radius:6px;font-weight:800;font-size:10px">'+stc+'</span></td>'+
+                '<td style="padding:8px">'+String(r.zoho_doc_number||r.event_type||'—')+'</td>'+
+                '<td style="padding:8px">'+(r.order_id||'—')+'</td>'+
+                '<td style="padding:8px">'+String(r.shop_name||'—').slice(0,28)+'</td>'+
+                '<td style="padding:8px">'+r.attempts+'/'+(r.max_attempts||8)+'</td>'+
+                '<td style="padding:8px;white-space:nowrap;font-size:11px">'+String(r.created_at||'').replace('T',' ').slice(0,19)+'</td>'+
+                '<td style="padding:8px;color:#c8382a;font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis" title="'+String(r.last_error||'').replace(/"/g,'&quot;')+'">'+String(r.last_error||'—').slice(0,60)+'</td>'+
+                '<td style="padding:8px;white-space:nowrap">'+
+                  (stc!=='done'?'<button type="button" class="btn-sm btn-grey" style="padding:4px 8px;font-size:10px;margin-right:4px" onclick="payQueueRetry('+r.id+')">Retry</button>':'')+
+                  '<button type="button" class="btn-sm" style="padding:4px 8px;font-size:10px;background:#fde8e8;color:#c8382a;border:1px solid #f0b0b0" onclick="payQueueDelete('+r.id+')">Del</button>'+
+                '</td></tr>';
+            });
+            html += '</tbody></table></div>';
+            list.innerHTML = html;
+          }
+          _payQueueMsg('Loaded ' + rows.length + ' job(s)', true);
+        }).catch(function(e){
+          _payQueueMsg('Queue load failed: ' + (e && e.message ? e.message : e) + ' — run webhook-jobs-setup.sql and deploy webhook-queue', false);
+        });
+      }
+      function payQueueDrain() {
+        _payQueueMsg('Running worker…', null);
+        payQueueFn({ action: 'drain', limit: 15 }).then(function(res){
+          var w = res && res.worker;
+          _payQueueMsg('Worker done. Processed: ' + (w && w.processed != null ? w.processed : '?'), true);
+          payQueueLoad();
+        }).catch(function(e){ _payQueueMsg('Worker failed: ' + (e && e.message ? e.message : e), false); });
+      }
+      function payQueueResetStuck() {
+        payQueueFn({ action: 'reset_stuck' }).then(function(res){
+          _payQueueMsg('Reset stuck: ' + (res.reset != null ? res.reset : 'ok'), true);
+          payQueueLoad();
+        }).catch(function(e){ _payQueueMsg(String(e && e.message || e), false); });
+      }
+      function payQueueRetryFailed() {
+        payQueueFn({ action: 'retry_failed' }).then(function(res){
+          _payQueueMsg('Re-queued: ' + (res.count || 0), true);
+          payQueueLoad();
+        }).catch(function(e){ _payQueueMsg(String(e && e.message || e), false); });
+      }
+      function payQueueRetry(id) {
+        payQueueFn({ action: 'retry', id: id }).then(function(){ payQueueLoad(); })
+          .catch(function(e){ _payQueueMsg(String(e && e.message || e), false); });
+      }
+      function payQueueDelete(id) {
+        if (!confirm('Delete queue job #' + id + '?')) return;
+        payQueueFn({ action: 'delete', id: id }).then(function(){ payQueueLoad(); })
+          .catch(function(e){ _payQueueMsg(String(e && e.message || e), false); });
+      }
+      function payQueueDeleteHistory() {
+        var todayOnly = !!(document.getElementById('pay-queue-today') || {}).checked;
+        var msg = todayOnly
+          ? 'Delete ALL done/failed/dead jobs from TODAY?'
+          : 'Delete ALL done/failed/dead queue history (keeps pending/processing)?';
+        if (!confirm(msg)) return;
+        payQueueFn({ action: 'delete_history', today_only: todayOnly, days: 0 }).then(function(res){
+          _payQueueMsg('Deleted ' + (res.deleted || 0) + ' job(s)', true);
+          payQueueLoad();
+        }).catch(function(e){ _payQueueMsg(String(e && e.message || e), false); });
+      }
+      window.payQueueLoad = payQueueLoad;
+      window.payQueueDrain = payQueueDrain;
+      window.payQueueResetStuck = payQueueResetStuck;
+      window.payQueueRetryFailed = payQueueRetryFailed;
+      window.payQueueRetry = payQueueRetry;
+      window.payQueueDelete = payQueueDelete;
+      window.payQueueDeleteHistory = payQueueDeleteHistory;
+
       window.payShowTab = function(tab) {
-        ['pay-challan','pay-draft','pay-open','pay-requests','pay-paid','pay-blocked','pay-link','pay-zoho-list'].forEach(function(t){
+        ['pay-challan','pay-draft','pay-open','pay-requests','pay-paid','pay-blocked','pay-link','pay-queue','pay-zoho-list'].forEach(function(t){
           var pg = document.getElementById('pg-' + t);
           if (pg) pg.classList.toggle('active', t === tab);
         });
@@ -6198,6 +6346,8 @@ function payDeskLoadBlockSettings() {
           try { loadBlockedShopsTab(); } catch (eB) {}
         } else if (tab === 'pay-link') {
           /* link tool is on-demand — no bulk load */
+        } else if (tab === 'pay-queue') {
+          try { payQueueLoad(); } catch (eQ) {}
         } else if (tab === 'pay-zoho-list') {
           try { zohoListFillShops(); } catch (e) {}
         } else {

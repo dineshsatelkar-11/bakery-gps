@@ -379,6 +379,47 @@ Deno.serve(async (req) => {
   const contentType = req.headers.get("content-type") || "";
   let data = flattenPayload(parseBody(rawBody, contentType));
 
+  // Internal worker path: process a stored queue job by id (service role only)
+  const processFromQueue =
+    req.headers.get("x-process-from-queue") === "1" ||
+    data._process_from_queue === true ||
+    data.action === "process_queued_job";
+  let queueJobId: number | null = null;
+  if (processFromQueue) {
+    const jid = data.job_id ?? data._queue_job_id ?? req.headers.get("x-queue-job-id");
+    queueJobId = jid != null && String(jid).trim() !== "" ? Number(jid) : null;
+    if (!queueJobId || Number.isNaN(queueJobId)) {
+      return new Response(JSON.stringify({ error: "job_id required for queue process" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const sb = createClient(supabaseUrl, serviceKey);
+    const { data: jobRow, error: jobErr } = await sb
+      .from("webhook_jobs")
+      .select("*")
+      .eq("id", queueJobId)
+      .maybeSingle();
+    if (jobErr || !jobRow) {
+      return new Response(JSON.stringify({ error: "job not found", job_id: queueJobId }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const stored = jobRow.payload;
+    if (stored && typeof stored === "object") {
+      data = flattenPayload(stored as Record<string, unknown>);
+    }
+    await sb
+      .from("webhook_jobs")
+      .update({
+        status: "processing",
+        started_at: new Date().toISOString(),
+        attempts: (jobRow.attempts || 0) + (jobRow.status === "processing" ? 0 : 1),
+      })
+      .eq("id", queueJobId);
+  }
+
   // Zoho UI sometimes places entity fields under "Headers" - merge useful header params into data
   // (do not overwrite values already present in the body)
   try {
@@ -524,6 +565,68 @@ Deno.serve(async (req) => {
     docTypeHint.includes("salesorder") ||
     !!pick(data, ["salesorder_id", "deliverychallan_id", "delivery_challan_id"]);
 
+  const supabase = createClient(supabaseUrl, serviceKey);
+
+  // ── Queue: Zoho traffic is enqueued; worker processes one-by-one ──
+  // Set ZOHO_WEBHOOK_INLINE=1 to restore old immediate processing (debug).
+  const queueEnabled = (Deno.env.get("ZOHO_WEBHOOK_QUEUE") || "1") !== "0";
+  const inlineMode = (Deno.env.get("ZOHO_WEBHOOK_INLINE") || "0") === "1";
+
+  if (queueEnabled && !processFromQueue && !inlineMode) {
+    const eventType = preferChallan
+      ? "challan"
+      : pick(data, ["doc_type", "document_type", "module"]) || "invoice";
+    const ibcab = (reference || "").match(/IBCAB-(\d+)/i);
+    const { data: jobIns, error: insErr } = await supabase
+      .from("webhook_jobs")
+      .insert({
+        source: "zoho",
+        event_type: String(eventType).slice(0, 40),
+        payload: data,
+        order_id: ibcab ? Number(ibcab[1]) : null,
+        zoho_doc_id: invoiceId || null,
+        zoho_doc_number: invoiceNumber || null,
+        reference_number: reference || null,
+        status: "pending",
+        available_at: new Date().toISOString(),
+      })
+      .select("id")
+      .maybeSingle();
+
+    if (insErr) {
+      console.error("[zoho-status-webhook] queue insert failed", insErr);
+      // Fall through to inline process so Zoho events are not lost
+    } else {
+      const jobId = jobIns?.id;
+      console.log("[zoho-status-webhook] queued job", jobId, invoiceNumber || invoiceId || reference);
+      // Fire-and-forget worker (sequential drain)
+      try {
+        const workerUrl = `${supabaseUrl}/functions/v1/webhook-worker`;
+        fetch(workerUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${serviceKey}`,
+            apikey: serviceKey,
+          },
+          body: JSON.stringify({ action: "drain", limit: 5 }),
+        }).catch(() => {});
+      } catch {
+        /* ignore */
+      }
+      return new Response(
+        JSON.stringify({
+          code: 0,
+          ok: true,
+          queued: true,
+          job_id: jobId,
+          message: "Queued for sequential processing",
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+  }
+
   if (!invoiceId && !invoiceNumber && !reference) {
     console.error("[zoho-status-webhook] missing identifiers", {
       keys: Object.keys(data),
@@ -531,6 +634,16 @@ Deno.serve(async (req) => {
         Object.entries(data).slice(0, 12).map(([k, v]) => [k, String(v).slice(0, 80)]),
       ),
     });
+    if (queueJobId) {
+      await supabase
+        .from("webhook_jobs")
+        .update({
+          status: "failed",
+          last_error: "Missing invoice_id / number / reference_number",
+          finished_at: new Date().toISOString(),
+        })
+        .eq("id", queueJobId);
+    }
     return new Response(
       JSON.stringify({
         code: 1,
@@ -542,8 +655,6 @@ Deno.serve(async (req) => {
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
-
-  const supabase = createClient(supabaseUrl, serviceKey);
 
   // Match order
   let order: Record<string, unknown> | null = null;
@@ -600,6 +711,17 @@ Deno.serve(async (req) => {
 
   if (!order) {
     console.warn("[zoho-status-webhook] no matching order", { invoiceId, invoiceNumber, reference });
+    if (queueJobId) {
+      await supabase
+        .from("webhook_jobs")
+        .update({
+          status: "done",
+          finished_at: new Date().toISOString(),
+          result: { matched: false, invoiceId, invoiceNumber, reference },
+          last_error: "No matching customer_orders row",
+        })
+        .eq("id", queueJobId);
+    }
     return new Response(
       JSON.stringify({
         code: 0,
@@ -889,18 +1011,36 @@ Deno.serve(async (req) => {
     !!fetchedDoc,
   );
 
-  return new Response(
-    JSON.stringify({
-      code: 0,
-      ok: true,
-      matched: true,
-      order_id: order.id,
-      zoho_invoice_status: mapped.zoho_invoice_status,
-      payment_status: mapped.payment_status,
-      mark_paid: mapped.markPaid,
-      lines_updated: linesUpdated,
-      zoho_doc_fetched: !!fetchedDoc,
-    }),
-    { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-  );
+  const resultBody = {
+    code: 0,
+    ok: true,
+    matched: true,
+    order_id: order.id,
+    zoho_invoice_status: mapped.zoho_invoice_status,
+    payment_status: mapped.payment_status,
+    mark_paid: mapped.markPaid,
+    lines_updated: linesUpdated,
+    zoho_doc_fetched: !!fetchedDoc,
+  };
+
+  if (queueJobId) {
+    await supabase
+      .from("webhook_jobs")
+      .update({
+        status: "done",
+        finished_at: new Date().toISOString(),
+        order_id: order.id as number,
+        shop_name: (order.shop_name as string) || null,
+        zoho_doc_id: invoiceId || String(order.zoho_invoice_id || "") || null,
+        zoho_doc_number: invoiceNumber || String(order.zoho_invoice_number || "") || null,
+        result: resultBody,
+        last_error: null,
+      })
+      .eq("id", queueJobId);
+  }
+
+  return new Response(JSON.stringify(resultBody), {
+    status: 200,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
 });
