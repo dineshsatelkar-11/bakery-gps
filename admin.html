@@ -15,6 +15,7 @@
     <meta name="apple-mobile-web-app-title" content="IBCAB">
     <link rel="apple-touch-icon" href="icon-192.png">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
         *{box-sizing:border-box;margin:0;padding:0}
         :root{
@@ -416,6 +417,143 @@
     <div id="dash-tp-tmr-row" style="display:none;margin-bottom:14px">
         <div style="font-size:10px;font-weight:800;color:#7a4800;font-family:monospace;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">🍵 Tea Post · Tomorrow</div>
         <div class="stats-grid" id="dash-tp-tmr-stats" style="grid-template-columns:repeat(3,1fr)"></div>
+    </div>
+</div>
+
+<!-- BUSINESS ANALYSIS -->
+<div class="page" id="pg-analysis">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+        <div style="font-size:13px;font-weight:900;color:#1e293b">📈 Business Analysis</div>
+        <button class="btn-sm btn-grey" onclick="loadAnalysis()">🔄 Refresh</button>
+    </div>
+
+    <div class="filter-row" style="margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <label style="font-size:11px;font-weight:700;color:#64748b;display:flex;align-items:center;gap:6px">
+            Period
+            <select id="an-days" onchange="loadAnalysis()" style="margin-bottom:0;padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:12px;font-weight:700">
+                <option value="7">Last 7 days</option>
+                <option value="14" selected>Last 14 days</option>
+                <option value="30">Last 30 days</option>
+                <option value="60">Last 60 days</option>
+            </select>
+        </label>
+        <label style="font-size:11px;font-weight:700;color:#64748b;display:flex;align-items:center;gap:6px">
+            Inactive after
+            <select id="an-inactive-days" onchange="loadAnalysis()" style="margin-bottom:0;padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:12px;font-weight:700">
+                <option value="3">3 days</option>
+                <option value="5" selected>5 days</option>
+                <option value="7">7 days</option>
+                <option value="14">14 days</option>
+            </select>
+        </label>
+        <label style="font-size:11px;font-weight:700;color:#64748b;display:flex;align-items:center;gap:6px">
+            Brand
+            <select id="an-brand" onchange="loadAnalysis()" style="margin-bottom:0;padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:12px;font-weight:700;min-width:120px">
+                <option value="">All brands</option>
+            </select>
+        </label>
+    </div>
+
+    <div id="an-loading" style="display:none;text-align:center;padding:24px;color:#64748b;font-size:13px;font-weight:700">Loading analysis…</div>
+    <div id="an-error" style="display:none;background:#fde8e8;border:1.5px solid #f5c2c2;border-radius:12px;padding:12px;margin-bottom:12px;color:#c8382a;font-size:12px;font-weight:700"></div>
+
+    <!-- Smart actions to grow sales -->
+    <div class="card" style="padding:14px;margin-bottom:14px;background:linear-gradient(135deg,#f0fdfa 0%,#ecfdf5 100%);border:1.5px solid #99f6e4">
+        <div style="font-size:11px;font-weight:800;color:#0f766e;margin-bottom:6px">🎯 Action plan — grow sales</div>
+        <div style="font-size:10px;color:#64748b;margin-bottom:10px;font-family:monospace">Auto-prioritised from your data (like Shopify / Square insights)</div>
+        <div id="an-actions"></div>
+    </div>
+
+    <!-- KPI cards -->
+    <div class="stats-grid" id="an-kpis" style="grid-template-columns:repeat(2,1fr);margin-bottom:14px"></div>
+
+    <!-- Growth + consistency -->
+    <div class="card" style="padding:14px;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:800;color:#1e293b;margin-bottom:4px">📶 Growth & health</div>
+        <div style="font-size:10px;color:#64748b;margin-bottom:10px;font-family:monospace">2nd half vs 1st half of period · order consistency</div>
+        <div id="an-growth" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px"></div>
+    </div>
+
+    <!-- Daily trend + weekday pattern -->
+    <div class="card" style="padding:14px;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:800;color:#1e293b;margin-bottom:4px">📊 Daily order volume</div>
+        <div style="font-size:10px;color:#64748b;margin-bottom:10px;font-family:monospace">Shops ordered + total qty each day</div>
+        <div style="position:relative;height:200px"><canvas id="an-chart-trend"></canvas></div>
+    </div>
+    <div class="card" style="padding:14px;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:800;color:#1e293b;margin-bottom:4px">📅 Weekday pattern</div>
+        <div style="font-size:10px;color:#64748b;margin-bottom:10px;font-family:monospace">Which days sell more — plan production & outreach</div>
+        <div style="position:relative;height:180px"><canvas id="an-chart-weekday"></canvas></div>
+    </div>
+
+    <!-- Most / Least selling products -->
+    <div style="display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:14px">
+        <div class="card" style="padding:14px">
+            <div style="font-size:11px;font-weight:800;color:#1e293b;margin-bottom:4px">🏆 Most selling products</div>
+            <div style="font-size:10px;color:#64748b;margin-bottom:10px;font-family:monospace">Push these · keep stock ready</div>
+            <div style="position:relative;height:220px"><canvas id="an-chart-most"></canvas></div>
+            <div id="an-most-list" style="margin-top:10px"></div>
+        </div>
+        <div class="card" style="padding:14px">
+            <div style="font-size:11px;font-weight:800;color:#1e293b;margin-bottom:4px">📉 Least selling products</div>
+            <div style="font-size:10px;color:#64748b;margin-bottom:10px;font-family:monospace">Promote, bundle, or review</div>
+            <div style="position:relative;height:220px"><canvas id="an-chart-least"></canvas></div>
+            <div id="an-least-list" style="margin-top:10px"></div>
+        </div>
+    </div>
+
+    <!-- Category mix + never ordered -->
+    <div class="card" style="padding:14px;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:800;color:#1e293b;margin-bottom:4px">🧁 Category mix</div>
+        <div style="font-size:10px;color:#64748b;margin-bottom:10px;font-family:monospace">Share of qty by product category</div>
+        <div style="position:relative;height:200px"><canvas id="an-chart-cat"></canvas></div>
+        <div id="an-cat-list" style="margin-top:10px"></div>
+    </div>
+    <div class="card" style="padding:14px;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:800;color:#6d28d9;margin-bottom:4px">💤 Products never ordered</div>
+        <div style="font-size:10px;color:#64748b;margin-bottom:10px;font-family:monospace">Active catalogue items with zero sales in period — introduce to shops</div>
+        <div id="an-zero-list"></div>
+    </div>
+
+    <!-- Shop tiers + top shops -->
+    <div class="card" style="padding:14px;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:800;color:#1e293b;margin-bottom:4px">💎 Shop value tiers</div>
+        <div style="font-size:10px;color:#64748b;margin-bottom:10px;font-family:monospace">VIP / Regular / Low by total qty (Pareto-style)</div>
+        <div style="position:relative;height:180px"><canvas id="an-chart-tiers"></canvas></div>
+        <div id="an-tiers-summary" style="margin-top:10px"></div>
+    </div>
+    <div class="card" style="padding:14px;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:800;color:#1e293b;margin-bottom:4px">⭐ Top shops by volume</div>
+        <div style="font-size:10px;color:#64748b;margin-bottom:10px;font-family:monospace">Protect these relationships · upsell carefully</div>
+        <div id="an-top-shops"></div>
+    </div>
+
+    <!-- Shops with recent drop -->
+    <div class="card" style="padding:14px;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:800;color:#c8382a;margin-bottom:4px">⚠️ Shops — order drop recently</div>
+        <div style="font-size:10px;color:#64748b;margin-bottom:10px;font-family:monospace">2nd half vs 1st half · qty or order-days down ≥40%</div>
+        <div id="an-drop-list"></div>
+    </div>
+
+    <!-- Inactive shops — need contact -->
+    <div class="card" style="padding:14px;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:800;color:#b45309;margin-bottom:4px">📞 Contact — no order recently</div>
+        <div style="font-size:10px;color:#64748b;margin-bottom:10px;font-family:monospace" id="an-inactive-hint">Shops with no real order in the inactive window</div>
+        <div id="an-inactive-list"></div>
+    </div>
+
+    <!-- Improvement tips (static best-practice) -->
+    <div class="card" style="padding:14px;margin-bottom:14px;background:#f8fafc;border:1.5px solid #e2e8f0">
+        <div style="font-size:11px;font-weight:800;color:#334155;margin-bottom:8px">💡 Playbook — increase sales</div>
+        <div style="font-size:12px;color:#475569;line-height:1.55">
+            <div style="margin-bottom:8px"><b>1. Win back silent shops</b> — call the Contact list first; ask if service, timing, or product range is the issue.</div>
+            <div style="margin-bottom:8px"><b>2. Stop the drop</b> — shops on the drop list need a same-day check-in before they go fully inactive.</div>
+            <div style="margin-bottom:8px"><b>3. Push heroes</b> — keep most-selling items always in stock; suggest them on low days.</div>
+            <div style="margin-bottom:8px"><b>4. Revive slow SKUs</b> — bundle least-sellers with top products or offer a short trial to VIP shops.</div>
+            <div style="margin-bottom:8px"><b>5. Introduce zero-sale items</b> — sample or photo to 3–5 regular shops; track if they reorder.</div>
+            <div style="margin-bottom:8px"><b>6. Use weekday pattern</b> — schedule reminders / driver capacity on weak weekdays.</div>
+            <div><b>7. Protect VIP shops</b> — priority packaging & delivery; small free upgrade builds loyalty.</div>
+        </div>
     </div>
 </div>
 
@@ -2188,7 +2326,7 @@
     var _visibleTabs = {}; // tab key → true if this role can see it
 
     function initTabVisibility(){
-      var allTabKeys = ['dashboard','orders','approve','queue','summary','delivery','routes','customers',
+      var allTabKeys = ['dashboard','analysis','orders','approve','queue','summary','delivery','routes','customers',
 'cust-orders','manual-order','products','groups','ingredients','recipes','production','drivers','gps',
 'users','notify','zoho','cleanup','audit','attendance','my-brand','pay-challan','pay-draft','pay-open','pay-requests','pay-paid','pay-blocked','pay-link','pay-zoho-list','pay-queue'];
 allTabKeys.forEach(function(t){
@@ -2202,6 +2340,8 @@ allTabKeys.forEach(function(t){
           show = (_staffRole === 'super_admin' || _staffRole === 'admin');
         } else if(t === 'dashboard') {
           show = (_staffRole === 'super_admin' || _staffRole === 'admin' || _staffRole === 'assistant');
+        } else if(t === 'analysis') {
+          show = (_staffRole === 'super_admin' || _staffRole === 'admin');
         } else if(_allowedTabs === null) {
           show = true;
         } else if(t === 'ingredients' || t === 'recipes' || t === 'production') {
@@ -2752,7 +2892,8 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 
     /* ── GROUP + SUB-TAB NAVIGATION ── */
     var GROUP_MAP = {
-      home:      [{key:'dashboard',   label:'🏠 Dashboard'}],
+      home:      [{key:'dashboard',   label:'🏠 Dashboard'},
+                  {key:'analysis',    label:'📈 Analysis'}],
       /* Daily order work first; default open = Shop orders (cust-orders) */
       orders:    [{key:'cust-orders', label:'🛒 Shop orders'},
                   {key:'notify',      label:'🔔 Notify'},
@@ -2922,6 +3063,7 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
       } catch(e){}
 
       if(t==='dashboard')    loadDashboard();
+      if(t==='analysis')     loadAnalysis();
       if(t==='summary')      { document.getElementById('f-sum-date').value=tomorrowStr(); loadSummary(); }
       if(t==='delivery')     setLatestDate('f-del-date','deliveries',document.getElementById('f-del-driver').value,loadDeliveries);
       if(t==='routes')       setLatestDate('f-rt-date','routes',document.getElementById('f-rt-driver').value,loadRoutes);
@@ -2949,6 +3091,715 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
       if(t==='my-brand')   initMyBrandTab();
       if(t==='pay-challan') loadChallanDesk();
       if(t==='pay-challan' || t==='pay-draft' || t==='pay-open' || t==='pay-requests' || t==='pay-paid' || t==='pay-blocked' || t==='pay-link' || t==='pay-zoho-list' || t==='pay-queue'){ ensurePayEmbed(t); }
+    }
+
+    /* ── BUSINESS ANALYSIS ── */
+    var _anCharts = { most: null, least: null, trend: null, weekday: null, cat: null, tiers: null };
+    var _anShopBrand = {}; // shop_id → brand
+
+    function _anDateOffset(daysAgo){
+      var d = new Date();
+      d.setHours(12,0,0,0);
+      d.setDate(d.getDate() - daysAgo);
+      return d.getFullYear()+'-'+zp(d.getMonth()+1)+'-'+zp(d.getDate());
+    }
+
+    function _anIsRealOrder(o){
+      var st = String(o.status || '').toLowerCase();
+      if (st === 'no_order' || st === 'rejected' || st === 'cancelled') return false;
+      var q = String(o.qty || '').trim();
+      if (!q || q === '0') return false;
+      return true;
+    }
+
+    function _anParseItems(o){
+      return parseIQ(o); // [{name, qty, product_id}]
+    }
+
+    function _anDestroyCharts(){
+      Object.keys(_anCharts).forEach(function(k){
+        if (_anCharts[k]) { try { _anCharts[k].destroy(); } catch(e){} _anCharts[k] = null; }
+      });
+    }
+
+    function _anBarColors(n, hueBase){
+      var out = [];
+      for (var i = 0; i < n; i++) {
+        var h = (hueBase + i * 18) % 360;
+        out.push('hsla('+h+', 65%, 48%, 0.85)');
+      }
+      return out;
+    }
+
+    function _anFmtNum(n){
+      n = Math.round(n || 0);
+      if (n >= 100000) return (n/1000).toFixed(0) + 'k';
+      if (n >= 10000) return (n/1000).toFixed(1) + 'k';
+      return String(n);
+    }
+
+    function _anPriceMap(){
+      var map = {}; // product_id and name → price number
+      (allProducts || []).forEach(function(p){
+        var price = parseFloat(String(p.price || '').replace(/[^\d.]/g, ''));
+        if (!(price > 0)) return;
+        var pid = String(p.product_id || '').trim();
+        var name = String(p.name || '').trim();
+        if (pid) map['id:' + pid] = price;
+        if (name) map['n:' + name.toLowerCase()] = price;
+      });
+      return map;
+    }
+
+    function _anItemRevenue(it, priceMap){
+      var pid = String(it.product_id || '').trim();
+      var name = String(it.name || '').trim();
+      var rate = 0;
+      if (pid && priceMap['id:' + pid] != null) rate = priceMap['id:' + pid];
+      else if (name && priceMap['n:' + name.toLowerCase()] != null) rate = priceMap['n:' + name.toLowerCase()];
+      return rate * (it.qty || 0);
+    }
+
+    function loadAnalysis(){
+      var days = parseInt((document.getElementById('an-days')||{}).value, 10) || 14;
+      var inactiveDays = parseInt((document.getElementById('an-inactive-days')||{}).value, 10) || 5;
+      var brandFilter = ((document.getElementById('an-brand')||{}).value || '').trim();
+      var loading = document.getElementById('an-loading');
+      var errEl = document.getElementById('an-error');
+      if (loading) loading.style.display = 'block';
+      if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
+
+      var fromDate = _anDateOffset(days - 1);
+      var toDate = todayStr();
+      var midDate = _anDateOffset(Math.floor(days / 2) - 1);
+      var inactiveSince = _anDateOffset(inactiveDays - 1);
+
+      var selectCols = 'id,shop_id,shop_name,delivery_date,items,qty,item_ids,status';
+
+      // Ensure product master for category + price
+      var prodPromise = (typeof loadProducts === 'function')
+        ? loadProducts(false).catch(function(){ return allProducts || []; })
+        : Promise.resolve(allProducts || []);
+
+      Promise.all([
+        api({ action: 'getShops' }).catch(function(){ return []; }),
+        api({
+          action: 'getCustomerOrders',
+          delivery_date_gte: fromDate,
+          delivery_date_lte: toDate,
+          select: selectCols,
+          limit: 5000
+        }).catch(function(){ return []; }),
+        prodPromise
+      ]).then(function(res){
+        if (loading) loading.style.display = 'none';
+        var shops = Array.isArray(res[0]) ? res[0] : [];
+        var orders = Array.isArray(res[1]) ? res[1] : [];
+        var priceMap = _anPriceMap();
+
+        // Brand map + dropdown
+        _anShopBrand = {};
+        var brands = {};
+        shops.forEach(function(s){
+          var sid = String(s.shop_id || s.customer_id || '').trim();
+          var br = String(s.brand || '').trim();
+          if (sid) _anShopBrand[sid] = br;
+          if (br) brands[br] = true;
+        });
+        var brandSel = document.getElementById('an-brand');
+        if (brandSel) {
+          var cur = brandSel.value;
+          var opts = '<option value="">All brands</option>';
+          Object.keys(brands).sort().forEach(function(b){
+            opts += '<option value="'+esc(b)+'"'+(cur===b?' selected':'')+'>'+esc(b)+'</option>';
+          });
+          brandSel.innerHTML = opts;
+          if (cur && brands[cur]) brandSel.value = cur;
+          brandFilter = (brandSel.value || '').trim();
+        }
+
+        function shopOk(shopId){
+          if (!brandFilter) return true;
+          return String(_anShopBrand[String(shopId||'')] || '').trim() === brandFilter;
+        }
+
+        var realOrders = orders.filter(function(o){
+          return _anIsRealOrder(o) && shopOk(o.shop_id);
+        });
+
+        // Product master index for category / never-ordered
+        var masterById = {};
+        var masterByName = {};
+        (allProducts || []).forEach(function(p){
+          var pid = String(p.product_id || '').trim();
+          var name = String(p.name || '').trim();
+          if (pid) masterById[pid] = p;
+          if (name) masterByName[name.toLowerCase()] = p;
+        });
+
+        // ── Product totals + revenue ──
+        var prodMap = {}; // key → {name, qty, product_id, revenue, category}
+        var totalRevenue = 0;
+        var revenueKnown = false;
+        realOrders.forEach(function(o){
+          _anParseItems(o).forEach(function(it){
+            if (!it.name || !it.qty) return;
+            var key = (it.product_id && String(it.product_id).trim()) || it.name;
+            var mp = (it.product_id && masterById[String(it.product_id).trim()]) || masterByName[String(it.name).toLowerCase()] || null;
+            var cat = (mp && String(mp.category || '').trim()) || 'Other';
+            if (!prodMap[key]) prodMap[key] = { name: it.name, qty: 0, product_id: it.product_id || '', revenue: 0, category: cat };
+            prodMap[key].qty += it.qty;
+            var rev = _anItemRevenue(it, priceMap);
+            if (rev > 0) { prodMap[key].revenue += rev; totalRevenue += rev; revenueKnown = true; }
+          });
+        });
+        var prodList = Object.keys(prodMap).map(function(k){ return prodMap[k]; });
+        prodList.sort(function(a,b){ return b.qty - a.qty; });
+
+        var most = prodList.slice(0, 10);
+        var least = prodList.slice().filter(function(p){ return p.qty > 0; }).sort(function(a,b){ return a.qty - b.qty; }).slice(0, 10);
+
+        // Category mix
+        var catMap = {};
+        prodList.forEach(function(p){
+          var c = p.category || 'Other';
+          if (!catMap[c]) catMap[c] = 0;
+          catMap[c] += p.qty;
+        });
+        var catList = Object.keys(catMap).map(function(c){ return { name: c, qty: catMap[c] }; });
+        catList.sort(function(a,b){ return b.qty - a.qty; });
+
+        // Never ordered active products
+        var soldKeys = {};
+        prodList.forEach(function(p){
+          if (p.product_id) soldKeys['id:' + String(p.product_id).trim()] = true;
+          soldKeys['n:' + String(p.name).toLowerCase()] = true;
+        });
+        var zeroList = [];
+        (allProducts || []).forEach(function(p){
+          if (p.active === false) return;
+          var pid = String(p.product_id || '').trim();
+          var name = String(p.name || '').trim();
+          if (!name) return;
+          if ((pid && soldKeys['id:' + pid]) || soldKeys['n:' + name.toLowerCase()]) return;
+          zeroList.push({ name: name, product_id: pid, category: String(p.category || '').trim() || 'Other' });
+        });
+        zeroList.sort(function(a,b){ return a.name.localeCompare(b.name); });
+
+        // ── Daily trend ──
+        var dayMap = {};
+        realOrders.forEach(function(o){
+          var d = String(o.delivery_date || '').slice(0,10);
+          if (!d) return;
+          if (!dayMap[d]) dayMap[d] = { shops: {}, qty: 0, orders: 0 };
+          dayMap[d].shops[String(o.shop_id||'')] = true;
+          dayMap[d].orders += 1;
+          _anParseItems(o).forEach(function(it){ dayMap[d].qty += (it.qty||0); });
+        });
+        var dayLabels = [];
+        var dayShopCounts = [];
+        var dayQtys = [];
+        for (var i = days - 1; i >= 0; i--) {
+          var ds = _anDateOffset(i);
+          dayLabels.push(ds.slice(5));
+          var dm = dayMap[ds] || { shops: {}, qty: 0 };
+          dayShopCounts.push(Object.keys(dm.shops).length);
+          dayQtys.push(dm.qty || 0);
+        }
+
+        // Weekday pattern (0=Sun … 6=Sat) — avg qty per weekday in period
+        var wdQty = [0,0,0,0,0,0,0];
+        var wdDays = [0,0,0,0,0,0,0];
+        for (var wi = days - 1; wi >= 0; wi--) {
+          var wds = _anDateOffset(wi);
+          var wd = new Date(wds + 'T12:00:00').getDay();
+          wdDays[wd] += 1;
+          wdQty[wd] += (dayMap[wds] ? dayMap[wds].qty : 0);
+        }
+        var wdAvg = wdQty.map(function(q, idx){ return wdDays[idx] ? Math.round(q / wdDays[idx]) : 0; });
+        var wdLabels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+        // ── Per-shop stats ──
+        var shopStats = {};
+        realOrders.forEach(function(o){
+          var sid = String(o.shop_id || '').trim();
+          if (!sid) return;
+          if (!shopStats[sid]) {
+            shopStats[sid] = {
+              name: o.shop_name || sid,
+              firstQty: 0, secondQty: 0,
+              firstDays: {}, secondDays: {},
+              lastDate: '', totalQty: 0, orderCount: 0, revenue: 0,
+              orderDays: {}
+            };
+          }
+          var st = shopStats[sid];
+          if (o.shop_name) st.name = o.shop_name;
+          var d = String(o.delivery_date || '').slice(0,10);
+          var q = 0;
+          var rev = 0;
+          _anParseItems(o).forEach(function(it){
+            q += (it.qty||0);
+            rev += _anItemRevenue(it, priceMap);
+          });
+          st.totalQty += q;
+          st.orderCount += 1;
+          st.revenue += rev;
+          if (d) st.orderDays[d] = true;
+          if (d && (!st.lastDate || d > st.lastDate)) st.lastDate = d;
+          if (d && d < midDate) {
+            st.firstQty += q;
+            st.firstDays[d] = true;
+          } else if (d) {
+            st.secondQty += q;
+            st.secondDays[d] = true;
+          }
+        });
+
+        // Drop list
+        var dropList = [];
+        Object.keys(shopStats).forEach(function(sid){
+          var st = shopStats[sid];
+          var fDays = Object.keys(st.firstDays).length;
+          var sDays = Object.keys(st.secondDays).length;
+          if (fDays >= 2 && st.firstQty > 0) {
+            var qtyDrop = st.secondQty < st.firstQty * 0.6;
+            var dayDrop = sDays < fDays * 0.6;
+            if (qtyDrop || dayDrop) {
+              var pct = st.firstQty > 0 ? Math.round((1 - st.secondQty / st.firstQty) * 100) : 0;
+              dropList.push({
+                shop_id: sid, name: st.name,
+                firstQty: st.firstQty, secondQty: st.secondQty,
+                firstDays: fDays, secondDays: sDays,
+                pct: pct, lastDate: st.lastDate
+              });
+            }
+          }
+        });
+        dropList.sort(function(a,b){ return b.pct - a.pct; });
+
+        // Inactive shops
+        var inactiveList = [];
+        shops.forEach(function(s){
+          var sid = String(s.shop_id || s.customer_id || '').trim();
+          if (!sid) return;
+          if (!shopOk(sid)) return;
+          if (s.active === false || s.status === 'inactive' || s.blocked === true) return;
+          var st = shopStats[sid];
+          var last = st ? st.lastDate : '';
+          if (!last || last < inactiveSince) {
+            inactiveList.push({
+              shop_id: sid,
+              name: (s.name || (st && st.name) || sid),
+              brand: String(s.brand || '').trim(),
+              mobile: s.mobile || s.phone || s.contact || '',
+              lastDate: last || '—',
+              daysAgo: last ? Math.max(0, Math.floor((new Date(toDate+'T12:00:00') - new Date(last+'T12:00:00')) / 86400000)) : (days + '+'),
+              wasCustomer: !!st
+            });
+          }
+        });
+        inactiveList.sort(function(a,b){
+          if (a.lastDate === '—' && b.lastDate !== '—') return -1;
+          if (b.lastDate === '—' && a.lastDate !== '—') return 1;
+          return String(a.lastDate).localeCompare(String(b.lastDate));
+        });
+
+        // Shop tiers (VIP top 20% by qty, Low bottom 30%, rest Regular)
+        var shopArr = Object.keys(shopStats).map(function(sid){
+          var st = shopStats[sid];
+          return {
+            shop_id: sid, name: st.name, totalQty: st.totalQty,
+            orderCount: st.orderCount, revenue: st.revenue,
+            orderDays: Object.keys(st.orderDays).length, lastDate: st.lastDate
+          };
+        });
+        shopArr.sort(function(a,b){ return b.totalQty - a.totalQty; });
+        var nShops = shopArr.length;
+        var vipCut = Math.max(1, Math.ceil(nShops * 0.2));
+        var lowCut = Math.max(0, Math.floor(nShops * 0.3));
+        var tiers = { vip: [], regular: [], low: [] };
+        shopArr.forEach(function(s, idx){
+          if (idx < vipCut) { s.tier = 'VIP'; tiers.vip.push(s); }
+          else if (idx >= nShops - lowCut) { s.tier = 'Low'; tiers.low.push(s); }
+          else { s.tier = 'Regular'; tiers.regular.push(s); }
+        });
+        var topShops = shopArr.slice(0, 10);
+
+        // Growth: 1st half vs 2nd half totals
+        var firstHalfQty = 0, secondHalfQty = 0;
+        var firstHalfShops = {}, secondHalfShops = {};
+        realOrders.forEach(function(o){
+          var d = String(o.delivery_date || '').slice(0,10);
+          var q = 0;
+          _anParseItems(o).forEach(function(it){ q += (it.qty||0); });
+          if (d && d < midDate) {
+            firstHalfQty += q;
+            firstHalfShops[String(o.shop_id||'')] = true;
+          } else if (d) {
+            secondHalfQty += q;
+            secondHalfShops[String(o.shop_id||'')] = true;
+          }
+        });
+        var qtyGrowthPct = firstHalfQty > 0 ? Math.round(((secondHalfQty - firstHalfQty) / firstHalfQty) * 100) : (secondHalfQty > 0 ? 100 : 0);
+        var shopGrowth = Object.keys(secondHalfShops).length - Object.keys(firstHalfShops).length;
+        var avgOrderQty = realOrders.length ? Math.round(prodList.reduce(function(s,p){ return s+p.qty; },0) / realOrders.length) : 0;
+        var totalQty = prodList.reduce(function(s,p){ return s + p.qty; }, 0);
+        var activeShops = Object.keys(shopStats).length;
+        var consistentShops = shopArr.filter(function(s){ return s.orderDays >= Math.max(3, Math.floor(days * 0.5)); }).length;
+
+        // Weakest weekday for tips
+        var weakWd = 1, weakVal = Infinity;
+        for (var w = 0; w < 7; w++) {
+          if (wdAvg[w] < weakVal) { weakVal = wdAvg[w]; weakWd = w; }
+        }
+
+        // ── Smart actions ──
+        var actions = [];
+        if (inactiveList.length) {
+          actions.push({
+            prio: 1, icon: '📞', title: 'Call silent shops',
+            detail: inactiveList.length + ' shop(s) have no order in ' + inactiveDays + '+ days. Start with former buyers.',
+            tone: '#b45309'
+          });
+        }
+        if (dropList.length) {
+          actions.push({
+            prio: 2, icon: '⚠️', title: 'Stop the drop',
+            detail: dropList.length + ' shop(s) ordered less in the 2nd half. Check service / stock / timing today.',
+            tone: '#c8382a'
+          });
+        }
+        if (qtyGrowthPct < -10) {
+          actions.push({
+            prio: 3, icon: '📉', title: 'Volume is down',
+            detail: 'Qty fell ~' + Math.abs(qtyGrowthPct) + '% vs first half. Focus outreach + push top 3 products.',
+            tone: '#b91c1c'
+          });
+        } else if (qtyGrowthPct >= 10) {
+          actions.push({
+            prio: 5, icon: '📈', title: 'Volume is growing',
+            detail: 'Qty up ~' + qtyGrowthPct + '%. Protect VIP shops and keep hero products stocked.',
+            tone: '#047857'
+          });
+        }
+        if (least.length && most.length) {
+          actions.push({
+            prio: 4, icon: '🎁', title: 'Bundle slow movers',
+            detail: 'Pair “' + least[0].name + '” with top seller “' + most[0].name + '” for VIP shops.',
+            tone: '#6d28d9'
+          });
+        }
+        if (zeroList.length) {
+          actions.push({
+            prio: 6, icon: '🆕', title: 'Introduce zero-sale items',
+            detail: zeroList.length + ' catalogue product(s) never ordered. Sample to 3–5 regular shops.',
+            tone: '#1d4ed8'
+          });
+        }
+        if (weakVal >= 0) {
+          actions.push({
+            prio: 7, icon: '📅', title: 'Boost weak weekday',
+            detail: wdLabels[weakWd] + ' is softest (avg qty ' + weakVal + '). Schedule order reminders the day before.',
+            tone: '#0f766e'
+          });
+        }
+        if (tiers.low.length) {
+          actions.push({
+            prio: 8, icon: '💎', title: 'Lift low-tier shops',
+            detail: tiers.low.length + ' low-volume shops. Suggest 1 extra hero product next order.',
+            tone: '#9a3412'
+          });
+        }
+        actions.sort(function(a,b){ return a.prio - b.prio; });
+
+        var actEl = document.getElementById('an-actions');
+        if (actEl) {
+          if (!actions.length) {
+            actEl.innerHTML = '<div style="font-size:12px;color:#16a34a;font-weight:700">✅ Looking healthy — keep VIP service high and stock the top products.</div>';
+          } else {
+            actEl.innerHTML = actions.slice(0, 6).map(function(a, idx){
+              return '<div style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid #ccfbf1">'+
+                '<div style="font-size:18px;line-height:1">'+a.icon+'</div>'+
+                '<div style="flex:1;min-width:0">'+
+                  '<div style="font-size:12px;font-weight:800;color:'+a.tone+'">'+(idx+1)+'. '+esc(a.title)+'</div>'+
+                  '<div style="font-size:11px;color:#475569;margin-top:2px;line-height:1.4">'+esc(a.detail)+'</div>'+
+                '</div></div>';
+            }).join('');
+          }
+        }
+
+        // KPIs
+        var kpiHtml =
+          '<div class="stat" style="background:#ecfdf5;border-color:#a7f3d0"><div class="stat-l" style="color:#047857">Total qty</div><div class="stat-n" style="color:#065f46">'+_anFmtNum(totalQty)+'</div><div style="font-size:10px;color:#64748b">'+prodList.length+' SKUs</div></div>'+
+          '<div class="stat" style="background:#eff6ff;border-color:#bfdbfe"><div class="stat-l" style="color:#1d4ed8">Orders</div><div class="stat-n" style="color:#1e40af">'+realOrders.length+'</div><div style="font-size:10px;color:#64748b">avg '+avgOrderQty+' qty/order</div></div>'+
+          '<div class="stat" style="background:#fff7ed;border-color:#fed7aa"><div class="stat-l" style="color:#c2410c">Active shops</div><div class="stat-n" style="color:#9a3412">'+activeShops+'</div><div style="font-size:10px;color:#64748b">'+consistentShops+' consistent</div></div>'+
+          '<div class="stat" style="background:#fef2f2;border-color:#fecaca"><div class="stat-l" style="color:#b91c1c">Need contact</div><div class="stat-n" style="color:#991b1b">'+inactiveList.length+'</div><div style="font-size:10px;color:#64748b">≥'+inactiveDays+'d silent</div></div>';
+        if (revenueKnown) {
+          kpiHtml +=
+            '<div class="stat" style="background:#f5f3ff;border-color:#ddd6fe;grid-column:1/-1"><div class="stat-l" style="color:#6d28d9">Est. revenue</div><div class="stat-n" style="color:#5b21b6">₹'+_anFmtNum(totalRevenue)+'</div><div style="font-size:10px;color:#64748b">From priced products in period</div></div>';
+        }
+        var kpis = document.getElementById('an-kpis');
+        if (kpis) kpis.innerHTML = kpiHtml;
+
+        // Growth cards
+        var gEl = document.getElementById('an-growth');
+        if (gEl) {
+          var gColor = qtyGrowthPct >= 0 ? '#047857' : '#b91c1c';
+          var gBg = qtyGrowthPct >= 0 ? '#ecfdf5' : '#fef2f2';
+          gEl.innerHTML =
+            '<div style="background:'+gBg+';border:1.5px solid #e2e8f0;border-radius:12px;padding:10px;text-align:center">'+
+              '<div style="font-size:9px;font-weight:800;color:#64748b;font-family:monospace;text-transform:uppercase">Qty growth</div>'+
+              '<div style="font-size:22px;font-weight:900;color:'+gColor+'">'+(qtyGrowthPct>=0?'+':'')+qtyGrowthPct+'%</div>'+
+              '<div style="font-size:10px;color:#64748b">'+_anFmtNum(firstHalfQty)+' → '+_anFmtNum(secondHalfQty)+'</div>'+
+            '</div>'+
+            '<div style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:12px;padding:10px;text-align:center">'+
+              '<div style="font-size:9px;font-weight:800;color:#64748b;font-family:monospace;text-transform:uppercase">Shop Δ</div>'+
+              '<div style="font-size:22px;font-weight:900;color:#1e293b">'+(shopGrowth>=0?'+':'')+shopGrowth+'</div>'+
+              '<div style="font-size:10px;color:#64748b">active shops 2nd vs 1st half</div>'+
+            '</div>'+
+            '<div style="background:#f0fdfa;border:1.5px solid #99f6e4;border-radius:12px;padding:10px;text-align:center">'+
+              '<div style="font-size:9px;font-weight:800;color:#64748b;font-family:monospace;text-transform:uppercase">VIP shops</div>'+
+              '<div style="font-size:22px;font-weight:900;color:#0f766e">'+tiers.vip.length+'</div>'+
+              '<div style="font-size:10px;color:#64748b">top 20% by volume</div>'+
+            '</div>'+
+            '<div style="background:#fff7ed;border:1.5px solid #fed7aa;border-radius:12px;padding:10px;text-align:center">'+
+              '<div style="font-size:9px;font-weight:800;color:#64748b;font-family:monospace;text-transform:uppercase">Consistent</div>'+
+              '<div style="font-size:22px;font-weight:900;color:#c2410c">'+consistentShops+'</div>'+
+              '<div style="font-size:10px;color:#64748b">ordered ≥ half of days</div>'+
+            '</div>';
+        }
+
+        function prodRows(list, emptyMsg, showRev){
+          if (!list.length) return '<div style="font-size:12px;color:#94a3b8;padding:8px 0">'+emptyMsg+'</div>';
+          return list.map(function(p,i){
+            var extra = (showRev && p.revenue > 0) ? ' · ₹'+_anFmtNum(p.revenue) : '';
+            return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:12px">'+
+              '<span style="font-weight:700;color:#1e293b">'+(i+1)+'. '+esc(p.name)+'</span>'+
+              '<span style="font-family:monospace;font-weight:800;color:#0f766e">'+p.qty+extra+'</span></div>';
+          }).join('');
+        }
+        var mostList = document.getElementById('an-most-list');
+        var leastList = document.getElementById('an-least-list');
+        if (mostList) mostList.innerHTML = prodRows(most, 'No sales in this period', revenueKnown);
+        if (leastList) leastList.innerHTML = prodRows(least, 'No sales in this period', false);
+
+        // Category list
+        var catListEl = document.getElementById('an-cat-list');
+        if (catListEl) {
+          var catTotal = catList.reduce(function(s,c){ return s+c.qty; }, 0) || 1;
+          catListEl.innerHTML = catList.slice(0, 8).map(function(c){
+            var pct = Math.round(c.qty / catTotal * 100);
+            return '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f1f5f9;font-size:12px">'+
+              '<span style="font-weight:700">'+esc(c.name)+'</span>'+
+              '<span style="font-family:monospace;color:#64748b">'+c.qty+' · '+pct+'%</span></div>';
+          }).join('') || '<div style="font-size:12px;color:#94a3b8">No category data</div>';
+        }
+
+        // Zero-sale products
+        var zeroEl = document.getElementById('an-zero-list');
+        if (zeroEl) {
+          if (!zeroList.length) {
+            zeroEl.innerHTML = '<div style="font-size:12px;color:#16a34a;font-weight:700">✅ Every active product sold at least once</div>';
+          } else {
+            zeroEl.innerHTML = zeroList.slice(0, 20).map(function(p){
+              return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #ede9fe;font-size:12px">'+
+                '<span style="font-weight:700;color:#1e293b">'+esc(p.name)+'</span>'+
+                '<span style="font-size:10px;color:#7c3aed;font-family:monospace">'+esc(p.category)+'</span></div>';
+            }).join('') + (zeroList.length > 20 ? '<div style="font-size:11px;color:#64748b;padding:6px 0;font-family:monospace">+ '+(zeroList.length-20)+' more</div>' : '');
+          }
+        }
+
+        // Tiers summary
+        var tiersEl = document.getElementById('an-tiers-summary');
+        if (tiersEl) {
+          tiersEl.innerHTML =
+            '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:11px;text-align:center">'+
+              '<div style="background:#ecfdf5;border-radius:10px;padding:8px"><div style="font-weight:900;color:#047857">VIP</div><div style="font-size:18px;font-weight:900">'+tiers.vip.length+'</div></div>'+
+              '<div style="background:#eff6ff;border-radius:10px;padding:8px"><div style="font-weight:900;color:#1d4ed8">Regular</div><div style="font-size:18px;font-weight:900">'+tiers.regular.length+'</div></div>'+
+              '<div style="background:#fff7ed;border-radius:10px;padding:8px"><div style="font-weight:900;color:#c2410c">Low</div><div style="font-size:18px;font-weight:900">'+tiers.low.length+'</div></div>'+
+            '</div>';
+        }
+
+        // Top shops
+        var topEl = document.getElementById('an-top-shops');
+        if (topEl) {
+          if (!topShops.length) {
+            topEl.innerHTML = '<div style="font-size:12px;color:#94a3b8">No shop orders in period</div>';
+          } else {
+            topEl.innerHTML = topShops.map(function(s, i){
+              var badge = s.tier === 'VIP' ? 'background:#ecfdf5;color:#047857' : 'background:#f1f5f9;color:#475569';
+              var rev = (revenueKnown && s.revenue > 0) ? ' · ₹'+_anFmtNum(s.revenue) : '';
+              return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f1f5f9">'+
+                '<div style="flex:1;min-width:0">'+
+                  '<div style="font-size:13px;font-weight:800">'+(i+1)+'. '+esc(s.name)+'</div>'+
+                  '<div style="font-size:10px;color:#64748b;font-family:monospace">'+s.orderCount+' orders · '+s.orderDays+' days'+rev+'</div>'+
+                '</div>'+
+                '<div style="text-align:right">'+
+                  '<div style="font-family:monospace;font-weight:900;color:#0f766e">'+s.totalQty+'</div>'+
+                  '<div style="font-size:9px;font-weight:800;padding:2px 6px;border-radius:6px;display:inline-block;'+badge+'">'+s.tier+'</div>'+
+                '</div></div>';
+            }).join('');
+          }
+        }
+
+        // Drop list
+        var dropEl = document.getElementById('an-drop-list');
+        if (dropEl) {
+          if (!dropList.length) {
+            dropEl.innerHTML = '<div style="font-size:12px;color:#16a34a;padding:8px 0;font-weight:700">✅ No significant drops in this period</div>';
+          } else {
+            dropEl.innerHTML = dropList.slice(0, 25).map(function(s){
+              return '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid #fee2e2">'+
+                '<div style="flex:1;min-width:0">'+
+                  '<div style="font-size:13px;font-weight:800;color:#1e293b">'+esc(s.name)+'</div>'+
+                  '<div style="font-size:10px;color:#64748b;font-family:monospace;margin-top:2px">1st half: '+s.firstQty+' qty / '+s.firstDays+'d → 2nd: '+s.secondQty+' qty / '+s.secondDays+'d · last '+esc(s.lastDate||'—')+'</div>'+
+                '</div>'+
+                '<div style="background:#fef2f2;color:#b91c1c;font-weight:900;font-size:12px;padding:4px 8px;border-radius:8px;white-space:nowrap">↓ '+s.pct+'%</div>'+
+              '</div>';
+            }).join('');
+          }
+        }
+
+        // Inactive list
+        var inEl = document.getElementById('an-inactive-list');
+        var inHint = document.getElementById('an-inactive-hint');
+        if (inHint) inHint.textContent = 'Shops with no real order in the last '+inactiveDays+' days — contact regarding service';
+        if (inEl) {
+          if (!inactiveList.length) {
+            inEl.innerHTML = '<div style="font-size:12px;color:#16a34a;padding:8px 0;font-weight:700">✅ All shops ordered within the window</div>';
+          } else {
+            inEl.innerHTML = inactiveList.slice(0, 40).map(function(s){
+              var phone = s.mobile ? '<a href="tel:'+esc(String(s.mobile).replace(/\s/g,''))+'" style="color:#0f766e;font-weight:800;text-decoration:none">📞 '+esc(s.mobile)+'</a>' : '';
+              return '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid #ffedd5">'+
+                '<div style="flex:1;min-width:0">'+
+                  '<div style="font-size:13px;font-weight:800;color:#1e293b">'+esc(s.name)+'</div>'+
+                  '<div style="font-size:10px;color:#64748b;font-family:monospace;margin-top:2px">'+(s.brand?esc(s.brand)+' · ':'')+'last order: '+esc(String(s.lastDate))+(s.daysAgo!==undefined?' · '+s.daysAgo+'d ago':'')+'</div>'+
+                  (phone?'<div style="margin-top:4px;font-size:12px">'+phone+'</div>':'')+
+                '</div>'+
+                '<div style="background:#fff7ed;color:#c2410c;font-weight:900;font-size:11px;padding:4px 8px;border-radius:8px;white-space:nowrap">Contact</div>'+
+              '</div>';
+            }).join('');
+            if (inactiveList.length > 40) {
+              inEl.innerHTML += '<div style="font-size:11px;color:#64748b;padding:8px 0;font-family:monospace">+ '+(inactiveList.length-40)+' more…</div>';
+            }
+          }
+        }
+
+        // Charts
+        _anDestroyCharts();
+        if (typeof Chart === 'undefined') {
+          if (errEl) {
+            errEl.style.display = 'block';
+            errEl.textContent = 'Chart library failed to load — lists still available above.';
+          }
+          return;
+        }
+
+        var mostCtx = document.getElementById('an-chart-most');
+        var leastCtx = document.getElementById('an-chart-least');
+        var trendCtx = document.getElementById('an-chart-trend');
+        var wdCtx = document.getElementById('an-chart-weekday');
+        var catCtx = document.getElementById('an-chart-cat');
+        var tierCtx = document.getElementById('an-chart-tiers');
+
+        if (mostCtx && most.length) {
+          _anCharts.most = new Chart(mostCtx, {
+            type: 'bar',
+            data: {
+              labels: most.map(function(p){ return p.name.length > 18 ? p.name.slice(0,16)+'…' : p.name; }),
+              datasets: [{ label: 'Qty', data: most.map(function(p){ return p.qty; }), backgroundColor: _anBarColors(most.length, 160), borderRadius: 6 }]
+            },
+            options: {
+              indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: { x: { beginAtZero: true, ticks: { precision: 0 } }, y: { ticks: { font: { size: 10, weight: '700' } } } }
+            }
+          });
+        }
+        if (leastCtx && least.length) {
+          _anCharts.least = new Chart(leastCtx, {
+            type: 'bar',
+            data: {
+              labels: least.map(function(p){ return p.name.length > 18 ? p.name.slice(0,16)+'…' : p.name; }),
+              datasets: [{ label: 'Qty', data: least.map(function(p){ return p.qty; }), backgroundColor: _anBarColors(least.length, 0), borderRadius: 6 }]
+            },
+            options: {
+              indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: { x: { beginAtZero: true, ticks: { precision: 0 } }, y: { ticks: { font: { size: 10, weight: '700' } } } }
+            }
+          });
+        }
+        if (trendCtx) {
+          _anCharts.trend = new Chart(trendCtx, {
+            type: 'line',
+            data: {
+              labels: dayLabels,
+              datasets: [
+                { label: 'Shops ordered', data: dayShopCounts, borderColor: '#0f766e', backgroundColor: 'rgba(15,118,110,0.12)', fill: true, tension: 0.3, yAxisID: 'y' },
+                { label: 'Total qty', data: dayQtys, borderColor: '#1d4ed8', backgroundColor: 'transparent', borderDash: [4, 4], tension: 0.3, yAxisID: 'y1' }
+              ]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              interaction: { mode: 'index', intersect: false },
+              plugins: { legend: { labels: { boxWidth: 12, font: { size: 11, weight: '700' } } } },
+              scales: {
+                y: { type: 'linear', position: 'left', beginAtZero: true, title: { display: true, text: 'Shops', font: { size: 10 } }, ticks: { precision: 0 } },
+                y1: { type: 'linear', position: 'right', beginAtZero: true, grid: { drawOnChartArea: false }, title: { display: true, text: 'Qty', font: { size: 10 } }, ticks: { precision: 0 } }
+              }
+            }
+          });
+        }
+        if (wdCtx) {
+          _anCharts.weekday = new Chart(wdCtx, {
+            type: 'bar',
+            data: {
+              labels: wdLabels,
+              datasets: [{ label: 'Avg qty', data: wdAvg, backgroundColor: wdAvg.map(function(v,i){ return i === weakWd ? 'hsla(0,70%,50%,0.85)' : 'hsla(175,65%,40%,0.85)'; }), borderRadius: 6 }]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+            }
+          });
+        }
+        if (catCtx && catList.length) {
+          _anCharts.cat = new Chart(catCtx, {
+            type: 'doughnut',
+            data: {
+              labels: catList.map(function(c){ return c.name; }),
+              datasets: [{ data: catList.map(function(c){ return c.qty; }), backgroundColor: _anBarColors(catList.length, 200), borderWidth: 2, borderColor: '#fff' }]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10, weight: '700' } } } }
+            }
+          });
+        }
+        if (tierCtx && nShops) {
+          _anCharts.tiers = new Chart(tierCtx, {
+            type: 'doughnut',
+            data: {
+              labels: ['VIP', 'Regular', 'Low'],
+              datasets: [{ data: [tiers.vip.length, tiers.regular.length, tiers.low.length], backgroundColor: ['#10b981', '#3b82f6', '#f59e0b'], borderWidth: 2, borderColor: '#fff' }]
+            },
+            options: {
+              responsive: true, maintainAspectRatio: false,
+              plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10, weight: '700' } } } }
+            }
+          });
+        }
+      }).catch(function(e){
+        if (loading) loading.style.display = 'none';
+        if (errEl) {
+          errEl.style.display = 'block';
+          errEl.textContent = 'Failed to load analysis: ' + (e && e.message ? e.message : String(e));
+        }
+        window.logError && window.logError('admin', 'loadAnalysis', e);
+      });
     }
 
     /* ── DASHBOARD ── */

@@ -408,8 +408,12 @@ function normalizeProducts(list) {
         if (p.status)         url += '&status=eq.'         + encodeURIComponent(p.status);
         if (p.shop_id)        url += '&shop_id=eq.'        + encodeURIComponent(p.shop_id);
         if (p.delivery_date)  url += '&delivery_date=eq.'  + encodeURIComponent(p.delivery_date);
+        // Date range filters for business analysis (delivery_date)
+        if (p.delivery_date_gte) url += '&delivery_date=gte.' + encodeURIComponent(p.delivery_date_gte);
+        if (p.delivery_date_lte) url += '&delivery_date=lte.' + encodeURIComponent(p.delivery_date_lte);
         if (p.statuses && p.statuses.length)
           url += '&status=in.(' + p.statuses.map(encodeURIComponent).join(',') + ')';
+        if (p.status_neq)     url += '&status=neq.'        + encodeURIComponent(p.status_neq);
         if (p.customer_claimed_paid === true || p.customer_claimed_paid === 'true')
           url += '&customer_claimed_paid=eq.true';
         if (p.payment_status_in && p.payment_status_in.length)
@@ -1916,7 +1920,91 @@ function normalizeProducts(list) {
         }
         if (b.invoice_total !== undefined) payUpd.invoice_total = b.invoice_total;
         if (b.zoho_payment_id !== undefined) payUpd.zoho_payment_id = b.zoho_payment_id;
-        return sbPatch('customer_orders', { id: b.id }, payUpd);
+        return sbPatch('customer_orders', { id: b.id }, payUpd).then(function(res) {
+          if (!res || res.ok === false) return res;
+          // Close any pending payment_requests that include this order id
+          if (st === 'paid') {
+            var oid = Number(b.id);
+            return fetch(
+              BASE + '/payment_requests?status=eq.pending&order_ids=cs.{' + oid + '}',
+              {
+                method: 'PATCH',
+                headers: hdrs({ Prefer: 'return=minimal' }),
+                body: JSON.stringify({
+                  status: 'approved',
+                  action: 'approve',
+                  action_at: new Date().toISOString(),
+                  action_by: b.paid_by || '',
+                  action_note: b.payment_ref || null,
+                  updated_at: new Date().toISOString()
+                })
+              }
+            )
+              .then(function() { return res; })
+              .catch(function() { return res; });
+          }
+          return res;
+        });
+      }
+
+      // List payment request log (pending / approved / rejected)
+      case 'getPaymentRequests': {
+        var prUrl = BASE + '/payment_requests?select=*&order=requested_at.desc&limit=' +
+          encodeURIComponent(String(b.limit || 100));
+        if (b.status) prUrl += '&status=eq.' + encodeURIComponent(String(b.status));
+        if (b.shop_id) prUrl += '&shop_id=eq.' + encodeURIComponent(String(b.shop_id));
+        return fetch(prUrl, { headers: hdrs() })
+          .then(function(r) { return r.ok ? r.json() : []; })
+          .catch(function() { return []; });
+      }
+
+      // Admin approve / reject a payment_requests row (and sync order flags)
+      case 'resolvePaymentRequest': {
+        var prId = b.id != null ? b.id : b.request_id;
+        var act = String(b.action || '').toLowerCase(); // approve | reject
+        if (!prId) return Promise.resolve({ ok: false, error: 'Missing request id' });
+        if (act !== 'approve' && act !== 'reject') {
+          return Promise.resolve({ ok: false, error: 'action must be approve or reject' });
+        }
+        var newStatus = act === 'approve' ? 'approved' : 'rejected';
+        var prPatch = {
+          status: newStatus,
+          action: act,
+          action_at: new Date().toISOString(),
+          action_by: b.action_by || b.paid_by || '',
+          action_note: b.action_note || b.note || null,
+          updated_at: new Date().toISOString()
+        };
+        return fetch(BASE + '/payment_requests?id=eq.' + encodeURIComponent(prId), {
+          method: 'PATCH',
+          headers: hdrs({ Prefer: 'return=representation' }),
+          body: JSON.stringify(prPatch)
+        }).then(function(r) {
+          return r.json().then(function(rows) {
+            if (!r.ok) {
+              return { ok: false, error: (rows && rows.message) || 'Update failed' };
+            }
+            var row = Array.isArray(rows) ? rows[0] : rows;
+            var orderIds = (row && row.order_ids) ? row.order_ids : (b.order_ids || []);
+            if (!Array.isArray(orderIds)) orderIds = [];
+            // Clear claim flags on related orders; if approve, mark paid handled by caller or here
+            var tasks = orderIds.map(function(oid) {
+              if (act === 'reject') {
+                return sbPatch('customer_orders', { id: oid }, {
+                  customer_claimed_paid: false,
+                  customer_claimed_at: null
+                });
+              }
+              // approve: leave markInvoicePayment to UI (needs amounts); just clear claim if already paid path
+              return sbPatch('customer_orders', { id: oid }, { customer_claimed_paid: false });
+            });
+            return Promise.all(tasks).then(function() {
+              return { ok: true, request: row, status: newStatus };
+            });
+          });
+        }).catch(function(e) {
+          return { ok: false, error: String(e && e.message || e) };
+        });
       }
 
       // Delete draft invoice / challan from app only (does NOT delete in Zoho)
@@ -1962,23 +2050,12 @@ function normalizeProducts(list) {
         });
       }
 
-      case 'customerClaimPaid': {
-        var claimPatch = {
-          customer_claimed_paid: true,
-          customer_claimed_at: new Date().toISOString(),
-          customer_claim_note: b.note || b.customer_claim_note || ''
-        };
-        if (b.payment_ref) claimPatch.payment_ref = String(b.payment_ref).trim().slice(0, 64);
-        if (b.payment_proof_url) claimPatch.payment_proof_url = String(b.payment_proof_url).trim();
-        if (b.payment_proof_file_id) claimPatch.payment_proof_file_id = String(b.payment_proof_file_id).trim();
-        return sbPatch('customer_orders', { id: b.id }, claimPatch);
-      }
-
       // Customer weekly payment request for one or more invoice orders
       case 'customerRequestPayment': {
         var ids = Array.isArray(b.ids) ? b.ids : (b.id != null ? [b.id] : []);
         var note = b.note || b.customer_claim_note || '';
         var shopId = b.shop_id != null ? String(b.shop_id) : '';
+        var shopName = b.shop_name != null ? String(b.shop_name) : '';
         if (!ids.length) return Promise.resolve({ ok: false, error: 'No invoice ids' });
         var claimedAt = new Date().toISOString();
         var reqPatch = {
@@ -1989,10 +2066,100 @@ function normalizeProducts(list) {
         if (b.payment_ref) reqPatch.payment_ref = String(b.payment_ref).trim().slice(0, 64);
         if (b.payment_proof_url) reqPatch.payment_proof_url = String(b.payment_proof_url).trim();
         if (b.payment_proof_file_id) reqPatch.payment_proof_file_id = String(b.payment_proof_file_id).trim();
+        var numericIds = ids.map(function(id) { return Number(id); }).filter(function(n) { return !isNaN(n); });
         return Promise.all(ids.map(function(id) {
           return sbPatch('customer_orders', { id: id }, reqPatch);
-        })).then(function() {
-          return { ok: true, count: ids.length, shop_id: shopId };
+        })).then(function(results) {
+          var fail = (results || []).filter(function(r) { return !r || r.ok === false; });
+          if (fail.length === results.length) {
+            return {
+              ok: false,
+              error: (fail[0] && fail[0].error) || 'Failed to save claim on invoices',
+              failed: fail.length
+            };
+          }
+          // Load invoice numbers / amount for log row
+          var idList = numericIds.join(',');
+          var invQ = BASE + '/customer_orders?id=in.(' + idList + ')&select=id,zoho_invoice_number,balance_due,invoice_total,shop_id,shop_name';
+          return fetch(invQ, { headers: hdrs() }).then(function(r) {
+            return r.ok ? r.json() : [];
+          }).catch(function() { return []; }).then(function(rows) {
+            rows = Array.isArray(rows) ? rows : [];
+            var amount = 0;
+            var invNums = [];
+            rows.forEach(function(row) {
+              var due = parseFloat(row.balance_due != null ? row.balance_due : row.invoice_total) || 0;
+              amount += due;
+              if (row.zoho_invoice_number) invNums.push(String(row.zoho_invoice_number));
+              if (!shopId && row.shop_id) shopId = String(row.shop_id);
+              if (!shopName && row.shop_name) shopName = String(row.shop_name);
+            });
+            if (b.amount != null && !isNaN(Number(b.amount))) amount = Number(b.amount);
+            var logRow = {
+              shop_id: shopId || null,
+              shop_name: shopName || null,
+              order_ids: numericIds,
+              amount: amount,
+              invoice_numbers: invNums.join(', '),
+              status: 'pending',
+              customer_note: note || null,
+              payment_ref: b.payment_ref ? String(b.payment_ref).trim().slice(0, 64) : null,
+              payment_proof_file_id: b.payment_proof_file_id ? String(b.payment_proof_file_id).trim() : null,
+              payment_proof_url: b.payment_proof_url ? String(b.payment_proof_url).trim() : null,
+              requested_at: claimedAt,
+              requested_by: b.requested_by || 'customer'
+            };
+            return sbPost('payment_requests', logRow).then(function(ins) {
+              if (ins && ins.ok === false) {
+                // Claims saved; log insert failed — still ok for customer, admin has order flags
+                console.warn('[customerRequestPayment] payment_requests insert failed', ins.error);
+                return { ok: true, count: ids.length, shop_id: shopId, log_ok: false, error_log: ins.error };
+              }
+              return { ok: true, count: ids.length, shop_id: shopId, log_ok: true };
+            }).catch(function(e) {
+              console.warn('[customerRequestPayment] payment_requests insert error', e);
+              return { ok: true, count: ids.length, shop_id: shopId, log_ok: false };
+            });
+          });
+        });
+      }
+
+      case 'customerClaimPaid': {
+        // Single-invoice claim — also write payment_requests log
+        var claimId = b.id;
+        var claimNote = b.note || b.customer_claim_note || '';
+        var claimPatch2 = {
+          customer_claimed_paid: true,
+          customer_claimed_at: new Date().toISOString(),
+          customer_claim_note: claimNote
+        };
+        if (b.payment_ref) claimPatch2.payment_ref = String(b.payment_ref).trim().slice(0, 64);
+        if (b.payment_proof_url) claimPatch2.payment_proof_url = String(b.payment_proof_url).trim();
+        if (b.payment_proof_file_id) claimPatch2.payment_proof_file_id = String(b.payment_proof_file_id).trim();
+        return sbPatch('customer_orders', { id: claimId }, claimPatch2).then(function(res) {
+          if (!res || res.ok === false) return res;
+          return fetch(BASE + '/customer_orders?id=eq.' + encodeURIComponent(claimId) +
+            '&select=id,shop_id,shop_name,zoho_invoice_number,balance_due,invoice_total', { headers: hdrs() })
+            .then(function(r) { return r.ok ? r.json() : []; })
+            .then(function(rows) {
+              var row = Array.isArray(rows) && rows[0] ? rows[0] : null;
+              if (!row) return res;
+              var due = parseFloat(row.balance_due != null ? row.balance_due : row.invoice_total) || 0;
+              return sbPost('payment_requests', {
+                shop_id: row.shop_id != null ? String(row.shop_id) : null,
+                shop_name: row.shop_name || null,
+                order_ids: [Number(claimId)],
+                amount: due,
+                invoice_numbers: row.zoho_invoice_number || null,
+                status: 'pending',
+                customer_note: claimNote || null,
+                payment_ref: claimPatch2.payment_ref || null,
+                payment_proof_file_id: claimPatch2.payment_proof_file_id || null,
+                payment_proof_url: claimPatch2.payment_proof_url || null,
+                requested_at: claimPatch2.customer_claimed_at,
+                requested_by: b.requested_by || 'customer'
+              }).then(function() { return res; }).catch(function() { return res; });
+            }).catch(function() { return res; });
         });
       }
 
