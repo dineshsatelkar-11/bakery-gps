@@ -2960,7 +2960,7 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
         localStorage.setItem('adminLastTab', t);
         localStorage.setItem('adminLastTabRole', _staffRole || '');
       } catch(e){}
-      ['dashboard','orders','approve','queue','summary','delivery','routes','customers','cust-orders','manual-order','products','groups','ingredients','recipes','production','drivers','gps','users','notify','zoho','cleanup','audit', 'attendance', 'my-brand','pay-challan','pay-draft','pay-open','pay-requests','pay-paid','pay-blocked','pay-link','pay-zoho-list','pay-queue'].forEach(function(x){
+      ['dashboard','analysis','orders','approve','queue','summary','delivery','routes','customers','cust-orders','manual-order','products','groups','ingredients','recipes','production','drivers','gps','users','notify','zoho','cleanup','audit', 'attendance', 'my-brand','pay-challan','pay-draft','pay-open','pay-requests','pay-paid','pay-blocked','pay-link','pay-zoho-list','pay-queue'].forEach(function(x){
         var pg=document.getElementById('pg-'+x); if(!pg) return;
         var on = (x===t);
         // All payment subtabs share the embed frame on pg-pay-challan
@@ -3176,9 +3176,9 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 
       var selectCols = 'id,shop_id,shop_name,delivery_date,items,qty,item_ids,status';
 
-      // Ensure product master for category + price
-      var prodPromise = (typeof loadProducts === 'function')
-        ? loadProducts(false).catch(function(){ return allProducts || []; })
+      // Ensure product master for category + price (loadProductMaster returns a Promise)
+      var prodPromise = (typeof loadProductMaster === 'function')
+        ? loadProductMaster(false).catch(function(){ return allProducts || []; })
         : Promise.resolve(allProducts || []);
 
       Promise.all([
