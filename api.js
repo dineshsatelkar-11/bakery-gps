@@ -601,6 +601,23 @@ function normalizeProducts(list) {
         // Returns all recipe lines; JS groups them by product_id client-side
         return sbGet('product_recipes', {}, 'product_id,ingredient_name');
 
+      // ── 📦 INVENTORY (raw materials) ─────────────────────────────────────────
+      case 'getInventory':
+        return sbGet('ingredients', {}, 'name');
+
+      case 'getStockMovements': {
+        var smLimit = parseInt(p.limit, 10) || 100;
+        var smUrl = BASE + '/stock_movements?select=*&order=created_at.desc&limit=' + smLimit;
+        if (p.ingredient_id) smUrl += '&ingredient_id=eq.' + encodeURIComponent(p.ingredient_id);
+        if (p.movement_type) smUrl += '&movement_type=eq.' + encodeURIComponent(p.movement_type);
+        if (p.ref_type) smUrl += '&ref_type=eq.' + encodeURIComponent(p.ref_type);
+        if (p.ref_id) smUrl += '&ref_id=eq.' + encodeURIComponent(p.ref_id);
+        if (p.since) smUrl += '&created_at=gte.' + encodeURIComponent(p.since);
+        return fetch(smUrl, { headers: hdrs() })
+          .then(function (r) { return r.ok ? r.json() : []; })
+          .catch(function () { return []; });
+      }
+
       default:
         return Promise.resolve([]);
     }
@@ -1786,11 +1803,21 @@ function normalizeProducts(list) {
 
       case 'saveIngredient': {
         // If id provided → update existing; otherwise → insert new
+        // Stock is NOT set here — use addStockMovement / opening adjustment
         var row = {
           name:          b.name,
           unit:          b.unit,
           cost_per_unit: parseFloat(b.cost_per_unit) || 0
         };
+        if (b.reorder_level !== undefined && b.reorder_level !== null && b.reorder_level !== '') {
+          row.reorder_level = parseFloat(b.reorder_level);
+          if (isNaN(row.reorder_level)) row.reorder_level = null;
+        }
+        if (b.reorder_qty !== undefined && b.reorder_qty !== null && b.reorder_qty !== '') {
+          row.reorder_qty = parseFloat(b.reorder_qty);
+          if (isNaN(row.reorder_qty)) row.reorder_qty = null;
+        }
+        if (b.supplier_note !== undefined) row.supplier_note = b.supplier_note || null;
         if (b.id) {
           return sbPatch('ingredients', { id: b.id }, row);
         }
@@ -1800,6 +1827,7 @@ function normalizeProducts(list) {
 
       case 'deleteIngredient':
         // Cascades to product_recipes via FK ON DELETE CASCADE
+        // Block if stock movements exist (RESTRICT on stock_movements.ingredient_id)
         return sbDelete('ingredients', { id: b.id });
 
       // ── 📋 RECIPES ───────────────────────────────────────────────────────────
@@ -1835,6 +1863,143 @@ function normalizeProducts(list) {
         .catch(function(){ return { ok: false, error: 'Network error' }; });
       }
 
+      // ── 📦 INVENTORY — stock movements (raw materials) ───────────────────────
+      // qty is signed: + in (purchase/return/adjustment up), - out (consume/wastage/adjustment down)
+      // Block negative stock unless force=true
+
+      case 'addStockMovement': {
+        var iid = parseInt(b.ingredient_id, 10);
+        var mType = String(b.movement_type || '').trim();
+        var qtyRaw = parseFloat(b.qty);
+        var allowNeg = !!b.force;
+        var validTypes = { purchase:1, production_consume:1, adjustment:1, wastage:1, return:1 };
+        if (!iid || isNaN(iid)) return Promise.resolve({ ok: false, error: 'ingredient_id required' });
+        if (!validTypes[mType]) return Promise.resolve({ ok: false, error: 'invalid movement_type' });
+        if (!qtyRaw || isNaN(qtyRaw) || qtyRaw === 0) return Promise.resolve({ ok: false, error: 'qty must be non-zero' });
+
+        // Normalize sign by type (UI may send absolute qty for consume/wastage)
+        var signedQty = qtyRaw;
+        if (mType === 'purchase' || mType === 'return') {
+          signedQty = Math.abs(qtyRaw);
+        } else if (mType === 'production_consume' || mType === 'wastage') {
+          signedQty = -Math.abs(qtyRaw);
+        }
+        // adjustment: keep sign as provided
+
+        return fetch(BASE + '/ingredients?id=eq.' + iid + '&select=id,name,unit,current_stock&limit=1', { headers: hdrs() })
+          .then(function (r) { return r.ok ? r.json() : []; })
+          .then(function (rows) {
+            var ing = rows && rows[0];
+            if (!ing) return { ok: false, error: 'Ingredient not found' };
+            var cur = parseFloat(ing.current_stock);
+            if (isNaN(cur)) cur = 0;
+            var next = cur + signedQty;
+            if (next < -0.000001 && !allowNeg) {
+              return {
+                ok: false,
+                error: 'Insufficient stock for ' + (ing.name || iid) +
+                  ' (have ' + cur + ' ' + (ing.unit || '') + ', need ' + Math.abs(signedQty) + ')',
+                current_stock: cur,
+                needed: Math.abs(signedQty)
+              };
+            }
+            var move = {
+              ingredient_id: iid,
+              ingredient_name: ing.name || '',
+              movement_type: mType,
+              qty: signedQty,
+              unit: ing.unit || b.unit || '',
+              balance_after: next,
+              ref_type: b.ref_type || 'manual',
+              ref_id: b.ref_id != null ? String(b.ref_id) : null,
+              note: b.note || null,
+              created_by: b.created_by || null
+            };
+            return fetch(BASE + '/stock_movements', {
+              method: 'POST',
+              headers: hdrs({ 'Prefer': 'return=representation' }),
+              body: JSON.stringify(move)
+            }).then(function (r) {
+              if (!r.ok) {
+                return r.json().then(function (e) {
+                  return { ok: false, error: (e && e.message) || 'Failed to insert movement' };
+                }).catch(function () { return { ok: false, error: 'Failed to insert movement' }; });
+              }
+              return sbPatch('ingredients', { id: iid }, { current_stock: next }).then(function (pr) {
+                if (!pr || !pr.ok) {
+                  return { ok: false, error: 'Movement saved but stock update failed — check ledger' };
+                }
+                return { ok: true, current_stock: next, qty: signedQty, ingredient_id: iid };
+              });
+            });
+          })
+          .catch(function () { return { ok: false, error: 'Network error' }; });
+      }
+
+      case 'applyProductionConsumption': {
+        // lines: [{ ingredient_id, qty }] — qty = amount to consume (positive)
+        // ref_id should be production date YYYY-MM-DD
+        var consLines = Array.isArray(b.lines) ? b.lines : [];
+        var prodDate = b.ref_id || b.date || '';
+        var forceAll = !!b.force;
+        var createdBy = b.created_by || null;
+        if (!consLines.length) return Promise.resolve({ ok: false, error: 'No consumption lines' });
+
+        function consumeOne(idx, results) {
+          if (idx >= consLines.length) {
+            var failed = results.filter(function (x) { return !x.ok; });
+            return {
+              ok: failed.length === 0,
+              results: results,
+              error: failed.length ? (failed[0].error || 'Some lines failed') : null
+            };
+          }
+          var line = consLines[idx];
+          var body = {
+            action: 'addStockMovement',
+            ingredient_id: line.ingredient_id,
+            movement_type: 'production_consume',
+            qty: Math.abs(parseFloat(line.qty) || 0),
+            ref_type: 'production_date',
+            ref_id: prodDate,
+            note: b.note || ('Production ' + prodDate),
+            created_by: createdBy,
+            force: forceAll
+          };
+          // Re-enter same switch via internal call pattern — inline the logic by recursive apiPost not available;
+          // call the movement path by simulating: we inline fetch sequence
+          return window.apiPost(body).then(function (r) {
+            results.push(Object.assign({ ingredient_id: line.ingredient_id }, r || { ok: false }));
+            if (r && !r.ok && !forceAll) {
+              // stop on first failure when not forcing
+              return {
+                ok: false,
+                results: results,
+                error: r.error || 'Stopped on insufficient stock'
+              };
+            }
+            return consumeOne(idx + 1, results);
+          });
+        }
+        return consumeOne(0, []);
+      }
+
+      case 'updateIngredientStockSettings': {
+        // reorder only — never current_stock
+        if (!b.id) return Promise.resolve({ ok: false, error: 'id required' });
+        var patch = {};
+        if (b.reorder_level !== undefined) {
+          var rl = b.reorder_level === null || b.reorder_level === '' ? null : parseFloat(b.reorder_level);
+          patch.reorder_level = (rl !== null && isNaN(rl)) ? null : rl;
+        }
+        if (b.reorder_qty !== undefined) {
+          var rq = b.reorder_qty === null || b.reorder_qty === '' ? null : parseFloat(b.reorder_qty);
+          patch.reorder_qty = (rq !== null && isNaN(rq)) ? null : rq;
+        }
+        if (b.supplier_note !== undefined) patch.supplier_note = b.supplier_note || null;
+        if (!Object.keys(patch).length) return Promise.resolve({ ok: false, error: 'nothing to update' });
+        return sbPatch('ingredients', { id: b.id }, patch);
+      }
 
       // ── Invoice payment (Phase A) ─────────────────────────────────────────────
 

@@ -1767,6 +1767,56 @@
     <div id="recipesList"></div>
 </div>
 
+<!-- INVENTORY (raw materials) -->
+<div class="page" id="pg-inventory">
+    <div class="mng-mobile-seg-wrap">
+        <div class="mng-mobile-seg" role="tablist">
+            <button type="button" data-mng-seg="products" onclick="showTab('products')">📦 Products</button>
+            <button type="button" data-mng-seg="drivers" onclick="showTab('drivers')">🚗 Drivers</button>
+            <button type="button" data-mng-seg="groups" onclick="showTab('groups')">🏷 Groups</button>
+            <button type="button" data-mng-seg="more" onclick="openManageTools()">⋯ More</button>
+        </div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;flex-wrap:wrap">
+        <div style="font-size:13px;font-weight:900;color:#1e293b">📦 Raw Material Stock</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn-sm btn-grey" onclick="loadInventory()">🔄</button>
+            <button class="btn-sm" style="background:#1565c0;color:#fff" onclick="openStockMoveModal('purchase')">➕ Add stock</button>
+            <button class="btn-sm" style="background:#1e293b;color:#fff" onclick="openStockMoveModal('adjustment')">± Adjust</button>
+            <button class="btn-sm" style="background:#c8382a;color:#fff" onclick="openStockMoveModal('wastage')">🗑 Wastage</button>
+        </div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <input type="text" id="f-inv-search" placeholder="Search ingredients…" oninput="renderInventory()" style="margin-bottom:0;flex:1;min-width:140px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-family:monospace;color:#64748b;white-space:nowrap">
+            <input type="checkbox" id="f-inv-low-only" onchange="renderInventory()"> Low only
+        </label>
+    </div>
+    <div id="inv-msg" style="display:none;margin-bottom:8px" class="msg ok"></div>
+    <div id="inventoryList"></div>
+
+    <!-- Usage variance: expected (orders×recipes) vs actual (movements) -->
+    <div style="margin-top:18px;padding:12px;background:#fff8f0;border:1.5px solid #f0d9b5;border-radius:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:8px">
+            <div style="font-size:12px;font-weight:900;color:#1e293b;font-family:monospace">📊 Usage variance (expected vs actual)</div>
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                <input type="date" id="f-var-date" onchange="loadUsageVariance()" style="margin-bottom:0;padding:6px 8px;font-size:12px">
+                <button class="btn-sm btn-grey" onclick="loadUsageVariance()">🔄</button>
+            </div>
+        </div>
+        <div style="font-size:11px;font-family:monospace;color:#64748b;margin-bottom:8px">Expected = orders × recipes · Actual = production deduct + wastage that day · Red = over-use</div>
+        <div id="usageVarianceBody" style="font-size:12px;font-family:monospace">Pick a date and refresh.</div>
+    </div>
+
+    <div style="margin-top:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div style="font-size:12px;font-weight:900;color:#1e293b;font-family:monospace">📜 Recent movements</div>
+            <button class="btn-sm btn-grey" onclick="loadStockMovements()">🔄</button>
+        </div>
+        <div id="stockMovementsList" style="font-size:12px;font-family:monospace"></div>
+    </div>
+</div>
+
 <!-- PRODUCTION SHEET -->
 <div class="page" id="pg-production">
     <div class="ord-mobile-seg-wrap">
@@ -1784,6 +1834,7 @@
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
         <input type="date" id="f-prod-date" onchange="loadProduction()" style="margin-bottom:0;flex:1">
         <button class="btn btn-brown" style="margin-bottom:0;flex:1" onclick="printProductionSheet()">🖨️ Print</button>
+        <button class="btn" style="margin-bottom:0;flex:1;background:#2d7a4f;color:#fff" onclick="openProdConsumeModal()">📉 Deduct stock</button>
     </div>
     <div id="productionBody"></div>
 </div>
@@ -1807,9 +1858,50 @@
         </select>
         <div class="lbl">Cost per Unit (₹)</div>
         <input type="text" id="ing-cost" placeholder="e.g. 0.04 per gram, 2.00 per piece">
+        <div class="lbl">Reorder level (alert when stock ≤ this)</div>
+        <input type="text" id="ing-reorder-level" placeholder="e.g. 5000">
+        <div class="lbl">Reorder qty (suggested buy)</div>
+        <input type="text" id="ing-reorder-qty" placeholder="e.g. 25000">
         <div id="ing-modal-msg" style="display:none" class="msg ok"></div>
         <button class="btn btn-brown" onclick="saveIngredient()">💾 Save</button>
         <button class="btn btn-grey" style="margin-bottom:0" onclick="closeIngredientModal()">Cancel</button>
+    </div>
+</div>
+
+<!-- STOCK MOVEMENT MODAL -->
+<div class="modal-bg" id="stockMoveModal" style="display:none" onclick="if(event.target===this)closeStockMoveModal()">
+    <div class="modal">
+        <div class="modal-title" id="stockMoveTitle">Add stock</div>
+        <input type="hidden" id="sm-type">
+        <div class="lbl">Ingredient *</div>
+        <select id="sm-ingredient" style="width:100%;padding:10px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;margin-bottom:8px"></select>
+        <div class="lbl">Qty *</div>
+        <input type="number" id="sm-qty" step="any" placeholder="Amount" style="margin-bottom:4px">
+        <div id="sm-unit-hint" style="font-size:11px;font-family:monospace;color:#64748b;margin-bottom:8px"></div>
+        <div id="sm-adj-sign-wrap" style="display:none;margin-bottom:8px">
+            <div class="lbl">Direction</div>
+            <select id="sm-adj-sign">
+                <option value="+">+ Increase</option>
+                <option value="-">− Decrease</option>
+            </select>
+        </div>
+        <div class="lbl">Note</div>
+        <input type="text" id="sm-note" placeholder="Supplier / reason (optional)">
+        <div id="sm-modal-msg" style="display:none" class="msg ok"></div>
+        <button class="btn btn-brown" onclick="saveStockMovement()">💾 Save</button>
+        <button class="btn btn-grey" style="margin-bottom:0" onclick="closeStockMoveModal()">Cancel</button>
+    </div>
+</div>
+
+<!-- PRODUCTION CONSUME MODAL -->
+<div class="modal-bg" id="prodConsumeModal" style="display:none" onclick="if(event.target===this)closeProdConsumeModal()">
+    <div class="modal" style="max-height:92vh;overflow-y:auto;max-width:480px">
+        <div class="modal-title">📉 Deduct stock for production</div>
+        <div id="prod-consume-date" style="font-size:12px;font-family:monospace;color:#64748b;margin-bottom:10px"></div>
+        <div id="prod-consume-body" style="margin-bottom:12px"></div>
+        <div id="prod-consume-msg" style="display:none" class="msg ok"></div>
+        <button class="btn" style="background:#2d7a4f;color:#fff" onclick="confirmProdConsume()">✅ Confirm deduct</button>
+        <button class="btn btn-grey" style="margin-bottom:0" onclick="closeProdConsumeModal()">Cancel</button>
     </div>
 </div>
 
@@ -2311,6 +2403,7 @@
             <option value="assistant">🤝 Assistant</option>
             <option value="chef">👨‍🍳 Bakery Chef</option>
             <option value="packer">📦 Packer</option>
+            <option value="stock_manager">🧂 Stock Manager</option>
             <option value="brand_owner">🏪 Brand Owner</option>
         </select>
         <div class="lbl" id="sm-brand-lbl" style="display:none">Brand (which shops they see)</div>
@@ -2343,23 +2436,26 @@
     var allDriversList = []; // full list including inactive
 
     var TAB_LIST = [
-      {key:'orders',   label:'📋 Orders'},
-      {key:'approve',  label:'⏳ New Customers'},
-      {key:'queue',    label:'⚠️ Queue'},
-      {key:'summary',  label:'📊 Summary'},
-      {key:'delivery', label:'🚚 Delivery'},
-      {key:'routes',   label:'🗺 Routes'},
-      {key:'customers',label:'🏪 Customers'},
-      {key:'products', label:'📦 Products'},
-      {key:'drivers',  label:'🚗 Drivers'},
-      {key:'gps',      label:'📍 GPS'}
+      {key:'orders',     label:'📋 Orders'},
+      {key:'approve',    label:'⏳ New Customers'},
+      {key:'queue',      label:'⚠️ Queue'},
+      {key:'summary',    label:'📊 Summary'},
+      {key:'delivery',   label:'🚚 Delivery'},
+      {key:'routes',     label:'🗺 Routes'},
+      {key:'customers',  label:'🏪 Customers'},
+      {key:'products',   label:'📦 Products'},
+      {key:'inventory',  label:'📦 Inventory'},
+      {key:'production', label:'🏭 Production'},
+      {key:'drivers',    label:'🚗 Drivers'},
+      {key:'gps',        label:'📍 GPS'}
     ];
    var ROLE_DEFAULT_TABS = {
-  admin:        ['orders','approve','queue','summary','delivery','routes','customers','products','gps','zoho'],
-  assistant:    ['orders','delivery','summary'],
-  chef:         ['summary'],
-  packer:       ['orders','summary'],
-  brand_owner:  ['my-brand']
+  admin:          ['orders','approve','queue','summary','delivery','routes','customers','products','gps','zoho','inventory','production'],
+  assistant:      ['orders','delivery','summary'],
+  chef:           ['summary','production'],
+  packer:         ['orders','summary'],
+  stock_manager:  ['inventory','production'],
+  brand_owner:    ['my-brand']
 };
     // Restore session from localStorage if sessionStorage was cleared (phone lock / tab killed by OS)
   (function(){
@@ -2378,7 +2474,7 @@
 
     (function(){
       var r=sessionStorage.getItem('role');
-      if(['super_admin','admin','assistant','chef','packer','brand_owner'].indexOf(r)<0){ goto(''); return; }
+      if(['super_admin','admin','assistant','chef','packer','stock_manager','brand_owner'].indexOf(r)<0){ goto(''); return; }
       if(r==='brand_owner'){ goto('brand-head'); return; } // brand admins get the lightweight dashboard, not the full panel
     })();
 
@@ -2386,7 +2482,7 @@
 
     function initTabVisibility(){
       var allTabKeys = ['dashboard','analysis','orders','approve','queue','summary','delivery','routes','customers',
-'cust-orders','manual-order','products','groups','ingredients','recipes','production','drivers','gps',
+'cust-orders','manual-order','products','groups','ingredients','recipes','inventory','production','drivers','gps',
 'users','notify','zoho','cleanup','audit','attendance','my-brand','pay-challan','pay-draft','pay-open','pay-requests','pay-paid','pay-blocked','pay-link','pay-zoho-list','pay-queue'];
 allTabKeys.forEach(function(t){
         var show;
@@ -2403,8 +2499,11 @@ allTabKeys.forEach(function(t){
           show = (_staffRole === 'super_admin' || _staffRole === 'admin');
         } else if(_allowedTabs === null) {
           show = true;
-        } else if(t === 'ingredients' || t === 'recipes' || t === 'production') {
+        } else if(t === 'ingredients' || t === 'recipes') {
           show = (_staffRole === 'super_admin' || _staffRole === 'admin' || _staffRole === 'chef');
+        } else if(t === 'inventory' || t === 'production') {
+          show = (_staffRole === 'super_admin' || _staffRole === 'admin' || _staffRole === 'chef' || _staffRole === 'stock_manager')
+            || (_allowedTabs && _allowedTabs.indexOf(t) >= 0);
         } else if(t === 'cust-orders' || t === 'groups') {
           show = (_staffRole === 'admin' || _staffRole === 'assistant') || (_allowedTabs.indexOf(t) >= 0);
         } else if(t === 'my-brand') {
@@ -2618,6 +2717,7 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
         var tools = [
           {key:'ingredients', ico:'🧂', label:'Ingredients'},
           {key:'recipes', ico:'📋', label:'Recipes'},
+          {key:'inventory', ico:'📦', label:'Inventory'},
           {key:'users', ico:'👥', label:'Users'},
           {key:'cleanup', ico:'🗑', label:'Cleanup'}
         ];
@@ -2983,6 +3083,7 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
       manage:    [{key:'products',    label:'📦 Products'},
                   {key:'ingredients', label:'🧂 Ingredients'},
                   {key:'recipes',     label:'📋 Recipes'},
+                  {key:'inventory',   label:'📦 Inventory'},
                   {key:'groups',      label:'🏷 Groups'},
                   {key:'drivers',     label:'🚗 Drivers'},
                   {key:'users',       label:'👥 Users'},
@@ -3019,7 +3120,7 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
         localStorage.setItem('adminLastTab', t);
         localStorage.setItem('adminLastTabRole', _staffRole || '');
       } catch(e){}
-      ['dashboard','analysis','orders','approve','queue','summary','delivery','routes','customers','cust-orders','manual-order','products','groups','ingredients','recipes','production','drivers','gps','users','notify','zoho','cleanup','audit', 'attendance', 'my-brand','pay-challan','pay-draft','pay-open','pay-requests','pay-paid','pay-blocked','pay-link','pay-zoho-list','pay-queue'].forEach(function(x){
+      ['dashboard','analysis','orders','approve','queue','summary','delivery','routes','customers','cust-orders','manual-order','products','groups','ingredients','recipes','inventory','production','drivers','gps','users','notify','zoho','cleanup','audit', 'attendance', 'my-brand','pay-challan','pay-draft','pay-open','pay-requests','pay-paid','pay-blocked','pay-link','pay-zoho-list','pay-queue'].forEach(function(x){
         var pg=document.getElementById('pg-'+x); if(!pg) return;
         var on = (x===t);
         // All payment subtabs share the embed frame on pg-pay-challan
@@ -3136,6 +3237,7 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
       if(t==='groups')       loadGroups();
       if(t==='ingredients')  loadIngredients();
       if(t==='recipes')      loadRecipes();
+      if(t==='inventory')    loadInventory();
       if(t==='production')   loadProduction();
       if(t==='drivers')      loadDrivers().then(renderDrivers);
       if(t==='users')        { loadStaff().then(renderStaff); loadFeatureSettings(); }
@@ -10498,8 +10600,8 @@ async function zohoSyncSelectedProducts() {
         '<div class="stat"><div class="stat-n" style="color:#2d7a4f">'+active+'</div><div class="stat-l">Active</div></div>'+
         '<div class="stat"><div class="stat-n" style="color:#c8382a">'+(allStaffList.length-active)+'</div><div class="stat-l">Inactive</div></div>';
       if(!allStaffList.length){el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#64748b;font-family:monospace">No staff users yet.</div>';return;}
-     var roleIcon = {super_admin:'👑',admin:'👤',chef:'👨‍🍳',packer:'📦',assistant:'🤝',brand_owner:'🏪'};
-var roleLabel = {super_admin:'Super Admin',admin:'Admin',chef:'Bakery Chef',packer:'Packer',assistant:'Assistant',brand_owner:'Brand Owner'};
+     var roleIcon = {super_admin:'👑',admin:'👤',chef:'👨‍🍳',packer:'📦',assistant:'🤝',stock_manager:'🧂',brand_owner:'🏪'};
+var roleLabel = {super_admin:'Super Admin',admin:'Admin',chef:'Bakery Chef',packer:'Packer',assistant:'Assistant',stock_manager:'Stock Manager',brand_owner:'Brand Owner'};
  el.innerHTML = allStaffList.map(function(s){
         var tabs = s.role === 'super_admin' ? 'All tabs' : (JSON.parse(s.tabs||'[]').join(', ')||'None');
         var isSelf = (s.name === _staffName);
@@ -12929,7 +13031,15 @@ onStaffRoleChange();
           var iid = String(l.ingredient_id);
           if(!totals[iid]){
             var ing = ingMeta[iid]||{};
-            totals[iid]={name:l.ingredient_name||ing.name||iid, unit:l.unit||ing.unit||'', cost_per_unit:parseFloat(ing.cost_per_unit)||0, total_qty:0, total_cost:0};
+            totals[iid]={
+              ingredient_id: parseInt(l.ingredient_id, 10) || null,
+              name:l.ingredient_name||ing.name||iid,
+              unit:l.unit||ing.unit||'',
+              cost_per_unit:parseFloat(ing.cost_per_unit)||0,
+              current_stock: parseFloat(ing.current_stock)||0,
+              total_qty:0,
+              total_cost:0
+            };
           }
           var needed = (parseFloat(l.qty_per_unit)||0) * item.qty;
           totals[iid].total_qty  += needed;
@@ -12940,7 +13050,7 @@ onStaffRoleChange();
     }
 
     function loadIngredientsMaster(){
-      if(allIngredients.length) return Promise.resolve();
+      // Always refresh so stock levels stay current after movements
       return api({action:'getIngredients'}).then(function(d){ allIngredients=Array.isArray(d)?d:[]; });
     }
     function loadRecipesMaster(){
@@ -12996,6 +13106,8 @@ onStaffRoleChange();
       document.getElementById('ing-name').value='';
       document.getElementById('ing-unit').value='g';
       document.getElementById('ing-cost').value='';
+      document.getElementById('ing-reorder-level').value='';
+      document.getElementById('ing-reorder-qty').value='';
       document.getElementById('ing-modal-msg').style.display='none';
       document.getElementById('ingredientModal').style.display='flex';
     }
@@ -13007,6 +13119,8 @@ onStaffRoleChange();
       document.getElementById('ing-name').value=ing.name||'';
       document.getElementById('ing-unit').value=ing.unit||'g';
       document.getElementById('ing-cost').value=ing.cost_per_unit||'';
+      document.getElementById('ing-reorder-level').value=(ing.reorder_level!=null&&ing.reorder_level!=='')?ing.reorder_level:'';
+      document.getElementById('ing-reorder-qty').value=(ing.reorder_qty!=null&&ing.reorder_qty!=='')?ing.reorder_qty:'';
       document.getElementById('ing-modal-msg').style.display='none';
       document.getElementById('ingredientModal').style.display='flex';
     }
@@ -13016,10 +13130,20 @@ onStaffRoleChange();
       var name=document.getElementById('ing-name').value.trim();
       var unit=document.getElementById('ing-unit').value;
       var cost=parseFloat(document.getElementById('ing-cost').value)||0;
+      var rlRaw=document.getElementById('ing-reorder-level').value.trim();
+      var rqRaw=document.getElementById('ing-reorder-qty').value.trim();
       var msg=document.getElementById('ing-modal-msg');
       if(!name){msg.textContent='Name is required.';msg.className='msg er';msg.style.display='block';return;}
       msg.textContent='Saving…';msg.className='msg in';msg.style.display='block';
-      apiPost({action:'saveIngredient',id:id||undefined,name:name,unit:unit,cost_per_unit:cost}).then(function(r){
+      apiPost({
+        action:'saveIngredient',
+        id:id||undefined,
+        name:name,
+        unit:unit,
+        cost_per_unit:cost,
+        reorder_level: rlRaw===''?null:parseFloat(rlRaw),
+        reorder_qty: rqRaw===''?null:parseFloat(rqRaw)
+      }).then(function(r){
         if(r&&r.ok){msg.textContent='✅ Saved!';msg.className='msg ok';setTimeout(function(){closeIngredientModal();allIngredients=[];loadIngredients();},700);}
         else{msg.textContent='❌ '+(r&&r.error||'Failed.');msg.className='msg er';}
       });
@@ -13031,6 +13155,399 @@ onStaffRoleChange();
         if(r&&r.ok){el.textContent='✅ Deleted.';el.className='msg ok';el.style.display='block';allIngredients=[];loadIngredients();}
         else{el.textContent='❌ '+(r&&r.error||'Failed.');el.className='msg er';el.style.display='block';}
         setTimeout(function(){el.style.display='none';},3000);
+      });
+    }
+
+    /* ══════════════════════════════════════════════
+       📦 INVENTORY — raw material stock
+    ══════════════════════════════════════════════ */
+    var _lastProdGrandIng = []; // cached from last production render for deduct
+
+    function isIngredientLow(ing){
+      var stock = parseFloat(ing.current_stock);
+      if(isNaN(stock)) stock = 0;
+      var rl = parseFloat(ing.reorder_level);
+      if(ing.reorder_level==null || ing.reorder_level==='' || isNaN(rl)) return false;
+      return stock <= rl;
+    }
+
+    function loadInventory(){
+      var el=document.getElementById('inventoryList');
+      if(el) el.innerHTML='<div style="text-align:center;padding:16px;font-size:12px;color:#64748b;font-family:monospace">Loading…</div>';
+      var vd=document.getElementById('f-var-date');
+      if(vd && !vd.value){
+        try {
+          var d=new Date();
+          vd.value=d.toISOString().slice(0,10);
+        } catch(e){}
+      }
+      api({action:'getInventory'}).then(function(d){
+        allIngredients=Array.isArray(d)?d:[];
+        renderInventory();
+        loadStockMovements();
+        loadUsageVariance();
+      }).catch(function(){
+        if(el) el.innerHTML='<div class="msg er">Failed to load inventory. Run inventory-stock-setup.sql if columns are missing.</div>';
+      });
+    }
+
+    /** Expected (orders×recipes) vs actual (consume+wastage) for one day */
+    function loadUsageVariance(){
+      var body=document.getElementById('usageVarianceBody');
+      if(!body) return;
+      var dateEl=document.getElementById('f-var-date');
+      var date=dateEl&&dateEl.value?dateEl.value:'';
+      if(!date){ body.innerHTML='Pick a date.'; return; }
+      body.innerHTML='<div style="color:#64748b;padding:8px">Loading variance…</div>';
+      Promise.all([
+        api({action:'getOrders',date:date}),
+        loadIngredientsMaster(),
+        loadRecipesMaster(),
+        loadProductMaster(),
+        api({action:'getStockMovements',limit:500,ref_id:date}),
+        api({action:'getStockMovements',limit:500,since:date+'T00:00:00'})
+      ]).then(function(res){
+        var orders=Array.isArray(res[0])?res[0]:[];
+        var byRef=Array.isArray(res[4])?res[4]:[];
+        var sinceRows=Array.isArray(res[5])?res[5]:[];
+        // Actual: production_consume with ref_id=date OR wastage/consume on that calendar day (dedupe by id)
+        var actualMap={};
+        var seenMove={};
+        function addActual(m){
+          if(!m||m.id==null) return;
+          if(seenMove[m.id]) return;
+          var t=m.movement_type;
+          if(t!=='production_consume' && t!=='wastage') return;
+          var day=(m.created_at||'').slice(0,10);
+          var matchRef=String(m.ref_id||'')===String(date);
+          var matchDay=day===date;
+          if(!matchRef && !matchDay) return;
+          seenMove[m.id]=1;
+          var iid=String(m.ingredient_id);
+          if(!actualMap[iid]) actualMap[iid]={qty:0,name:m.ingredient_name||iid,unit:m.unit||'',consume:0,wastage:0};
+          var abs=Math.abs(parseFloat(m.qty)||0);
+          actualMap[iid].qty+=abs;
+          if(t==='wastage') actualMap[iid].wastage+=abs; else actualMap[iid].consume+=abs;
+        }
+        byRef.forEach(addActual);
+        sinceRows.forEach(addActual);
+
+        var grand=[];
+        orders.forEach(function(o){
+          parseIQ(o).forEach(function(x){
+            var f=grand.find(function(g){return g.product_id?String(g.product_id)===String(x.product_id):g.name===x.name;});
+            if(f) f.qty+=x.qty; else grand.push({name:x.name,qty:x.qty,product_id:x.product_id});
+          });
+        });
+        var expected=calcIngForItems(grand);
+        var expMap={};
+        expected.forEach(function(e){
+          var key=e.ingredient_id!=null?String(e.ingredient_id):e.name;
+          expMap[key]=e;
+        });
+
+        var keys={};
+        Object.keys(expMap).forEach(function(k){keys[k]=1;});
+        Object.keys(actualMap).forEach(function(k){keys[k]=1;});
+        var rows=Object.keys(keys).map(function(k){
+          var exp=expMap[k];
+          var act=actualMap[k];
+          var name=(exp&&exp.name)||(act&&act.name)||k;
+          var unit=(exp&&exp.unit)||(act&&act.unit)||'';
+          var eQty=exp?exp.total_qty:0;
+          var aQty=act?act.qty:0;
+          var varq=aQty-eQty;
+          var cost=exp?exp.cost_per_unit:(function(){
+            var ing=allIngredients.find(function(i){return String(i.id)===k;});
+            return ing?parseFloat(ing.cost_per_unit)||0:0;
+          })();
+          return {name:name,unit:unit,expected:eQty,actual:aQty,variance:varq,consume:act?act.consume:0,wastage:act?act.wastage:0,cost:cost};
+        }).sort(function(a,b){return Math.abs(b.variance)-Math.abs(a.variance);});
+
+        if(!rows.length){
+          body.innerHTML='<div style="color:#64748b;padding:8px">No expected usage and no stock movements for '+date+'.</div>';
+          return;
+        }
+        var over=rows.filter(function(r){return r.variance>0.001;}).length;
+        var wasteCost=rows.reduce(function(s,r){return s+(r.variance>0?r.variance*r.cost:0);},0);
+        body.innerHTML=
+          '<div class="stats-grid" style="margin-bottom:10px">'+
+            '<div class="stat"><div class="stat-n">'+rows.length+'</div><div class="stat-l">Ingredients</div></div>'+
+            '<div class="stat"><div class="stat-n" style="color:'+(over?'#c8382a':'#2d7a4f')+'">'+over+'</div><div class="stat-l">Over-use</div></div>'+
+            '<div class="stat"><div class="stat-n" style="color:#c8382a;font-size:14px">'+(wasteCost>0?'₹'+wasteCost.toFixed(0):'—')+'</div><div class="stat-l">Extra cost</div></div>'+
+          '</div>'+
+          rows.map(function(r){
+            var bad=r.variance>0.001;
+            var pct=r.expected>0?((r.variance/r.expected)*100):null;
+            return '<div style="padding:8px 0;border-bottom:1px solid #f0e0c8">'+
+              '<div style="display:flex;justify-content:space-between;gap:8px">'+
+                '<span style="font-weight:800;color:#1e293b">'+esc(r.name)+(bad?' ⚠':'')+'</span>'+
+                '<span style="font-weight:900;color:'+(bad?'#c8382a':(r.variance<-0.001?'#1565c0':'#2d7a4f'))+'">'+
+                  (r.variance>0?'+':'')+fmtIngQty(r.variance,r.unit)+
+                  (pct!=null&&Math.abs(pct)>=1?' ('+(pct>0?'+':'')+pct.toFixed(0)+'%)':'')+
+                '</span>'+
+              '</div>'+
+              '<div style="color:#64748b;margin-top:2px;font-size:11px">'+
+                'Expected '+fmtIngQty(r.expected,r.unit)+
+                ' · Actual '+fmtIngQty(r.actual,r.unit)+
+                (r.consume?' · consume '+fmtIngQty(r.consume,r.unit):'')+
+                (r.wastage?' · wastage '+fmtIngQty(r.wastage,r.unit):'')+
+                (bad&&r.cost?' · ~₹'+(r.variance*r.cost).toFixed(0):'')+
+              '</div>'+
+            '</div>';
+          }).join('');
+      }).catch(function(){
+        body.innerHTML='<div class="msg er">Failed to load variance.</div>';
+      });
+    }
+
+    function renderInventory(){
+      var el=document.getElementById('inventoryList');
+      if(!el) return;
+      var q=(document.getElementById('f-inv-search')&&document.getElementById('f-inv-search').value||'').toLowerCase().trim();
+      var lowOnly=document.getElementById('f-inv-low-only')&&document.getElementById('f-inv-low-only').checked;
+      var list=allIngredients.filter(function(i){
+        if(q && (i.name||'').toLowerCase().indexOf(q)<0) return false;
+        if(lowOnly && !isIngredientLow(i)) return false;
+        return true;
+      });
+      var lowCount=allIngredients.filter(isIngredientLow).length;
+      var stockValue=allIngredients.reduce(function(s,i){
+        var st=parseFloat(i.current_stock)||0;
+        var c=parseFloat(i.cost_per_unit)||0;
+        return s+st*c;
+      },0);
+      if(!list.length){
+        el.innerHTML='<div style="text-align:center;padding:24px;font-size:13px;color:#64748b;font-family:monospace">'+(allIngredients.length?'No match.':'No ingredients yet. Add under Ingredients first.')+'</div>';
+        return;
+      }
+      var statHtml='<div class="stats-grid" style="margin-bottom:10px">'+
+        '<div class="stat"><div class="stat-n">'+allIngredients.length+'</div><div class="stat-l">Items</div></div>'+
+        '<div class="stat"><div class="stat-n" style="color:'+(lowCount?'#c8382a':'#2d7a4f')+'">'+lowCount+'</div><div class="stat-l">Low stock</div></div>'+
+        '<div class="stat"><div class="stat-n" style="color:#1565c0;font-size:15px">'+(stockValue>0?'₹'+stockValue.toFixed(0):'—')+'</div><div class="stat-l">Stock value</div></div>'+
+      '</div>';
+      el.innerHTML=statHtml+list.map(function(ing){
+        var stock=parseFloat(ing.current_stock); if(isNaN(stock)) stock=0;
+        var low=isIngredientLow(ing);
+        var unit=ing.unit||'';
+        var stockStr=fmtIngQty(stock, unit);
+        var rlStr=(ing.reorder_level!=null&&ing.reorder_level!=='')?fmtIngQty(parseFloat(ing.reorder_level),unit):'—';
+        var val=(stock*(parseFloat(ing.cost_per_unit)||0));
+        return '<div class="item-card" style="display:flex;align-items:center;justify-content:space-between;gap:8px;border-left:4px solid '+(low?'#c8382a':'#a5d6a7')+'">'+
+          '<div style="flex:1;min-width:0">'+
+            '<div style="font-size:13px;font-weight:800;color:#1e293b">'+esc(ing.name)+(low?' <span class="badge" style="background:#fde8e8;color:#c8382a;font-size:10px">LOW</span>':'')+'</div>'+
+            '<div style="font-size:11px;font-family:monospace;color:#64748b;margin-top:3px">'+
+              'On hand <b style="color:#1e293b">'+stockStr+'</b> · Reorder ≤ '+rlStr+
+              (val>0?' · ₹'+val.toFixed(0):'')+
+            '</div>'+
+          '</div>'+
+          '<div style="display:flex;gap:4px;flex-shrink:0">'+
+            '<button class="btn-sm" style="background:#1565c0;color:#fff" title="Add stock" onclick="openStockMoveModal(\'purchase\','+ing.id+')">+</button>'+
+            '<button class="btn-sm btn-edit" onclick="openEditIngredient(\''+ing.id+'\')">✏️</button>'+
+          '</div>'+
+        '</div>';
+      }).join('');
+    }
+
+    function loadStockMovements(){
+      var el=document.getElementById('stockMovementsList');
+      if(!el) return;
+      el.innerHTML='<div style="color:#64748b;padding:8px">Loading…</div>';
+      api({action:'getStockMovements',limit:40}).then(function(rows){
+        rows=Array.isArray(rows)?rows:[];
+        if(!rows.length){el.innerHTML='<div style="color:#64748b;padding:8px">No movements yet.</div>';return;}
+        var typeLabel={purchase:'➕ Purchase',production_consume:'🏭 Consume',adjustment:'± Adjust',wastage:'🗑 Wastage',return:'↩️ Return'};
+        el.innerHTML=rows.map(function(m){
+          var q=parseFloat(m.qty)||0;
+          var qStr=(q>0?'+':'')+fmtIngQty(Math.abs(q), m.unit||'');
+          var when=(m.created_at||'').replace('T',' ').slice(0,16);
+          return '<div style="padding:8px 0;border-bottom:1px solid #f0e8dc">'+
+            '<div style="display:flex;justify-content:space-between;gap:8px">'+
+              '<span style="font-weight:700;color:#1e293b">'+esc(m.ingredient_name||('#'+m.ingredient_id))+'</span>'+
+              '<span style="font-weight:900;color:'+(q>=0?'#2d7a4f':'#c8382a')+'">'+qStr+'</span>'+
+            '</div>'+
+            '<div style="color:#64748b;margin-top:2px">'+
+              (typeLabel[m.movement_type]||m.movement_type)+
+              (m.ref_id?' · '+esc(String(m.ref_id)):'')+
+              (m.note?' · '+esc(m.note):'')+
+              ' · '+when+
+              (m.balance_after!=null?' · bal '+fmtIngQty(parseFloat(m.balance_after)||0,m.unit||''):'')+
+            '</div>'+
+          '</div>';
+        }).join('');
+      }).catch(function(){
+        el.innerHTML='<div class="msg er">Could not load movements (table missing?).</div>';
+      });
+    }
+
+    function openStockMoveModal(type, preselectId){
+      document.getElementById('sm-type').value=type;
+      var titles={purchase:'➕ Add stock (purchase)',adjustment:'± Stock adjustment',wastage:'🗑 Record wastage',return:'↩️ Return to stock'};
+      document.getElementById('stockMoveTitle').textContent=titles[type]||'Stock movement';
+      document.getElementById('sm-qty').value='';
+      document.getElementById('sm-note').value='';
+      document.getElementById('sm-modal-msg').style.display='none';
+      document.getElementById('sm-adj-sign-wrap').style.display=type==='adjustment'?'block':'none';
+      document.getElementById('sm-adj-sign').value='+';
+      var sel=document.getElementById('sm-ingredient');
+      sel.innerHTML='<option value="">— Select —</option>'+allIngredients.map(function(i){
+        var st=parseFloat(i.current_stock); if(isNaN(st)) st=0;
+        return '<option value="'+i.id+'">'+esc(i.name)+' ('+fmtIngQty(st,i.unit||'')+')</option>';
+      }).join('');
+      if(preselectId) sel.value=String(preselectId);
+      function updateUnitHint(){
+        var ing=allIngredients.find(function(i){return String(i.id)===String(sel.value);});
+        document.getElementById('sm-unit-hint').textContent=ing?('Unit: '+ing.unit+' · On hand: '+fmtIngQty(parseFloat(ing.current_stock)||0,ing.unit||'')):'';
+      }
+      sel.onchange=updateUnitHint;
+      updateUnitHint();
+      document.getElementById('stockMoveModal').style.display='flex';
+    }
+    function closeStockMoveModal(){document.getElementById('stockMoveModal').style.display='none';}
+
+    function saveStockMovement(){
+      var type=document.getElementById('sm-type').value;
+      var iid=document.getElementById('sm-ingredient').value;
+      var qty=parseFloat(document.getElementById('sm-qty').value);
+      var note=document.getElementById('sm-note').value.trim();
+      var msg=document.getElementById('sm-modal-msg');
+      if(!iid){msg.textContent='Select ingredient.';msg.className='msg er';msg.style.display='block';return;}
+      if(!qty||isNaN(qty)||qty<=0){msg.textContent='Enter a positive qty.';msg.className='msg er';msg.style.display='block';return;}
+      var signedQty=qty;
+      if(type==='adjustment'){
+        var sign=document.getElementById('sm-adj-sign').value;
+        signedQty = sign==='-' ? -Math.abs(qty) : Math.abs(qty);
+      }
+      var ing=allIngredients.find(function(i){return String(i.id)===String(iid);});
+      var ingName=ing?ing.name:('#'+iid);
+      var unit=ing?ing.unit:'';
+      var stock=ing?parseFloat(ing.current_stock)||0:0;
+      var typeLabel={purchase:'ADD stock (purchase)',adjustment:'ADJUST stock',wastage:'record WASTAGE',return:'RETURN to stock'};
+      var qtyLine=type==='adjustment'
+        ? ((signedQty>=0?'+':'')+fmtIngQty(Math.abs(signedQty),unit)+' ('+(signedQty>=0?'increase':'decrease')+')')
+        : fmtIngQty(Math.abs(signedQty),unit);
+      var confirmMsg='Confirm stock change?\n\n'+
+        'Ingredient: '+ingName+'\n'+
+        'Action: '+(typeLabel[type]||type)+'\n'+
+        'Qty: '+qtyLine+'\n'+
+        'Current on hand: '+fmtIngQty(stock,unit)+'\n'+
+        (note?'Note: '+note+'\n':'')+
+        '\nThis will be saved in the stock ledger.';
+      if(!confirm(confirmMsg)) return;
+      // Extra confirm for wastage / downward adjust
+      if(type==='wastage' || (type==='adjustment' && signedQty<0)){
+        if(!confirm('Second confirmation: reduce stock of "'+ingName+'" by '+fmtIngQty(Math.abs(signedQty),unit)+'?\n\nOnly continue if this is correct.')) return;
+      }
+      msg.textContent='Saving…';msg.className='msg in';msg.style.display='block';
+      var who='';
+      try{ who=sessionStorage.getItem('staffName')||sessionStorage.getItem('staff_name')||''; }catch(e){}
+      apiPost({
+        action:'addStockMovement',
+        ingredient_id:parseInt(iid,10),
+        movement_type:type,
+        qty:signedQty,
+        note:note||null,
+        ref_type:'manual',
+        ref_id: (type==='wastage' || type==='production_consume') ? (document.getElementById('f-var-date')&&document.getElementById('f-var-date').value)||null : null,
+        created_by:who||null
+      }).then(function(r){
+        if(r&&r.ok){
+          msg.textContent='✅ Saved. New stock: '+(r.current_stock!=null?r.current_stock:'ok');
+          msg.className='msg ok';
+          setTimeout(function(){closeStockMoveModal();loadInventory();},700);
+        }else{
+          msg.textContent='❌ '+(r&&r.error||'Failed');
+          msg.className='msg er';
+        }
+      });
+    }
+
+    function openProdConsumeModal(){
+      var dateEl=document.getElementById('f-prod-date');
+      var date=dateEl&&dateEl.value?dateEl.value:tomorrowStr();
+      document.getElementById('prod-consume-date').textContent='Production / delivery date: '+date;
+      document.getElementById('prod-consume-msg').style.display='none';
+      var body=document.getElementById('prod-consume-body');
+      body.innerHTML='Loading requirements…';
+      document.getElementById('prodConsumeModal').style.display='flex';
+      Promise.all([
+        api({action:'getOrders',date:date}),
+        loadIngredientsMaster(),
+        loadRecipesMaster(),
+        loadProductMaster()
+      ]).then(function(res){
+        var orders=Array.isArray(res[0])?res[0]:[];
+        var grand=[];
+        orders.forEach(function(o){
+          parseIQ(o).forEach(function(x){
+            var f=grand.find(function(g){return g.product_id?g.product_id===x.product_id:g.name===x.name;});
+            if(f) f.qty+=x.qty; else grand.push({name:x.name,qty:x.qty,product_id:x.product_id});
+          });
+        });
+        var ings=calcIngForItems(grand);
+        _lastProdGrandIng=ings;
+        if(!ings.length){
+          body.innerHTML='<div style="color:#64748b;font-family:monospace;font-size:12px">No recipe-based requirements for this date (no orders or missing recipes).</div>';
+          return;
+        }
+        var anyShort=false;
+        body.innerHTML='<div style="font-size:11px;font-family:monospace;color:#64748b;margin-bottom:8px">Will deduct these amounts from stock (blocked if short).</div>'+
+          ings.map(function(ing){
+            var stock=parseFloat(ing.current_stock)||0;
+            var need=ing.total_qty;
+            var short=stock+0.000001 < need;
+            if(short) anyShort=true;
+            return '<div style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid #f0e8dc;font-family:monospace;font-size:12px">'+
+              '<span style="font-weight:700;color:#1e293b">'+esc(ing.name)+'</span>'+
+              '<span style="text-align:right;color:'+(short?'#c8382a':'#2d7a4f')+'">'+
+                'need '+fmtIngQty(need,ing.unit)+'<br><span style="font-size:10px;color:#64748b">have '+fmtIngQty(stock,ing.unit)+(short?' · SHORT':'')+'</span>'+
+              '</span></div>';
+          }).join('')+
+          (anyShort?'<div class="msg er" style="display:block;margin-top:10px">Some items are short. Add stock first, or deduct will stop on first shortage.</div>':'');
+      }).catch(function(){
+        body.innerHTML='<div class="msg er">Failed to load requirements.</div>';
+      });
+    }
+    function closeProdConsumeModal(){document.getElementById('prodConsumeModal').style.display='none';}
+
+    function confirmProdConsume(){
+      var dateEl=document.getElementById('f-prod-date');
+      var date=dateEl&&dateEl.value?dateEl.value:tomorrowStr();
+      var msg=document.getElementById('prod-consume-msg');
+      var detailLines=(_lastProdGrandIng||[]).filter(function(i){return i.ingredient_id && i.total_qty>0;});
+      var lines=detailLines.map(function(i){return {ingredient_id:i.ingredient_id, qty:i.total_qty};});
+      if(!lines.length){msg.textContent='Nothing to deduct.';msg.className='msg er';msg.style.display='block';return;}
+      var summary=detailLines.slice(0,12).map(function(i){
+        return '• '+(i.name||i.ingredient_id)+': '+fmtIngQty(i.total_qty,i.unit||'');
+      }).join('\n');
+      if(detailLines.length>12) summary+='\n… +'+(detailLines.length-12)+' more';
+      var confirmMsg='CONFIRM STOCK DEDUCTION\n\n'+
+        'Date: '+date+'\n'+
+        'Ingredients: '+lines.length+'\n\n'+
+        summary+'\n\n'+
+        'This reduces raw material stock for production.\n'+
+        'Only confirm if these quantities are correct.';
+      if(!confirm(confirmMsg)) return;
+      if(!confirm('Second confirmation: deduct stock for '+date+' now?\n\nThis cannot be undone automatically (use Adjust only to correct mistakes).')) return;
+      msg.textContent='Deducting…';msg.className='msg in';msg.style.display='block';
+      var who='';
+      try{ who=sessionStorage.getItem('staffName')||sessionStorage.getItem('staff_name')||''; }catch(e){}
+      apiPost({
+        action:'applyProductionConsumption',
+        date:date,
+        ref_id:date,
+        lines:lines,
+        created_by:who||null,
+        force:false
+      }).then(function(r){
+        if(r&&r.ok){
+          msg.textContent='✅ Stock deducted for '+date;
+          msg.className='msg ok';
+          setTimeout(function(){closeProdConsumeModal();loadIngredientsMaster().then(function(){loadProduction();});},900);
+        }else{
+          msg.textContent='❌ '+(r&&r.error||'Failed')+(r&&r.results?' ('+r.results.filter(function(x){return!x.ok;}).length+' failed)':'');
+          msg.className='msg er';
+        }
       });
     }
 
@@ -13386,6 +13903,21 @@ function renderProductionPage(orders, date){
     });
   });
   var grandIngList=Object.values(grandIngMap).sort(function(a,b){return b.total_qty-a.total_qty;});
+  // Enrich with ingredient_id + current_stock from master (for deduct + UI)
+  try {
+    var byNameUnit={};
+    allIngredients.forEach(function(i){
+      byNameUnit[(i.name||'')+'__'+(i.unit||'')]=i;
+    });
+    grandIngList.forEach(function(ing){
+      var meta=byNameUnit[ing.name+'__'+ing.unit];
+      if(meta){
+        ing.ingredient_id=meta.id;
+        ing.current_stock=parseFloat(meta.current_stock)||0;
+      }
+    });
+  } catch(e){}
+  _lastProdGrandIng = grandIngList;
   var grandIngCost=grandIngList.reduce(function(s,i){return s+i.total_cost;},0);
   var noRecipeCount=catEntries.filter(function(ce){return calcIngForItems(ce[1].items).length===0;}).length;
 
@@ -13492,17 +14024,26 @@ function renderProductionPage(orders, date){
     '<span style="font-size:22px;font-weight:900;font-family:monospace">'+grandTotal+'</span>'+
   '</div>';
 
-  // Grand ingredient total card
+  // Grand ingredient total card (+ stock check when inventory columns exist)
   if(grandIngList.length){
+    var shortCount=grandIngList.filter(function(ing){
+      return (parseFloat(ing.current_stock)||0)+0.000001 < ing.total_qty;
+    }).length;
     html+='<div style="background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:12px;padding:10px 12px;margin-bottom:8px">'+
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:6px">'+
         '<span style="font-size:12px;font-weight:900;color:#2d7a4f;text-transform:uppercase;letter-spacing:.5px">🧂 Total Ingredients Needed</span>'+
-        (grandIngCost>0?'<span style="font-size:15px;font-weight:900;color:#2d7a4f;font-family:monospace">₹'+grandIngCost.toFixed(0)+'</span>':'')+
+        '<span style="display:flex;gap:8px;align-items:center">'+
+          (shortCount?'<span style="font-size:11px;font-weight:800;color:#c8382a">'+shortCount+' short</span>':'')+
+          (grandIngCost>0?'<span style="font-size:15px;font-weight:900;color:#2d7a4f;font-family:monospace">₹'+grandIngCost.toFixed(0)+'</span>':'')+
+        '</span>'+
       '</div>'+
       grandIngList.map(function(ing){
+        var stock=parseFloat(ing.current_stock); if(isNaN(stock)) stock=0;
+        var short=stock+0.000001 < ing.total_qty;
         return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid #c8e6c9">'+
-          '<span style="font-size:12px;font-family:monospace;color:#2d5a2f;font-weight:700">'+esc(ing.name)+'</span>'+
-          '<span style="font-size:13px;font-weight:900;font-family:monospace;color:#2d7a4f">'+fmtIngQty(ing.total_qty,ing.unit)+
+          '<span style="font-size:12px;font-family:monospace;color:'+(short?'#c8382a':'#2d5a2f')+';font-weight:700">'+esc(ing.name)+(short?' ⚠':'')+'</span>'+
+          '<span style="font-size:13px;font-weight:900;font-family:monospace;color:'+(short?'#c8382a':'#2d7a4f')+';text-align:right">'+fmtIngQty(ing.total_qty,ing.unit)+
+            '<span style="font-size:10px;font-weight:400;color:#64748b"> / have '+fmtIngQty(stock,ing.unit)+'</span>'+
             (ing.total_cost>0?' <span style="font-size:10px;font-weight:400;color:#64748b">₹'+ing.total_cost.toFixed(0)+'</span>':'')+
           '</span>'+
         '</div>';
@@ -14545,7 +15086,8 @@ function openAttDayDetail(driverName, date){
         }
       } catch(e){}
       if (!first) {
-        if (_allowedTabs === null) first = 'dashboard';
+        if (_staffRole === 'stock_manager') first = _visibleTabs['inventory'] !== false ? 'inventory' : 'production';
+        else if (_allowedTabs === null) first = 'dashboard';
         else if (_visibleTabs['cust-orders'] !== false) first = 'cust-orders';
         else if (_visibleTabs['dashboard'] !== false) first = 'dashboard';
         else first = _allowedTabs.length ? _allowedTabs[0] : 'summary';
