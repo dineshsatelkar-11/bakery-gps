@@ -12,6 +12,19 @@ const CONFIG = {
   // Bakery HQ location (used for route optimisation in driver app)
   HQ: { lat: 18.60718624307306, lng: 73.92742696886077, name: "IBCAB · Lohegaon" },
 
+  // Legal entity (shown on customer-facing website / app)
+  BAKERY_LEGAL_NAME: "IT'S BAKED CRAFT & ARTISANAL BAKERY",
+  BAKERY_ADDRESS_LINES: [
+    "Ware House No.2, Sr.No.315/1A/7",
+    "Nirgudi Road, Lohgaon",
+    "Pune - 411047, Maharashtra, India"
+  ],
+  // Single-line form for compact footers
+  BAKERY_ADDRESS: "Ware House No.2, Sr.No.315/1A/7, Nirgudi Road, Lohgaon, Pune - 411047, Maharashtra, India",
+  // Customer contact (displayed with legal name + used for WhatsApp)
+  BAKERY_PHONE_DISPLAY: "70666 76997",
+  BAKERY_PHONE: "7066676997",
+
   DRIVERS: ['Bharat', 'Anand', 'Vikas', 'Yuvraj', 'Rama'],
 
   // Customer tracking page contacts
@@ -24,8 +37,8 @@ const CONFIG = {
   // WhatsApp group link — opened when driver completes all deliveries
   WHATSAPP_GROUP: 'https://chat.whatsapp.com/Bjta1D8WDKe38qPCJGVigp',
 
-  // Customer support WhatsApp number (with country code, digits only e.g. 918956276855)
-  BAKERY_WHATSAPP: '918956276855',
+  // Customer support WhatsApp number (with country code, digits only e.g. 917066676997)
+  BAKERY_WHATSAPP: '917066676997',
 
   // Driver app translations
   LANG: {

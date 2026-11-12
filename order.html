@@ -840,11 +840,19 @@
             </div>
 
             <div class="card" style="margin-bottom:24px;border-radius:4px 4px 16px 16px">
-                <div style="display:flex;align-items:center;gap:12px">
-                    <div style="width:36px;height:36px;background:#f1f5f9;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">🥖</div>
-                    <div style="flex:1">
-                        <div style="font-size:14px;font-weight:700;color:#0f172a">IBCAB Bakery</div>
-                        <div style="font-size:11px;color:#64748b;font-family:monospace">Customer App · v1.0</div>
+                <div style="display:flex;align-items:flex-start;gap:12px">
+                    <div style="width:36px;height:36px;background:#f1f5f9;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;margin-top:2px">🥖</div>
+                    <div style="flex:1;min-width:0">
+                        <div style="font-size:13px;font-weight:800;color:#0f172a;line-height:1.35" id="legalNameEl">IT'S BAKED CRAFT &amp; ARTISANAL BAKERY</div>
+                        <div style="font-size:11px;color:#64748b;font-family:monospace;line-height:1.55;margin-top:6px" id="legalAddrEl">
+                            Ware House No.2, Sr.No.315/1A/7<br>
+                            Nirgudi Road, Lohgaon<br>
+                            Pune - 411047, Maharashtra, India
+                        </div>
+                        <div style="font-size:12px;font-weight:700;color:#0f172a;margin-top:8px" id="legalPhoneEl">
+                            <a href="tel:7066676997" style="color:#0f766e;text-decoration:none">📞 70666 76997</a>
+                        </div>
+                        <div style="font-size:10px;color:#94a3b8;font-family:monospace;margin-top:6px">Customer App · IBCAB</div>
                     </div>
                 </div>
             </div>
@@ -1368,6 +1376,25 @@
     }
     function showApp(){
       try { document.body.classList.add('cust-app'); } catch(e) {}
+      // Legal name + operating address + phone (from CONFIG when available)
+      try {
+        var ln = document.getElementById('legalNameEl');
+        var la = document.getElementById('legalAddrEl');
+        var lp = document.getElementById('legalPhoneEl');
+        if (ln && CONFIG && CONFIG.BAKERY_LEGAL_NAME) ln.textContent = CONFIG.BAKERY_LEGAL_NAME;
+        if (la && CONFIG && CONFIG.BAKERY_ADDRESS_LINES && CONFIG.BAKERY_ADDRESS_LINES.length) {
+          la.innerHTML = CONFIG.BAKERY_ADDRESS_LINES.map(function(l){ return String(l).replace(/</g,'&lt;'); }).join('<br>');
+        } else if (la && CONFIG && CONFIG.BAKERY_ADDRESS) {
+          la.textContent = CONFIG.BAKERY_ADDRESS;
+        }
+        if (lp && CONFIG) {
+          var disp = CONFIG.BAKERY_PHONE_DISPLAY || CONFIG.BAKERY_PHONE || '';
+          var digits = String(CONFIG.BAKERY_PHONE || CONFIG.BAKERY_WHATSAPP || '').replace(/\D/g,'').slice(-10);
+          if (disp && digits) {
+            lp.innerHTML = '<a href="tel:'+digits+'" style="color:#0f766e;text-decoration:none">📞 '+String(disp).replace(/</g,'&lt;')+'</a>';
+          }
+        }
+      } catch(e) {}
       /* First open: pin bottom nav to true screen bottom (iOS PWA often paints it high once) */
       try {
         window.scrollTo(0, 0);
